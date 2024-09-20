@@ -1,0 +1,11 @@
+<div class="site-wrapper">
+  <div class="header" *ngIf="router.url !== '/'">
+    <app-header></app-header>
+  </div>
+  <main>
+    <router-outlet></router-outlet>
+  </main>
+  <div class="footer" *ngIf="router.url !== '/'">
+    <app-footer></app-footer>
+  </div>
+</div>

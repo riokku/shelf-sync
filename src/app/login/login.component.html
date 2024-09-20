@@ -1,0 +1,52 @@
+<div class="page-wrapper">
+  <div class="video">
+    <video src="../../assets/login-video.mp4" autoplay loop></video>
+  </div>
+  <section class="content-wrapper">
+    <div class="row">
+      <div class="col-12 col-sm-12 col-md-6">
+        <div class="logo-wrapper">
+          <div>
+            <svg viewBox="0 0 500 130">
+              <text x="50%" y="50%" dy="2.32rem" dx="-1.5rem" text-anchor="middle" class="happy-title">
+                ShelfSync
+              </text>
+            </svg>
+            <h2>
+              Inventory management made simple.
+            </h2>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-sm-12 col-md-6">
+        <div class="login-wrapper">
+          <form action="">
+            <p-inputGroup class="mb-3">
+              <p-inputGroupAddon>
+                  <i class="pi pi-user"></i>
+              </p-inputGroupAddon>
+              <input pInputText placeholder="Username" />
+            </p-inputGroup>
+            <p-inputGroup class="mb-3">
+              <p-inputGroupAddon>
+                  <i class="pi pi-lock"></i>
+              </p-inputGroupAddon>
+              <input pInputText placeholder="Password" type="password" />
+            </p-inputGroup>
+            <button
+                pButton
+                pRipple
+                label="Login"
+                class="p-button-primary"
+                size="small"
+                (click)="attemptLogin()"
+                [routerLink]="['/dashboard']"
+                >
+                <i class="pi pi-sign-in me-2"></i>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

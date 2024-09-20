@@ -1,0 +1,10 @@
+.footer-wrapper{
+  height: fit-content;
+  color: var(--text-color);
+  text-align: center;
+  padding: 1.5rem;
+  img{
+    width: clamp(40px, 30px, 100%);
+    float: right;
+  }
+}
