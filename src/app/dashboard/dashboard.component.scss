@@ -1,0 +1,72 @@
+.dashboard-wrapper{
+  color: var(--text-color);
+}
+
+.toolbar-wrapper{
+  border-bottom: 1px solid #fff;;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.search-wrapper{
+  input{
+    padding-left: 2.2rem;
+  }
+}
+
+.filter-wrapper{
+  border-right: 1px solid #fff;
+  padding-right: 1.5rem;
+}
+
+::ng-deep{
+  .p-breadcrumb {
+    background: none;
+    border: none;
+    padding: 1.5rem 0;
+    a{
+      color: var(--text-color);
+      text-decoration: none;
+      &:hover{
+        text-decoration: underline;
+      }
+    }
+    .p-breadcrumb-list{
+      padding-left: 0;
+      margin-bottom: 0;
+    }
+  }
+  .p-accordion-header-link{
+    background: none;
+    border: none;
+    text-decoration: none;
+    color: var(--text-color);
+    padding-left: 0;
+    padding-bottom: 0;
+    font-weight: normal;
+  }
+  .p-accordion-content{
+    background: none;
+    border: none;
+    padding-top: 0;
+    padding-left: 0.5rem;
+    padding-right: 0;
+    > div{
+      &:first-child{
+        .p-checkbox{
+          margin-top: 1rem;
+        }
+      }
+    }
+    label{
+      cursor: pointer;
+    }
+
+  }
+  .p-checkbox{
+    margin-top: 0.75rem;
+    margin-right: 0.5rem;
+  }
+
+}
