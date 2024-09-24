@@ -1,8 +1,8 @@
 .site-wrapper{
   display: flex;
   flex-flow: column;
-  height: 100%;
-  overflow: hidden;
+  min-height: 100%;
+  max-width: 100%;
   background: url('../assets/background.png');
 }
 
@@ -12,5 +12,4 @@
 
 main{
   flex: 1 1 auto;
-  padding: 3rem 1.5rem;
 }

@@ -1,5 +1,7 @@
 .dashboard-wrapper{
   color: var(--text-color);
+  padding: 3rem 1.5rem;
+  max-width: 100%;
 }
 
 .toolbar-wrapper{
@@ -18,7 +20,18 @@
 .filter-wrapper{
   border-right: 1px solid #fff;
   padding-right: 1.5rem;
+  height: 100%;
 }
+
+.inventory-gallery-wrapper{
+  row-gap: 1.5rem;
+  .inventory-card{
+    img{
+      aspect-ratio: 16/9;
+    }
+  }
+}
+
 
 ::ng-deep{
   .p-breadcrumb {
@@ -49,9 +62,7 @@
   .p-accordion-content{
     background: none;
     border: none;
-    padding-top: 0;
-    padding-left: 0.5rem;
-    padding-right: 0;
+    padding: 0 0 0 0.5rem;
     > div{
       &:first-child{
         .p-checkbox{
@@ -68,5 +79,17 @@
     margin-top: 0.75rem;
     margin-right: 0.5rem;
   }
-
+  .p-card{
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .p-card-body{
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .p-card-footer{
+    margin-top: auto;
+  }
 }
