@@ -108,12 +108,162 @@
                 </p>
                 <ng-template pTemplate="footer">
                   <div class="d-flex gap-3">
-                    <p-button label="More details" severity="info" />
-                    <p-button label="Modify" severity="contrast" />
+                    <!-- <p-button label="More details" severity="info" />
+                    <p-button label="Details" severity="contrast" />-->
+                    <p-button (onClick)="showDialog()" label="Details" />
                   </div>
                 </ng-template>
               </p-card>
             </div>
+            <p-dialog header="Item details" [modal]="true" [(visible)]="dialogShowing">
+              <!-- <p-tabMenu [model]="tabList" [activeItem]="activeItem" (activeItemChange)="onActiveItemChange($event)" />
+              <div *ngIf="activeItem?.label === 'Dashboard'">
+                Dashboard Lorem ipsum dolor sit amet consectetur adipisicing elit. Laudantium eum voluptatibus consequuntur officia ipsum aperiam molestias eos quaerat illum, sequi, magnam culpa quia deserunt inventore dignissimos reiciendis ullam! Dolore, repellendus!
+              </div>
+              <div *ngIf="activeItem?.label === 'Transactions'">
+                Transactions Lorem ipsum dolor sit amet consectetur adipisicing elit. Laudantium eum voluptatibus consequuntur officia ipsum aperiam molestias eos quaerat illum, sequi, magnam culpa quia deserunt inventore dignissimos reiciendis ullam! Dolore, repellendus!
+              </div>
+              <div *ngIf="activeItem?.label === 'Products'">
+                Products Lorem ipsum dolor sit amet consectetur adipisicing elit. Laudantium eum voluptatibus consequuntur officia ipsum aperiam molestias eos quaerat illum, sequi, magnam culpa quia deserunt inventore dignissimos reiciendis ullam! Dolore, repellendus!
+              </div>
+              <div *ngIf="activeItem?.label === 'Messages'">
+                Messages Lorem ipsum dolor sit amet consectetur adipisicing elit. Laudantium eum voluptatibus consequuntur officia ipsum aperiam molestias eos quaerat illum, sequi, magnam culpa quia deserunt inventore dignissimos reiciendis ullam! Dolore, repellendus!
+              </div> -->
+              <!-- <p>{{item.id}}</p>
+              <p class="item-description">{{item.description}}</p>-->
+              <p-table [value]="[{}]" styleClass="p-datatable-gridlines mb-4">
+                <ng-template pTemplate="body">
+                  <tr>
+                    <th colspan="3">
+                      <div>
+                        <i class="pi pi-box me-2" style="font-size: 1.25rem"></i>
+                        General information
+                      </div>
+                    </th>
+                  </tr>
+                  <tr>
+                    <td width="33%">
+                      <strong>Category:</strong><br /> Folder
+                    </td>
+                    <td width="33%">
+                      <strong>Applicable year:</strong><br /> 2024
+                    </td>
+                    <td width="33%">
+                      <strong>Expiration date:</strong><br /> June 30th, 2025
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <strong>Physical location:</strong><br /> Lighty Room 204
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <strong>Digital location:</strong><br /> https://www.bing.com
+                    </td>
+                  </tr>
+                </ng-template>
+              </p-table>
+              <p-table [value]="[{}]" styleClass="p-datatable-gridlines mb-4">
+                <ng-template pTemplate="body">
+                  <tr>
+                    <th colspan="3">
+                      <i class="pi pi-calculator me-2" style="font-size: 1.25rem"></i>
+                      Quantity information
+                    </th>
+                  </tr>
+                  <tr>
+                    <td width="33%">
+                      <strong>Total (# of items):</strong><br />3000
+                    </td>
+                    <td width="33%">
+                      <strong>Allocated:</strong><br />2000
+                    </td>
+                    <td width="33%">
+                      <strong>Reimaining:</strong><br />1000
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <strong>Items per container:</strong><br />500
+                    </td>
+                    <td>
+                      <strong>Low quantity threshold:</strong><br />800
+                    </td>
+                  </tr>
+                </ng-template>
+              </p-table>
+              <p-table [value]="[{}]" styleClass="p-datatable-gridlines mb-4">
+                <ng-template pTemplate="body">
+                  <tr>
+                    <th colspan="3">
+                      <i class="pi pi-shopping-cart me-2" style="font-size: 1.25rem"></i>
+                      Supplier information
+                    </th>
+                  </tr>
+                  <tr>
+                    <td width="33%">
+                      <strong>Name:</strong><br />James Bond LLC.
+                    </td>
+                    <td width="33%">
+                      <strong>Lead time:</strong><br />14 days
+                    </td>
+                    <td width="33%">&nbsp;</td>
+                  </tr>
+                  <tr>
+                    <td colspan="3">
+                      <strong>Order link:</strong><br />https://www.jamesbondllcs.com/renew
+                    </td>
+                  </tr>
+                </ng-template>
+              </p-table>
+              <p-table [value]="[{}]" styleClass="p-datatable-gridlines mb-4">
+                <ng-template pTemplate="body">
+                  <tr>
+                    <th colspan="3">
+                      <i class="pi pi-tag me-2" style="font-size: 1.25rem"></i>
+                      Price information
+                    </th>
+                  </tr>
+                  <tr>
+                    <td width="33%">
+                      <strong>Price per unit:</strong><br />$1.50
+                    </td>
+                    <td width="33%">
+                      <strong>Price per container:</strong><br />$650
+                    </td>
+                    <td width="33%">&nbsp;</td>
+                  </tr>
+                </ng-template>
+              </p-table>
+              <p-table [value]="[{}]" styleClass="p-datatable-gridlines">
+                <ng-template pTemplate="body">
+                  <tr>
+                    <th colspan="3">
+                      <i class="pi pi-info-circle me-2" style="font-size: 1.25rem"></i>
+                      Other information
+                    </th>
+                  </tr>
+                  <tr>
+                    <td width="33%">
+                      <strong>Status:</strong><br />Checked out
+                    </td>
+                    <td width="33%">
+                      <strong>Checked out to:</strong><br />Amanda Poppins
+                    </td>
+                    <td width="33%">&nbsp;</td>
+                  </tr>
+                  <tr>
+                    <td colspan="3">
+                      <strong>Activity:</strong><br />
+                      August 31, 2024: Lorem ipsum dolor sit amet, consectetur adipisicing elit. <br />
+                      July 23, 2024: Eligendi incidunt voluptatibus, adipisci nostrum nisi sapiente suscipit dicta saepe officia, temporibus, ullam rem iste sequi repudiandae!<br />
+                      June 1, 2024: Vero in maxime ipsa voluptate.
+                    </td>
+                  </tr>
+                </ng-template>
+              </p-table>
+            </p-dialog>
           </div>
         </div>
       </div>
