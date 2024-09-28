@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { BreadcrumbModule } from 'primeng/breadcrumb';
 import { MenuItem } from 'primeng/api';
 import { RouterModule } from '@angular/router';
@@ -17,8 +17,7 @@ import { InventoryItem } from '../shared/models/inventory-item.model';
 import { DialogModule } from 'primeng/dialog';
 import { TableModule } from 'primeng/table';
 import { TabMenuModule } from 'primeng/tabmenu';
-
-
+import { ModalTableComponent } from '../shared/components/modal-table/modal-table.component';
 
 @Component({
   selector: 'app-dashboard',
@@ -38,20 +37,26 @@ import { TabMenuModule } from 'primeng/tabmenu';
     CardModule,
     DialogModule,
     TableModule,
-    TabMenuModule
+    TabMenuModule,
+    ModalTableComponent
   ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent implements OnInit{
+
+  @ViewChild('detailsModal') detailsModal!:ModalTableComponent;
+
   breadcrumbItems: MenuItem[] | undefined;
   home: MenuItem | undefined;
   files: TreeNode[] | undefined;
 
   selectedOptions: string[] = [];
-
   inventoryList: InventoryItem[] | undefined;
-  tabList: MenuItem[] | undefined;
+
+  displayModal: boolean = false;
+
+  selectedItem: InventoryItem | undefined;
 
   filterOptions = [
     { label: 'Electronics', value: 'electronics' },
@@ -68,8 +73,6 @@ export class DashboardComponent implements OnInit{
     { name: 'Laptop', category: 'electronics' },
     { name: 'Blender', category: 'home-appliances' }
   ];
-
-
 
   ngOnInit() {
     this.breadcrumbItems = [
@@ -331,27 +334,15 @@ export class DashboardComponent implements OnInit{
         "activityLog": "Item created on 2024-02-05; Allocated 80 units on 2024-03-18"
       }
     ]
-
-    this.tabList = [
-      { label: 'Dashboard', icon: 'pi pi-home' },
-      { label: 'Transactions', icon: 'pi pi-chart-line' },
-      { label: 'Products', icon: 'pi pi-list' },
-      { label: 'Messages', icon: 'pi pi-inbox' }
-   ]
-
-   this.activeItem = this.tabList[0];
   }
 
-  dialogShowing: boolean = true;
-
-  showDialog() {
-      this.dialogShowing = true;
+  showDetails(item:InventoryItem){
+    this.displayModal = true;
+    this.selectedItem = item;
   }
 
-  activeItem: MenuItem | undefined;
-
-  onActiveItemChange(event: MenuItem) {
-    this.activeItem = event;
-}
+  handleModalClose() {
+    this.displayModal = false;
+  }
 
 }

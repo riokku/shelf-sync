@@ -1,0 +1,42 @@
+
+<!--
+
+//TS
+
+tabList: MenuItem[] | undefined;
+
+this.tabList = [
+{ label: 'Dashboard', icon: 'pi pi-home' },
+{ label: 'Transactions', icon: 'pi pi-chart-line' },
+{ label: 'Products', icon: 'pi pi-list' },
+{ label: 'Messages', icon: 'pi pi-inbox' }
+]
+
+within ngoninit:
+
+this.activeItem = this.tabList[0];
+
+  activeItem: MenuItem | undefined;
+
+  onActiveItemChange(event: MenuItem) {
+    this.activeItem = event;
+}
+
+
+//HTML
+
+  <p-tabMenu [model]="tabList" [activeItem]="activeItem" (activeItemChange)="onActiveItemChange($event)" />
+  <div *ngIf="activeItem?.label === 'Dashboard'">
+    Dashboard Lorem ipsum dolor sit amet consectetur adipisicing elit. Laudantium eum voluptatibus consequuntur officia ipsum aperiam molestias eos quaerat illum, sequi, magnam culpa quia deserunt inventore dignissimos reiciendis ullam! Dolore, repellendus!
+  </div>
+  <div *ngIf="activeItem?.label === 'Transactions'">
+    Transactions Lorem ipsum dolor sit amet consectetur adipisicing elit. Laudantium eum voluptatibus consequuntur officia ipsum aperiam molestias eos quaerat illum, sequi, magnam culpa quia deserunt inventore dignissimos reiciendis ullam! Dolore, repellendus!
+  </div>
+  <div *ngIf="activeItem?.label === 'Products'">
+    Products Lorem ipsum dolor sit amet consectetur adipisicing elit. Laudantium eum voluptatibus consequuntur officia ipsum aperiam molestias eos quaerat illum, sequi, magnam culpa quia deserunt inventore dignissimos reiciendis ullam! Dolore, repellendus!
+  </div>
+  <div *ngIf="activeItem?.label === 'Messages'">
+    Messages Lorem ipsum dolor sit amet consectetur adipisicing elit. Laudantium eum voluptatibus consequuntur officia ipsum aperiam molestias eos quaerat illum, sequi, magnam culpa quia deserunt inventore dignissimos reiciendis ullam! Dolore, repellendus!
+  </div>
+
+-->

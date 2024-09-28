@@ -5,36 +5,10 @@
 }
 
 .toolbar-wrapper{
-  border-bottom: 1px solid #fff;;
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.search-wrapper{
-  input{
-    padding-left: 2.2rem;
-  }
-}
-
-.filter-wrapper{
-  border-right: 1px solid #fff;
-  padding-right: 1.5rem;
-  height: 100%;
-}
-
-.inventory-gallery-wrapper{
-  row-gap: 1.5rem;
-  .inventory-card{
-    img{
-      aspect-ratio: 16/9;
-    }
-  }
-}
-
-.item-description{
   position: relative;
-  padding-bottom: 1rem;
   &:after {
     content: "";
     position: absolute;
@@ -46,6 +20,35 @@
   }
 }
 
+.search-wrapper{
+  input{
+    padding-left: 2.2rem;
+  }
+}
+
+.filter-wrapper{
+  padding-right: 1.5rem;
+  height: 100%;
+  position: relative;
+  &:after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: 1px;
+    background: linear-gradient(to bottom, var(--primary-color) 0%, var(--text-color) 50%, var(--primary-color) 100%);
+  }
+}
+
+.inventory-gallery-wrapper{
+  row-gap: 1.5rem;
+  .inventory-card{
+    img{
+      aspect-ratio: 16/9;
+    }
+  }
+}
 
 ::ng-deep{
   .p-breadcrumb {

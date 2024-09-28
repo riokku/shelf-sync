@@ -1,0 +1,27 @@
+::ng-deep{
+  .p-dialog{
+    width: clamp(75%, 25rem, 60%);
+  }
+  .p-datatable-table{
+    th{
+      padding: 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+      color: var(--indigo-100);
+      div{
+        display: flex;
+        align-items: center;
+      }
+    }
+  }
+  .p-datatable-table{
+    width: 100%;
+  }
+  .p-dialog-header{
+    background-color: var(--indigo-600);
+  }
+}
+
+strong{
+  display: block;
+  margin-bottom: 0.25rem;
+}
