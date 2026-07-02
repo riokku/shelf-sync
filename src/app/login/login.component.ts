@@ -8,19 +8,18 @@ import { ButtonModule } from 'primeng/button';
 import { RouterModule } from '@angular/router';
 
 @Component({
-  selector: 'app-login',
-  standalone: true,
-  imports: [
-    InputGroupModule,
-    InputTextModule,
-    InputGroupAddonModule,
-    PasswordModule,
-    CardModule,
-    ButtonModule,
-    RouterModule
-  ],
-  templateUrl: './login.component.html',
-  styleUrl: './login.component.scss'
+    selector: 'app-login',
+    imports: [
+        InputGroupModule,
+        InputTextModule,
+        InputGroupAddonModule,
+        PasswordModule,
+        CardModule,
+        ButtonModule,
+        RouterModule
+    ],
+    templateUrl: './login.component.html',
+    styleUrl: './login.component.scss'
 })
 export class LoginComponent {
 

@@ -4,14 +4,13 @@ import { TableModule } from 'primeng/table';
 import { InventoryItem } from '../../models/inventory-item.model';
 
 @Component({
-  selector: 'app-modal-table',
-  standalone: true,
-  imports: [
-    DialogModule,
-    TableModule
-  ],
-  templateUrl: './modal-table.component.html',
-  styleUrl: './modal-table.component.scss'
+    selector: 'app-modal-table',
+    imports: [
+        DialogModule,
+        TableModule
+    ],
+    templateUrl: './modal-table.component.html',
+    styleUrl: './modal-table.component.scss'
 })
 
 export class ModalTableComponent {

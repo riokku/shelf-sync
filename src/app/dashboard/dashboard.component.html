@@ -5,17 +5,16 @@
         <div class="breadcrumbs-wrapper">
           <p-breadcrumb [model]="breadcrumbItems">
             <ng-template pTemplate="item" let-item>
-              <ng-container *ngIf="item.route; else elseBlock">
+              @if (item.route) {
                 <a [routerLink]="item.route" class="p-menuitem-link">
                   <span [ngClass]="[item.icon ? item.icon : '']"></span>
                   <span class="font-semibold">{{ item.label }}</span>
                 </a>
-              </ng-container>
-              <ng-template #elseBlock>
+              } @else {
                 <a [href]="item.url">
                   <span>{{ item.label }}</span>
                 </a>
-              </ng-template>
+              }
             </ng-template>
           </p-breadcrumb>
         </div>
@@ -23,7 +22,7 @@
           <p-iconField iconPosition="left">
             <p-inputIcon styleClass="pi pi-search" />
             <input type="text" pInputText placeholder="Search" />
-        </p-iconField>
+          </p-iconField>
         </div>
       </div>
     </div>
@@ -35,53 +34,67 @@
           Filter
         </h3>
         <p-accordion>
-          <p-accordionTab>
-            <ng-template pTemplate="header">
+          <p-accordion-panel value="0">
+            <p-accordion-header>
               <i class="pi pi-folder ms-1 me-2"></i> Documents
-            </ng-template>
-            <p-accordion>
-              <p-accordionTab>
-                <ng-template pTemplate="header">
-                  <i class="pi pi-file ms-1 me-2"></i> Work
-                </ng-template>
-                <div *ngFor="let option of filterOptions">
-                  <p-checkbox
-                    name="category"
-                    value="{{option.value}}"
-                    [(ngModel)]="selectedOptions"
-                    inputId="{{option.value}}"></p-checkbox>
-                  <label for="{{option.value}}">{{option.label}}</label>
-                </div>
-              </p-accordionTab>
-              <p-accordionTab>
-                <ng-template pTemplate="header">
-                  <i class="pi pi-file ms-1 me-2"></i> Home
-                </ng-template>
-                Content of Home
-              </p-accordionTab>
-            </p-accordion>
-          </p-accordionTab>
-          <p-accordionTab>
-            <ng-template pTemplate="header">
+            </p-accordion-header>
+            <p-accordion-content>
+              <p-accordion>
+                <p-accordion-panel value="0">
+                  <p-accordion-header>
+                    <i class="pi pi-file ms-1 me-2"></i> Work
+                  </p-accordion-header>
+                  <p-accordion-content>
+                    @for (option of filterOptions; track option) {
+                      <div>
+                        <p-checkbox
+                          name="category"
+                          value="{{option.value}}"
+                          [(ngModel)]="selectedOptions"
+                        inputId="{{option.value}}"></p-checkbox>
+                        <label for="{{option.value}}">{{option.label}}</label>
+                      </div>
+                    }
+                  </p-accordion-content>
+                </p-accordion-panel>
+                <p-accordion-panel value="1">
+                  <p-accordion-header>
+                    <i class="pi pi-file ms-1 me-2"></i> Home
+                  </p-accordion-header>
+                  <p-accordion-content>
+                    Content of Home
+                  </p-accordion-content>
+                </p-accordion-panel>
+              </p-accordion>
+            </p-accordion-content>
+          </p-accordion-panel>
+          <p-accordion-panel value="1">
+            <p-accordion-header>
               <i class="pi pi-image ms-1 me-2"></i> Pictures
-            </ng-template>
-            <p-accordion>
-              <p-accordionTab>
-                <ng-template pTemplate="header">
-                  <i class="pi pi-camera ms-1 me-2"></i> Vacation
-                </ng-template>
-                Content of Vacation
-              </p-accordionTab>
-            </p-accordion>
-            <p-accordion>
-              <p-accordionTab>
-                <ng-template pTemplate="header">
-                  <i class="pi pi-camera ms-1 me-2"></i> Vacation
-                </ng-template>
-                Content of Vacation
-              </p-accordionTab>
-            </p-accordion>
-          </p-accordionTab>
+            </p-accordion-header>
+            <p-accordion-content>
+              <p-accordion>
+                <p-accordion-panel value="0">
+                  <p-accordion-header>
+                    <i class="pi pi-camera ms-1 me-2"></i> Vacation
+                  </p-accordion-header>
+                  <p-accordion-content>
+                    Content of Vacation
+                  </p-accordion-content>
+                </p-accordion-panel>
+              </p-accordion>
+              <p-accordion>
+                <p-accordion-panel value="0">
+                  <p-accordion-header>
+                    <i class="pi pi-camera ms-1 me-2"></i> Vacation
+                  </p-accordion-header>
+                  <p-accordion-content>
+                    Content of Vacation
+                  </p-accordion-content>
+                </p-accordion-panel>
+              </p-accordion>
+            </p-accordion-content>
+          </p-accordion-panel>
         </p-accordion>
       </div>
     </div>
@@ -98,23 +111,25 @@
       <div class="row">
         <div class="col-12">
           <div class="row inventory-gallery-wrapper">
-            <div class="col-12 col-md-6 col-lg-4 inventory-card" *ngFor="let item of inventoryList">
-              <p-card header="{{item.name}}" subheader="{{item.category}}">
-                <ng-template pTemplate="header">
-                  <img alt="Card" src="{{item.image}}" />
-                </ng-template>
-                <p class="mb-0">
-                  {{item.description}}
-                </p>
-                <ng-template pTemplate="footer">
-                  <div class="d-flex gap-3">
-                    <!-- <p-button label="More details" severity="info" />
-                    <p-button label="Details" severity="contrast" />-->
-                    <p-button (onClick)="showDetails(item)" label="Details" />
-                  </div>
-                </ng-template>
-              </p-card>
-            </div>
+            @for (item of inventoryList; track item) {
+              <div class="col-12 col-md-6 col-lg-4 inventory-card">
+                <p-card header="{{item.name}}" subheader="{{item.category}}">
+                  <ng-template pTemplate="header">
+                    <img alt="Card" src="{{item.image}}" />
+                  </ng-template>
+                  <p class="mb-0">
+                    {{item.description}}
+                  </p>
+                  <ng-template pTemplate="footer">
+                    <div class="d-flex gap-3">
+                      <!-- <p-button label="More details" severity="info" />
+                      <p-button label="Details" severity="contrast" />-->
+                      <p-button (onClick)="showDetails(item)" label="Details" />
+                    </div>
+                  </ng-template>
+                </p-card>
+              </div>
+            }
           </div>
         </div>
       </div>

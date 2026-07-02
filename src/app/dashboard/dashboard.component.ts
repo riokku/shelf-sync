@@ -16,32 +16,29 @@ import { CardModule } from 'primeng/card';
 import { InventoryItem } from '../shared/models/inventory-item.model';
 import { DialogModule } from 'primeng/dialog';
 import { TableModule } from 'primeng/table';
-import { TabMenuModule } from 'primeng/tabmenu';
 import { ModalTableComponent } from '../shared/components/modal-table/modal-table.component';
 
 @Component({
-  selector: 'app-dashboard',
-  standalone: true,
-  imports: [
-    BreadcrumbModule,
-    RouterModule,
-    CommonModule,
-    ToolbarModule,
-    ButtonModule,
-    SplitButtonModule,
-    IconFieldModule,
-    InputIconModule,
-    AccordionModule,
-    CheckboxModule,
-    FormsModule,
-    CardModule,
-    DialogModule,
-    TableModule,
-    TabMenuModule,
-    ModalTableComponent
-  ],
-  templateUrl: './dashboard.component.html',
-  styleUrl: './dashboard.component.scss'
+    selector: 'app-dashboard',
+    imports: [
+        BreadcrumbModule,
+        RouterModule,
+        CommonModule,
+        ToolbarModule,
+        ButtonModule,
+        SplitButtonModule,
+        IconFieldModule,
+        InputIconModule,
+        AccordionModule,
+        CheckboxModule,
+        FormsModule,
+        CardModule,
+        DialogModule,
+        TableModule,
+        ModalTableComponent
+    ],
+    templateUrl: './dashboard.component.html',
+    styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent implements OnInit{
 
