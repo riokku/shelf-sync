@@ -20,24 +20,36 @@
       </div>
       <div class="col-12 col-sm-12 col-md-6">
         <div class="login-wrapper">
-          <form action="">
+          <form [formGroup]="form" (ngSubmit)="attemptLogin()">
             <mat-form-field appearance="outline" class="mb-3">
               <mat-icon matPrefix>person</mat-icon>
-              <input matInput placeholder="Username" />
+              <input matInput placeholder="Email" type="email" formControlName="email" />
             </mat-form-field>
             <mat-form-field appearance="outline" class="mb-3">
               <mat-icon matPrefix>lock</mat-icon>
-              <input matInput placeholder="Password" type="password" />
+              <input matInput placeholder="Password" type="password" formControlName="password" />
             </mat-form-field>
+            @if (errorMessage) {
+              <p class="error-message">{{ errorMessage }}</p>
+            }
             <button
                 mat-flat-button
                 color="primary"
-                (click)="attemptLogin()"
-                [routerLink]="['/dashboard']"
+                type="submit"
+                [disabled]="form.invalid || isLoading"
                 >
-                <mat-icon>login</mat-icon>
-                Login
+                @if (isLoading) {
+                  <mat-spinner diameter="20"></mat-spinner>
+                } @else {
+                  <ng-container>
+                    <mat-icon>login</mat-icon>
+                    Login
+                  </ng-container>
+                }
             </button>
+            <p class="switch-link">
+              Don't have an account? <a [routerLink]="['/register']">Sign up</a>
+            </p>
           </form>
         </div>
       </div>

@@ -1,0 +1,73 @@
+<div class="page-wrapper">
+  <div class="video">
+    <video src="../../assets/login-video.mp4" autoplay loop></video>
+  </div>
+  <section class="content-wrapper">
+    <div class="row">
+      <div class="col-12 col-sm-12 col-md-6">
+        <div class="logo-wrapper">
+          <div>
+            <svg viewBox="0 0 500 130">
+              <text x="50%" y="50%" dy="2.32rem" dx="-1.5rem" text-anchor="middle" class="happy-title">
+                ShelfSync
+              </text>
+            </svg>
+            <h2>
+              Inventory management made simple.
+            </h2>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-sm-12 col-md-6">
+        <div class="login-wrapper">
+          @if (confirmationSent) {
+            <div class="confirmation-message">
+              <mat-icon>mark_email_read</mat-icon>
+              <p>Check your email to confirm your account before logging in.</p>
+              <a [routerLink]="['/']">Back to login</a>
+            </div>
+          } @else {
+            <form [formGroup]="form" (ngSubmit)="attemptRegister()">
+              <mat-form-field appearance="outline" class="mb-3">
+                <mat-icon matPrefix>person</mat-icon>
+                <input matInput placeholder="Email" type="email" formControlName="email" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="mb-3">
+                <mat-icon matPrefix>lock</mat-icon>
+                <input matInput placeholder="Password" type="password" formControlName="password" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="mb-3">
+                <mat-icon matPrefix>lock</mat-icon>
+                <input matInput placeholder="Confirm password" type="password" formControlName="confirmPassword" />
+              </mat-form-field>
+              @if (form.errors?.['passwordMismatch'] && form.controls.confirmPassword.touched) {
+                <p class="error-message">Passwords do not match.</p>
+              }
+              @if (errorMessage) {
+                <p class="error-message">{{ errorMessage }}</p>
+              }
+              <button
+                  mat-flat-button
+                  color="primary"
+                  type="submit"
+                  [disabled]="form.invalid || isLoading"
+                  >
+                  @if (isLoading) {
+                    <mat-spinner diameter="20"></mat-spinner>
+                  } @else {
+                    <ng-container>
+                      <mat-icon>person_add</mat-icon>
+                      Create account
+                    </ng-container>
+                  }
+              </button>
+              <p class="switch-link">
+                Already have an account? <a [routerLink]="['/']">Log in</a>
+              </p>
+            </form>
+          }
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

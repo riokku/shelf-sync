@@ -12,7 +12,9 @@
     "supabase:status": "supabase status",
     "supabase:reset": "supabase db reset",
     "supabase:migration:new": "supabase migration new",
-    "supabase:gen:types": "supabase gen types typescript --local > src/app/models/database.types.ts"
+    "supabase:link": "supabase link",
+    "supabase:push": "supabase db push --linked",
+    "supabase:gen:types": "supabase gen types typescript --linked > src/app/models/database.types.ts"
   },
   "private": true,
   "dependencies": {
@@ -37,6 +39,7 @@
     "@angular/cli": "~21.2.18",
     "@angular/compiler-cli": "^21.2.17",
     "@types/jasmine": "~4.3.0",
+    "@types/node": "^26.1.1",
     "jasmine-core": "~4.5.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.1.0",
