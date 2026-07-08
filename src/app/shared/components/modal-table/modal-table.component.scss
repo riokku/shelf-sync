@@ -1,23 +1,21 @@
-::ng-deep{
-  .p-dialog{
-    width: clamp(75%, 25rem, 60%);
-  }
-  .p-datatable-table{
-    th{
-      padding: 1rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.25);
-      color: var(--indigo-100);
-      div{
-        display: flex;
-        align-items: center;
-      }
+.info-table{
+  width: 100%;
+
+  th{
+    padding: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+    color: var(--mat-sys-primary);
+    text-align: left;
+    display: flex;
+    align-items: center;
+
+    mat-icon{
+      display: inline-flex;
     }
   }
-  .p-datatable-table{
-    width: 100%;
-  }
-  .p-dialog-header{
-    background-color: var(--indigo-600);
+
+  td{
+    padding: 1rem;
   }
 }
 

@@ -21,28 +21,22 @@
       <div class="col-12 col-sm-12 col-md-6">
         <div class="login-wrapper">
           <form action="">
-            <p-inputGroup class="mb-3">
-              <p-inputGroupAddon>
-                  <i class="pi pi-user"></i>
-              </p-inputGroupAddon>
-              <input pInputText placeholder="Username" />
-            </p-inputGroup>
-            <p-inputGroup class="mb-3">
-              <p-inputGroupAddon>
-                  <i class="pi pi-lock"></i>
-              </p-inputGroupAddon>
-              <input pInputText placeholder="Password" type="password" />
-            </p-inputGroup>
+            <mat-form-field appearance="outline" class="mb-3">
+              <mat-icon matPrefix>person</mat-icon>
+              <input matInput placeholder="Username" />
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="mb-3">
+              <mat-icon matPrefix>lock</mat-icon>
+              <input matInput placeholder="Password" type="password" />
+            </mat-form-field>
             <button
-                pButton
-                pRipple
-                label="Login"
-                class="p-button-primary"
-                size="small"
+                mat-flat-button
+                color="primary"
                 (click)="attemptLogin()"
                 [routerLink]="['/dashboard']"
                 >
-                <i class="pi pi-sign-in me-2"></i>
+                <mat-icon>login</mat-icon>
+                Login
             </button>
           </form>
         </div>

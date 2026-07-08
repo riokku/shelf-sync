@@ -1,5 +1,5 @@
 .dashboard-wrapper{
-  color: var(--text-color);
+  color: var(--mat-sys-on-surface);
   padding: 3rem 1.5rem;
   max-width: 100%;
 }
@@ -16,13 +16,13 @@
     left: 0;
     width: 100%;
     height: 1px; /* Maximum height of the border */
-    background: linear-gradient(to right, var(--primary-color) 0%, var(--text-color) 50%, var(--primary-color) 100%);
+    background: linear-gradient(to right, var(--mat-sys-primary) 0%, var(--mat-sys-on-surface) 50%, var(--mat-sys-primary) 100%);
   }
 }
 
 .search-wrapper{
-  input{
-    padding-left: 2.2rem;
+  mat-form-field{
+    width: 16rem;
   }
 }
 
@@ -37,7 +37,7 @@
     right: 0;
     height: 100%;
     width: 1px;
-    background: linear-gradient(to bottom, var(--primary-color) 0%, var(--text-color) 50%, var(--primary-color) 100%);
+    background: linear-gradient(to bottom, var(--mat-sys-primary) 0%, var(--mat-sys-on-surface) 50%, var(--mat-sys-primary) 100%);
   }
 }
 
@@ -46,118 +46,64 @@
   .inventory-card{
     img{
       aspect-ratio: 16/9;
+      object-fit: cover;
     }
   }
 }
 
-::ng-deep{
-  .p-breadcrumb {
-    background: none;
-    border: none;
-    padding: 1.5rem 0;
-    a{
-      color: var(--text-color);
-      text-decoration: none;
-      &:hover{
-        text-decoration: underline;
-      }
-    }
-    .p-breadcrumb-list{
-      padding-left: 0;
-      margin-bottom: 0;
-    }
-  }
-  .p-accordion-header-link{
-    background: none;
-    border: none;
+.breadcrumb-nav{
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 1.5rem 0;
+
+  a{
+    display: inline-flex;
+    align-items: center;
+    color: var(--mat-sys-on-surface);
     text-decoration: none;
-    color: var(--text-color);
-    padding-left: 0;
-    padding-bottom: 0;
-    font-weight: normal;
-  }
-  .p-accordion-content{
-    background: none;
-    border: none;
-    padding: 0 0 0 0.5rem;
-    > div{
-      &:first-child{
-        .p-checkbox{
-          margin-top: 1rem;
-        }
-      }
+    &:hover{
+      text-decoration: underline;
     }
-    label{
-      cursor: pointer;
-    }
-
-  }
-  .p-checkbox{
-    margin-top: 0.75rem;
-    margin-right: 0.5rem;
-  }
-  .p-card{
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    p{
-      display: -webkit-box;
-      -webkit-line-clamp: 3;
-      line-clamp: 3;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-  }
-  .p-card-body{
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-  }
-  .p-card-footer{
-    margin-top: auto;
-  }
-  .p-button{
-    padding: 0.25rem 0.75rem;
-    font-size: 0.8rem;
-  }
-  .p-dialog{
-    width: clamp(75%, 25rem, 60%);
-  }
-  .p-datatable-table{
-    // td{
-    //   border: 1px solid rgba(255, 255, 255, 0.05);
-    // }
-    th{
-      padding: 1rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.25);
-      color: var(--cyan-300);
-      div{
-        display: flex;
-        align-items: center;
-      }
+    mat-icon{
+      margin-right: 0.25rem;
     }
   }
 
-  .p-datatable-table{
-    width: 100%;
-  }
-
-  .p-tabmenu-nav{
-    padding-left: 0;
-  }
-
-  .p-highlight{
-    > a{
-      color: var(--primary-color);
-    }
-  }
-
-  .p-menuitem-link{
+  .breadcrumb-separator{
+    margin: 0 0.5rem;
     color: #a1a1aa;
-    text-decoration: none;
   }
+}
 
-  .p-component-overlay{
-    background-color: rgba(0, 0, 0, 0.7);
+mat-accordion mat-accordion{
+  display: block;
+  margin-left: 0.5rem;
+}
+
+mat-panel-title{
+  display: flex;
+  align-items: center;
+}
+
+mat-card{
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  p{
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
+}
+
+mat-card-content{
+  flex-grow: 1;
+}
+
+mat-card-actions{
+  margin-top: auto;
 }

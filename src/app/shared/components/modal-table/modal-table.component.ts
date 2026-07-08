@@ -1,25 +1,23 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { DialogModule } from 'primeng/dialog';
-import { TableModule } from 'primeng/table';
+import { Component, inject } from '@angular/core';
+import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
 import { InventoryItem } from '../../models/inventory-item.model';
 
 @Component({
     selector: 'app-modal-table',
     imports: [
-        DialogModule,
-        TableModule
+        MatDialogModule,
+        MatIconModule
     ],
     templateUrl: './modal-table.component.html',
     styleUrl: './modal-table.component.scss'
 })
 
 export class ModalTableComponent {
-  @Input() display: boolean = false;
-  @Input() item: InventoryItem | undefined;
-  @Output() onClose: EventEmitter<void> = new EventEmitter<void>();
+  dialogRef = inject(MatDialogRef<ModalTableComponent>);
+  data = inject<InventoryItem>(MAT_DIALOG_DATA);
 
   closeModal(){
-    this.display = false;
-    this.onClose.emit();
+    this.dialogRef.close();
   }
 }

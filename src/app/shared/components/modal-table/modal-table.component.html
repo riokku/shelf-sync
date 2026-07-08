@@ -1,140 +1,129 @@
-<p-dialog header="{{ item?.name }}" [modal]="true" [(visible)]="display" (onHide)="closeModal()">
-  <!-- <p>{{item.id}}</p>
-  <p class="item-description">{{item.description}}</p>-->
-  <p-table [value]="[{}]" styleClass="p-datatable-gridlines mb-4 mt-4">
-    <ng-template pTemplate="body">
-      <tr>
-        <th colspan="3">
-          <div>
-            <i class="pi pi-box me-2" style="font-size: 1.25rem"></i>
-            General information
-          </div>
-        </th>
-      </tr>
-      <tr>
-        <td colspan="3">
-          <strong>Description:</strong>
-          {{item?.description}}
-        </td>
-      </tr>
-      <tr>
-        <td width="33%">
-          <strong>Asset ID:</strong>{{item?.id}}
-        </td>
-        <td width="33%">
-          <strong>Category:</strong> {{item?.category}}
-        </td>
-        <td width="33%">
-          <strong>Applicable year:</strong> {{item?.applicableYear}}
-        </td>
-      </tr>
-      <tr>
-        <td width="33%">
-          <strong>Expiration date:</strong> {{item?.expirationDate}}
-        </td>
-        <td width="33%">
-          <strong>Physical location:</strong> {{item?.physicalLocation}}
-        </td>
-        <td width="33%">
-          <strong>Digital location:</strong> {{item?.digitalLocation}}
-        </td>
-      </tr>
-    </ng-template>
-  </p-table>
-  <p-table [value]="[{}]" styleClass="p-datatable-gridlines mb-4">
-    <ng-template pTemplate="body">
-      <tr>
-        <th colspan="3">
-          <i class="pi pi-calculator me-2" style="font-size: 1.25rem"></i>
-          Quantity information
-        </th>
-      </tr>
-      <tr>
-        <td width="33%">
-          <strong>Total (# of items):</strong> {{item?.quantityTotal}}
-        </td>
-        <td width="33%">
-          <strong>Allocated:</strong> {{item?.quantityAllocated}}
-        </td>
-        <td width="33%">
-          <strong>Reimaining:</strong> {{item?.quantityRemaining}}
-        </td>
-      </tr>
-      <tr>
-        <td>
-          <strong>Items per container:</strong> {{item?.quantityPerContainer}}
-        </td>
-        <td>
-          <strong>Low quantity threshold:</strong> {{item?.lowQuantityThreshold}}
-        </td>
-      </tr>
-    </ng-template>
-  </p-table>
-  <p-table [value]="[{}]" styleClass="p-datatable-gridlines mb-4">
-    <ng-template pTemplate="body">
-      <tr>
-        <th colspan="3">
-          <i class="pi pi-shopping-cart me-2" style="font-size: 1.25rem"></i>
-          Supplier information
-        </th>
-      </tr>
-      <tr>
-        <td width="33%">
-          <strong>Name:</strong> {{item?.supplierName}}
-        </td>
-        <td width="33%">
-          <strong>Lead time:</strong> {{item?.supplierLeadTime}}
-        </td>
-        <td width="33%">&nbsp;</td>
-      </tr>
-      <tr>
-        <td colspan="3">
-          <strong>Order link:</strong> {{item?.orderLink}}
-        </td>
-      </tr>
-    </ng-template>
-  </p-table>
-  <p-table [value]="[{}]" styleClass="p-datatable-gridlines mb-4">
-    <ng-template pTemplate="body">
-      <tr>
-        <th colspan="3">
-          <i class="pi pi-tag me-2" style="font-size: 1.25rem"></i>
-          Price information
-        </th>
-      </tr>
-      <tr>
-        <td width="33%">
-          <strong>Price per unit:</strong> {{item?.pricePerUnit}}
-        </td>
-        <td width="33%">
-          <strong>Price per container:</strong> {{item?.pricePerContainer}}
-        </td>
-        <td width="33%">&nbsp;</td>
-      </tr>
-    </ng-template>
-  </p-table>
-  <p-table [value]="[{}]" styleClass="p-datatable-gridlines">
-    <ng-template pTemplate="body">
-      <tr>
-        <th colspan="3">
-          <i class="pi pi-info-circle me-2" style="font-size: 1.25rem"></i>
-          Other information
-        </th>
-      </tr>
-      <tr>
-        <td width="33%">
-          <strong>Status:</strong> {{item?.isCheckedOut}}
-        </td>
-        <td width="33%">
-          <strong>Checked out to:</strong> {{item?.checkedOutTo}}
-        </td>
-        <td width="33%">&nbsp;</td>
-      </tr>
-      <tr>
-        <td colspan="3">
-          <strong>Activity:</strong>{{item?.activityLog}}
-        </td>
-      </tr>
-    </ng-template>
-  </p-table>
-</p-dialog>
+<h2 mat-dialog-title>{{ data.name }}</h2>
+<mat-dialog-content>
+  <table class="info-table mb-4 mt-4">
+    <tr>
+      <th colspan="3">
+        <div>
+          <mat-icon class="me-2">inventory_2</mat-icon>
+          General information
+        </div>
+      </th>
+    </tr>
+    <tr>
+      <td colspan="3">
+        <strong>Description:</strong>
+        {{data.description}}
+      </td>
+    </tr>
+    <tr>
+      <td width="33%">
+        <strong>Asset ID:</strong>{{data.id}}
+      </td>
+      <td width="33%">
+        <strong>Category:</strong> {{data.category}}
+      </td>
+      <td width="33%">
+        <strong>Applicable year:</strong> {{data.applicableYear}}
+      </td>
+    </tr>
+    <tr>
+      <td width="33%">
+        <strong>Expiration date:</strong> {{data.expirationDate}}
+      </td>
+      <td width="33%">
+        <strong>Physical location:</strong> {{data.physicalLocation}}
+      </td>
+      <td width="33%">
+        <strong>Digital location:</strong> {{data.digitalLocation}}
+      </td>
+    </tr>
+  </table>
+  <table class="info-table mb-4">
+    <tr>
+      <th colspan="3">
+        <mat-icon class="me-2">calculate</mat-icon>
+        Quantity information
+      </th>
+    </tr>
+    <tr>
+      <td width="33%">
+        <strong>Total (# of items):</strong> {{data.quantityTotal}}
+      </td>
+      <td width="33%">
+        <strong>Allocated:</strong> {{data.quantityAllocated}}
+      </td>
+      <td width="33%">
+        <strong>Reimaining:</strong> {{data.quantityRemaining}}
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <strong>Items per container:</strong> {{data.quantityPerContainer}}
+      </td>
+      <td>
+        <strong>Low quantity threshold:</strong> {{data.lowQuantityThreshold}}
+      </td>
+    </tr>
+  </table>
+  <table class="info-table mb-4">
+    <tr>
+      <th colspan="3">
+        <mat-icon class="me-2">shopping_cart</mat-icon>
+        Supplier information
+      </th>
+    </tr>
+    <tr>
+      <td width="33%">
+        <strong>Name:</strong> {{data.supplierName}}
+      </td>
+      <td width="33%">
+        <strong>Lead time:</strong> {{data.supplierLeadTime}}
+      </td>
+      <td width="33%">&nbsp;</td>
+    </tr>
+    <tr>
+      <td colspan="3">
+        <strong>Order link:</strong> {{data.orderLink}}
+      </td>
+    </tr>
+  </table>
+  <table class="info-table mb-4">
+    <tr>
+      <th colspan="3">
+        <mat-icon class="me-2">sell</mat-icon>
+        Price information
+      </th>
+    </tr>
+    <tr>
+      <td width="33%">
+        <strong>Price per unit:</strong> {{data.pricePerUnit}}
+      </td>
+      <td width="33%">
+        <strong>Price per container:</strong> {{data.pricePerContainer}}
+      </td>
+      <td width="33%">&nbsp;</td>
+    </tr>
+  </table>
+  <table class="info-table">
+    <tr>
+      <th colspan="3">
+        <mat-icon class="me-2">info</mat-icon>
+        Other information
+      </th>
+    </tr>
+    <tr>
+      <td width="33%">
+        <strong>Status:</strong> {{data.isCheckedOut}}
+      </td>
+      <td width="33%">
+        <strong>Checked out to:</strong> {{data.checkedOutTo}}
+      </td>
+      <td width="33%">&nbsp;</td>
+    </tr>
+    <tr>
+      <td colspan="3">
+        <strong>Activity:</strong>{{data.activityLog}}
+      </td>
+    </tr>
+  </table>
+</mat-dialog-content>

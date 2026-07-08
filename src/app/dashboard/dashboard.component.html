@@ -3,26 +3,33 @@
     <div class="col-12">
       <div class="toolbar-wrapper">
         <div class="breadcrumbs-wrapper">
-          <p-breadcrumb [model]="breadcrumbItems">
-            <ng-template pTemplate="item" let-item>
+          <nav class="breadcrumb-nav">
+            @for (item of breadcrumbItems; track item; let last = $last) {
               @if (item.route) {
-                <a [routerLink]="item.route" class="p-menuitem-link">
-                  <span [ngClass]="[item.icon ? item.icon : '']"></span>
-                  <span class="font-semibold">{{ item.label }}</span>
+                <a [routerLink]="item.route" class="breadcrumb-link">
+                  @if (item.icon) {
+                    <mat-icon>{{ item.icon }}</mat-icon>
+                  }
+                  @if (item.label) {
+                    <span class="font-semibold">{{ item.label }}</span>
+                  }
                 </a>
               } @else {
                 <a [href]="item.url">
                   <span>{{ item.label }}</span>
                 </a>
               }
-            </ng-template>
-          </p-breadcrumb>
+              @if (!last) {
+                <span class="breadcrumb-separator">/</span>
+              }
+            }
+          </nav>
         </div>
         <div class="search-wrapper">
-          <p-iconField iconPosition="left">
-            <p-inputIcon styleClass="pi pi-search" />
-            <input type="text" pInputText placeholder="Search" />
-          </p-iconField>
+          <mat-form-field appearance="outline">
+            <mat-icon matPrefix>search</mat-icon>
+            <input matInput placeholder="Search" />
+          </mat-form-field>
         </div>
       </div>
     </div>
@@ -33,69 +40,54 @@
         <h3>
           Filter
         </h3>
-        <p-accordion>
-          <p-accordion-panel value="0">
-            <p-accordion-header>
-              <i class="pi pi-folder ms-1 me-2"></i> Documents
-            </p-accordion-header>
-            <p-accordion-content>
-              <p-accordion>
-                <p-accordion-panel value="0">
-                  <p-accordion-header>
-                    <i class="pi pi-file ms-1 me-2"></i> Work
-                  </p-accordion-header>
-                  <p-accordion-content>
-                    @for (option of filterOptions; track option) {
-                      <div>
-                        <p-checkbox
-                          name="category"
-                          value="{{option.value}}"
-                          [(ngModel)]="selectedOptions"
-                        inputId="{{option.value}}"></p-checkbox>
-                        <label for="{{option.value}}">{{option.label}}</label>
-                      </div>
-                    }
-                  </p-accordion-content>
-                </p-accordion-panel>
-                <p-accordion-panel value="1">
-                  <p-accordion-header>
-                    <i class="pi pi-file ms-1 me-2"></i> Home
-                  </p-accordion-header>
-                  <p-accordion-content>
-                    Content of Home
-                  </p-accordion-content>
-                </p-accordion-panel>
-              </p-accordion>
-            </p-accordion-content>
-          </p-accordion-panel>
-          <p-accordion-panel value="1">
-            <p-accordion-header>
-              <i class="pi pi-image ms-1 me-2"></i> Pictures
-            </p-accordion-header>
-            <p-accordion-content>
-              <p-accordion>
-                <p-accordion-panel value="0">
-                  <p-accordion-header>
-                    <i class="pi pi-camera ms-1 me-2"></i> Vacation
-                  </p-accordion-header>
-                  <p-accordion-content>
-                    Content of Vacation
-                  </p-accordion-content>
-                </p-accordion-panel>
-              </p-accordion>
-              <p-accordion>
-                <p-accordion-panel value="0">
-                  <p-accordion-header>
-                    <i class="pi pi-camera ms-1 me-2"></i> Vacation
-                  </p-accordion-header>
-                  <p-accordion-content>
-                    Content of Vacation
-                  </p-accordion-content>
-                </p-accordion-panel>
-              </p-accordion>
-            </p-accordion-content>
-          </p-accordion-panel>
-        </p-accordion>
+        <mat-accordion>
+          <mat-expansion-panel>
+            <mat-expansion-panel-header>
+              <mat-panel-title><mat-icon class="me-2">folder</mat-icon> Documents</mat-panel-title>
+            </mat-expansion-panel-header>
+            <mat-accordion>
+              <mat-expansion-panel>
+                <mat-expansion-panel-header>
+                  <mat-panel-title><mat-icon class="me-2">description</mat-icon> Work</mat-panel-title>
+                </mat-expansion-panel-header>
+                @for (option of filterOptions; track option) {
+                  <div>
+                    <mat-checkbox
+                      [checked]="selectedOptions.includes(option.value)"
+                      (change)="toggleOption(option.value, $event.checked)">{{option.label}}</mat-checkbox>
+                  </div>
+                }
+              </mat-expansion-panel>
+              <mat-expansion-panel>
+                <mat-expansion-panel-header>
+                  <mat-panel-title><mat-icon class="me-2">description</mat-icon> Home</mat-panel-title>
+                </mat-expansion-panel-header>
+                Content of Home
+              </mat-expansion-panel>
+            </mat-accordion>
+          </mat-expansion-panel>
+          <mat-expansion-panel>
+            <mat-expansion-panel-header>
+              <mat-panel-title><mat-icon class="me-2">image</mat-icon> Pictures</mat-panel-title>
+            </mat-expansion-panel-header>
+            <mat-accordion>
+              <mat-expansion-panel>
+                <mat-expansion-panel-header>
+                  <mat-panel-title><mat-icon class="me-2">photo_camera</mat-icon> Vacation</mat-panel-title>
+                </mat-expansion-panel-header>
+                Content of Vacation
+              </mat-expansion-panel>
+            </mat-accordion>
+            <mat-accordion>
+              <mat-expansion-panel>
+                <mat-expansion-panel-header>
+                  <mat-panel-title><mat-icon class="me-2">photo_camera</mat-icon> Vacation</mat-panel-title>
+                </mat-expansion-panel-header>
+                Content of Vacation
+              </mat-expansion-panel>
+            </mat-accordion>
+          </mat-expansion-panel>
+        </mat-accordion>
       </div>
     </div>
     <div class="col-12 col-md-8 col-lg-9">
@@ -113,29 +105,28 @@
           <div class="row inventory-gallery-wrapper">
             @for (item of inventoryList; track item) {
               <div class="col-12 col-md-6 col-lg-4 inventory-card">
-                <p-card header="{{item.name}}" subheader="{{item.category}}">
-                  <ng-template pTemplate="header">
-                    <img alt="Card" src="{{item.image}}" />
-                  </ng-template>
-                  <p class="mb-0">
-                    {{item.description}}
-                  </p>
-                  <ng-template pTemplate="footer">
+                <mat-card>
+                  <img mat-card-image alt="Card" src="{{item.image}}" />
+                  <mat-card-header>
+                    <mat-card-title>{{item.name}}</mat-card-title>
+                    <mat-card-subtitle>{{item.category}}</mat-card-subtitle>
+                  </mat-card-header>
+                  <mat-card-content>
+                    <p class="mb-0">
+                      {{item.description}}
+                    </p>
+                  </mat-card-content>
+                  <mat-card-actions>
                     <div class="d-flex gap-3">
-                      <!-- <p-button label="More details" severity="info" />
-                      <p-button label="Details" severity="contrast" />-->
-                      <p-button (onClick)="showDetails(item)" label="Details" />
+                      <button mat-flat-button (click)="showDetails(item)">Details</button>
                     </div>
-                  </ng-template>
-                </p-card>
+                  </mat-card-actions>
+                </mat-card>
               </div>
             }
           </div>
         </div>
       </div>
     </div>
-  </div>
-  <div class="row">
-    <app-modal-table [item]="selectedItem" [display]="displayModal" (onClose)="handleModalClose()"></app-modal-table>
   </div>
 </div>

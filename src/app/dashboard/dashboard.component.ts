@@ -1,59 +1,48 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, ViewChild } from '@angular/core';
-import { BreadcrumbModule } from 'primeng/breadcrumb';
-import { MenuItem } from 'primeng/api';
+import { Component, OnInit, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { ToolbarModule } from 'primeng/toolbar';
-import { ButtonModule } from 'primeng/button';
-import { SplitButtonModule } from 'primeng/splitbutton';
-import { IconFieldModule } from 'primeng/iconfield';
-import { InputIconModule } from 'primeng/inputicon';
-import { AccordionModule } from 'primeng/accordion';
-import { TreeNode } from 'primeng/api';
-import { CheckboxModule } from 'primeng/checkbox';
-import { FormsModule } from '@angular/forms';
-import { CardModule } from 'primeng/card';
+import { MatIconModule } from '@angular/material/icon';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatCardModule } from '@angular/material/card';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { InventoryItem } from '../shared/models/inventory-item.model';
-import { DialogModule } from 'primeng/dialog';
-import { TableModule } from 'primeng/table';
 import { ModalTableComponent } from '../shared/components/modal-table/modal-table.component';
+
+interface BreadcrumbItem {
+  label?: string;
+  route?: string;
+  icon?: string;
+  url?: string;
+}
 
 @Component({
     selector: 'app-dashboard',
     imports: [
-        BreadcrumbModule,
         RouterModule,
         CommonModule,
-        ToolbarModule,
-        ButtonModule,
-        SplitButtonModule,
-        IconFieldModule,
-        InputIconModule,
-        AccordionModule,
-        CheckboxModule,
-        FormsModule,
-        CardModule,
-        DialogModule,
-        TableModule,
-        ModalTableComponent
+        MatIconModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatExpansionModule,
+        MatCheckboxModule,
+        MatCardModule,
+        MatButtonModule
     ],
     templateUrl: './dashboard.component.html',
     styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent implements OnInit{
 
-  @ViewChild('detailsModal') detailsModal!:ModalTableComponent;
+  private dialog = inject(MatDialog);
 
-  breadcrumbItems: MenuItem[] | undefined;
-  home: MenuItem | undefined;
-  files: TreeNode[] | undefined;
+  breadcrumbItems: BreadcrumbItem[] | undefined;
 
   selectedOptions: string[] = [];
   inventoryList: InventoryItem[] | undefined;
-
-  displayModal: boolean = false;
-
-  selectedItem: InventoryItem | undefined;
 
   filterOptions = [
     { label: 'Electronics', value: 'electronics' },
@@ -74,7 +63,7 @@ export class DashboardComponent implements OnInit{
   ngOnInit() {
     this.breadcrumbItems = [
       {
-        icon: 'pi pi-home',
+        icon: 'home',
         route: '/'
       },
       {
@@ -334,12 +323,19 @@ export class DashboardComponent implements OnInit{
   }
 
   showDetails(item:InventoryItem){
-    this.displayModal = true;
-    this.selectedItem = item;
+    this.dialog.open(ModalTableComponent, {
+      data: item,
+      width: 'clamp(75%, 25rem, 60%)',
+      panelClass: 'item-details-dialog'
+    });
   }
 
-  handleModalClose() {
-    this.displayModal = false;
+  toggleOption(value: string, checked: boolean){
+    if (checked) {
+      this.selectedOptions = [...this.selectedOptions, value];
+    } else {
+      this.selectedOptions = this.selectedOptions.filter(option => option !== value);
+    }
   }
 
 }

@@ -1,21 +1,17 @@
 import { Component } from '@angular/core';
-import { InputGroupModule } from 'primeng/inputgroup';
-import { InputGroupAddonModule } from 'primeng/inputgroupaddon';
-import { InputTextModule } from 'primeng/inputtext';
-import { PasswordModule } from 'primeng/password';
-import { CardModule } from 'primeng/card';
-import { ButtonModule } from 'primeng/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { RouterModule } from '@angular/router';
 
 @Component({
     selector: 'app-login',
     imports: [
-        InputGroupModule,
-        InputTextModule,
-        InputGroupAddonModule,
-        PasswordModule,
-        CardModule,
-        ButtonModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatButtonModule,
+        MatIconModule,
         RouterModule
     ],
     templateUrl: './login.component.html',
