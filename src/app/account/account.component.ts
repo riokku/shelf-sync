@@ -2,10 +2,11 @@ import { Component, OnInit, inject } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService, Profile } from '../core/auth.service';
+import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 
 @Component({
   selector: 'app-account',
-  imports: [MatCardModule, MatProgressSpinnerModule],
+  imports: [MatCardModule, MatProgressSpinnerModule, BreadcrumbsComponent],
   templateUrl: './account.component.html',
   styleUrl: './account.component.scss',
 })

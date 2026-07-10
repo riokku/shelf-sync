@@ -1,0 +1,38 @@
+<div class="gallery">
+  <div class="gallery-main">
+    <img
+        [src]="images[currentIndex]"
+        [alt]="itemName + ' photo ' + (currentIndex + 1)"
+        (click)="expand()"
+      />
+
+    @if (images.length > 1) {
+      <button mat-icon-button class="nav-button prev" type="button" (click)="prev()" aria-label="Previous image">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      <button mat-icon-button class="nav-button next" type="button" (click)="next()" aria-label="Next image">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    }
+
+    <button mat-icon-button class="expand-button" type="button" (click)="expand()" aria-label="Expand image">
+      <mat-icon>open_in_full</mat-icon>
+    </button>
+  </div>
+
+  @if (images.length > 1) {
+    <div class="thumbnail-strip">
+      @for (image of images; track image; let i = $index) {
+        <button
+            type="button"
+            class="thumbnail"
+            [class.active]="i === currentIndex"
+            (click)="selectIndex(i)"
+            [attr.aria-label]="'View photo ' + (i + 1)"
+          >
+          <img [src]="image" [alt]="itemName + ' thumbnail ' + (i + 1)" />
+        </button>
+      }
+    </div>
+  }
+</div>

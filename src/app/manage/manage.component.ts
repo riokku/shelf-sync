@@ -1,4 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -7,12 +8,24 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { SupabaseService } from '../core/supabase.service';
 import { AuthService, Profile } from '../core/auth.service';
+import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
+import { Database } from '../shared/models/database.types';
+import { TASK_STATUSES, TASK_STATUS_LABELS, TaskStatus } from '../shared/models/task-status';
+
+type Task = Database['public']['Tables']['tasks']['Row'];
+
+interface TeamMember {
+  profile: Profile;
+  tasksByStatus: Record<TaskStatus, Task[]>;
+}
 
 @Component({
   selector: 'app-manage',
   imports: [
+    DatePipe,
     ReactiveFormsModule,
     MatTabsModule,
     MatFormFieldModule,
@@ -20,7 +33,9 @@ import { AuthService, Profile } from '../core/auth.service';
     MatSelectModule,
     MatButtonModule,
     MatIconModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    MatExpansionModule,
+    BreadcrumbsComponent
   ],
   templateUrl: './manage.component.html',
   styleUrl: './manage.component.scss',
@@ -31,6 +46,11 @@ export class ManageComponent implements OnInit {
 
   private currentUserId: string | null = null;
   assignableProfiles: Profile[] = [];
+
+  readonly statuses = TASK_STATUSES;
+  readonly statusLabels = TASK_STATUS_LABELS;
+  teamMembers: TeamMember[] = [];
+  isLoadingTeam = true;
 
   inventoryForm = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
@@ -73,10 +93,46 @@ export class ManageComponent implements OnInit {
 
     const { data } = await this.supabase.from('profiles').select('*').order('full_name');
     this.assignableProfiles = data ?? [];
+
+    await this.loadTeamTasks();
   }
 
   profileLabel(profile: Profile): string {
     return profile.nickname || profile.full_name || profile.email;
+  }
+
+  private async loadTeamTasks() {
+    this.isLoadingTeam = true;
+
+    const { data } = await this.supabase
+      .from('tasks')
+      .select('*')
+      .order('due_date', { ascending: true, nullsFirst: false });
+    const tasks = data ?? [];
+
+    const tasksByUser = new Map<string, Task[]>();
+    for (const task of tasks) {
+      if (!task.assigned_to) {
+        continue;
+      }
+      const existing = tasksByUser.get(task.assigned_to) ?? [];
+      existing.push(task);
+      tasksByUser.set(task.assigned_to, existing);
+    }
+
+    this.teamMembers = this.assignableProfiles.map(profile => {
+      const userTasks = tasksByUser.get(profile.id) ?? [];
+      return {
+        profile,
+        tasksByStatus: {
+          todo: userTasks.filter(task => task.status === 'todo'),
+          in_progress: userTasks.filter(task => task.status === 'in_progress'),
+          done: userTasks.filter(task => task.status === 'done')
+        }
+      };
+    });
+
+    this.isLoadingTeam = false;
   }
 
   async submitInventoryItem() {
@@ -149,5 +205,6 @@ export class ManageComponent implements OnInit {
 
     this.taskSaved = true;
     this.taskForm.reset();
+    await this.loadTeamTasks();
   }
 }

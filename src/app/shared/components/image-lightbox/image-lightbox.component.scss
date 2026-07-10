@@ -1,0 +1,53 @@
+.lightbox{
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  min-height: 20rem;
+
+  img{
+    max-width: 100%;
+    max-height: 85vh;
+    display: block;
+    object-fit: contain;
+  }
+}
+
+.close-button{
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 1;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.nav-button{
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.4);
+
+  &.prev{
+    left: 0.5rem;
+  }
+
+  &.next{
+    right: 0.5rem;
+  }
+}
+
+.counter{
+  position: absolute;
+  bottom: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+}

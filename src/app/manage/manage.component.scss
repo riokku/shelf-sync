@@ -1,7 +1,9 @@
+@use '../shared/styles/page-toolbar';
+
 .manage-wrapper{
   color: var(--mat-sys-on-surface);
   padding: 3rem 1.5rem;
-  max-width: 60rem;
+  max-width: 100%;
 
   h2{
     text-transform: uppercase;
@@ -18,6 +20,7 @@
   display: flex;
   flex-direction: column;
   padding: 1.5rem 0.25rem;
+  max-width: 60rem;
 }
 
 .form-section{
@@ -51,4 +54,45 @@
 .success-message{
   color: #51cf66;
   margin: -0.5rem 0 1rem;
+}
+
+.team-list{
+  padding: 1.5rem 0.25rem;
+}
+
+mat-panel-title{
+  display: flex;
+  align-items: center;
+}
+
+.status-columns{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1.5rem;
+  padding: 1rem 0 0.5rem;
+
+  h4{
+    margin: 0 0 0.5rem;
+    color: var(--mat-sys-primary);
+  }
+
+  ul{
+    margin: 0;
+    padding-left: 1.25rem;
+  }
+
+  li{
+    margin-bottom: 0.5rem;
+  }
+
+  .due-date{
+    display: block;
+    font-size: 0.75rem;
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.empty-hint{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
 }

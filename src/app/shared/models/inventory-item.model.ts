@@ -1,8 +1,19 @@
+export interface ActivityLogEntry {
+  timestamp: string;
+  user: string;
+  message: string;
+}
+
+export function isLowStock(item: InventoryItem): boolean {
+  return item.quantityRemaining < item.lowQuantityThreshold;
+}
+
 export class InventoryItem {
   id: string;
   name: string;
   description: string;
   image: string;
+  images: string[];
   category: string;
   physicalLocation: string;
   digitalLocation: string;
@@ -20,13 +31,14 @@ export class InventoryItem {
   pricePerContainer: number;
   isCheckedOut: boolean;
   checkedOutTo: string;
-  activityLog: string;
+  activityLog: ActivityLogEntry[];
 
   constructor(
     id: string,
     name: string,
     description: string,
     image: string,
+    images: string[],
     category: string,
     physicalLocation: string,
     digitalLocation: string,
@@ -44,7 +56,7 @@ export class InventoryItem {
     pricePerContainer: number,
     isCheckedOut: boolean,
     checkedOutTo: string,
-    activityLog: string
+    activityLog: ActivityLogEntry[]
   ) {
     //Tracking
     this.id = id;
@@ -53,6 +65,7 @@ export class InventoryItem {
     this.name = name;
     this.description = description;
     this.image = image;
+    this.images = images;
     this.category = category;
     this.physicalLocation = physicalLocation;
     this.digitalLocation = digitalLocation;

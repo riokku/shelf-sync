@@ -1,129 +1,174 @@
 <h2 mat-dialog-title>{{ data.name }}</h2>
+<div class="asset-id-row">
+  <mat-icon>tag</mat-icon>
+  <span class="asset-id">{{ data.id }}</span>
+  <button
+      mat-icon-button
+      type="button"
+      [matTooltip]="idCopied ? 'Copied!' : 'Copy ID'"
+      (click)="copyId()"
+    >
+    <mat-icon>{{ idCopied ? 'check' : 'content_copy' }}</mat-icon>
+  </button>
+</div>
 <mat-dialog-content>
-  <table class="info-table mb-4 mt-4">
-    <tr>
-      <th colspan="3">
-        <div>
-          <mat-icon class="me-2">inventory_2</mat-icon>
-          General information
-        </div>
-      </th>
-    </tr>
-    <tr>
-      <td colspan="3">
-        <strong>Description:</strong>
-        {{data.description}}
-      </td>
-    </tr>
-    <tr>
-      <td width="33%">
-        <strong>Asset ID:</strong>{{data.id}}
-      </td>
-      <td width="33%">
-        <strong>Category:</strong> {{data.category}}
-      </td>
-      <td width="33%">
-        <strong>Applicable year:</strong> {{data.applicableYear}}
-      </td>
-    </tr>
-    <tr>
-      <td width="33%">
-        <strong>Expiration date:</strong> {{data.expirationDate}}
-      </td>
-      <td width="33%">
-        <strong>Physical location:</strong> {{data.physicalLocation}}
-      </td>
-      <td width="33%">
-        <strong>Digital location:</strong> {{data.digitalLocation}}
-      </td>
-    </tr>
-  </table>
-  <table class="info-table mb-4">
-    <tr>
-      <th colspan="3">
-        <mat-icon class="me-2">calculate</mat-icon>
-        Quantity information
-      </th>
-    </tr>
-    <tr>
-      <td width="33%">
-        <strong>Total (# of items):</strong> {{data.quantityTotal}}
-      </td>
-      <td width="33%">
-        <strong>Allocated:</strong> {{data.quantityAllocated}}
-      </td>
-      <td width="33%">
-        <strong>Reimaining:</strong> {{data.quantityRemaining}}
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <strong>Items per container:</strong> {{data.quantityPerContainer}}
-      </td>
-      <td>
-        <strong>Low quantity threshold:</strong> {{data.lowQuantityThreshold}}
-      </td>
-    </tr>
-  </table>
-  <table class="info-table mb-4">
-    <tr>
-      <th colspan="3">
-        <mat-icon class="me-2">shopping_cart</mat-icon>
-        Supplier information
-      </th>
-    </tr>
-    <tr>
-      <td width="33%">
-        <strong>Name:</strong> {{data.supplierName}}
-      </td>
-      <td width="33%">
-        <strong>Lead time:</strong> {{data.supplierLeadTime}}
-      </td>
-      <td width="33%">&nbsp;</td>
-    </tr>
-    <tr>
-      <td colspan="3">
-        <strong>Order link:</strong> {{data.orderLink}}
-      </td>
-    </tr>
-  </table>
-  <table class="info-table mb-4">
-    <tr>
-      <th colspan="3">
-        <mat-icon class="me-2">sell</mat-icon>
-        Price information
-      </th>
-    </tr>
-    <tr>
-      <td width="33%">
-        <strong>Price per unit:</strong> {{data.pricePerUnit}}
-      </td>
-      <td width="33%">
-        <strong>Price per container:</strong> {{data.pricePerContainer}}
-      </td>
-      <td width="33%">&nbsp;</td>
-    </tr>
-  </table>
-  <table class="info-table">
-    <tr>
-      <th colspan="3">
-        <mat-icon class="me-2">info</mat-icon>
-        Other information
-      </th>
-    </tr>
-    <tr>
-      <td width="33%">
-        <strong>Status:</strong> {{data.isCheckedOut}}
-      </td>
-      <td width="33%">
-        <strong>Checked out to:</strong> {{data.checkedOutTo}}
-      </td>
-      <td width="33%">&nbsp;</td>
-    </tr>
-    <tr>
-      <td colspan="3">
-        <strong>Activity:</strong>{{data.activityLog}}
-      </td>
-    </tr>
-  </table>
+  <mat-tab-group>
+    <mat-tab label="Info">
+      <div class="tab-panel">
+        @if (data.images.length > 0) {
+          <section class="info-section">
+            <app-image-gallery [images]="data.images" [itemName]="data.name" />
+          </section>
+        }
+
+        <section class="info-section">
+          <header class="info-section-header">
+            <mat-icon class="me-2">inventory_2</mat-icon>
+            General information
+          </header>
+          <table class="info-table">
+            <tr>
+              <td colspan="3">
+                <strong>Description:</strong>
+                {{data.description}}
+              </td>
+            </tr>
+            <tr>
+              <td width="33%">
+                <strong>Category:</strong> {{data.category}}
+              </td>
+              <td width="33%">
+                <strong>Applicable year:</strong> {{data.applicableYear}}
+              </td>
+              <td width="33%">&nbsp;</td>
+            </tr>
+            <tr>
+              <td width="33%">
+                <strong>Expiration date:</strong> {{data.expirationDate | date: 'M/d/yy'}}
+              </td>
+              <td width="33%">
+                <strong>Physical location:</strong> {{data.physicalLocation}}
+              </td>
+              <td width="33%">
+                <strong>Digital location:</strong> {{data.digitalLocation}}
+              </td>
+            </tr>
+          </table>
+        </section>
+
+        <section class="info-section">
+          <header class="info-section-header">
+            <mat-icon class="me-2">calculate</mat-icon>
+            Quantity information
+          </header>
+          @if (isLowStock) {
+            <p class="low-stock-warning">
+              <mat-icon>warning</mat-icon>
+              Remaining quantity is below the low quantity threshold.
+            </p>
+          }
+          <table class="info-table">
+            <tr>
+              <td width="33%">
+                <strong>Total (# of items):</strong> {{data.quantityTotal}}
+              </td>
+              <td width="33%">
+                <strong>Allocated:</strong> {{data.quantityAllocated}}
+              </td>
+              <td width="33%" [class.low-stock-value]="isLowStock">
+                <strong>Reimaining:</strong> {{data.quantityRemaining}}
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <strong>Items per container:</strong> {{data.quantityPerContainer}}
+              </td>
+              <td>
+                <strong>Low quantity threshold:</strong> {{data.lowQuantityThreshold}}
+              </td>
+            </tr>
+          </table>
+        </section>
+
+        <section class="info-section">
+          <header class="info-section-header">
+            <mat-icon class="me-2">shopping_cart</mat-icon>
+            Supplier information
+          </header>
+          <table class="info-table">
+            <tr>
+              <td width="33%">
+                <strong>Name:</strong> {{data.supplierName}}
+              </td>
+              <td width="33%">
+                <strong>Lead time:</strong> {{data.supplierLeadTime}}
+              </td>
+              <td width="33%">&nbsp;</td>
+            </tr>
+            <tr>
+              <td colspan="3">
+                <strong>Order link:</strong> {{data.orderLink}}
+              </td>
+            </tr>
+          </table>
+        </section>
+
+        <section class="info-section">
+          <header class="info-section-header">
+            <mat-icon class="me-2">sell</mat-icon>
+            Price information
+          </header>
+          <table class="info-table">
+            <tr>
+              <td width="33%">
+                <strong>Price per unit:</strong> {{data.pricePerUnit}}
+              </td>
+              <td width="33%">
+                <strong>Price per container:</strong> {{data.pricePerContainer}}
+              </td>
+              <td width="33%">&nbsp;</td>
+            </tr>
+          </table>
+        </section>
+
+        <section class="info-section">
+          <header class="info-section-header">
+            <mat-icon class="me-2">info</mat-icon>
+            Other information
+          </header>
+          <table class="info-table">
+            <tr>
+              <td width="33%">
+                <strong>Status:</strong> {{data.isCheckedOut}}
+              </td>
+              <td width="33%">
+                <strong>Checked out to:</strong> {{data.checkedOutTo}}
+              </td>
+              <td width="33%">&nbsp;</td>
+            </tr>
+          </table>
+        </section>
+      </div>
+    </mat-tab>
+
+    <mat-tab label="Activity Log">
+      <div class="tab-panel">
+        @if (data.activityLog.length === 0) {
+          <p class="empty-hint">No activity recorded yet.</p>
+        } @else {
+          <ul class="activity-log">
+            @for (entry of data.activityLog; track $index) {
+              <li>
+                <mat-icon>{{ activityIcon(entry.message) }}</mat-icon>
+                <div class="activity-entry">
+                  <span class="activity-message">{{ entry.message }}</span>
+                  <span class="activity-meta">{{ entry.user }} &middot; {{ entry.timestamp | date: 'M/d/yy, h:mm a' }}</span>
+                </div>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </mat-tab>
+  </mat-tab-group>
 </mat-dialog-content>

@@ -1,7 +1,9 @@
+@use '../shared/styles/page-toolbar';
+
 .account-wrapper{
   color: var(--mat-sys-on-surface);
   padding: 3rem 1.5rem;
-  max-width: 40rem;
+  max-width: 100%;
 
   h2{
     text-transform: uppercase;
@@ -12,6 +14,10 @@
     padding-left: 0;
     padding-right: 0;
   }
+}
+
+mat-card{
+  max-width: 40rem;
 }
 
 dl{

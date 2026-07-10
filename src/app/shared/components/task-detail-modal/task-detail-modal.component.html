@@ -7,10 +7,10 @@
   <dl class="task-meta">
     @if (task.due_date) {
       <dt>Due date</dt>
-      <dd>{{ task.due_date | date: 'mediumDate' }}</dd>
+      <dd>{{ task.due_date | date: 'M/d/yy' }}</dd>
     }
     <dt>Created</dt>
-    <dd>{{ task.created_at | date: 'mediumDate' }}</dd>
+    <dd>{{ task.created_at | date: 'M/d/yy' }}</dd>
   </dl>
 
   <mat-form-field appearance="outline" class="status-field">

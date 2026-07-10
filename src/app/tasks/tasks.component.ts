@@ -6,12 +6,13 @@ import { AuthService } from '../core/auth.service';
 import { Database } from '../shared/models/database.types';
 import { TaskDetailModalComponent } from '../shared/components/task-detail-modal/task-detail-modal.component';
 import { TaskCardComponent } from './task-card/task-card.component';
+import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
 
 @Component({
   selector: 'app-tasks',
-  imports: [MatProgressSpinnerModule, TaskCardComponent],
+  imports: [MatProgressSpinnerModule, TaskCardComponent, BreadcrumbsComponent],
   templateUrl: './tasks.component.html',
   styleUrl: './tasks.component.scss',
 })

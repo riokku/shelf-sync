@@ -21,22 +21,26 @@ const routes: Routes = [
   {
     path: 'dashboard',
     component: DashboardComponent,
-    canActivate: [authGuard]
+    canActivate: [authGuard],
+    data: { breadcrumb: 'Dashboard' }
   },
   {
     path: 'account',
     component: AccountComponent,
-    canActivate: [authGuard]
+    canActivate: [authGuard],
+    data: { breadcrumb: 'Account' }
   },
   {
     path: 'tasks',
     component: TasksComponent,
-    canActivate: [authGuard]
+    canActivate: [authGuard],
+    data: { breadcrumb: 'Tasks' }
   },
   {
     path: 'manage',
     component: ManageComponent,
-    canActivate: [authGuard, manageGuard]
+    canActivate: [authGuard, manageGuard],
+    data: { breadcrumb: 'Manage' }
   }
 ];
 

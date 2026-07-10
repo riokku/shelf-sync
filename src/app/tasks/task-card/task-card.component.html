@@ -10,7 +10,7 @@
   <mat-card-header>
     <mat-card-title>{{ task.title }}</mat-card-title>
     @if (task.due_date) {
-      <mat-card-subtitle>Due {{ task.due_date | date: 'mediumDate' }}</mat-card-subtitle>
+      <mat-card-subtitle>Due {{ task.due_date | date: 'M/d/yy' }}</mat-card-subtitle>
     }
   </mat-card-header>
   <mat-card-content>

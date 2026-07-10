@@ -1,5 +1,8 @@
 <div class="manage-wrapper">
   <div class="container">
+  <div class="page-toolbar">
+    <app-breadcrumbs />
+  </div>
   <h2>Manage</h2>
 
   <mat-tab-group>
@@ -165,6 +168,54 @@
           }
         </button>
       </form>
+    </mat-tab>
+
+    <mat-tab label="Team">
+      <div class="team-list">
+        @if (isLoadingTeam) {
+          <mat-spinner diameter="32"></mat-spinner>
+        } @else if (teamMembers.length === 0) {
+          <p class="empty-hint">No users found.</p>
+        } @else {
+          <mat-accordion multi>
+            @for (member of teamMembers; track member.profile.id) {
+              <mat-expansion-panel>
+                <mat-expansion-panel-header>
+                  <mat-panel-title>
+                    <mat-icon class="me-2">person</mat-icon>
+                    {{ profileLabel(member.profile) }}
+                  </mat-panel-title>
+                  <mat-panel-description>
+                    {{ member.profile.role }}
+                  </mat-panel-description>
+                </mat-expansion-panel-header>
+
+                <div class="status-columns">
+                  @for (status of statuses; track status) {
+                    <div class="status-column">
+                      <h4>{{ statusLabels[status] }} ({{ member.tasksByStatus[status].length }})</h4>
+                      @if (member.tasksByStatus[status].length === 0) {
+                        <p class="empty-hint">No tasks.</p>
+                      } @else {
+                        <ul>
+                          @for (task of member.tasksByStatus[status]; track task.id) {
+                            <li>
+                              {{ task.title }}
+                              @if (task.due_date) {
+                                <span class="due-date">Due {{ task.due_date | date: 'M/d/yy' }}</span>
+                              }
+                            </li>
+                          }
+                        </ul>
+                      }
+                    </div>
+                  }
+                </div>
+              </mat-expansion-panel>
+            }
+          </mat-accordion>
+        }
+      </div>
     </mat-tab>
   </mat-tab-group>
   </div>

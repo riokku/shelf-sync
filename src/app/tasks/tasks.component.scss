@@ -1,6 +1,9 @@
+@use '../shared/styles/page-toolbar';
+
 .tasks-wrapper{
   color: var(--mat-sys-on-surface);
   padding: 3rem 1.5rem;
+  max-width: 100%;
 
   h2{
     text-transform: uppercase;

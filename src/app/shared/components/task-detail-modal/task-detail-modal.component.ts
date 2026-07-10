@@ -9,6 +9,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SupabaseService } from '../../../core/supabase.service';
 import { Database } from '../../models/database.types';
+import { TASK_STATUSES, TASK_STATUS_LABELS } from '../../models/task-status';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
 
@@ -32,12 +33,8 @@ export class TaskDetailModalComponent {
   dialogRef = inject(MatDialogRef<TaskDetailModalComponent>);
   task = inject<Task>(MAT_DIALOG_DATA);
 
-  readonly statusLabels: Record<Task['status'], string> = {
-    todo: 'To do',
-    in_progress: 'In progress',
-    done: 'Done'
-  };
-  readonly statuses: Task['status'][] = ['todo', 'in_progress', 'done'];
+  readonly statusLabels = TASK_STATUS_LABELS;
+  readonly statuses = TASK_STATUSES;
 
   selectedStatus: Task['status'] = this.task.status;
   isSaving = false;

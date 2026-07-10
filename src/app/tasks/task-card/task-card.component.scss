@@ -1,8 +1,24 @@
+// The host is a grid item in .task-grid (tasks.component.scss); grid's
+// default align-items: stretch already sizes this element to the row's
+// tallest card, but that only helps once the host is a block box its own
+// content can fill.
+:host{
+  display: block;
+  height: 100%;
+}
+
 .task-card{
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   cursor: pointer;
 
-  mat-card-content p{
-    margin-top: 0;
+  mat-card-content{
+    flex-grow: 1;
+
+    p{
+      margin-top: 0;
+    }
   }
 }
 
