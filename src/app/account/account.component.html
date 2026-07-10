@@ -1,0 +1,26 @@
+<div class="account-wrapper">
+  <div class="container">
+  <h2>My Account</h2>
+
+  @if (isLoading) {
+    <mat-spinner diameter="32"></mat-spinner>
+  } @else if (profile) {
+    <mat-card>
+      <mat-card-content>
+        <dl>
+          <dt>Full name</dt>
+          <dd>{{ profile.full_name || '—' }}</dd>
+          <dt>Nickname</dt>
+          <dd>{{ profile.nickname || '—' }}</dd>
+          <dt>Email</dt>
+          <dd>{{ profile.email }}</dd>
+          <dt>Role</dt>
+          <dd>{{ profile.role }}</dd>
+        </dl>
+      </mat-card-content>
+    </mat-card>
+  } @else {
+    <p>Unable to load account details.</p>
+  }
+  </div>
+</div>

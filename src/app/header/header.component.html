@@ -5,10 +5,27 @@
         SS
       </text>
     </svg>
-    <h1>
-      Dashboard
-    </h1>
   </div>
+  <nav class="main-nav">
+    <a mat-button routerLink="/dashboard" routerLinkActive="active">
+      <mat-icon>dashboard</mat-icon>
+      Dashboard
+    </a>
+    <a mat-button routerLink="/tasks" routerLinkActive="active">
+      <mat-icon>checklist</mat-icon>
+      Tasks
+    </a>
+    <a mat-button routerLink="/account" routerLinkActive="active">
+      <mat-icon>account_circle</mat-icon>
+      Account
+    </a>
+    @if (authService.canManage()) {
+      <a mat-button routerLink="/manage" routerLinkActive="active">
+        <mat-icon>admin_panel_settings</mat-icon>
+        Manage
+      </a>
+    }
+  </nav>
   <button mat-stroked-button (click)="logout()">
     <mat-icon>logout</mat-icon>
     Logout

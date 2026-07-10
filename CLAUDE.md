@@ -39,8 +39,8 @@ next piece to wire up.
     project ref and DB password)
   - `npm run supabase:push` — push local `supabase/migrations/` to the linked hosted project
   - `npm run supabase:migration:new <name>` — scaffold a new timestamped migration file
-  - `npm run supabase:gen:types` — regenerate `src/app/models/database.types.ts` from the linked
-    project's schema
+  - `npm run supabase:gen:types` — regenerate `src/app/shared/models/database.types.ts` from the
+    linked project's schema
 - Supabase, local Docker workflow (optional, only if Docker Desktop is available):
   - `npm run supabase:start` / `npm run supabase:stop` — start/stop local Postgres, Studio, Auth
   - `npm run supabase:reset` — reapply all migrations + `supabase/seed.sql` from scratch locally
@@ -125,7 +125,7 @@ flagged as deliberately deferred with this same issue: staff self-checkout on `i
 and status-only updates on `tasks` — both currently allow the assignee/staff user to edit the
 whole row via RLS, not just the intended column(s).
 
-Regenerate `src/app/models/database.types.ts` after any schema change with
+Regenerate `src/app/shared/models/database.types.ts` after any schema change with
 `npm run supabase:gen:types` (requires the project to be linked — see Commands above).
 
 **Signup requires email confirmation.** This hosted project has email confirmation enabled, and

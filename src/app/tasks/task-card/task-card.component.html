@@ -1,0 +1,24 @@
+<mat-card
+    class="task-card"
+    tabindex="0"
+    role="button"
+    [attr.aria-label]="'View details for ' + task.title"
+    (click)="open.emit(task)"
+    (keydown.enter)="open.emit(task)"
+    (keydown.space)="open.emit(task)"
+  >
+  <mat-card-header>
+    <mat-card-title>{{ task.title }}</mat-card-title>
+    @if (task.due_date) {
+      <mat-card-subtitle>Due {{ task.due_date | date: 'mediumDate' }}</mat-card-subtitle>
+    }
+  </mat-card-header>
+  <mat-card-content>
+    @if (task.description) {
+      <p>{{ task.description }}</p>
+    }
+    <span class="status-badge" [class]="'status-' + task.status">
+      {{ statusLabels[task.status] }}
+    </span>
+  </mat-card-content>
+</mat-card>

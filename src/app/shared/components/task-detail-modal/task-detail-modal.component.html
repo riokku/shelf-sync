@@ -1,0 +1,38 @@
+<h2 mat-dialog-title>{{ task.title }}</h2>
+<mat-dialog-content>
+  @if (task.description) {
+    <p>{{ task.description }}</p>
+  }
+
+  <dl class="task-meta">
+    @if (task.due_date) {
+      <dt>Due date</dt>
+      <dd>{{ task.due_date | date: 'mediumDate' }}</dd>
+    }
+    <dt>Created</dt>
+    <dd>{{ task.created_at | date: 'mediumDate' }}</dd>
+  </dl>
+
+  <mat-form-field appearance="outline" class="status-field">
+    <mat-icon matPrefix>flag</mat-icon>
+    <mat-select [(ngModel)]="selectedStatus">
+      @for (status of statuses; track status) {
+        <mat-option [value]="status">{{ statusLabels[status] }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  @if (error) {
+    <p class="error-message">{{ error }}</p>
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="closeModal()">Cancel</button>
+  <button mat-flat-button color="primary" type="button" (click)="saveStatus()" [disabled]="isSaving">
+    @if (isSaving) {
+      <mat-spinner diameter="20"></mat-spinner>
+    } @else {
+      Save
+    }
+  </button>
+</mat-dialog-actions>

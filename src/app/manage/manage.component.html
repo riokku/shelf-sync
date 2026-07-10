@@ -1,0 +1,171 @@
+<div class="manage-wrapper">
+  <div class="container">
+  <h2>Manage</h2>
+
+  <mat-tab-group>
+    <mat-tab label="Inventory">
+      <form [formGroup]="inventoryForm" (ngSubmit)="submitInventoryItem()" class="manage-form">
+        <div class="form-section">
+          <h3>Item information</h3>
+          <div class="field-row">
+            <mat-form-field appearance="outline">
+              <mat-icon matPrefix>inventory_2</mat-icon>
+              <input matInput placeholder="Name" formControlName="name" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-icon matPrefix>category</mat-icon>
+              <input matInput placeholder="Category" formControlName="category" />
+            </mat-form-field>
+          </div>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-icon matPrefix>description</mat-icon>
+            <textarea matInput placeholder="Description" formControlName="description" rows="2"></textarea>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-icon matPrefix>image</mat-icon>
+            <input matInput placeholder="Image URL" formControlName="image" />
+          </mat-form-field>
+          <div class="field-row">
+            <mat-form-field appearance="outline">
+              <mat-icon matPrefix>place</mat-icon>
+              <input matInput placeholder="Physical location" formControlName="physicalLocation" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-icon matPrefix>link</mat-icon>
+              <input matInput placeholder="Digital location" formControlName="digitalLocation" />
+            </mat-form-field>
+          </div>
+          <div class="field-row">
+            <mat-form-field appearance="outline">
+              <mat-icon matPrefix>event</mat-icon>
+              <input matInput placeholder="Applicable year" formControlName="applicableYear" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-icon matPrefix>event_busy</mat-icon>
+              <input matInput type="date" placeholder="Expiration date" formControlName="expirationDate" />
+            </mat-form-field>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3>Supplier information</h3>
+          <div class="field-row">
+            <mat-form-field appearance="outline">
+              <mat-icon matPrefix>storefront</mat-icon>
+              <input matInput placeholder="Supplier name" formControlName="supplierName" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-icon matPrefix>schedule</mat-icon>
+              <input matInput placeholder="Supplier lead time" formControlName="supplierLeadTime" />
+            </mat-form-field>
+          </div>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-icon matPrefix>shopping_cart</mat-icon>
+            <input matInput placeholder="Order link" formControlName="orderLink" />
+          </mat-form-field>
+        </div>
+
+        <div class="form-section">
+          <h3>Quantity &amp; price</h3>
+          <div class="field-row">
+            <mat-form-field appearance="outline">
+              <mat-icon matPrefix>numbers</mat-icon>
+              <input matInput type="number" placeholder="Quantity total" formControlName="quantityTotal" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-icon matPrefix>inventory</mat-icon>
+              <input matInput type="number" placeholder="Quantity per container" formControlName="quantityPerContainer" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-icon matPrefix>warning</mat-icon>
+              <input matInput type="number" placeholder="Low quantity threshold" formControlName="lowQuantityThreshold" />
+            </mat-form-field>
+          </div>
+          <div class="field-row">
+            <mat-form-field appearance="outline">
+              <mat-icon matPrefix>attach_money</mat-icon>
+              <input matInput type="number" placeholder="Price per unit" formControlName="pricePerUnit" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-icon matPrefix>attach_money</mat-icon>
+              <input matInput type="number" placeholder="Price per container" formControlName="pricePerContainer" />
+            </mat-form-field>
+          </div>
+        </div>
+
+        @if (itemError) {
+          <p class="error-message">{{ itemError }}</p>
+        }
+        @if (itemSaved) {
+          <p class="success-message">Item created.</p>
+        }
+
+        <button mat-flat-button color="primary" type="submit" [disabled]="inventoryForm.invalid || isSavingItem">
+          @if (isSavingItem) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            <ng-container>
+              <mat-icon>add</mat-icon>
+              Create item
+            </ng-container>
+          }
+        </button>
+      </form>
+    </mat-tab>
+
+    <mat-tab label="Tasks">
+      <form [formGroup]="taskForm" (ngSubmit)="submitTask()" class="manage-form">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-icon matPrefix>title</mat-icon>
+          <input matInput placeholder="Title" formControlName="title" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-icon matPrefix>notes</mat-icon>
+          <textarea matInput placeholder="Description" formControlName="description" rows="2"></textarea>
+        </mat-form-field>
+        <div class="field-row">
+          <mat-form-field appearance="outline">
+            <mat-icon matPrefix>flag</mat-icon>
+            <mat-select placeholder="Status" formControlName="status">
+              <mat-option value="todo">To do</mat-option>
+              <mat-option value="in_progress">In progress</mat-option>
+              <mat-option value="done">Done</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-icon matPrefix>person</mat-icon>
+            <mat-select placeholder="Assign to" formControlName="assignedTo">
+              <mat-option [value]="null">Unassigned</mat-option>
+              @for (profile of assignableProfiles; track profile.id) {
+                <mat-option [value]="profile.id">{{ profileLabel(profile) }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-icon matPrefix>event</mat-icon>
+            <input matInput type="date" placeholder="Due date" formControlName="dueDate" />
+          </mat-form-field>
+        </div>
+
+        @if (taskError) {
+          <p class="error-message">{{ taskError }}</p>
+        }
+        @if (taskSaved) {
+          <p class="success-message">Task created.</p>
+        }
+
+        <button mat-flat-button color="primary" type="submit" [disabled]="taskForm.invalid || isSavingTask">
+          @if (isSavingTask) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            <ng-container>
+              <mat-icon>add_task</mat-icon>
+              Create task
+            </ng-container>
+          }
+        </button>
+      </form>
+    </mat-tab>
+  </mat-tab-group>
+  </div>
+</div>

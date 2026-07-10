@@ -26,10 +26,22 @@ svg{
   }
 }
 
-h1{
-  text-transform: uppercase;
-  color: var(--text-color);
-  margin: 0;
+.main-nav{
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  a{
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    color: var(--text-color);
+    text-transform: uppercase;
+
+    &.active{
+      color: var(--primary-color);
+    }
+  }
 }
 
 

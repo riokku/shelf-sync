@@ -1,0 +1,31 @@
+.task-card{
+  cursor: pointer;
+
+  mat-card-content p{
+    margin-top: 0;
+  }
+}
+
+.status-badge{
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-todo{
+  background: var(--mat-sys-surface-variant);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.status-in_progress{
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+}
+
+.status-done{
+  background: #2b8a3e;
+  color: #ffffff;
+}

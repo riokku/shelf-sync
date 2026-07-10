@@ -41,6 +41,8 @@ export class RegisterComponent {
 
   form = new FormGroup(
     {
+      fullName: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+      nickname: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
       email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
       password: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.minLength(6)] }),
       confirmPassword: new FormControl('', { nonNullable: true, validators: [Validators.required] })
@@ -60,8 +62,8 @@ export class RegisterComponent {
     this.isLoading = true;
     this.errorMessage = null;
 
-    const { email, password } = this.form.getRawValue();
-    const { error, needsEmailConfirmation } = await this.authService.signUp(email, password);
+    const { fullName, nickname, email, password } = this.form.getRawValue();
+    const { error, needsEmailConfirmation } = await this.authService.signUp(email, password, fullName, nickname);
 
     this.isLoading = false;
 

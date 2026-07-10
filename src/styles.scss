@@ -1,7 +1,19 @@
 /* You can add global styles to this file, and also import "other style files */
 @use '@angular/material' as mat;
 
-@import '~bootstrap/dist/css/bootstrap.min.css';
+// Bootstrap's own xxl breakpoint is already 1400px; the default `.container`
+// only grows to 1320px at that breakpoint though, leaving a gap. Widen the
+// xxl container max-width to match, so page wrappers cap out at 1400px
+// instead of stretching edge-to-edge on very wide screens.
+$container-max-widths: (
+  sm: 540px,
+  md: 720px,
+  lg: 960px,
+  xl: 1140px,
+  xxl: 1400px
+);
+
+@import 'bootstrap/scss/bootstrap';
 
 html {
   height: 100%;
@@ -25,7 +37,8 @@ body {
   margin: 0;
 }
 
-.item-details-dialog{
+.item-details-dialog,
+.task-details-dialog{
   .mat-mdc-dialog-title{
     background-color: var(--mat-sys-primary-container);
     color: var(--mat-sys-on-primary-container);

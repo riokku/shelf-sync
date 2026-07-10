@@ -29,6 +29,14 @@
           } @else {
             <form [formGroup]="form" (ngSubmit)="attemptRegister()">
               <mat-form-field appearance="outline" class="mb-3">
+                <mat-icon matPrefix>badge</mat-icon>
+                <input matInput placeholder="Full name" type="text" formControlName="fullName" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="mb-3">
+                <mat-icon matPrefix>face</mat-icon>
+                <input matInput placeholder="Nickname" type="text" formControlName="nickname" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="mb-3">
                 <mat-icon matPrefix>person</mat-icon>
                 <input matInput placeholder="Email" type="email" formControlName="email" />
               </mat-form-field>

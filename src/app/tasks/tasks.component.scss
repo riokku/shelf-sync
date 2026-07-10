@@ -1,0 +1,33 @@
+.tasks-wrapper{
+  color: var(--mat-sys-on-surface);
+  padding: 3rem 1.5rem;
+
+  h2{
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+  }
+
+  .container{
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+.task-section{
+  margin-bottom: 2.5rem;
+
+  h3{
+    margin: 0 0 1rem;
+    color: var(--mat-sys-primary);
+  }
+}
+
+.empty-hint{
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.task-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  gap: 1.5rem;
+}
