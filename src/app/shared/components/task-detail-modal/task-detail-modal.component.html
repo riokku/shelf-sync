@@ -1,7 +1,14 @@
 <h2 mat-dialog-title>{{ task.title }}</h2>
 <mat-dialog-content>
+  @if (task.related_item_name) {
+    <p class="related-item-banner">
+      <mat-icon>inventory_2</mat-icon>
+      <strong>{{ task.related_item_name }}</strong>
+    </p>
+  }
+
   @if (task.description) {
-    <p>{{ task.description }}</p>
+    <p class="task-description">{{ task.description }}</p>
   }
 
   <dl class="task-meta">

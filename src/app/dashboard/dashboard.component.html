@@ -5,6 +5,7 @@
       <div class="page-toolbar">
         <app-breadcrumbs />
       </div>
+      <h2>Dashboard</h2>
     </div>
   </div>
   <div class="row">
@@ -79,54 +80,68 @@
       </div>
     </div>
     <div class="col-12 col-md-8 col-lg-9">
-      <div class="row">
-        <div class="col-12">
-          <div class="inventory-header-wrapper">
-            <p>
-              Displaying {{filteredInventoryList.length}} of {{inventoryList?.length}} items
-            </p>
+      @if (isLoading) {
+        <div class="row">
+          <div class="col-12 loading-row">
+            <mat-spinner diameter="32"></mat-spinner>
           </div>
         </div>
-      </div>
-      <div class="row">
-        <div class="col-12">
-          <div class="row inventory-gallery-wrapper">
-            @for (item of filteredInventoryList; track item) {
-              <div class="col-12 col-md-6 col-lg-4 inventory-card">
-                <mat-card>
-                  <img mat-card-image alt="Card" src="{{item.image}}" />
-                  <div class="image-badges">
-                    @if (isLowStock(item)) {
-                      <span class="low-stock-badge">
-                        <mat-icon>warning</mat-icon>
-                        Low stock
+      } @else if (inventoryList.length === 0) {
+        <div class="row">
+          <div class="col-12">
+            <p class="empty-hint">No inventory items yet.</p>
+          </div>
+        </div>
+      } @else {
+        <div class="row">
+          <div class="col-12">
+            <div class="inventory-header-wrapper">
+              <p>
+                Displaying {{filteredInventoryList.length}} of {{inventoryList.length}} items
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-12">
+            <div class="row inventory-gallery-wrapper">
+              @for (item of filteredInventoryList; track item.id) {
+                <div class="col-12 col-md-6 col-lg-4 inventory-card">
+                  <mat-card>
+                    <img mat-card-image alt="Card" src="{{item.image}}" />
+                    <div class="image-badges">
+                      @if (isLowStock(item)) {
+                        <span class="low-stock-badge">
+                          <mat-icon>warning</mat-icon>
+                          Low stock
+                        </span>
+                      }
+                      <span class="quantity-badge">
+                        <mat-icon>inventory_2</mat-icon>
+                        {{ item.quantityRemaining }}
                       </span>
-                    }
-                    <span class="quantity-badge">
-                      <mat-icon>inventory_2</mat-icon>
-                      {{ item.quantityRemaining }}
-                    </span>
-                  </div>
-                  <mat-card-header>
-                    <mat-card-title>{{item.name}}</mat-card-title>
-                    <mat-card-subtitle>{{item.category}}</mat-card-subtitle>
-                  </mat-card-header>
-                  <mat-card-content>
-                    <p class="mb-0">
-                      {{item.description}}
-                    </p>
-                  </mat-card-content>
-                  <mat-card-actions>
-                    <div class="d-flex gap-3">
-                      <button mat-flat-button (click)="showDetails(item)">Details</button>
                     </div>
-                  </mat-card-actions>
-                </mat-card>
-              </div>
-            }
+                    <mat-card-header>
+                      <mat-card-title>{{item.name}}</mat-card-title>
+                      <mat-card-subtitle>{{item.category}}</mat-card-subtitle>
+                    </mat-card-header>
+                    <mat-card-content>
+                      <p class="mb-0">
+                        {{item.description}}
+                      </p>
+                    </mat-card-content>
+                    <mat-card-actions>
+                      <div class="d-flex gap-3">
+                        <button mat-flat-button (click)="showDetails(item)">Details</button>
+                      </div>
+                    </mat-card-actions>
+                  </mat-card>
+                </div>
+              }
+            </div>
           </div>
         </div>
-      </div>
+      }
     </div>
   </div>
   </div>

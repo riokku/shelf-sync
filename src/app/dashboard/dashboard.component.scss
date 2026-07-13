@@ -5,6 +5,11 @@
   padding: 3rem 1.5rem;
   max-width: 100%;
 
+  h2{
+    text-transform: uppercase;
+    margin: 1.5rem 0 0;
+  }
+
   // The wrapper above already supplies horizontal padding; the nested
   // .container only needs to contribute max-width + centering.
   .container{
@@ -34,6 +39,17 @@
     width: 1px;
     background: linear-gradient(to bottom, var(--mat-sys-primary) 0%, var(--mat-sys-on-surface) 50%, var(--mat-sys-primary) 100%);
   }
+}
+
+.loading-row{
+  display: flex;
+  justify-content: center;
+  padding: 3rem 0;
+}
+
+.empty-hint{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
 }
 
 .inventory-gallery-wrapper{

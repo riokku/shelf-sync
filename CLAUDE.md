@@ -7,17 +7,35 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ShelfSync (npm package name `inventory-app`) is an early-stage Angular inventory management app.
 Auth is wired end-to-end against a hosted Supabase project: `LoginComponent` calls real
 `signInWithPassword`, `RegisterComponent` calls real `signUp`, the `dashboard` route is protected
-by an `authGuard`, and the header has a working logout button. The dashboard itself still renders
-a hardcoded list of `InventoryItem` records rather than querying `inventory_items` — that's the
-next piece to wire up.
+by an `authGuard`, and the header has a working logout button. The dashboard, Manage's inventory
+tab, and Manage's tasks tab all query real Supabase tables (`inventory_items`, `tasks`,
+`profiles`) — there is no hardcoded/local inventory or task data left in the app. `DashboardComponent`
+and `ManageComponent` both convert `inventory_items` rows into the client-side `InventoryItem`
+shape via the shared `toInventoryItem()` mapper in `shared/utils/inventory-item.mapper.ts`
+(paired with `resolveProfileName()` in `shared/utils/profile-label.ts` for `checked_out_to`
+labels). Item photos live in the `inventory_item_images` table (up to 10 per item, enforced both
+client-side and by a DB trigger) plus the public `inventory-images` Storage bucket; the shared
+`loadInventoryImagesByItemId()` helper in `shared/utils/inventory-item-images.ts` batch-loads and
+resolves them to public URLs, and `toInventoryItem()` falls back to the legacy single `image`
+text column only for older rows that predate the gallery table. Structured activity history now
+lives in `inventory_item_activity` (`item_id`, `user_id`, `message`, `created_at`), loaded via
+`loadInventoryActivityByItemId()` in `shared/utils/inventory-item-activity.ts` — the original
+`inventory_items.activity_log` free-text column predates this and is unused. Any authenticated
+user (not just admin/manager) can edit an inventory item's fields directly from `ModalTableComponent`
+(the item detail popup opened from both the dashboard and Manage's inventory list) via an
+Edit/Save/Cancel flow; saving writes the changes to `inventory_items` and logs a diffed,
+human-readable summary ("Updated Quantity remaining (80 → 25), ...") to `inventory_item_activity`.
+Editing does not cover photos (still the dedicated upload flow in Manage's create-item form) or
+checkout state (`is_checked_out`/`checked_out_to` — deliberately deferred, see the Supabase Schema
+section below).
 
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
 - **UI:** Angular Material + Angular CDK (migrated from PrimeNG — see git history)
 - **Backend:** Supabase (Postgres, Auth, RLS), hosted project (ref `ailqjqjrzhzspofoslpa`),
-  linked via the Supabase CLI. Auth is live; `inventory_items`/`tasks` queries are not yet wired
-  into the dashboard/tasks UI.
+  linked via the Supabase CLI. Auth, `inventory_items`, and `tasks` are all live and queried
+  directly from the dashboard/tasks/manage UI — no hardcoded local data remains.
 - **Language:** TypeScript in strict mode (`tsconfig.json`: `strict`, `noImplicitReturns`,
   `noFallthroughCasesInSwitch`, `strictTemplates`, etc.). `tsconfig.app.json` and
   `tsconfig.spec.json` both include `"node"` in `types` — required by `@supabase/supabase-js`'s
@@ -80,6 +98,10 @@ shared/
   components/modal-table/    # standalone Material dialog showing InventoryItem details
   models/inventory-item.model.ts   # InventoryItem class (constructor-based, no defaults)
   models/database.types.ts   # generated via `npm run supabase:gen:types` — regenerate, don't hand-edit
+  utils/inventory-item.mapper.ts   # toInventoryItem(row, images, checkedOutToLabel, activityLog?) — DB row -> InventoryItem
+  utils/inventory-item-images.ts   # loadInventoryImagesByItemId() — batch-loads inventory_item_images, resolves public URLs
+  utils/inventory-item-activity.ts # loadInventoryActivityByItemId() / logInventoryItemActivity() — inventory_item_activity
+  utils/profile-label.ts     # profileDisplayName()/resolveProfileName() — shared profiles-array lookup
   styles/_auth-shell.scss   # shared full-page video-background shell; login/register `@use` it
                              # rather than duplicating — add new shared auth-page styles here
 ```
@@ -110,6 +132,18 @@ yet on a hard refresh of `/dashboard`.
   `admin`/`manager`.
 - `create_tasks` — `tasks` (`status` enum: `todo`/`in_progress`/`done`). Admins/managers see and
   manage everything; other users see/update only tasks they created or are assigned to.
+- `add_inventory_item_images` — `inventory_item_images` (`item_id` FK to `inventory_items`,
+  `storage_path`, `position`), readable by any authenticated user and writable only by
+  `admin`/`manager`, same as `inventory_items` itself. A `before insert` trigger
+  (`enforce_inventory_item_image_limit`) rejects a row once an item already has 10 images —
+  server-side backstop behind the client-side cap in `ManageComponent`. This migration also
+  creates the public `inventory-images` Storage bucket and matching `storage.objects` policies
+  (public read; `admin`/`manager`-only insert/delete).
+- `add_inventory_item_activity_and_edit_access` — widens `inventory_items` UPDATE from
+  admin/manager-only to any authenticated user (insert/delete are unchanged, still
+  admin/manager-only), and adds `inventory_item_activity` (`item_id`, `user_id`, `message`,
+  `created_at`) — readable by any authenticated user, insertable by any authenticated user but
+  only ever attributed to themselves (`with check (user_id = auth.uid())`).
 
 `supabase/seed.sql` ports the dashboard's hardcoded dummy items into `inventory_items` inserts
 for local dev (`checked_out_to` is left `null` since it's a real FK to `profiles` now and the

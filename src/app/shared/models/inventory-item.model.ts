@@ -1,3 +1,5 @@
+export const MAX_INVENTORY_ITEM_IMAGES = 10;
+
 export interface ActivityLogEntry {
   timestamp: string;
   user: string;

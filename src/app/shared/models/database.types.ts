@@ -39,6 +39,77 @@ export type Database = {
   }
   public: {
     Tables: {
+      inventory_item_activity: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          message: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          message: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          message?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_item_activity_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_item_activity_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_item_images: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          position: number
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          position?: number
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          position?: number
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_item_images_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_items: {
         Row: {
           activity_log: string | null
@@ -166,6 +237,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          related_item_name: string | null
           status: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at: string
@@ -177,6 +249,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          related_item_name?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at?: string
@@ -188,6 +261,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          related_item_name?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title?: string
           updated_at?: string

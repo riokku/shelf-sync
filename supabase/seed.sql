@@ -40,8 +40,8 @@ insert into public.inventory_items (
    'https://plus.unsplash.com/premium_photo-1673036823812-b0d86a2cead1?w=500&auto=format&fit=crop&q=60',
    'Furniture', 'Warehouse D - Section 1', 'https://inventory.example.com/items/item005',
    '2023', '2030-11-10', 'Office Essentials', '14 days', 'https://supplier.example.com/order/item005',
-   50, 10, 20, 30, 10, 199.99, 1999.90, false,
-   'Item created on 2023-09-01; Allocated 20 units on 2024-01-10'),
+   50, 10, 45, 5, 10, 199.99, 1999.90, false,
+   'Item created on 2023-09-01; Allocated 45 units on 2024-01-10 (low stock demo)'),
 
   ('Laptop Stand', 'Adjustable aluminum laptop stand for ergonomic use.',
    'https://images.unsplash.com/photo-1708898812644-c0bbf3ada776?w=500&auto=format&fit=crop&q=60',

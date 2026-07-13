@@ -1,19 +1,32 @@
 <mat-card
     class="task-card"
+    [class.overdue]="isOverdue"
     tabindex="0"
     role="button"
-    [attr.aria-label]="'View details for ' + task.title"
+    [attr.aria-label]="'View details for ' + task.title + (isOverdue ? ' (overdue)' : '')"
     (click)="open.emit(task)"
     (keydown.enter)="open.emit(task)"
     (keydown.space)="open.emit(task)"
   >
+  @if (isOverdue) {
+    <div class="overdue-banner">
+      <mat-icon>error</mat-icon>
+      Overdue
+    </div>
+  }
   <mat-card-header>
     <mat-card-title>{{ task.title }}</mat-card-title>
     @if (task.due_date) {
-      <mat-card-subtitle>Due {{ task.due_date | date: 'M/d/yy' }}</mat-card-subtitle>
+      <mat-card-subtitle [class.overdue-text]="isOverdue">Due {{ task.due_date | date: 'M/d/yy' }}</mat-card-subtitle>
     }
   </mat-card-header>
   <mat-card-content>
+    @if (task.related_item_name) {
+      <p class="related-item">
+        <mat-icon>inventory_2</mat-icon>
+        {{ task.related_item_name }}
+      </p>
+    }
     @if (task.description) {
       <p>{{ task.description }}</p>
     }

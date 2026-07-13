@@ -12,6 +12,10 @@
   flex-direction: column;
   height: 100%;
   cursor: pointer;
+  // Clips children (the overdue banner's square top corners, the left
+  // border accent) to the card's own rounded corners — without this, the
+  // banner's flat top edge pokes past the card's curve at each side.
+  overflow: hidden;
 
   mat-card-content{
     flex-grow: 1;
@@ -19,6 +23,49 @@
     p{
       margin-top: 0;
     }
+  }
+
+  &.overdue{
+    border-left: 4px solid #e03131;
+  }
+}
+
+// A full-width strip in normal flow (not an absolutely-positioned corner
+// badge) so it never overlaps the title regardless of how long it is.
+.overdue-banner{
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.4rem 1rem;
+  background: #e03131;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+
+  mat-icon{
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+.overdue-text{
+  color: #e03131 !important;
+}
+
+.related-item{
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0 0 0.5rem;
+  color: var(--mat-sys-primary);
+  font-size: 0.8125rem;
+
+  mat-icon{
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
   }
 }
 

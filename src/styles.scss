@@ -47,12 +47,33 @@ mat-icon{
   justify-content: center;
 }
 
+// Material's own button theme styles set a direct-child rule like
+// `.mat-mdc-outlined-button > .mat-icon { display: inline-block }` (one per
+// button variant), injected in a way that wins cascade ties against the
+// same-specificity rule above regardless of source order — !important is
+// needed to beat it. Left uncorrected, the icon glyph sits visibly off the
+// button label's text baseline (Material centers the icon's box, not the
+// glyph inside it).
+.mat-mdc-button-base .mat-icon{
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
 .item-details-dialog,
 .task-details-dialog{
   .mat-mdc-dialog-title{
     background-color: var(--mat-sys-primary-container);
     color: var(--mat-sys-on-primary-container);
     padding: 1rem 1.5rem !important;
+  }
+}
+
+// A bit more breathing room than Material's default content padding
+// (~20px 24px), matching the item details dialog's own value.
+.task-details-dialog{
+  .mat-mdc-dialog-content{
+    padding: 1.75rem;
   }
 }
 
@@ -92,23 +113,22 @@ mat-icon{
 // mat-tab-group normally resizes its body to match whichever tab is active
 // (animating `.mat-mdc-tab-body-wrapper`'s height via an inline style), so
 // the item details dialog would grow/shrink switching between the Info and
-// Activity Log tabs. Pin it to a fixed height instead — !important is
-// needed to beat that inline style — so the dialog stays a consistent size
-// regardless of which tab has more or less content; each tab body already
-// scrolls internally on overflow (Material's own .mat-mdc-tab-body-active
-// rule) rather than growing past this.
+// Activity Log tabs. Give it a minimum height instead — !important is
+// needed to beat that inline style — so a short tab (Activity Log) doesn't
+// leave the dialog looking cramped, without hard-clipping a tall one.
 .item-details-dialog{
   .mat-mdc-tab-body-wrapper{
-    height: min(45rem, 65vh) !important;
+    min-height: min(45rem, 65vh) !important;
   }
 
-  // Each tab's own scroll container (.mat-mdc-tab-body-content) has its own
-  // independent `overflow: auto` by default — the dialog content's
-  // overflow-x: hidden above doesn't reach into it, so it can show its own
-  // horizontal scrollbar even though the outer dialog can't. Same fix,
-  // applied at this nested level.
+  // Material gives each tab's own content area an independent `overflow:
+  // auto`, which — stacked on top of the dialog content's own scroll region
+  // below — produced two nested scrollbars once a tab's content ran long.
+  // Let content overflow visibly here instead; the single scrollbar on
+  // .mat-mdc-dialog-content (below) ends up as the only one, since it isn't
+  // clipped off from measuring this content's real height anymore.
   .mat-mdc-tab-body-content{
     overflow-x: hidden;
-    overflow-y: auto;
+    overflow-y: visible;
   }
 }
