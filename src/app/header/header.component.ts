@@ -3,6 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../core/auth.service';
+import { SiteSettingsService } from '../core/site-settings.service';
 
 @Component({
     selector: 'app-header',
@@ -12,6 +13,7 @@ import { AuthService } from '../core/auth.service';
 })
 export class HeaderComponent {
   protected authService = inject(AuthService);
+  protected siteSettings = inject(SiteSettingsService);
   private router = inject(Router);
 
   async logout() {

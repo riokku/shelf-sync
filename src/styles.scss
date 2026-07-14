@@ -15,6 +15,11 @@ $container-max-widths: (
 
 @import 'bootstrap/scss/bootstrap';
 
+// Preset color themes, picked from Customize (admin-only). mat.theme() is a
+// compile-time SCSS mixin — it can't take a runtime palette variable — so
+// each option is precompiled here under its own [data-theme] attribute
+// selector, and SiteSettingsService just toggles that attribute on <html>.
+// "default" (no attribute) keeps the app's original azure/blue look.
 html {
   height: 100%;
   @include mat.theme((
@@ -26,6 +31,54 @@ html {
     typography: Roboto,
     density: 0,
   ));
+
+  &[data-theme='violet'] {
+    @include mat.theme((
+      color: (
+        theme-type: dark,
+        primary: mat.$violet-palette,
+        tertiary: mat.$magenta-palette,
+      ),
+      typography: Roboto,
+      density: 0,
+    ));
+  }
+
+  &[data-theme='rose'] {
+    @include mat.theme((
+      color: (
+        theme-type: dark,
+        primary: mat.$rose-palette,
+        tertiary: mat.$red-palette,
+      ),
+      typography: Roboto,
+      density: 0,
+    ));
+  }
+
+  &[data-theme='green'] {
+    @include mat.theme((
+      color: (
+        theme-type: dark,
+        primary: mat.$green-palette,
+        tertiary: mat.$spring-green-palette,
+      ),
+      typography: Roboto,
+      density: 0,
+    ));
+  }
+
+  &[data-theme='orange'] {
+    @include mat.theme((
+      color: (
+        theme-type: dark,
+        primary: mat.$orange-palette,
+        tertiary: mat.$yellow-palette,
+      ),
+      typography: Roboto,
+      density: 0,
+    ));
+  }
 }
 
 body {

@@ -25,9 +25,20 @@ user (not just admin/manager) can edit an inventory item's fields directly from 
 (the item detail popup opened from both the dashboard and Manage's inventory list) via an
 Edit/Save/Cancel flow; saving writes the changes to `inventory_items` and logs a diffed,
 human-readable summary ("Updated Quantity remaining (80 → 25), ...") to `inventory_item_activity`.
-Editing does not cover photos (still the dedicated upload flow in Manage's create-item form) or
+Editing also covers photos (add/remove against `inventory_item_images`, same 10-photo cap as
+creation) via shared helpers in `shared/utils/inventory-item-images.ts`. It does not cover
 checkout state (`is_checked_out`/`checked_out_to` — deliberately deferred, see the Supabase Schema
 section below).
+
+Admins get a `customize` route (guarded by a dedicated `adminGuard`, stricter than the
+admin-or-manager `manageGuard`) for site-wide branding: a color theme picker and a logo upload,
+both backed by the `site_settings` singleton table. Because Angular Material's `mat.theme()` is a
+compile-time SCSS mixin, runtime theme switching works by precompiling a handful of named palettes
+as `[data-theme='x']` blocks in `styles.scss` and toggling that attribute on `<html>` — see
+`THEME_PRESETS` in `shared/models/theme-preset.ts` for the option list and `core/site-settings.service.ts`
+for the load/preview/persist logic. `AppComponent` loads settings once on startup (readable by
+`anon` too, so branding applies pre-login) and `HeaderComponent` swaps in the custom logo when set,
+falling back to the default SS mark.
 
 ## Tech Stack
 
@@ -89,17 +100,22 @@ app.module.ts / app.component.* / app-routing.module.ts   # NgModule root shell
 core/
   supabase.service.ts   # createClient<Database>() wrapper, providedIn: 'root'
   auth.service.ts        # session signal (isAuthenticated), signIn/signUp/signOut/getSession
+  site-settings.service.ts # theme/logo signals; load() on app start, updateTheme()/uploadLogo()/removeLogo()
   guards/auth.guard.ts    # CanActivateFn — awaits authService.getSession() directly
+  guards/manage.guard.ts  # admin OR manager
+  guards/admin.guard.ts   # admin only (Customize route)
 header/, footer/                                           # standalone layout components; header has the logout button
 login/                                                      # standalone login screen, real Supabase auth
 register/                                                   # standalone signup screen, real Supabase auth
 dashboard/                                                  # standalone dashboard: filters, item table, opens modal
+customize/                                                  # admin-only: theme picker + logo upload (site_settings)
 shared/
   components/modal-table/    # standalone Material dialog showing InventoryItem details
   models/inventory-item.model.ts   # InventoryItem class (constructor-based, no defaults)
+  models/theme-preset.ts     # THEME_PRESETS — key must match a [data-theme] block in styles.scss
   models/database.types.ts   # generated via `npm run supabase:gen:types` — regenerate, don't hand-edit
   utils/inventory-item.mapper.ts   # toInventoryItem(row, images, checkedOutToLabel, activityLog?) — DB row -> InventoryItem
-  utils/inventory-item-images.ts   # loadInventoryImagesByItemId() — batch-loads inventory_item_images, resolves public URLs
+  utils/inventory-item-images.ts   # loadInventoryImagesByItemId() / uploadInventoryItemImages() / deleteInventoryItemImage()
   utils/inventory-item-activity.ts # loadInventoryActivityByItemId() / logInventoryItemActivity() — inventory_item_activity
   utils/profile-label.ts     # profileDisplayName()/resolveProfileName() — shared profiles-array lookup
   styles/_auth-shell.scss   # shared full-page video-background shell; login/register `@use` it
@@ -144,6 +160,10 @@ yet on a hard refresh of `/dashboard`.
   admin/manager-only), and adds `inventory_item_activity` (`item_id`, `user_id`, `message`,
   `created_at`) — readable by any authenticated user, insertable by any authenticated user but
   only ever attributed to themselves (`with check (user_id = auth.uid())`).
+- `add_site_settings` — `site_settings`, a singleton row (`id` fixed to `1` via a check constraint)
+  holding `theme` and `logo_storage_path`. Readable by `anon` and `authenticated` (so branding
+  applies on the pre-login pages too), writable only by `admin`. Also creates the public
+  `site-assets` Storage bucket (public read; `admin`-only insert/update/delete) for the logo file.
 
 `supabase/seed.sql` ports the dashboard's hardcoded dummy items into `inventory_items` inserts
 for local dev (`checked_out_to` is left `null` since it's a real FK to `profiles` now and the

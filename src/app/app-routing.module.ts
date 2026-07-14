@@ -6,8 +6,10 @@ import { DashboardComponent } from './dashboard/dashboard.component';
 import { AccountComponent } from './account/account.component';
 import { TasksComponent } from './tasks/tasks.component';
 import { ManageComponent } from './manage/manage.component';
+import { CustomizeComponent } from './customize/customize.component';
 import { authGuard } from './core/guards/auth.guard';
 import { manageGuard } from './core/guards/manage.guard';
+import { adminGuard } from './core/guards/admin.guard';
 
 const routes: Routes = [
   {
@@ -41,6 +43,12 @@ const routes: Routes = [
     component: ManageComponent,
     canActivate: [authGuard, manageGuard],
     data: { breadcrumb: 'Manage' }
+  },
+  {
+    path: 'customize',
+    component: CustomizeComponent,
+    canActivate: [authGuard, adminGuard],
+    data: { breadcrumb: 'Customize' }
   }
 ];
 

@@ -10,72 +10,50 @@
   align-items: center;
 }
 
-svg{
-  width: clamp(20rem, 100px, 100%);
-  max-height: 100%;
-  font-weight: 700;
-  text {
-    font-size: 10rem;
-    stroke-width: 2;
-    &.happy-title {
-      stroke: var(--primary-color);
-      stroke-width: 2;
-      animation: animate-stroke 3s forwards;
-    }
-
-  }
+// height (not just max-height) is required: some source SVGs declare
+// width="100%" with no height attribute, only a viewBox — with only
+// max-width/max-height as CSS bounds and no definite dimension to resolve
+// against, the <img> collapses to 0x0 instead of sizing from its content.
+.custom-logo{
+  display: block;
+  height: 2.5rem;
+  width: auto;
+  max-width: 10rem;
+  object-fit: contain;
 }
 
 .main-nav{
   display: flex;
   align-items: center;
   gap: 0.5rem;
-
-  a{
-    display: inline-flex;
-    align-items: center;
-    gap: 0.1875rem;
-    padding: 0.375rem 0.75rem;
-    border-radius: 999px;
-    color: var(--mat-sys-on-surface-variant);
-    text-transform: uppercase;
-
-    &.active{
-      color: var(--mat-sys-on-primary-container);
-      background: var(--mat-sys-primary-container);
-    }
-
-    // Material's own button styles put a fixed 8px/-4px margin on an icon
-    // child regardless of the flex gap above; zero it out so gap is the
-    // only thing controlling icon-to-text spacing.
-    mat-icon{
-      margin-left: 0 !important;
-      margin-right: 0 !important;
-    }
-  }
 }
 
+.header-actions{
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
 
-@keyframes animate-stroke {
-  0%{
-    fill: transparent;
-    stroke: var(--primary-color);
-    stroke-width: 3;
-    stroke-dashoffset: 25%;
-    stroke-dasharray: 0 32%;
+.main-nav a,
+.header-actions a{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1875rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 999px;
+  color: var(--mat-sys-on-surface-variant);
+  text-transform: uppercase;
+
+  &.active{
+    color: var(--mat-sys-on-primary-container);
+    background: var(--mat-sys-primary-container);
   }
-  50%{
-    fill: transparent;
-    stroke: var(--primary-color);
-    stroke-width: 3;
-  }
-  70%,
-  100%{
-    fill: var(--primary-color);
-    //stroke: transparent;
-    stroke: rgba(255, 255, 255, .25);
-    stroke-width: 1;
-    stroke-dashoffset: -25%;
-    stroke-dasharray: 32% 0;
+
+  // Material's own button styles put a fixed 8px/-4px margin on an icon
+  // child regardless of the flex gap above; zero it out so gap is the
+  // only thing controlling icon-to-text spacing.
+  mat-icon{
+    margin-left: 0 !important;
+    margin-right: 0 !important;
   }
 }

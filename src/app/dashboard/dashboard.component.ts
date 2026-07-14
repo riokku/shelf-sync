@@ -59,7 +59,9 @@ export class DashboardComponent implements OnInit{
 
     const search = this.searchTerm.trim().toLowerCase();
     if (search) {
-      list = list.filter(item => item.name.toLowerCase().includes(search));
+      list = list.filter(item =>
+        item.name.toLowerCase().includes(search) || item.id.toLowerCase().includes(search)
+      );
     }
 
     return list;
