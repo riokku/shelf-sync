@@ -1,7 +1,7 @@
 @use '../shared/styles/page-toolbar';
 
 .dashboard-wrapper{
-  color: var(--mat-sys-on-surface);
+  color: #ffffff;
   padding: 3rem 1.5rem;
   max-width: 100%;
 
@@ -37,7 +37,7 @@
     right: 0;
     height: 100%;
     width: 1px;
-    background: linear-gradient(to bottom, var(--mat-sys-primary) 0%, var(--mat-sys-on-surface) 50%, var(--mat-sys-primary) 100%);
+    background: linear-gradient(to bottom, var(--mat-sys-primary) 0%, #ffffff 50%, var(--mat-sys-primary) 100%);
   }
 }
 

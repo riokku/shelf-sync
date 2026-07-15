@@ -10,7 +10,7 @@
 .breadcrumb-link{
   display: inline-flex;
   align-items: center;
-  color: var(--mat-sys-on-surface);
+  color: #ffffff;
   text-decoration: none;
 
   &:hover{
@@ -29,6 +29,6 @@
 }
 
 .breadcrumb-current{
-  color: var(--mat-sys-on-surface);
+  color: #ffffff;
   font-weight: 400;
 }

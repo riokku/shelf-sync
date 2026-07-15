@@ -79,12 +79,23 @@ html {
       density: 0,
     ));
   }
+
+  // mat.theme()'s all-in-one API only emits the --mat-sys-* system-level
+  // roles, not derived per-component tokens like --mat-dialog-subhead-color.
+  // Material's own dialog title/body CSS still references those tokens
+  // first (falling back to --mat-sys-on-surface/-on-surface-variant when
+  // they're unset), so any dialog without our own explicit title color
+  // override — e.g. CreateTaskModalComponent — was rendering in whatever
+  // off-white/gray those system roles resolve to. Setting them directly
+  // makes every dialog's default text pure white regardless of theme.
+  --mat-dialog-subhead-color: #ffffff;
+  --mat-dialog-supporting-text-color: #ffffff;
 }
 
 body {
   color-scheme: dark;
   background-color: var(--mat-sys-surface);
-  color: var(--mat-sys-on-surface);
+  color: #ffffff;
   font: var(--mat-sys-body-medium);
   height: 100%;
   margin: 0;
@@ -111,6 +122,34 @@ mat-icon{
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
+}
+
+// The fix above only centers the icon glyph within its own box — it doesn't
+// fix the icon's position relative to the button's text label, because an
+// icon-plus-text button's content isn't a flat flex row: both are wrapped
+// together in an inner `.mdc-button__label` span, and *that* span is the
+// button's actual flex child. Inside the span, icon and text lay out as
+// plain inline content, so the icon sits at `vertical-align: baseline`
+// against the text — a font-metrics-based alignment that doesn't actually
+// center a 24px icon against a shorter line of text (it visibly sits a few
+// pixels high, e.g. on the Login/Save buttons). Making the label span itself
+// a centered flex row fixes this properly, independent of font metrics.
+.mat-mdc-button-base .mdc-button__label{
+  display: inline-flex;
+  align-items: center;
+}
+
+// Default dialog title/body color for any dialog that doesn't set its own
+// (like CreateTaskModalComponent) — belt-and-suspenders alongside the
+// --mat-dialog-subhead-color/-supporting-text-color tokens above. The more
+// specific .item-details-dialog/.task-details-dialog rule below still wins
+// for dialogs that intentionally use a colored title band instead.
+.mat-mdc-dialog-title{
+  color: #ffffff;
+}
+
+.mat-mdc-dialog-content{
+  color: #ffffff;
 }
 
 .item-details-dialog,

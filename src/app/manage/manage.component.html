@@ -187,7 +187,7 @@
                     <span class="task-row-due">
                       @if (item.price_per_unit != null) {
                         <mat-icon>attach_money</mat-icon>
-                        {{ item.price_per_unit }} / unit
+                        {{ item.price_per_unit | currency }} / unit
                       } @else {
                         No price set
                       }
@@ -403,6 +403,17 @@
                   </mat-panel-title>
                   <mat-panel-description>
                     {{ member.profile.role }}
+                    @if (authService.role() === 'admin') {
+                      <button
+                          mat-icon-button
+                          type="button"
+                          class="team-member-edit"
+                          [attr.aria-label]="'Edit ' + profileLabel(member.profile)"
+                          (click)="$event.stopPropagation(); openEditProfile(member.profile)"
+                        >
+                        <mat-icon>edit</mat-icon>
+                      </button>
+                    }
                   </mat-panel-description>
                 </mat-expansion-panel-header>
 

@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialogModule, MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -49,6 +49,7 @@ const FIELD_LABELS: Record<string, string> = {
     selector: 'app-modal-table',
     imports: [
         DatePipe,
+        CurrencyPipe,
         ReactiveFormsModule,
         MatDialogModule,
         MatIconModule,

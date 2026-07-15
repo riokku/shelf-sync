@@ -175,7 +175,7 @@ z"
                 />
             </svg>
             <svg viewBox="0 0 500 130">
-              <text x="0" y="50%" dy="2.32rem" text-anchor="start" class="happy-title">
+              <text x="2%" y="44%" dy="2.32rem" text-anchor="start" class="happy-title">
                 ShelfSync
               </text>
             </svg>
@@ -188,11 +188,11 @@ z"
       <div class="col-12 col-sm-12 col-md-6">
         <div class="login-wrapper">
           <form [formGroup]="form" (ngSubmit)="attemptLogin()">
-            <mat-form-field appearance="outline" class="mb-3">
+            <mat-form-field appearance="outline">
               <mat-icon matPrefix>person</mat-icon>
               <input matInput placeholder="Email" type="email" formControlName="email" />
             </mat-form-field>
-            <mat-form-field appearance="outline" class="mb-3">
+            <mat-form-field appearance="outline">
               <mat-icon matPrefix>lock</mat-icon>
               <input matInput placeholder="Password" type="password" formControlName="password" />
             </mat-form-field>
@@ -209,7 +209,7 @@ z"
                   <mat-spinner diameter="20"></mat-spinner>
                 } @else {
                   <ng-container>
-                    <mat-icon>login</mat-icon>
+                    <mat-icon class="me-2 pe-2">login</mat-icon>
                     Login
                   </ng-container>
                 }

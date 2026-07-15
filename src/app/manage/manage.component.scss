@@ -1,7 +1,7 @@
 @use '../shared/styles/page-toolbar';
 
 .manage-wrapper{
-  color: var(--mat-sys-on-surface);
+  color: #ffffff;
   padding: 3rem 1.5rem;
   max-width: 100%;
 
@@ -120,6 +120,19 @@
 mat-panel-title{
   display: flex;
   align-items: center;
+}
+
+mat-panel-description{
+  align-items: center;
+  justify-content: space-between;
+}
+
+.team-member-edit{
+  color: var(--mat-sys-on-surface-variant);
+
+  &:hover{
+    color: var(--mat-sys-primary);
+  }
 }
 
 .status-columns{

@@ -7,14 +7,25 @@
       <div class="col-12 col-sm-12 col-md-6">
         <div class="logo-wrapper">
           <div>
-            <svg viewBox="0 0 500 130">
-              <text x="50%" y="50%" dy="2.32rem" dx="-1.5rem" text-anchor="middle" class="happy-title">
-                ShelfSync
-              </text>
-            </svg>
-            <h2>
-              Inventory management made simple.
-            </h2>
+            <h1>Create an account</h1>
+            <ul class="benefits-list">
+              <li>
+                <mat-icon>check_circle</mat-icon>
+                Real-time inventory tracking with low-stock alerts
+              </li>
+              <li>
+                <mat-icon>check_circle</mat-icon>
+                Task management for your whole team
+              </li>
+              <li>
+                <mat-icon>check_circle</mat-icon>
+                Full activity history for every item
+              </li>
+              <li>
+                <mat-icon>check_circle</mat-icon>
+                Role-based access to keep your data secure
+              </li>
+            </ul>
           </div>
         </div>
       </div>
@@ -28,23 +39,23 @@
             </div>
           } @else {
             <form [formGroup]="form" (ngSubmit)="attemptRegister()">
-              <mat-form-field appearance="outline" class="mb-3">
+              <mat-form-field appearance="outline">
                 <mat-icon matPrefix>badge</mat-icon>
                 <input matInput placeholder="Full name" type="text" formControlName="fullName" />
               </mat-form-field>
-              <mat-form-field appearance="outline" class="mb-3">
+              <mat-form-field appearance="outline">
                 <mat-icon matPrefix>face</mat-icon>
                 <input matInput placeholder="Nickname" type="text" formControlName="nickname" />
               </mat-form-field>
-              <mat-form-field appearance="outline" class="mb-3">
+              <mat-form-field appearance="outline">
                 <mat-icon matPrefix>person</mat-icon>
                 <input matInput placeholder="Email" type="email" formControlName="email" />
               </mat-form-field>
-              <mat-form-field appearance="outline" class="mb-3">
+              <mat-form-field appearance="outline">
                 <mat-icon matPrefix>lock</mat-icon>
                 <input matInput placeholder="Password" type="password" formControlName="password" />
               </mat-form-field>
-              <mat-form-field appearance="outline" class="mb-3">
+              <mat-form-field appearance="outline">
                 <mat-icon matPrefix>lock</mat-icon>
                 <input matInput placeholder="Confirm password" type="password" formControlName="confirmPassword" />
               </mat-form-field>
@@ -64,7 +75,7 @@
                     <mat-spinner diameter="20"></mat-spinner>
                   } @else {
                     <ng-container>
-                      <mat-icon>person_add</mat-icon>
+                      <mat-icon class="me-2">person_add</mat-icon>
                       Create account
                     </ng-container>
                   }

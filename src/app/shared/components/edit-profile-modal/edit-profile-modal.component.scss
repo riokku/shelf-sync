@@ -1,0 +1,15 @@
+.edit-profile-form{
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+
+  .full-width{
+    width: 100%;
+  }
+}
+
+.error-message{
+  color: #ff6b6b;
+  margin: -0.5rem 0 1rem;
+}

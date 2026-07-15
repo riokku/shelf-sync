@@ -1,7 +1,7 @@
 @use '../shared/styles/page-toolbar';
 
 .customize-wrapper{
-  color: var(--mat-sys-on-surface);
+  color: #ffffff;
   padding: 3rem 1.5rem;
   max-width: 100%;
 
@@ -47,7 +47,7 @@
   border-radius: 999px;
   border: 1px solid var(--mat-sys-outline-variant);
   background: var(--mat-sys-surface-container-low);
-  color: var(--mat-sys-on-surface);
+  color: #ffffff;
   cursor: pointer;
   font: inherit;
 

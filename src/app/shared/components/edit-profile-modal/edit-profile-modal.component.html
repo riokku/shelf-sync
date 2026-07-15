@@ -1,0 +1,39 @@
+<h2 mat-dialog-title>Edit profile</h2>
+<mat-dialog-content>
+  <form [formGroup]="form" class="edit-profile-form">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-icon matPrefix>badge</mat-icon>
+      <input matInput placeholder="Full name" formControlName="fullName" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-icon matPrefix>face</mat-icon>
+      <input matInput placeholder="Nickname" formControlName="nickname" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-icon matPrefix>mail</mat-icon>
+      <input matInput type="email" placeholder="Email" formControlName="email" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-icon matPrefix>shield</mat-icon>
+      <mat-select placeholder="Role" formControlName="role">
+        @for (role of roles; track role) {
+          <mat-option [value]="role">{{ roleLabels[role] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </form>
+
+  @if (error) {
+    <p class="error-message">{{ error }}</p>
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="closeModal()">Cancel</button>
+  <button mat-flat-button color="primary" type="button" (click)="save()" [disabled]="form.invalid || isSaving">
+    @if (isSaving) {
+      <mat-spinner diameter="20"></mat-spinner>
+    } @else {
+      Save
+    }
+  </button>
+</mat-dialog-actions>

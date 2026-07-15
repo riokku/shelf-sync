@@ -1,5 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -18,6 +18,7 @@ import { AuthService, Profile } from '../core/auth.service';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 import { TaskDetailModalComponent } from '../shared/components/task-detail-modal/task-detail-modal.component';
 import { ModalTableComponent } from '../shared/components/modal-table/modal-table.component';
+import { EditProfileModalComponent } from '../shared/components/edit-profile-modal/edit-profile-modal.component';
 import { Database } from '../shared/models/database.types';
 import { TASK_STATUSES, TASK_STATUS_LABELS, TaskStatus } from '../shared/models/task-status';
 import { ActivityLogEntry, MAX_INVENTORY_ITEM_IMAGES } from '../shared/models/inventory-item.model';
@@ -39,6 +40,7 @@ interface TeamMember {
   selector: 'app-manage',
   imports: [
     DatePipe,
+    CurrencyPipe,
     FormsModule,
     ReactiveFormsModule,
     MatTabsModule,
@@ -59,7 +61,7 @@ interface TeamMember {
 })
 export class ManageComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
-  private authService = inject(AuthService);
+  protected authService = inject(AuthService);
   private dialog = inject(MatDialog);
 
   private currentUserId: string | null = null;
@@ -165,13 +167,34 @@ export class ManageComponent implements OnInit {
     const session = await this.authService.getSession();
     this.currentUserId = session?.user.id ?? null;
 
-    const { data } = await this.supabase.from('profiles').select('*').order('full_name');
-    this.assignableProfiles = data ?? [];
+    await this.loadProfiles();
 
     await Promise.all([
       this.loadTeamTasks(),
       this.loadInventoryItems()
     ]);
+  }
+
+  private async loadProfiles() {
+    const { data } = await this.supabase.from('profiles').select('*').order('full_name');
+    this.assignableProfiles = data ?? [];
+  }
+
+  openEditProfile(profile: Profile) {
+    const dialogRef = this.dialog.open(EditProfileModalComponent, {
+      data: profile,
+      width: 'clamp(75%, 25rem, 60%)',
+      maxWidth: '90vw',
+      panelClass: 'task-details-dialog'
+    });
+
+    dialogRef.afterClosed().subscribe(async (updated: Profile | undefined) => {
+      if (!updated) {
+        return;
+      }
+      await this.loadProfiles();
+      await this.loadTeamTasks();
+    });
   }
 
   profileLabel(profile: Profile): string {
