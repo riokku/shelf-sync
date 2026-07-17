@@ -117,6 +117,37 @@
   padding: 1.5rem 0.25rem;
 }
 
+.invite-link-section{
+  max-width: 40rem;
+  margin-bottom: 2rem;
+
+  h3{
+    margin: 0 0 0.5rem;
+    color: var(--mat-sys-primary);
+  }
+
+  .empty-hint{
+    margin: 0 0 1rem;
+  }
+}
+
+.invite-link-row{
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+
+  input{
+    flex: 1;
+    min-width: 0;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--mat-sys-outline-variant);
+    background: var(--mat-sys-surface-container-low);
+    color: #ffffff;
+    font: inherit;
+  }
+}
+
 mat-panel-title{
   display: flex;
   align-items: center;

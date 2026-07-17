@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import {
   AbstractControl,
   FormControl,
@@ -12,7 +12,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Router, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 
 function passwordsMatch(control: AbstractControl): ValidationErrors | null {
@@ -35,12 +35,14 @@ function passwordsMatch(control: AbstractControl): ValidationErrors | null {
     templateUrl: './register.component.html',
     styleUrl: './register.component.scss'
 })
-export class RegisterComponent {
+export class RegisterComponent implements OnInit {
   private authService = inject(AuthService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
   form = new FormGroup(
     {
+      organizationName: new FormControl('', { nonNullable: true }),
       fullName: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
       nickname: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
       email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
@@ -53,6 +55,31 @@ export class RegisterComponent {
   isLoading = false;
   errorMessage: string | null = null;
   confirmationSent = false;
+  /** Set once an invite link's `?org=` slug resolves — locks the form into
+   *  "join this organization" mode instead of creating a new one. */
+  joiningOrganization: { id: string; name: string } | null = null;
+  invalidInviteLink = false;
+
+  async ngOnInit() {
+    const slug = this.route.snapshot.queryParamMap.get('org');
+    if (!slug) {
+      this.requireOrganizationName();
+      return;
+    }
+
+    const org = await this.authService.resolveOrganizationBySlug(slug);
+    if (org) {
+      this.joiningOrganization = org;
+    } else {
+      this.invalidInviteLink = true;
+      this.requireOrganizationName();
+    }
+  }
+
+  private requireOrganizationName() {
+    this.form.controls.organizationName.addValidators(Validators.required);
+    this.form.controls.organizationName.updateValueAndValidity();
+  }
 
   async attemptRegister() {
     if (this.form.invalid || this.isLoading) {
@@ -62,8 +89,17 @@ export class RegisterComponent {
     this.isLoading = true;
     this.errorMessage = null;
 
-    const { fullName, nickname, email, password } = this.form.getRawValue();
-    const { error, needsEmailConfirmation } = await this.authService.signUp(email, password, fullName, nickname);
+    const { organizationName, fullName, nickname, email, password } = this.form.getRawValue();
+    const organization = this.joiningOrganization
+      ? { inviteOrganizationId: this.joiningOrganization.id }
+      : { organizationName };
+    const { error, needsEmailConfirmation } = await this.authService.signUp(
+      email,
+      password,
+      fullName,
+      nickname,
+      organization
+    );
 
     this.isLoading = false;
 

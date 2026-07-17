@@ -22,6 +22,18 @@
   }
 }
 
+.joining-organization{
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #ffffff;
+  font-size: 0.95rem;
+
+  mat-icon{
+    color: var(--mat-sys-primary);
+  }
+}
+
 .confirmation-message{
   display: flex;
   flex-direction: column;

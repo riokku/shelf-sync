@@ -67,6 +67,9 @@ export class ManageComponent implements OnInit {
   private currentUserId: string | null = null;
   assignableProfiles: Profile[] = [];
 
+  inviteLink: string | null = null;
+  inviteLinkCopied = false;
+
   readonly statuses = TASK_STATUSES;
   readonly statusLabels = TASK_STATUS_LABELS;
   teamMembers: TeamMember[] = [];
@@ -171,13 +174,40 @@ export class ManageComponent implements OnInit {
 
     await Promise.all([
       this.loadTeamTasks(),
-      this.loadInventoryItems()
+      this.loadInventoryItems(),
+      this.loadInviteLink()
     ]);
   }
 
   private async loadProfiles() {
     const { data } = await this.supabase.from('profiles').select('*').order('full_name');
     this.assignableProfiles = data ?? [];
+  }
+
+  private async loadInviteLink() {
+    const profile = await this.authService.getProfile();
+    if (!profile) {
+      return;
+    }
+
+    const { data } = await this.supabase
+      .from('organizations')
+      .select('slug')
+      .eq('id', profile.organization_id)
+      .single();
+
+    if (data) {
+      this.inviteLink = `${window.location.origin}/register?org=${data.slug}`;
+    }
+  }
+
+  async copyInviteLink() {
+    if (!this.inviteLink) {
+      return;
+    }
+    await navigator.clipboard.writeText(this.inviteLink);
+    this.inviteLinkCopied = true;
+    setTimeout(() => (this.inviteLinkCopied = false), 2000);
   }
 
   openEditProfile(profile: Profile) {

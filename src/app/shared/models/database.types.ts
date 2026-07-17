@@ -126,6 +126,7 @@ export type Database = {
           low_quantity_threshold: number | null
           name: string
           order_link: string | null
+          organization_id: string
           physical_location: string | null
           price_per_container: number | null
           price_per_unit: number | null
@@ -152,6 +153,7 @@ export type Database = {
           low_quantity_threshold?: number | null
           name: string
           order_link?: string | null
+          organization_id?: string
           physical_location?: string | null
           price_per_container?: number | null
           price_per_unit?: number | null
@@ -178,6 +180,7 @@ export type Database = {
           low_quantity_threshold?: number | null
           name?: string
           order_link?: string | null
+          organization_id?: string
           physical_location?: string | null
           price_per_container?: number | null
           price_per_unit?: number | null
@@ -197,7 +200,35 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "inventory_items_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          slug?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -206,6 +237,7 @@ export type Database = {
           full_name: string | null
           id: string
           nickname: string | null
+          organization_id: string
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
         }
@@ -215,6 +247,7 @@ export type Database = {
           full_name?: string | null
           id: string
           nickname?: string | null
+          organization_id: string
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
@@ -224,34 +257,53 @@ export type Database = {
           full_name?: string | null
           id?: string
           nickname?: string | null
+          organization_id?: string
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       site_settings: {
         Row: {
-          id: number
+          id: string
           logo_storage_path: string | null
+          organization_id: string
           theme: string
           updated_at: string
           updated_by: string | null
         }
         Insert: {
-          id?: number
+          id?: string
           logo_storage_path?: string | null
+          organization_id: string
           theme?: string
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
-          id?: number
+          id?: string
           logo_storage_path?: string | null
+          organization_id?: string
           theme?: string
           updated_at?: string
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "site_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "site_settings_updated_by_fkey"
             columns: ["updated_by"]
@@ -269,6 +321,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          organization_id: string
           related_item_name: string | null
           status: Database["public"]["Enums"]["task_status"]
           title: string
@@ -281,6 +334,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          organization_id?: string
           related_item_name?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title: string
@@ -293,6 +347,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          organization_id?: string
           related_item_name?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title?: string
@@ -313,6 +368,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "tasks_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -327,6 +389,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      current_user_org_id: { Args: never; Returns: string }
       current_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]

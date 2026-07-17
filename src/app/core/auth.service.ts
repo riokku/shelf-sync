@@ -19,6 +19,7 @@ export class AuthService {
   readonly profile = this._profile.asReadonly();
   readonly role = computed(() => this._profile()?.role ?? null);
   readonly canManage = computed(() => this.role() === 'admin' || this.role() === 'manager');
+  readonly organizationId = computed(() => this._profile()?.organization_id ?? null);
 
   constructor() {
     this.supabase.auth.getSession().then(({ data }) => {
@@ -66,15 +67,39 @@ export class AuthService {
 
   /** Returns `needsEmailConfirmation: true` when signup succeeded but Supabase
    *  didn't hand back a session — i.e. email confirmation is required before
-   *  the account can log in. `fullName`/`nickname` land in `raw_user_meta_data`
-   *  and are copied onto the new `profiles` row by the `handle_new_user` trigger. */
-  async signUp(email: string, password: string, fullName: string, nickname: string) {
+   *  the account can log in. `fullName`/`nickname`/organization fields land in
+   *  `raw_user_meta_data` and are consumed by the `handle_new_user` trigger,
+   *  which either creates a new organization (caller becomes its admin) or
+   *  joins an existing one via `organization.inviteOrganizationId` (caller
+   *  becomes staff). */
+  async signUp(
+    email: string,
+    password: string,
+    fullName: string,
+    nickname: string,
+    organization: { organizationName: string } | { inviteOrganizationId: string }
+  ) {
     const { data, error } = await this.supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName, nickname } }
+      options: {
+        data: {
+          full_name: fullName,
+          nickname,
+          ...('organizationName' in organization
+            ? { organization_name: organization.organizationName }
+            : { invite_organization_id: organization.inviteOrganizationId })
+        }
+      }
     });
     return { error, needsEmailConfirmation: !error && !data.session };
+  }
+
+  /** Resolves an invite link's org slug to `{ id, name }` pre-signup.
+   *  `organizations` is readable by `anon`, so this works before auth. */
+  async resolveOrganizationBySlug(slug: string) {
+    const { data } = await this.supabase.from('organizations').select('id, name').eq('slug', slug).maybeSingle();
+    return data;
   }
 
   async signOut() {

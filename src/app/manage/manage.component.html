@@ -388,6 +388,21 @@
 
     <mat-tab label="Team">
       <div class="team-list">
+        @if (inviteLink) {
+          <div class="invite-link-section">
+            <h3>Invite teammates</h3>
+            <p class="empty-hint">
+              Share this link — anyone who signs up with it joins your organization automatically.
+            </p>
+            <div class="invite-link-row">
+              <input type="text" [value]="inviteLink" readonly />
+              <button mat-stroked-button type="button" (click)="copyInviteLink()">
+                <mat-icon>{{ inviteLinkCopied ? 'check' : 'content_copy' }}</mat-icon>
+                {{ inviteLinkCopied ? 'Copied' : 'Copy' }}
+              </button>
+            </div>
+          </div>
+        }
         @if (isLoadingTeam) {
           <mat-spinner diameter="32"></mat-spinner>
         } @else if (teamMembers.length === 0) {

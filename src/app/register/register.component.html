@@ -39,6 +39,20 @@
             </div>
           } @else {
             <form [formGroup]="form" (ngSubmit)="attemptRegister()">
+              @if (joiningOrganization) {
+                <p class="joining-organization">
+                  <mat-icon>domain</mat-icon>
+                  Joining <strong>{{ joiningOrganization.name }}</strong>
+                </p>
+              } @else {
+                @if (invalidInviteLink) {
+                  <p class="error-message">This invite link is invalid or has expired. Create a new organization instead.</p>
+                }
+                <mat-form-field appearance="outline">
+                  <mat-icon matPrefix>domain</mat-icon>
+                  <input matInput placeholder="Organization name" type="text" formControlName="organizationName" />
+                </mat-form-field>
+              }
               <mat-form-field appearance="outline">
                 <mat-icon matPrefix>badge</mat-icon>
                 <input matInput placeholder="Full name" type="text" formControlName="fullName" />
