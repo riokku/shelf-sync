@@ -39,6 +39,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      inventory_field_options: {
+        Row: {
+          created_at: string
+          field_name: string
+          id: string
+          organization_id: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          field_name: string
+          id?: string
+          organization_id: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          field_name?: string
+          id?: string
+          organization_id?: string
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_field_options_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_item_activity: {
         Row: {
           created_at: string

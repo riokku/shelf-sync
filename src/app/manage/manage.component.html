@@ -30,7 +30,12 @@
             </mat-form-field>
             <mat-form-field appearance="outline">
               <mat-icon matPrefix>category</mat-icon>
-              <input matInput placeholder="Category" formControlName="category" />
+              <mat-select placeholder="Category" formControlName="category">
+                <mat-option [value]="''">None</mat-option>
+                @for (option of inventoryFieldOptions.optionsFor('category'); track option) {
+                  <mat-option [value]="option">{{ option }}</mat-option>
+                }
+              </mat-select>
             </mat-form-field>
           </div>
           <mat-form-field appearance="outline" class="full-width">
@@ -68,7 +73,12 @@
           <div class="field-row">
             <mat-form-field appearance="outline">
               <mat-icon matPrefix>place</mat-icon>
-              <input matInput placeholder="Physical location" formControlName="physicalLocation" />
+              <mat-select placeholder="Physical location" formControlName="physicalLocation">
+                <mat-option [value]="''">None</mat-option>
+                @for (option of inventoryFieldOptions.optionsFor('physical_location'); track option) {
+                  <mat-option [value]="option">{{ option }}</mat-option>
+                }
+              </mat-select>
             </mat-form-field>
             <mat-form-field appearance="outline">
               <mat-icon matPrefix>link</mat-icon>
@@ -173,6 +183,12 @@
                     >
                     <div class="task-row-main">
                       <span class="task-row-title">{{ item.name }}</span>
+                      @if (item.is_checked_out) {
+                        <span class="task-row-checked-out">
+                          <mat-icon>person</mat-icon>
+                          Checked out
+                        </span>
+                      }
                       @if (item.category) {
                         <span class="task-row-item">
                           <mat-icon>category</mat-icon>
@@ -294,6 +310,10 @@
         } @else {
           <div class="all-tasks-view">
             <div class="task-filters">
+              <mat-form-field appearance="outline">
+                <mat-icon matPrefix>search</mat-icon>
+                <input matInput placeholder="Search by title or task ID" [(ngModel)]="taskFilterSearch" />
+              </mat-form-field>
               <mat-form-field appearance="outline">
                 <mat-icon matPrefix>person</mat-icon>
                 <mat-select placeholder="Team member" [(ngModel)]="taskFilterAssignee">

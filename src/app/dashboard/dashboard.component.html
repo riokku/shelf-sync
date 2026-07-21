@@ -110,6 +110,12 @@
                   <mat-card>
                     <img mat-card-image alt="Card" src="{{item.image}}" />
                     <div class="image-badges">
+                      @if (item.isCheckedOut) {
+                        <span class="checked-out-badge">
+                          <mat-icon>person</mat-icon>
+                          Checked out
+                        </span>
+                      }
                       @if (isLowStock(item)) {
                         <span class="low-stock-badge">
                           <mat-icon>warning</mat-icon>

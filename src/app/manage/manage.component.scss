@@ -284,6 +284,21 @@ mat-panel-description{
   }
 }
 
+.task-row-checked-out{
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--mat-sys-tertiary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+
+  mat-icon{
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
 .task-row-assignee,
 .task-row-due{
   display: flex;

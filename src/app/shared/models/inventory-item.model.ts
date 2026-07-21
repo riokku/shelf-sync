@@ -33,6 +33,7 @@ export class InventoryItem {
   pricePerContainer: number;
   isCheckedOut: boolean;
   checkedOutTo: string;
+  checkedOutToId: string | null;
   activityLog: ActivityLogEntry[];
 
   constructor(
@@ -58,6 +59,7 @@ export class InventoryItem {
     pricePerContainer: number,
     isCheckedOut: boolean,
     checkedOutTo: string,
+    checkedOutToId: string | null,
     activityLog: ActivityLogEntry[]
   ) {
     //Tracking
@@ -93,6 +95,7 @@ export class InventoryItem {
     //Other information
     this.isCheckedOut = isCheckedOut;
     this.checkedOutTo = checkedOutTo;
+    this.checkedOutToId = checkedOutToId;
     this.activityLog = activityLog;
   }
 

@@ -1,0 +1,116 @@
+.field-options-editor{
+  max-width: 40rem;
+  margin-bottom: 1.5rem;
+
+  h4{
+    margin: 0 0 0.5rem;
+    color: var(--mat-sys-primary);
+  }
+}
+
+.option-chip-row{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.option-chip{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.375rem 0.25rem 0.75rem;
+  border-radius: 999px;
+  background: var(--mat-sys-surface-container-low);
+  color: #ffffff;
+  font-size: 0.875rem;
+
+  button{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: none;
+    color: var(--mat-sys-on-surface-variant);
+    cursor: pointer;
+
+    &:hover{
+      color: #ff6b6b;
+    }
+
+    mat-icon{
+      font-size: 1rem;
+      width: 1rem;
+      height: 1rem;
+    }
+  }
+}
+
+.add-option-row{
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+
+  mat-form-field{
+    flex: 1;
+    max-width: 20rem;
+  }
+
+  button{
+    margin-top: 0.25rem;
+  }
+}
+
+.empty-hint{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+  margin-bottom: 0.75rem;
+}
+
+.error-message{
+  color: #ff6b6b;
+  margin: 0.5rem 0 0;
+}
+
+.suggested-values{
+  margin-top: 0.75rem;
+}
+
+.suggested-values-hint{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8125rem;
+  margin: 0 0 0.5rem;
+}
+
+.suggested-chip{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  border: 1px dashed var(--mat-sys-outline-variant);
+  background: none;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+  cursor: pointer;
+
+  &:hover:not(:disabled){
+    border-style: solid;
+    color: var(--mat-sys-primary);
+  }
+
+  &:disabled{
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  mat-icon{
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+}

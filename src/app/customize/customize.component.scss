@@ -16,6 +16,30 @@
   }
 }
 
+.customize-tab-content{
+  padding: 1.5rem 0.25rem;
+}
+
+.customize-card{
+  max-width: 40rem;
+  margin-bottom: 2rem;
+  padding: 1.75rem 2rem;
+  background: var(--mat-sys-surface-container-low);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 0.75rem;
+
+  .customize-section{
+    max-width: none;
+    margin-bottom: 0;
+
+    & + .customize-section{
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--mat-sys-outline-variant);
+    }
+  }
+}
+
 .customize-section{
   max-width: 40rem;
   margin-bottom: 2.5rem;

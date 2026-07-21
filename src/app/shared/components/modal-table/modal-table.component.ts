@@ -8,16 +8,18 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { InventoryItem, MAX_INVENTORY_ITEM_IMAGES, isLowStock } from '../../models/inventory-item.model';
 import { ImageGalleryComponent } from '../image-gallery/image-gallery.component';
 import { CreateTaskModalComponent } from '../create-task-modal/create-task-modal.component';
-import { AuthService } from '../../../core/auth.service';
+import { AuthService, Profile } from '../../../core/auth.service';
 import { SupabaseService } from '../../../core/supabase.service';
+import { InventoryFieldOptionsService } from '../../../core/inventory-field-options.service';
 import { toIsoDateString, parseIsoDate } from '../../utils/date';
 import { logInventoryItemActivity } from '../../utils/inventory-item-activity';
-import { profileDisplayName } from '../../utils/profile-label';
+import { profileDisplayName, resolveProfileName } from '../../utils/profile-label';
 import {
   InventoryItemImageRecord,
   deleteInventoryItemImage,
@@ -36,6 +38,7 @@ const FIELD_LABELS: Record<string, string> = {
   supplierName: 'Supplier name',
   supplierLeadTime: 'Supplier lead time',
   orderLink: 'Order link',
+  checkedOutTo: 'Checked out to',
   quantityTotal: 'Quantity total',
   quantityPerContainer: 'Quantity per container',
   quantityAllocated: 'Quantity allocated',
@@ -58,6 +61,7 @@ const FIELD_LABELS: Record<string, string> = {
         MatTabsModule,
         MatFormFieldModule,
         MatInputModule,
+        MatSelectModule,
         MatProgressSpinnerModule,
         MatDatepickerModule,
         ImageGalleryComponent
@@ -70,6 +74,7 @@ export class ModalTableComponent {
   dialogRef = inject(MatDialogRef<ModalTableComponent>);
   data = inject<InventoryItem>(MAT_DIALOG_DATA);
   protected authService = inject(AuthService);
+  protected inventoryFieldOptions = inject(InventoryFieldOptionsService);
   private dialog = inject(MatDialog);
   private supabase = inject(SupabaseService).client;
 
@@ -95,6 +100,30 @@ export class ModalTableComponent {
     return this.maxInventoryItemImages - activeExisting - this.newImageFiles.length;
   }
 
+  /** Approved options plus the item's own current value, even if that value
+   *  isn't (or is no longer) on the approved list — otherwise editing an item
+   *  whose category/location predates the admin's list would blank it out. */
+  get categoryOptions(): string[] {
+    return this.withCurrentValue(this.inventoryFieldOptions.optionsFor('category'), this.data.category);
+  }
+
+  get physicalLocationOptions(): string[] {
+    return this.withCurrentValue(this.inventoryFieldOptions.optionsFor('physical_location'), this.data.physicalLocation);
+  }
+
+  private withCurrentValue(approved: string[], current: string): string[] {
+    return current && !approved.includes(current) ? [current, ...approved] : approved;
+  }
+
+  /** Org members eligible to be picked in the "Checked out to" selector.
+   *  Loaded fresh on every startEdit() — cheap, and keeps this self-sufficient
+   *  regardless of whether the parent component already loaded a profile list. */
+  orgProfiles: Profile[] = [];
+
+  profileLabel(profile: Profile): string {
+    return profileDisplayName(profile);
+  }
+
   editForm = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     category: new FormControl('', { nonNullable: true }),
@@ -106,6 +135,7 @@ export class ModalTableComponent {
     supplierName: new FormControl('', { nonNullable: true }),
     supplierLeadTime: new FormControl('', { nonNullable: true }),
     orderLink: new FormControl('', { nonNullable: true }),
+    checkedOutTo: new FormControl<string | null>(null),
     quantityTotal: new FormControl(0, { nonNullable: true, validators: [Validators.required, Validators.min(0)] }),
     quantityPerContainer: new FormControl<number | null>(null),
     quantityAllocated: new FormControl(0, { nonNullable: true, validators: [Validators.min(0)] }),
@@ -166,6 +196,7 @@ export class ModalTableComponent {
       supplierName: this.data.supplierName,
       supplierLeadTime: this.data.supplierLeadTime,
       orderLink: this.data.orderLink,
+      checkedOutTo: this.data.checkedOutToId,
       quantityTotal: this.data.quantityTotal,
       quantityPerContainer: this.data.quantityPerContainer,
       quantityAllocated: this.data.quantityAllocated,
@@ -176,7 +207,13 @@ export class ModalTableComponent {
     });
     this.removedImageIds.clear();
     this.clearNewImages();
-    this.existingImages = await loadInventoryItemImageRecords(this.supabase, this.data.id);
+    const [existingImages, { data: profiles }] = await Promise.all([
+      loadInventoryItemImageRecords(this.supabase, this.data.id),
+      this.supabase.from('profiles').select('*').order('full_name'),
+      this.inventoryFieldOptions.load()
+    ]);
+    this.existingImages = existingImages;
+    this.orgProfiles = profiles ?? [];
     this.isEditing = true;
   }
 
@@ -257,6 +294,8 @@ export class ModalTableComponent {
       supplier_name: value.supplierName || null,
       supplier_lead_time: value.supplierLeadTime || null,
       order_link: value.orderLink || null,
+      checked_out_to: value.checkedOutTo,
+      is_checked_out: value.checkedOutTo !== null,
       quantity_total: value.quantityTotal,
       quantity_per_container: value.quantityPerContainer,
       quantity_allocated: value.quantityAllocated,
@@ -283,6 +322,9 @@ export class ModalTableComponent {
       supplierName: value.supplierName,
       supplierLeadTime: value.supplierLeadTime,
       orderLink: value.orderLink,
+      isCheckedOut: value.checkedOutTo !== null,
+      checkedOutTo: resolveProfileName(value.checkedOutTo, this.orgProfiles),
+      checkedOutToId: value.checkedOutTo,
       quantityTotal: value.quantityTotal,
       quantityPerContainer: value.quantityPerContainer ?? 0,
       quantityAllocated: value.quantityAllocated,
@@ -376,6 +418,7 @@ export class ModalTableComponent {
       supplierName: this.data.supplierName,
       supplierLeadTime: this.data.supplierLeadTime,
       orderLink: this.data.orderLink,
+      checkedOutTo: this.data.checkedOutTo,
       quantityTotal: this.data.quantityTotal,
       quantityPerContainer: this.data.quantityPerContainer,
       quantityAllocated: this.data.quantityAllocated,
@@ -386,7 +429,8 @@ export class ModalTableComponent {
     };
     const after: Record<string, unknown> = {
       ...value,
-      expirationDate: toIsoDateString(value.expirationDate) ?? ''
+      expirationDate: toIsoDateString(value.expirationDate) ?? '',
+      checkedOutTo: resolveProfileName(value.checkedOutTo, this.orgProfiles)
     };
 
     const changes: string[] = [];

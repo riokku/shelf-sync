@@ -1,0 +1,49 @@
+<div class="field-options-editor">
+  <h4>{{ label }}</h4>
+  @if (options.length > 0) {
+    <div class="option-chip-row">
+      @for (value of options; track value) {
+        <span class="option-chip">
+          {{ value }}
+          <button type="button" (click)="removeOption(value)" [attr.aria-label]="'Remove ' + value">
+            <mat-icon>close</mat-icon>
+          </button>
+        </span>
+      }
+    </div>
+  } @else {
+    <p class="empty-hint">No options yet.</p>
+  }
+  <div class="add-option-row">
+    <mat-form-field appearance="outline">
+      <input matInput placeholder="Add option" [(ngModel)]="newValue" (keydown.enter)="addOption()" />
+    </mat-form-field>
+    <button mat-stroked-button type="button" (click)="addOption()" [disabled]="!newValue.trim() || isSaving">
+      <mat-icon>add</mat-icon>
+      Add
+    </button>
+  </div>
+  @if (error) {
+    <p class="error-message">{{ error }}</p>
+  }
+  @if (isLoadingUsedValues) {
+    <mat-spinner diameter="20"></mat-spinner>
+  } @else if (suggestedValues.length > 0) {
+    <div class="suggested-values">
+      <p class="suggested-values-hint">Already in use on existing items, not yet approved:</p>
+      <div class="option-chip-row">
+        @for (value of suggestedValues; track value) {
+          <button
+              type="button"
+              class="suggested-chip"
+              [disabled]="!!addingSuggestion"
+              (click)="addSuggestion(value)"
+            >
+            <mat-icon>add</mat-icon>
+            {{ value }}
+          </button>
+        }
+      </div>
+    </div>
+  }
+</div>

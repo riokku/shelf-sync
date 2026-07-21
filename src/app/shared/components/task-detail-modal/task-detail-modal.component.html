@@ -1,10 +1,23 @@
 <h2 mat-dialog-title>{{ task.title }}</h2>
 <mat-dialog-content>
   @if (task.related_item_name) {
-    <p class="related-item-banner">
+    <button
+        type="button"
+        class="related-item-banner"
+        [disabled]="isLoadingRelatedItem"
+        (click)="openRelatedItem()"
+      >
       <mat-icon>inventory_2</mat-icon>
       <strong>{{ task.related_item_name }}</strong>
-    </p>
+      @if (isLoadingRelatedItem) {
+        <mat-spinner diameter="16"></mat-spinner>
+      } @else {
+        <mat-icon class="related-item-arrow">arrow_forward</mat-icon>
+      }
+    </button>
+    @if (relatedItemError) {
+      <p class="error-message">{{ relatedItemError }}</p>
+    }
   }
 
   @if (task.description) {
@@ -18,6 +31,13 @@
     }
     <dt>Created</dt>
     <dd>{{ task.created_at | date: 'M/d/yy' }}</dd>
+    <dt>Task ID</dt>
+    <dd class="task-id-row">
+      <code>{{ task.id }}</code>
+      <button mat-icon-button type="button" (click)="copyTaskId()" [attr.aria-label]="'Copy task ID'">
+        <mat-icon>{{ taskIdCopied ? 'check' : 'content_copy' }}</mat-icon>
+      </button>
+    </dd>
   </dl>
 
   <mat-form-field appearance="outline" class="status-field">

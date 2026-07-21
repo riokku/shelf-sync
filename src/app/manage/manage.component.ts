@@ -15,6 +15,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialog } from '@angular/material/dialog';
 import { SupabaseService } from '../core/supabase.service';
 import { AuthService, Profile } from '../core/auth.service';
+import { InventoryFieldOptionsService } from '../core/inventory-field-options.service';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 import { TaskDetailModalComponent } from '../shared/components/task-detail-modal/task-detail-modal.component';
 import { ModalTableComponent } from '../shared/components/modal-table/modal-table.component';
@@ -62,6 +63,7 @@ interface TeamMember {
 export class ManageComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
   protected authService = inject(AuthService);
+  protected inventoryFieldOptions = inject(InventoryFieldOptionsService);
   private dialog = inject(MatDialog);
 
   private currentUserId: string | null = null;
@@ -77,18 +79,23 @@ export class ManageComponent implements OnInit {
   isLoadingTeam = true;
 
   taskViewMode: 'create' | 'all' = 'create';
+  taskFilterSearch = '';
   taskFilterAssignee: string | null = null;
   taskFilterStatus: TaskStatus | null = null;
   taskFilterDueBefore: Date | null = null;
 
   get hasActiveTaskFilters(): boolean {
-    return !!this.taskFilterAssignee || !!this.taskFilterStatus || !!this.taskFilterDueBefore;
+    return !!this.taskFilterSearch || !!this.taskFilterAssignee || !!this.taskFilterStatus || !!this.taskFilterDueBefore;
   }
 
   get filteredAllTasks(): Task[] {
     const dueBefore = toIsoDateString(this.taskFilterDueBefore);
+    const searchTerm = this.taskFilterSearch.trim().toLowerCase();
 
     return this.allTasks.filter(task => {
+      if (searchTerm && !task.title.toLowerCase().includes(searchTerm) && !task.id.toLowerCase().includes(searchTerm)) {
+        return false;
+      }
       if (this.taskFilterAssignee && task.assigned_to !== this.taskFilterAssignee) {
         return false;
       }
@@ -175,7 +182,8 @@ export class ManageComponent implements OnInit {
     await Promise.all([
       this.loadTeamTasks(),
       this.loadInventoryItems(),
-      this.loadInviteLink()
+      this.loadInviteLink(),
+      this.inventoryFieldOptions.load()
     ]);
   }
 
@@ -309,6 +317,7 @@ export class ManageComponent implements OnInit {
   }
 
   clearTaskFilters() {
+    this.taskFilterSearch = '';
     this.taskFilterAssignee = null;
     this.taskFilterStatus = null;
     this.taskFilterDueBefore = null;

@@ -94,7 +94,12 @@
                 <mat-form-field appearance="outline">
                   <mat-label>Category</mat-label>
                   <mat-icon matPrefix>category</mat-icon>
-                  <input matInput formControlName="category" />
+                  <mat-select formControlName="category">
+                    <mat-option [value]="''">None</mat-option>
+                    @for (option of categoryOptions; track option) {
+                      <mat-option [value]="option">{{ option }}</mat-option>
+                    }
+                  </mat-select>
                 </mat-form-field>
                 <mat-form-field appearance="outline">
                   <mat-label>Applicable year</mat-label>
@@ -113,7 +118,12 @@
                 <mat-form-field appearance="outline">
                   <mat-label>Physical location</mat-label>
                   <mat-icon matPrefix>place</mat-icon>
-                  <input matInput formControlName="physicalLocation" />
+                  <mat-select formControlName="physicalLocation">
+                    <mat-option [value]="''">None</mat-option>
+                    @for (option of physicalLocationOptions; track option) {
+                      <mat-option [value]="option">{{ option }}</mat-option>
+                    }
+                  </mat-select>
                 </mat-form-field>
                 <mat-form-field appearance="outline">
                   <mat-label>Digital location</mat-label>
@@ -296,17 +306,43 @@
               <mat-icon class="me-2">info</mat-icon>
               Other information
             </header>
-            <table class="info-table">
-              <tr>
-                <td width="33%">
-                  <strong>Status:</strong> {{data.isCheckedOut}}
-                </td>
-                <td width="33%">
-                  <strong>Checked out to:</strong> {{data.checkedOutTo}}
-                </td>
-                <td width="33%">&nbsp;</td>
-              </tr>
-            </table>
+            @if (isEditing) {
+              <div class="edit-field-row">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Checked out to</mat-label>
+                  <mat-icon matPrefix>person</mat-icon>
+                  <mat-select formControlName="checkedOutTo">
+                    <mat-option [value]="null">Not checked out</mat-option>
+                    @for (profile of orgProfiles; track profile.id) {
+                      <mat-option [value]="profile.id">{{ profileLabel(profile) }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              </div>
+            } @else {
+              <table class="info-table">
+                <tr>
+                  <td width="33%">
+                    <strong>Status:</strong>
+                    @if (data.isCheckedOut) {
+                      <span class="status-pill checked-out">
+                        <mat-icon>person</mat-icon>
+                        Checked out
+                      </span>
+                    } @else {
+                      <span class="status-pill available">
+                        <mat-icon>check_circle</mat-icon>
+                        Available
+                      </span>
+                    }
+                  </td>
+                  <td width="33%">
+                    <strong>Checked out to:</strong> {{data.checkedOutTo || '—'}}
+                  </td>
+                  <td width="33%">&nbsp;</td>
+                </tr>
+              </table>
+            }
           </section>
         </div>
       </mat-tab>

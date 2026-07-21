@@ -34,6 +34,7 @@ export function toInventoryItem(
     row.price_per_container ?? 0,
     row.is_checked_out,
     checkedOutToLabel,
+    row.checked_out_to,
     activityLog
   );
 }

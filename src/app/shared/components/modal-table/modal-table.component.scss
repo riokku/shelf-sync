@@ -164,6 +164,32 @@
   }
 }
 
+.status-pill{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+
+  mat-icon{
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+
+  &.checked-out{
+    background: var(--mat-sys-tertiary-container);
+    color: var(--mat-sys-on-tertiary-container);
+  }
+
+  &.available{
+    background: #2b8a3e;
+    color: #ffffff;
+  }
+}
+
 .info-table{
   // width: 100%;
   width: calc(100% - 1.5rem);

@@ -1,19 +1,27 @@
-import { Component, OnDestroy, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTabsModule } from '@angular/material/tabs';
+import { InventoryFieldOptionsService } from '../core/inventory-field-options.service';
 import { SiteSettingsService } from '../core/site-settings.service';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
+import { FieldOptionsEditorComponent } from '../shared/components/field-options-editor/field-options-editor.component';
 import { THEME_PRESETS } from '../shared/models/theme-preset';
 
 @Component({
   selector: 'app-customize',
-  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, BreadcrumbsComponent],
+  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, MatTabsModule, BreadcrumbsComponent, FieldOptionsEditorComponent],
   templateUrl: './customize.component.html',
   styleUrl: './customize.component.scss'
 })
-export class CustomizeComponent implements OnDestroy {
+export class CustomizeComponent implements OnInit, OnDestroy {
   protected siteSettings = inject(SiteSettingsService);
+  protected inventoryFieldOptions = inject(InventoryFieldOptionsService);
+
+  async ngOnInit() {
+    await this.inventoryFieldOptions.load();
+  }
 
   readonly presets = THEME_PRESETS;
   selectedTheme = this.siteSettings.theme();

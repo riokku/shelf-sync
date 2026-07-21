@@ -94,6 +94,7 @@
   pointer-events: none;
 }
 
+.checked-out-badge,
 .low-stock-badge,
 .quantity-badge{
   position: absolute;
@@ -110,6 +111,13 @@
     width: 1rem;
     height: 1rem;
   }
+}
+
+.checked-out-badge{
+  top: 0.5rem;
+  left: 0.5rem;
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
 }
 
 .low-stock-badge{
