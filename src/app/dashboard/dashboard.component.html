@@ -14,69 +14,67 @@
         <div class="search-wrapper">
           <mat-form-field appearance="outline">
             <mat-icon matPrefix>search</mat-icon>
-            <input matInput placeholder="Search by name or ID" [(ngModel)]="searchTerm" />
+            <input matInput placeholder="Search by name or ID" [ngModel]="searchTerm" (ngModelChange)="onSearchChange($event)" />
           </mat-form-field>
         </div>
         <h3>
           Filter
         </h3>
-        <div class="stock-filter">
-          <mat-checkbox
-              [checked]="showLowStockOnly"
-              (change)="showLowStockOnly = $event.checked"
-            >
-            <mat-icon class="warning-icon">warning</mat-icon>
-            Low stock only
-          </mat-checkbox>
-        </div>
-        <mat-accordion>
+        <mat-accordion multi>
           <mat-expansion-panel>
             <mat-expansion-panel-header>
-              <mat-panel-title><mat-icon class="me-2">folder</mat-icon> Documents</mat-panel-title>
+              <mat-panel-title><mat-icon class="me-2">warning</mat-icon> Stock level</mat-panel-title>
             </mat-expansion-panel-header>
-            <mat-accordion>
-              <mat-expansion-panel>
-                <mat-expansion-panel-header>
-                  <mat-panel-title><mat-icon class="me-2">description</mat-icon> Work</mat-panel-title>
-                </mat-expansion-panel-header>
-                @for (option of filterOptions; track option) {
-                  <div>
-                    <mat-checkbox
-                      [checked]="selectedOptions.includes(option.value)"
-                      (change)="toggleOption(option.value, $event.checked)">{{option.label}}</mat-checkbox>
-                  </div>
-                }
-              </mat-expansion-panel>
-              <mat-expansion-panel>
-                <mat-expansion-panel-header>
-                  <mat-panel-title><mat-icon class="me-2">description</mat-icon> Home</mat-panel-title>
-                </mat-expansion-panel-header>
-                Content of Home
-              </mat-expansion-panel>
-            </mat-accordion>
+            @for (option of stockLevelOptions; track option.value) {
+              <div>
+                <mat-checkbox
+                    [checked]="selectedStockLevels.includes(option.value)"
+                    (change)="toggleStockLevel(option.value, $event.checked)"
+                  >{{ option.label }}</mat-checkbox>
+              </div>
+            }
           </mat-expansion-panel>
           <mat-expansion-panel>
             <mat-expansion-panel-header>
-              <mat-panel-title><mat-icon class="me-2">image</mat-icon> Pictures</mat-panel-title>
+              <mat-panel-title><mat-icon class="me-2">category</mat-icon> Category</mat-panel-title>
             </mat-expansion-panel-header>
-            <mat-accordion>
-              <mat-expansion-panel>
-                <mat-expansion-panel-header>
-                  <mat-panel-title><mat-icon class="me-2">photo_camera</mat-icon> Vacation</mat-panel-title>
-                </mat-expansion-panel-header>
-                Content of Vacation
-              </mat-expansion-panel>
-            </mat-accordion>
-            <mat-accordion>
-              <mat-expansion-panel>
-                <mat-expansion-panel-header>
-                  <mat-panel-title><mat-icon class="me-2">photo_camera</mat-icon> Vacation</mat-panel-title>
-                </mat-expansion-panel-header>
-                Content of Vacation
-              </mat-expansion-panel>
-            </mat-accordion>
+            @if (categoryFilterOptions.length === 0) {
+              <p class="empty-filter-hint">No categories set on any items yet.</p>
+            } @else {
+              @for (option of categoryFilterOptions; track option) {
+                <div>
+                  <mat-checkbox
+                      [checked]="selectedCategories.includes(option)"
+                      (change)="toggleCategory(option, $event.checked)"
+                    >{{ option }}</mat-checkbox>
+                </div>
+              }
+            }
+          </mat-expansion-panel>
+          <mat-expansion-panel>
+            <mat-expansion-panel-header>
+              <mat-panel-title><mat-icon class="me-2">place</mat-icon> Physical location</mat-panel-title>
+            </mat-expansion-panel-header>
+            @if (physicalLocationFilterOptions.length === 0) {
+              <p class="empty-filter-hint">No physical locations set on any items yet.</p>
+            } @else {
+              @for (option of physicalLocationFilterOptions; track option) {
+                <div>
+                  <mat-checkbox
+                      [checked]="selectedPhysicalLocations.includes(option)"
+                      (change)="togglePhysicalLocation(option, $event.checked)"
+                    >{{ option }}</mat-checkbox>
+                </div>
+              }
+            }
           </mat-expansion-panel>
         </mat-accordion>
+        @if (hasActiveFilters) {
+          <button mat-button type="button" class="clear-filters-button" (click)="clearFilters()">
+            <mat-icon>clear</mat-icon>
+            Clear filters
+          </button>
+        }
       </div>
     </div>
     <div class="col-12 col-md-8 col-lg-9">
@@ -102,10 +100,24 @@
             </div>
           </div>
         </div>
+        @if (filteredInventoryList.length === 0) {
+          <div class="row">
+            <div class="col-12">
+              <div class="no-results">
+                <mat-icon class="no-results-icon">search_off</mat-icon>
+                <p>No items match your filters.</p>
+                <button mat-stroked-button type="button" (click)="clearFilters()">
+                  <mat-icon class="clear-filters-icon">clear</mat-icon>
+                  Clear filters
+                </button>
+              </div>
+            </div>
+          </div>
+        } @else {
         <div class="row">
           <div class="col-12">
             <div class="row inventory-gallery-wrapper">
-              @for (item of filteredInventoryList; track item.id) {
+              @for (item of pagedInventoryList; track item.id) {
                 <div class="col-12 col-md-6 col-lg-4 inventory-card">
                   <mat-card>
                     <img mat-card-image alt="Card" src="{{item.image}}" />
@@ -145,8 +157,18 @@
                 </div>
               }
             </div>
+            <mat-paginator
+                class="inventory-paginator"
+                [length]="filteredInventoryList.length"
+                [pageSize]="pageSize"
+                [pageIndex]="pageIndex"
+                [hidePageSize]="true"
+                [showFirstLastButtons]="true"
+                (page)="onPageChange($event)"
+              ></mat-paginator>
           </div>
         </div>
+        }
       }
     </div>
   </div>

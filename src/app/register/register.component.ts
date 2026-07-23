@@ -14,6 +14,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AuthService } from '../core/auth.service';
+import { SiteSettingsService } from '../core/site-settings.service';
+import { BrandLogoComponent } from '../shared/components/brand-logo/brand-logo.component';
 
 function passwordsMatch(control: AbstractControl): ValidationErrors | null {
   const password = control.get('password')?.value;
@@ -30,13 +32,15 @@ function passwordsMatch(control: AbstractControl): ValidationErrors | null {
         MatButtonModule,
         MatIconModule,
         MatProgressSpinnerModule,
-        RouterModule
+        RouterModule,
+        BrandLogoComponent
     ],
     templateUrl: './register.component.html',
     styleUrl: './register.component.scss'
 })
 export class RegisterComponent implements OnInit {
   private authService = inject(AuthService);
+  private siteSettings = inject(SiteSettingsService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
 
@@ -58,6 +62,7 @@ export class RegisterComponent implements OnInit {
   /** Set once an invite link's `?org=` slug resolves — locks the form into
    *  "join this organization" mode instead of creating a new one. */
   joiningOrganization: { id: string; name: string } | null = null;
+  joiningOrganizationLogoUrl: string | null = null;
   invalidInviteLink = false;
 
   async ngOnInit() {
@@ -70,6 +75,7 @@ export class RegisterComponent implements OnInit {
     const org = await this.authService.resolveOrganizationBySlug(slug);
     if (org) {
       this.joiningOrganization = org;
+      this.joiningOrganizationLogoUrl = await this.siteSettings.loadLogoUrlForOrganization(org.id);
     } else {
       this.invalidInviteLink = true;
       this.requireOrganizationName();

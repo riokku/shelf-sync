@@ -15,7 +15,7 @@
       @if (incompleteTasks.length === 0) {
         <p class="empty-hint">Nothing outstanding — nice work.</p>
       } @else {
-        <div class="task-grid">
+        <div class="task-rows">
           @for (task of incompleteTasks; track task.id) {
             <app-task-card [task]="task" (open)="openTask($event)" />
           }
@@ -28,7 +28,7 @@
       @if (completedTasks.length === 0) {
         <p class="empty-hint">No completed tasks yet.</p>
       } @else {
-        <div class="task-grid">
+        <div class="task-rows">
           @for (task of completedTasks; track task.id) {
             <app-task-card [task]="task" (open)="openTask($event)" />
           }

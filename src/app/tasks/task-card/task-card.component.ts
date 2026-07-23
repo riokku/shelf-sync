@@ -1,6 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { Database } from '../../shared/models/database.types';
 import { TASK_STATUS_LABELS } from '../../shared/models/task-status';
@@ -10,7 +9,7 @@ type Task = Database['public']['Tables']['tasks']['Row'];
 
 @Component({
   selector: 'app-task-card',
-  imports: [DatePipe, MatCardModule, MatIconModule],
+  imports: [DatePipe, MatIconModule],
   templateUrl: './task-card.component.html',
   styleUrl: './task-card.component.scss',
 })

@@ -327,7 +327,6 @@ export class ManageComponent implements OnInit {
     const dialogRef = this.dialog.open(TaskDetailModalComponent, {
       data: task,
       width: 'clamp(75%, 25rem, 60%)',
-      maxWidth: '90vw',
       panelClass: 'task-details-dialog'
     });
 

@@ -79,6 +79,7 @@ export class ModalTableComponent {
   private supabase = inject(SupabaseService).client;
 
   idCopied = false;
+  linkCopied = false;
 
   get isLowStock(): boolean {
     return isLowStock(this.data);
@@ -161,6 +162,15 @@ export class ModalTableComponent {
     await navigator.clipboard.writeText(this.data.id);
     this.idCopied = true;
     setTimeout(() => this.idCopied = false, 1500);
+  }
+
+  /** Deep link straight to this item's detail popup — read by
+   *  DashboardComponent's ?item= handling in ngOnInit(). */
+  async copyLink(){
+    const url = `${window.location.origin}/dashboard?item=${this.data.id}`;
+    await navigator.clipboard.writeText(url);
+    this.linkCopied = true;
+    setTimeout(() => this.linkCopied = false, 1500);
   }
 
   activityIcon(message: string): string {

@@ -6,5 +6,20 @@
   img{
     width: clamp(40px, 30px, 100%);
     float: right;
+
+    // studio-rio-logo-white.png is a solid near-white mark with no
+    // light-mode counterpart asset; inverting it is a lightweight way to
+    // get a near-black mark instead of losing it against a light footer
+    // background. Safe for a flat single-color logo like this one — alpha
+    // (the transparent background around it) is untouched by invert().
+    //
+    // :host-context(), not a raw `html[data-mode='light'] &` — [data-mode]
+    // lives on <html>, outside this component's own view (see the matching
+    // note in app.component.scss for why a plain ancestor selector silently
+    // never matches once Angular's emulated encapsulation attribute gets
+    // appended to it).
+    :host-context([data-mode='light']) &{
+      filter: invert(1);
+    }
   }
 }

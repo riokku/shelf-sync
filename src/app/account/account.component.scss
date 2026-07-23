@@ -1,7 +1,7 @@
 @use '../shared/styles/page-toolbar';
 
 .account-wrapper{
-  color: #ffffff;
+  color: var(--mat-sys-on-surface);
   padding: 3rem 1.5rem;
   max-width: 100%;
 
@@ -18,6 +18,21 @@
 
 mat-card{
   max-width: 40rem;
+}
+
+.appearance-card{
+  margin-top: 1.5rem;
+
+  h3{
+    color: var(--mat-sys-primary);
+    margin: 0 0 0.5rem;
+  }
+}
+
+.section-hint{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
 }
 
 dl{

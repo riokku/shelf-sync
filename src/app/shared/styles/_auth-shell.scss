@@ -11,6 +11,16 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  // Pin this page to dark regardless of the signed-in app's light/dark
+  // toggle (ThemeModeService sets [data-mode] on <html>, which every page
+  // inherits color-scheme from by default). Without this, Angular
+  // Material's own internal styles on the form fields below — labels,
+  // input text, outlines, icons — resolve via the same light-dark() tokens
+  // as the rest of the app and can end up rendering in light-mode colors
+  // against this page's fixed dark video background, which is unreadable.
+  // This page has no light/dark control of its own, so it should never
+  // move off the design it already has.
+  color-scheme: dark;
 }
 
 .content-wrapper{
@@ -89,72 +99,6 @@ h2{
   color: #ffffff;
   font-size: 1.5rem;
   text-align: left;
-}
-
-// Larger standalone mark above the "ShelfSync" wordmark. The wordmark
-// itself is static now (see .happy-title below) — this mark is the only
-// animated piece of the intro, so there's no cross-animation timing to
-// keep in sync.
-.brand-logo{
-  display: block;
-  height: 8rem;
-  width: auto;
-  margin: 0 0 1rem;
-  overflow: visible;
-}
-
-// pathLength="1" on the <path> (see login.component.html) normalizes the
-// SVG's real geometric length to 1, so the dasharray/dashoffset values here
-// don't need to match the path's actual length — 0 to 1 always means
-// "fully undrawn" to "fully drawn" regardless of the artwork. Fill stays
-// transparent throughout — the whole animation is just this one stroke
-// drawing the boxes and brightening from a dark sketch line to white, no
-// separate fill-in stage.
-.brand-logo path{
-  fill: transparent;
-  stroke: color-mix(in srgb, var(--mat-sys-primary) 55%, black);
-  stroke-width: 6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation: logo-stroke-draw 8.5s ease-out 0.15s forwards;
-}
-
-@keyframes logo-stroke-draw {
-  0%{
-    stroke: #ffffff;
-    stroke-width: 8;
-    stroke-dashoffset: 1;
-  }
-  100%{
-    stroke: #ffffff;
-    stroke-dashoffset: 0;
-  }
-}
-
-svg{
-  width: clamp(20rem, 100%, 100%);
-  font-weight: 700;
-  text {
-    font-size: 7rem;
-    letter-spacing: -6px;
-    &.happy-title {
-      // Static now — no stroke-draw animation. It used to run on its own
-      // timer alongside the logo mark's animation and would visibly finish
-      // after it; showing the final look immediately removes that mismatch.
-      fill: #ffffff;
-      stroke: rgb(46, 45, 41);
-      stroke-width: 12;
-      // SVG paints stroke centered on the glyph outline by default, so half
-      // its width bleeds inward over the fill — most visible on thin stems
-      // and tight curves within letters like "S"/"y"/"e". Painting the
-      // stroke first and the fill on top covers that inward half, leaving
-      // only a clean outward border.
-      paint-order: stroke fill;
-    }
-
-  }
 }
 
 button{

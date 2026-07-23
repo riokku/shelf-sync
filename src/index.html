@@ -8,8 +8,26 @@
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <script>
+    // Applies the saved light/dark mode before Angular boots (and before
+    // first paint), so light-mode users don't see a flash of the dark
+    // default while the app loads. Kept in sync with the storage key and
+    // fallback in ThemeModeService (core/theme-mode.service.ts) — update
+    // both together if either changes.
+    (function () {
+      try {
+        var mode = localStorage.getItem('shelfsync-theme-mode');
+        if (mode === 'light' || mode === 'dark') {
+          document.documentElement.setAttribute('data-mode', mode);
+        }
+      } catch (e) {
+        // localStorage unavailable (private browsing, disabled storage) —
+        // fall back to the default dark mode compiled into styles.scss.
+      }
+    })();
+  </script>
 </head>
 <body>
   <app-root></app-root>

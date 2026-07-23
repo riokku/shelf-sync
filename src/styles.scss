@@ -20,11 +20,36 @@ $container-max-widths: (
 // each option is precompiled here under its own [data-theme] attribute
 // selector, and SiteSettingsService just toggles that attribute on <html>.
 // "default" (no attribute) keeps the app's original azure/blue look.
+//
+// Each preset uses theme-type: color-scheme rather than a fixed light/dark,
+// which makes mat.theme() emit every --mat-sys-* role as a
+// light-dark(lightValue, darkValue) pair instead of a single value. The
+// light or dark half of each pair is then selected purely by the
+// `color-scheme` CSS property below — no separate light/dark copy of each
+// color preset is needed. That's driven independently by [data-mode],
+// toggled by ThemeModeService (core/theme-mode.service.ts) — a personal,
+// per-browser preference (localStorage), unlike the org-wide [data-theme]
+// color preset above it, which ThemeModeService has no involvement in.
 html {
   height: 100%;
+  // Fallback for the moment before ThemeModeService.init() runs (and for
+  // the no-JS case) — matches the app's original always-dark look. The
+  // inline script in index.html sets [data-mode] from localStorage before
+  // Angular boots, so this fallback is only actually visible to a
+  // first-ever visitor who hasn't chosen a mode yet.
+  color-scheme: dark;
+
+  &[data-mode='light'] {
+    color-scheme: light;
+  }
+
+  &[data-mode='dark'] {
+    color-scheme: dark;
+  }
+
   @include mat.theme((
     color: (
-      theme-type: dark,
+      theme-type: color-scheme,
       primary: mat.$azure-palette,
       tertiary: mat.$blue-palette,
     ),
@@ -35,7 +60,7 @@ html {
   &[data-theme='violet'] {
     @include mat.theme((
       color: (
-        theme-type: dark,
+        theme-type: color-scheme,
         primary: mat.$violet-palette,
         tertiary: mat.$magenta-palette,
       ),
@@ -47,7 +72,7 @@ html {
   &[data-theme='rose'] {
     @include mat.theme((
       color: (
-        theme-type: dark,
+        theme-type: color-scheme,
         primary: mat.$rose-palette,
         tertiary: mat.$red-palette,
       ),
@@ -59,7 +84,7 @@ html {
   &[data-theme='green'] {
     @include mat.theme((
       color: (
-        theme-type: dark,
+        theme-type: color-scheme,
         primary: mat.$green-palette,
         tertiary: mat.$spring-green-palette,
       ),
@@ -71,7 +96,7 @@ html {
   &[data-theme='orange'] {
     @include mat.theme((
       color: (
-        theme-type: dark,
+        theme-type: color-scheme,
         primary: mat.$orange-palette,
         tertiary: mat.$yellow-palette,
       ),
@@ -86,19 +111,40 @@ html {
   // first (falling back to --mat-sys-on-surface/-on-surface-variant when
   // they're unset), so any dialog without our own explicit title color
   // override — e.g. CreateTaskModalComponent — was rendering in whatever
-  // off-white/gray those system roles resolve to. Setting them directly
-  // makes every dialog's default text pure white regardless of theme.
-  --mat-dialog-subhead-color: #ffffff;
-  --mat-dialog-supporting-text-color: #ffffff;
+  // off-white/gray those system roles resolve to. Pointing them at the same
+  // on-surface/on-surface-variant roles Material would otherwise fall back
+  // to keeps every dialog's default text at that same higher-contrast
+  // reading in both light and dark mode (rather than pure white, which
+  // would be unreadable on a light dialog surface).
+  --mat-dialog-subhead-color: var(--mat-sys-on-surface);
+  --mat-dialog-supporting-text-color: var(--mat-sys-on-surface-variant);
+
+  // Semantic accent colors used for status/feedback text across the app
+  // (error messages, overdue-task indicators, success messages, low-stock
+  // warnings) — independent of the [data-theme] color preset above, so
+  // defined once here rather than duplicated inside each preset block. The
+  // dark-mode value of each is the original hardcoded hex it replaces;
+  // the light-mode value is a deeper shade chosen for contrast against a
+  // light surface.
+  --app-error-text: light-dark(#c92a2a, #ff6b6b);
+  --app-overdue-text: light-dark(#c92a2a, #e03131);
+  --app-success-text: light-dark(#2b8a3e, #51cf66);
+  --app-warning-text: light-dark(#a15c00, #f59f00);
 }
 
 body {
-  color-scheme: dark;
   background-color: var(--mat-sys-surface);
-  color: #ffffff;
+  color: var(--mat-sys-on-surface);
   font: var(--mat-sys-body-medium);
   height: 100%;
   margin: 0;
+}
+
+// Use instead of <strong>/<b> across the app — semibold weight rather than a
+// semantic-emphasis tag, since these usages are purely visual (labels,
+// names). Roboto weight 600 is loaded in index.html's Google Fonts link.
+.semibold{
+  font-weight: 600;
 }
 
 // mat-icon renders its glyph in a fixed-size box that doesn't always land
@@ -145,11 +191,11 @@ mat-icon{
 // specific .item-details-dialog/.task-details-dialog rule below still wins
 // for dialogs that intentionally use a colored title band instead.
 .mat-mdc-dialog-title{
-  color: #ffffff;
+  color: var(--mat-sys-on-surface);
 }
 
 .mat-mdc-dialog-content{
-  color: #ffffff;
+  color: var(--mat-sys-on-surface);
 }
 
 .item-details-dialog,

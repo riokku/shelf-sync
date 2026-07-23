@@ -46,6 +46,23 @@ export class SiteSettingsService {
     this.applyTheme(this._theme());
   }
 
+  /** Resolves a specific organization's logo, independent of the caller's own
+   *  session — used by the register page to preview an invite link's org
+   *  logo before signup, via the anon-readable site_settings policy scoped
+   *  to branding only (theme/logo aren't sensitive). */
+  async loadLogoUrlForOrganization(organizationId: string): Promise<string | null> {
+    const { data } = await this.supabase
+      .from('site_settings')
+      .select('logo_storage_path')
+      .eq('organization_id', organizationId)
+      .maybeSingle();
+
+    if (!data?.logo_storage_path) {
+      return null;
+    }
+    return this.supabase.storage.from(LOGO_BUCKET).getPublicUrl(data.logo_storage_path).data.publicUrl;
+  }
+
   /** Swaps the [data-theme] attribute driving the precompiled theme blocks
    *  in styles.scss, without persisting anything — used for live preview. */
   applyTheme(theme: string) {

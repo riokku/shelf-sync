@@ -1,64 +1,51 @@
-// The host is a grid item in .task-grid (tasks.component.scss); grid's
-// default align-items: stretch already sizes this element to the row's
-// tallest card, but that only helps once the host is a block box its own
-// content can fill.
+// The host is a flex item in .task-rows (tasks.component.scss).
 :host{
   display: block;
-  height: 100%;
 }
 
-.task-card{
-  display: flex;
-  flex-direction: column;
-  height: 100%;
+// Mirrors manage.component.scss's .task-row (used for Manage's admin All
+// tasks/All inventory views) for a consistent look across the app, minus
+// the assignee and delete-button columns, which don't apply to a personal
+// task list scoped to the current user.
+.task-row{
+  display: grid;
+  grid-template-columns: minmax(10rem, 2fr) minmax(8rem, 1fr) 7.5rem;
+  align-items: center;
+  column-gap: 1.5rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: 0.5rem;
+  background: var(--mat-sys-surface-container-low);
   cursor: pointer;
-  // Clips children (the overdue banner's square top corners, the left
-  // border accent) to the card's own rounded corners — without this, the
-  // banner's flat top edge pokes past the card's curve at each side.
-  overflow: hidden;
 
-  mat-card-content{
-    flex-grow: 1;
+  &:hover{
+    background: var(--mat-sys-surface-container);
+  }
 
-    p{
-      margin-top: 0;
+  // No border accent for overdue rows — the red icon/text below is enough
+  // of a signal on its own.
+  &.overdue .task-row-due{
+    color: var(--app-overdue-text);
+
+    mat-icon{
+      color: var(--app-overdue-text);
     }
   }
-
-  &.overdue{
-    border-left: 4px solid #e03131;
-  }
 }
 
-// A full-width strip in normal flow (not an absolutely-positioned corner
-// badge) so it never overlaps the title regardless of how long it is.
-.overdue-banner{
+.task-row-main{
   display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.4rem 1rem;
-  background: #e03131;
-  color: #ffffff;
-  font-size: 0.75rem;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.task-row-title{
   font-weight: 600;
-  text-transform: uppercase;
-
-  mat-icon{
-    font-size: 1rem;
-    width: 1rem;
-    height: 1rem;
-  }
 }
 
-.overdue-text{
-  color: #e03131 !important;
-}
-
-.related-item{
+.task-row-item{
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  margin: 0 0 0.5rem;
   color: var(--mat-sys-primary);
   font-size: 0.8125rem;
 
@@ -69,8 +56,25 @@
   }
 }
 
+.task-row-due{
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--mat-sys-on-surface-variant);
+
+  mat-icon{
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
 .status-badge{
-  display: inline-block;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
   padding: 0.25rem 0.75rem;
   border-radius: 999px;
   font-size: 0.75rem;

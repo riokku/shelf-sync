@@ -1,7 +1,7 @@
 @use '../shared/styles/page-toolbar';
 
 .manage-wrapper{
-  color: #ffffff;
+  color: var(--mat-sys-on-surface);
   padding: 3rem 1.5rem;
   max-width: 100%;
 
@@ -104,12 +104,12 @@
 }
 
 .error-message{
-  color: #ff6b6b;
+  color: var(--app-error-text);
   margin: -0.5rem 0 1rem;
 }
 
 .success-message{
-  color: #51cf66;
+  color: var(--app-success-text);
   margin: -0.5rem 0 1rem;
 }
 
@@ -143,7 +143,7 @@
     border-radius: 0.5rem;
     border: 1px solid var(--mat-sys-outline-variant);
     background: var(--mat-sys-surface-container-low);
-    color: #ffffff;
+    color: var(--mat-sys-on-surface);
     font: inherit;
   }
 }
@@ -248,7 +248,7 @@ mat-panel-description{
   background: var(--mat-sys-surface-container-low);
 
   &.overdue{
-    border-left: 4px solid #e03131;
+    border-left: 4px solid var(--app-overdue-text);
   }
 
   &.clickable{
@@ -315,10 +315,10 @@ mat-panel-description{
 }
 
 .task-row.overdue .task-row-due{
-  color: #e03131;
+  color: var(--app-overdue-text);
 
   mat-icon{
-    color: #e03131;
+    color: var(--app-overdue-text);
   }
 }
 
@@ -345,7 +345,7 @@ mat-panel-description{
   color: var(--mat-sys-on-surface-variant);
 
   &:hover{
-    color: #e03131;
+    color: var(--app-overdue-text);
   }
 }
 

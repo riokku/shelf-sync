@@ -1,5 +1,30 @@
 @use '../shared/styles/auth-shell';
 
+// Wider than login's shared default — the sign-up form has six fields
+// (org name, full name, nickname, email, password, confirm password) vs.
+// login's two, so it needs more breathing room than auth-shell's base width.
+.content-wrapper{
+  width: clamp(800px, 70vw, 1100px);
+}
+
+// Pairs fields side by side where it makes sense (name/nickname,
+// password/confirm) now that the wider container has room; org name and
+// email each stay on their own full-width row. Matches the same
+// field-row/full-width pattern already used in manage.component.scss.
+.field-row{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+
+  mat-form-field{
+    flex: 1 1 12rem;
+  }
+}
+
+.full-width{
+  width: 100%;
+}
+
 .benefits-list{
   list-style: none;
   margin: 0;
@@ -33,6 +58,14 @@
   mat-icon{
     color: var(--mat-sys-primary);
   }
+}
+
+.joining-organization-logo-small{
+  display: block;
+  height: 1.5rem;
+  width: auto;
+  max-width: 3rem;
+  object-fit: contain;
 }
 
 .confirmation-message{

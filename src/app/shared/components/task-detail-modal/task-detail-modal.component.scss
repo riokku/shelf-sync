@@ -24,7 +24,7 @@
     cursor: default;
   }
 
-  strong{
+  .semibold{
     flex: 1;
     text-align: left;
   }
@@ -94,6 +94,6 @@ dd{
 }
 
 .error-message{
-  color: #ff6b6b;
+  color: var(--app-error-text);
   margin: -0.5rem 0 1rem;
 }

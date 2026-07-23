@@ -4,6 +4,23 @@
   min-height: 100%;
   max-width: 100%;
   background: url('../assets/background.png');
+
+  // The dark textured background.png above predates light mode and has no
+  // light-mode counterpart asset — rather than showing that dark texture
+  // behind light-mode's light-colored cards/surfaces, fall back to the
+  // plain (and theme-preset-aware) surface color instead. Dark mode is
+  // completely unaffected, still the original textured background.
+  //
+  // :host-context() rather than a plain `html[data-mode='light'] &` — the
+  // [data-mode] attribute lives on <html>, which is *outside* this
+  // component's own view. A raw ancestor selector gets Angular's emulated-
+  // encapsulation attribute appended to every compound segment, including
+  // `html`, which the real <html> element never carries, so the rule would
+  // silently never match. :host-context() is Angular's mechanism for
+  // matching an ancestor outside the component's own template correctly.
+  :host-context([data-mode='light']) &{
+    background: var(--mat-sys-surface);
+  }
 }
 
 .header{

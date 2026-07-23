@@ -2,6 +2,7 @@ import { Component, effect, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from './core/auth.service';
 import { SiteSettingsService } from './core/site-settings.service';
+import { ThemeModeService } from './core/theme-mode.service';
 
 @Component({
     selector: 'app-root',
@@ -13,6 +14,7 @@ export class AppComponent {
   title = 'ShelfSync';
   private authService = inject(AuthService);
   private siteSettings = inject(SiteSettingsService);
+  private themeMode = inject(ThemeModeService);
 
   constructor(
     public router: Router
@@ -24,6 +26,13 @@ export class AppComponent {
       this.authService.profile();
       this.siteSettings.load();
     });
+
+    // Personal light/dark preference — unlike site settings, this doesn't
+    // depend on auth state at all (localStorage-only), so it's applied once
+    // rather than inside the effect above. index.html's inline script
+    // already applies it before Angular boots to avoid a flash; this covers
+    // soft navigations and the case where nothing was in localStorage yet.
+    this.themeMode.init();
   }
 
   /** Hides the header/footer chrome on the unauthenticated login/register

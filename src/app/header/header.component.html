@@ -2,6 +2,8 @@
   <div class="brand">
     @if (siteSettings.logoUrl(); as logoUrl) {
       <img [src]="logoUrl" alt="Site logo" class="custom-logo" />
+    } @else if (themeMode.mode() === 'light') {
+      <img src="assets/logo-dark.svg" alt="ShelfSync logo" class="custom-logo" />
     } @else {
       <img src="assets/logo-light.svg" alt="ShelfSync logo" class="custom-logo" />
     }
@@ -29,6 +31,15 @@
     }
   </nav>
   <div class="header-actions">
+    <button
+        mat-icon-button
+        type="button"
+        class="mode-toggle"
+        (click)="themeMode.toggle()"
+        [attr.aria-label]="themeMode.mode() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+      >
+      <mat-icon>{{ themeMode.mode() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
+    </button>
     <a mat-button routerLink="/account" routerLinkActive="active">
       <mat-icon>account_circle</mat-icon>
       Account

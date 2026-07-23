@@ -27,5 +27,22 @@
   } @else {
     <p>Unable to load account details.</p>
   }
+
+  <mat-card class="appearance-card">
+    <mat-card-content>
+      <h3>Appearance</h3>
+      <p class="section-hint">Choose how ShelfSync looks on this device.</p>
+      <mat-button-toggle-group [value]="themeMode.mode()">
+        <mat-button-toggle value="light" (click)="themeMode.set('light')">
+          <mat-icon>light_mode</mat-icon>
+          Light
+        </mat-button-toggle>
+        <mat-button-toggle value="dark" (click)="themeMode.set('dark')">
+          <mat-icon>dark_mode</mat-icon>
+          Dark
+        </mat-button-toggle>
+      </mat-button-toggle-group>
+    </mat-card-content>
+  </mat-card>
   </div>
 </div>

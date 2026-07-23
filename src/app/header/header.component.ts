@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { SiteSettingsService } from '../core/site-settings.service';
+import { ThemeModeService } from '../core/theme-mode.service';
 
 @Component({
     selector: 'app-header',
@@ -14,6 +15,7 @@ import { SiteSettingsService } from '../core/site-settings.service';
 export class HeaderComponent {
   protected authService = inject(AuthService);
   protected siteSettings = inject(SiteSettingsService);
+  protected themeMode = inject(ThemeModeService);
   private router = inject(Router);
 
   async logout() {

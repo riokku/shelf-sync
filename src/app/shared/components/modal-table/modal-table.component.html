@@ -10,6 +10,14 @@
     >
     <mat-icon>{{ idCopied ? 'check' : 'content_copy' }}</mat-icon>
   </button>
+  <button
+      mat-icon-button
+      type="button"
+      [matTooltip]="linkCopied ? 'Copied!' : 'Copy link'"
+      (click)="copyLink()"
+    >
+    <mat-icon>{{ linkCopied ? 'check' : 'link' }}</mat-icon>
+  </button>
 </div>
 @if (isLowStock) {
   <p class="low-stock-warning">
@@ -135,28 +143,28 @@
               <table class="info-table">
                 <tr>
                   <td colspan="3">
-                    <strong>Description:</strong>
+                    <span class="semibold">Description:</span>
                     {{data.description}}
                   </td>
                 </tr>
                 <tr>
                   <td width="33%">
-                    <strong>Category:</strong> {{data.category}}
+                    <span class="semibold">Category:</span> {{data.category}}
                   </td>
                   <td width="33%">
-                    <strong>Applicable year:</strong> {{data.applicableYear}}
+                    <span class="semibold">Applicable year:</span> {{data.applicableYear}}
                   </td>
                   <td width="33%">&nbsp;</td>
                 </tr>
                 <tr>
                   <td width="33%">
-                    <strong>Expiration date:</strong> {{data.expirationDate | date: 'M/d/yy'}}
+                    <span class="semibold">Expiration date:</span> {{data.expirationDate | date: 'M/d/yy'}}
                   </td>
                   <td width="33%">
-                    <strong>Physical location:</strong> {{data.physicalLocation}}
+                    <span class="semibold">Physical location:</span> {{data.physicalLocation}}
                   </td>
                   <td width="33%">
-                    <strong>Digital location:</strong> {{data.digitalLocation}}
+                    <span class="semibold">Digital location:</span> {{data.digitalLocation}}
                   </td>
                 </tr>
               </table>
@@ -202,21 +210,21 @@
               <table class="info-table">
                 <tr>
                   <td width="33%">
-                    <strong>Total (# of items):</strong> {{data.quantityTotal}}
+                    <span class="semibold">Total (# of items):</span> {{data.quantityTotal}}
                   </td>
                   <td width="33%">
-                    <strong>Allocated:</strong> {{data.quantityAllocated}}
+                    <span class="semibold">Allocated:</span> {{data.quantityAllocated}}
                   </td>
                   <td width="33%" [class.low-stock-value]="isLowStock">
-                    <strong>Reimaining:</strong> {{data.quantityRemaining}}
+                    <span class="semibold">Reimaining:</span> {{data.quantityRemaining}}
                   </td>
                 </tr>
                 <tr>
                   <td>
-                    <strong>Items per container:</strong> {{data.quantityPerContainer}}
+                    <span class="semibold">Items per container:</span> {{data.quantityPerContainer}}
                   </td>
                   <td>
-                    <strong>Low quantity threshold:</strong> {{data.lowQuantityThreshold}}
+                    <span class="semibold">Low quantity threshold:</span> {{data.lowQuantityThreshold}}
                   </td>
                 </tr>
               </table>
@@ -252,16 +260,16 @@
               <table class="info-table">
                 <tr>
                   <td width="33%">
-                    <strong>Name:</strong> {{data.supplierName}}
+                    <span class="semibold">Name:</span> {{data.supplierName}}
                   </td>
                   <td width="33%">
-                    <strong>Lead time:</strong> {{data.supplierLeadTime}}
+                    <span class="semibold">Lead time:</span> {{data.supplierLeadTime}}
                   </td>
                   <td width="33%">&nbsp;</td>
                 </tr>
                 <tr>
                   <td colspan="3">
-                    <strong>Order link:</strong> {{data.orderLink}}
+                    <span class="semibold">Order link:</span> {{data.orderLink}}
                   </td>
                 </tr>
               </table>
@@ -290,10 +298,10 @@
               <table class="info-table">
                 <tr>
                   <td width="33%">
-                    <strong>Price per unit:</strong> {{data.pricePerUnit | currency}}
+                    <span class="semibold">Price per unit:</span> {{data.pricePerUnit | currency}}
                   </td>
                   <td width="33%">
-                    <strong>Price per container:</strong> {{data.pricePerContainer | currency}}
+                    <span class="semibold">Price per container:</span> {{data.pricePerContainer | currency}}
                   </td>
                   <td width="33%">&nbsp;</td>
                 </tr>
@@ -323,7 +331,7 @@
               <table class="info-table">
                 <tr>
                   <td width="33%">
-                    <strong>Status:</strong>
+                    <span class="semibold">Status:</span>
                     @if (data.isCheckedOut) {
                       <span class="status-pill checked-out">
                         <mat-icon>person</mat-icon>
@@ -337,7 +345,7 @@
                     }
                   </td>
                   <td width="33%">
-                    <strong>Checked out to:</strong> {{data.checkedOutTo || '—'}}
+                    <span class="semibold">Checked out to:</span> {{data.checkedOutTo || '—'}}
                   </td>
                   <td width="33%">&nbsp;</td>
                 </tr>

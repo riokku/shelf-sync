@@ -1,7 +1,7 @@
 @use '../shared/styles/page-toolbar';
 
 .customize-wrapper{
-  color: #ffffff;
+  color: var(--mat-sys-on-surface);
   padding: 3rem 1.5rem;
   max-width: 100%;
 
@@ -71,7 +71,7 @@
   border-radius: 999px;
   border: 1px solid var(--mat-sys-outline-variant);
   background: var(--mat-sys-surface-container-low);
-  color: #ffffff;
+  color: var(--mat-sys-on-surface);
   cursor: pointer;
   font: inherit;
 
@@ -107,12 +107,12 @@
 }
 
 .error-message{
-  color: #ff6b6b;
+  color: var(--app-error-text);
   margin: 0.5rem 0;
 }
 
 .success-message{
-  color: #51cf66;
+  color: var(--app-success-text);
   margin: 0.5rem 0;
 }
 

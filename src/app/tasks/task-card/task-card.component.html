@@ -1,37 +1,33 @@
-<mat-card
-    class="task-card"
+<div
+    class="task-row"
     [class.overdue]="isOverdue"
-    tabindex="0"
     role="button"
+    tabindex="0"
     [attr.aria-label]="'View details for ' + task.title + (isOverdue ? ' (overdue)' : '')"
     (click)="open.emit(task)"
     (keydown.enter)="open.emit(task)"
     (keydown.space)="open.emit(task)"
   >
-  @if (isOverdue) {
-    <div class="overdue-banner">
-      <mat-icon>error</mat-icon>
-      Overdue
-    </div>
-  }
-  <mat-card-header>
-    <mat-card-title>{{ task.title }}</mat-card-title>
-    @if (task.due_date) {
-      <mat-card-subtitle [class.overdue-text]="isOverdue">Due {{ task.due_date | date: 'M/d/yy' }}</mat-card-subtitle>
-    }
-  </mat-card-header>
-  <mat-card-content>
+  <div class="task-row-main">
+    <span class="task-row-title">{{ task.title }}</span>
     @if (task.related_item_name) {
-      <p class="related-item">
+      <span class="task-row-item">
         <mat-icon>inventory_2</mat-icon>
         {{ task.related_item_name }}
-      </p>
+      </span>
     }
-    @if (task.description) {
-      <p>{{ task.description }}</p>
+  </div>
+  <span class="task-row-due">
+    @if (task.due_date) {
+      @if (isOverdue) {
+        <mat-icon>error</mat-icon>
+      }
+      Due {{ task.due_date | date: 'M/d/yy' }}
+    } @else {
+      No due date
     }
-    <span class="status-badge" [class]="'status-' + task.status">
-      {{ statusLabels[task.status] }}
-    </span>
-  </mat-card-content>
-</mat-card>
+  </span>
+  <span class="status-badge" [class]="'status-' + task.status">
+    {{ statusLabels[task.status] }}
+  </span>
+</div>

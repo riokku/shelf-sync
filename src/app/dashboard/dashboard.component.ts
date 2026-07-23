@@ -9,7 +9,9 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatDialog } from '@angular/material/dialog';
+import { ActivatedRoute } from '@angular/router';
 import { InventoryItem, isLowStock } from '../shared/models/inventory-item.model';
 import { ModalTableComponent } from '../shared/components/modal-table/modal-table.component';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
@@ -18,6 +20,8 @@ import { toInventoryItem } from '../shared/utils/inventory-item.mapper';
 import { resolveProfileName } from '../shared/utils/profile-label';
 import { loadInventoryImagesByItemId } from '../shared/utils/inventory-item-images';
 import { loadInventoryActivityByItemId } from '../shared/utils/inventory-item-activity';
+
+type StockLevel = 'out_of_stock' | 'low_stock' | 'sufficient_stock';
 
 @Component({
     selector: 'app-dashboard',
@@ -32,6 +36,7 @@ import { loadInventoryActivityByItemId } from '../shared/utils/inventory-item-ac
         MatCardModule,
         MatButtonModule,
         MatProgressSpinnerModule,
+        MatPaginatorModule,
         BreadcrumbsComponent
     ],
     templateUrl: './dashboard.component.html',
@@ -41,20 +46,39 @@ export class DashboardComponent implements OnInit{
 
   private supabase = inject(SupabaseService).client;
   private dialog = inject(MatDialog);
+  private route = inject(ActivatedRoute);
 
-  selectedOptions: string[] = [];
   inventoryList: InventoryItem[] = [];
   isLoading = true;
 
-  showLowStockOnly = false;
   searchTerm = '';
   readonly isLowStock = isLowStock;
+
+  readonly stockLevelOptions: { value: StockLevel; label: string }[] = [
+    { value: 'out_of_stock', label: 'Out of stock' },
+    { value: 'low_stock', label: 'Low stock' },
+    { value: 'sufficient_stock', label: 'Sufficient stock' }
+  ];
+  selectedStockLevels: StockLevel[] = [];
+  selectedCategories: string[] = [];
+  selectedPhysicalLocations: string[] = [];
+
+  readonly pageSize = 12;
+  pageIndex = 0;
 
   get filteredInventoryList(): InventoryItem[] {
     let list = this.inventoryList;
 
-    if (this.showLowStockOnly) {
-      list = list.filter(isLowStock);
+    if (this.selectedStockLevels.length > 0) {
+      list = list.filter(item => this.selectedStockLevels.includes(this.stockLevelOf(item)));
+    }
+
+    if (this.selectedCategories.length > 0) {
+      list = list.filter(item => this.selectedCategories.includes(item.category));
+    }
+
+    if (this.selectedPhysicalLocations.length > 0) {
+      list = list.filter(item => this.selectedPhysicalLocations.includes(item.physicalLocation));
     }
 
     const search = this.searchTerm.trim().toLowerCase();
@@ -67,16 +91,78 @@ export class DashboardComponent implements OnInit{
     return list;
   }
 
-  filterOptions = [
-    { label: 'Electronics', value: 'electronics' },
-    { label: 'Books', value: 'books' },
-    { label: 'Clothing', value: 'clothing' },
-    { label: 'Toys', value: 'toys' },
-    { label: 'Home Appliances', value: 'home-appliances' }
-  ];
+  /** The current page's slice of filteredInventoryList — pageSize is fixed
+   *  at 12 rather than user-adjustable, so the paginator only ever needs to
+   *  drive pageIndex. */
+  get pagedInventoryList(): InventoryItem[] {
+    const start = this.pageIndex * this.pageSize;
+    return this.filteredInventoryList.slice(start, start + this.pageSize);
+  }
+
+  onPageChange(event: PageEvent) {
+    this.pageIndex = event.pageIndex;
+  }
+
+  onSearchChange(value: string) {
+    this.searchTerm = value;
+    this.pageIndex = 0;
+  }
+
+  /** Distinct values actually present on loaded items, not just the admin's
+   *  approved dropdown list — so filtering still works for older items whose
+   *  category/location predates that list (or was since removed from it). */
+  get categoryFilterOptions(): string[] {
+    return this.distinctValues(this.inventoryList.map(item => item.category));
+  }
+
+  get physicalLocationFilterOptions(): string[] {
+    return this.distinctValues(this.inventoryList.map(item => item.physicalLocation));
+  }
+
+  private distinctValues(values: string[]): string[] {
+    return [...new Set(values.filter(value => !!value))].sort();
+  }
+
+  private stockLevelOf(item: InventoryItem): StockLevel {
+    if (item.quantityRemaining <= 0) {
+      return 'out_of_stock';
+    }
+    if (item.quantityRemaining < item.lowQuantityThreshold) {
+      return 'low_stock';
+    }
+    return 'sufficient_stock';
+  }
+
+  get hasActiveFilters(): boolean {
+    return this.selectedStockLevels.length > 0
+      || this.selectedCategories.length > 0
+      || this.selectedPhysicalLocations.length > 0
+      || !!this.searchTerm;
+  }
+
+  clearFilters() {
+    this.selectedStockLevels = [];
+    this.selectedCategories = [];
+    this.selectedPhysicalLocations = [];
+    this.searchTerm = '';
+    this.pageIndex = 0;
+  }
 
   async ngOnInit() {
     await this.loadInventory();
+
+    // Supports deep links (?item=<id>), e.g. from the "Copy link" button in
+    // ModalTableComponent — opens straight to that item's detail popup if a
+    // match is found. Read once from the snapshot rather than subscribing,
+    // same as RegisterComponent's ?org= handling: this only ever matters on
+    // initial load of this route, not on later query-param changes.
+    const itemId = this.route.snapshot.queryParamMap.get('item');
+    if (itemId) {
+      const item = this.inventoryList.find(candidate => candidate.id === itemId);
+      if (item) {
+        this.showDetails(item);
+      }
+    }
   }
 
   private async loadInventory() {
@@ -118,12 +204,25 @@ export class DashboardComponent implements OnInit{
     dialogRef.afterClosed().subscribe(() => this.loadInventory());
   }
 
-  toggleOption(value: string, checked: boolean){
-    if (checked) {
-      this.selectedOptions = [...this.selectedOptions, value];
-    } else {
-      this.selectedOptions = this.selectedOptions.filter(option => option !== value);
-    }
+  toggleStockLevel(value: StockLevel, checked: boolean){
+    this.selectedStockLevels = checked
+      ? [...this.selectedStockLevels, value]
+      : this.selectedStockLevels.filter(level => level !== value);
+    this.pageIndex = 0;
+  }
+
+  toggleCategory(value: string, checked: boolean){
+    this.selectedCategories = checked
+      ? [...this.selectedCategories, value]
+      : this.selectedCategories.filter(category => category !== value);
+    this.pageIndex = 0;
+  }
+
+  togglePhysicalLocation(value: string, checked: boolean){
+    this.selectedPhysicalLocations = checked
+      ? [...this.selectedPhysicalLocations, value]
+      : this.selectedPhysicalLocations.filter(location => location !== value);
+    this.pageIndex = 0;
   }
 
 }

@@ -1,13 +1,13 @@
 <div class="page-wrapper">
   <div class="video">
-    <video src="../../assets/login-video.mp4" autoplay loop></video>
+    <video src="../../assets/login-video.mp4" autoplay loop [muted]="true" playsinline></video>
   </div>
   <section class="content-wrapper">
     <div class="row">
-      <div class="col-12 col-sm-12 col-md-6">
+      <div class="col-12 col-sm-12 col-md-5">
         <div class="logo-wrapper">
           <div>
-            <h1>Create an account</h1>
+            <app-brand-logo />
             <ul class="benefits-list">
               <li>
                 <mat-icon>check_circle</mat-icon>
@@ -29,7 +29,7 @@
           </div>
         </div>
       </div>
-      <div class="col-12 col-sm-12 col-md-6">
+      <div class="col-12 col-sm-12 col-md-7">
         <div class="login-wrapper">
           @if (confirmationSent) {
             <div class="confirmation-message">
@@ -38,41 +38,51 @@
               <a [routerLink]="['/']">Back to login</a>
             </div>
           } @else {
+            <div class="register-form-wrapper">
+            <h1>Create an account</h1>
             <form [formGroup]="form" (ngSubmit)="attemptRegister()">
               @if (joiningOrganization) {
                 <p class="joining-organization">
-                  <mat-icon>domain</mat-icon>
-                  Joining <strong>{{ joiningOrganization.name }}</strong>
+                  @if (joiningOrganizationLogoUrl) {
+                    <img [src]="joiningOrganizationLogoUrl" alt="{{ joiningOrganization.name }} logo" class="joining-organization-logo-small" />
+                  } @else {
+                    <mat-icon>domain</mat-icon>
+                  }
+                  Joining <span class="semibold">{{ joiningOrganization.name }}</span>
                 </p>
               } @else {
                 @if (invalidInviteLink) {
                   <p class="error-message">This invite link is invalid or has expired. Create a new organization instead.</p>
                 }
-                <mat-form-field appearance="outline">
+                <mat-form-field appearance="outline" class="full-width">
                   <mat-icon matPrefix>domain</mat-icon>
                   <input matInput placeholder="Organization name" type="text" formControlName="organizationName" />
                 </mat-form-field>
               }
-              <mat-form-field appearance="outline">
-                <mat-icon matPrefix>badge</mat-icon>
-                <input matInput placeholder="Full name" type="text" formControlName="fullName" />
-              </mat-form-field>
-              <mat-form-field appearance="outline">
-                <mat-icon matPrefix>face</mat-icon>
-                <input matInput placeholder="Nickname" type="text" formControlName="nickname" />
-              </mat-form-field>
-              <mat-form-field appearance="outline">
+              <div class="field-row">
+                <mat-form-field appearance="outline">
+                  <mat-icon matPrefix>badge</mat-icon>
+                  <input matInput placeholder="Full name" type="text" formControlName="fullName" />
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-icon matPrefix>face</mat-icon>
+                  <input matInput placeholder="Nickname" type="text" formControlName="nickname" />
+                </mat-form-field>
+              </div>
+              <mat-form-field appearance="outline" class="full-width">
                 <mat-icon matPrefix>person</mat-icon>
                 <input matInput placeholder="Email" type="email" formControlName="email" />
               </mat-form-field>
-              <mat-form-field appearance="outline">
-                <mat-icon matPrefix>lock</mat-icon>
-                <input matInput placeholder="Password" type="password" formControlName="password" />
-              </mat-form-field>
-              <mat-form-field appearance="outline">
-                <mat-icon matPrefix>lock</mat-icon>
-                <input matInput placeholder="Confirm password" type="password" formControlName="confirmPassword" />
-              </mat-form-field>
+              <div class="field-row">
+                <mat-form-field appearance="outline">
+                  <mat-icon matPrefix>lock</mat-icon>
+                  <input matInput placeholder="Password" type="password" formControlName="password" />
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-icon matPrefix>lock</mat-icon>
+                  <input matInput placeholder="Confirm" type="password" formControlName="confirmPassword" />
+                </mat-form-field>
+              </div>
               @if (form.errors?.['passwordMismatch'] && form.controls.confirmPassword.touched) {
                 <p class="error-message">Passwords do not match.</p>
               }
@@ -98,6 +108,7 @@
                 Already have an account? <a [routerLink]="['/']">Log in</a>
               </p>
             </form>
+            </div>
           }
         </div>
       </div>

@@ -8,7 +8,7 @@
         (click)="openRelatedItem()"
       >
       <mat-icon>inventory_2</mat-icon>
-      <strong>{{ task.related_item_name }}</strong>
+      <span class="semibold">{{ task.related_item_name }}</span>
       @if (isLoadingRelatedItem) {
         <mat-spinner diameter="16"></mat-spinner>
       } @else {
