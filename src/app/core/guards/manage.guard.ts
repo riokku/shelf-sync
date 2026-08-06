@@ -8,5 +8,5 @@ export const manageGuard: CanActivateFn = async () => {
 
   const profile = await authService.getProfile();
   const canManage = profile?.role === 'admin' || profile?.role === 'manager';
-  return canManage ? true : router.createUrlTree(['/dashboard']);
+  return canManage ? true : router.createUrlTree(['/home']);
 };

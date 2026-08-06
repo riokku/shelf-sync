@@ -6,11 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ShelfSync (npm package name `inventory-app`) is an early-stage Angular inventory management app.
 Auth is wired end-to-end against a hosted Supabase project: `LoginComponent` calls real
-`signInWithPassword`, `RegisterComponent` calls real `signUp`, the `dashboard` route is protected
-by an `authGuard`, and the header has a working logout button. The dashboard, Manage's inventory
-tab, and Manage's tasks tab all query real Supabase tables (`inventory_items`, `tasks`,
-`profiles`) — there is no hardcoded/local inventory or task data left in the app. `DashboardComponent`
-and `ManageComponent` both convert `inventory_items` rows into the client-side `InventoryItem`
+`signInWithPassword`, `RegisterComponent` calls real `signUp`, the `inventory` route is protected
+by an `authGuard`, and the header has a working logout button. The Inventory page, Manage's Inventory
+page, and Manage's Tasks page all query real Supabase tables (`inventory_items`, `tasks`,
+`profiles`) — there is no hardcoded/local inventory or task data left in the app. `InventoryComponent`
+and `ManageInventoryComponent` both convert `inventory_items` rows into the client-side `InventoryItem`
 shape via the shared `toInventoryItem()` mapper in `shared/utils/inventory-item.mapper.ts`
 (paired with `resolveProfileName()` in `shared/utils/profile-label.ts` for `checked_out_to`
 labels). Item photos live in the `inventory_item_images` table (up to 10 per item, enforced both
@@ -22,7 +22,7 @@ lives in `inventory_item_activity` (`item_id`, `user_id`, `message`, `created_at
 `loadInventoryActivityByItemId()` in `shared/utils/inventory-item-activity.ts` — the original
 `inventory_items.activity_log` free-text column predates this and is unused. Any authenticated
 user (not just admin/manager) can edit an inventory item's fields directly from `ModalTableComponent`
-(the item detail popup opened from both the dashboard and Manage's inventory list) via an
+(the item detail popup opened from both the Inventory page and Manage's inventory list) via an
 Edit/Save/Cancel flow; saving writes the changes to `inventory_items` and logs a diffed,
 human-readable summary ("Updated Quantity remaining (80 → 25), ...") to `inventory_item_activity`.
 Editing also covers photos (add/remove against `inventory_item_images`, same 10-photo cap as
@@ -46,7 +46,7 @@ falling back to the default SS mark.
 - **UI:** Angular Material + Angular CDK (migrated from PrimeNG — see git history)
 - **Backend:** Supabase (Postgres, Auth, RLS), hosted project (ref `ailqjqjrzhzspofoslpa`),
   linked via the Supabase CLI. Auth, `inventory_items`, and `tasks` are all live and queried
-  directly from the dashboard/tasks/manage UI — no hardcoded local data remains.
+  directly from the inventory/tasks/manage UI — no hardcoded local data remains.
 - **Language:** TypeScript in strict mode (`tsconfig.json`: `strict`, `noImplicitReturns`,
   `noFallthroughCasesInSwitch`, `strictTemplates`, etc.). `tsconfig.app.json` and
   `tsconfig.spec.json` both include `"node"` in `types` — required by `@supabase/supabase-js`'s
@@ -60,7 +60,7 @@ falling back to the default SS mark.
 - Build: `npm run build` (or `ng build`) — output goes to `dist/inventory-app`
 - Watch build: `npm run watch`
 - Unit tests: `npm test` (or `ng test`) — runs Karma/Jasmine in Chrome
-- Run a single test file: `ng test --include='**/dashboard.component.spec.ts'`
+- Run a single test file: `ng test --include='**/inventory.component.spec.ts'`
 - Generate a component: `ng generate component <name>` (project schematic defaults to `scss`
   styles; components are standalone by default in this Angular version except where noted below)
 - Supabase, hosted project workflow (no Docker — this is the primary workflow for this repo):
@@ -83,16 +83,20 @@ The app mixes two Angular module styles, which is important to know before addin
 - **Root shell (`app.module.ts`, `app.component.ts`, `app-routing.module.ts`) is `NgModule`-based.**
   `AppComponent` is explicitly `standalone: false` and is declared in `AppModule`, which imports
   the standalone `HeaderComponent`/`FooterComponent` directly into its `imports` array.
-- **Everything else is a standalone component** (`LoginComponent`, `DashboardComponent`,
+- **Everything else is a standalone component** (`LoginComponent`, `InventoryComponent`,
   `ModalTableComponent`, etc.), each declaring its own Material module imports in the
   `@Component({ imports: [...] })` array rather than through a shared `NgModule`.
 - Routing (`app-routing.module.ts`) is flat — `''` → `LoginComponent`, `'register'` →
-  `RegisterComponent`, `'dashboard'` → `DashboardComponent` guarded by `authGuard`. No lazy
-  loading or resolvers exist yet.
+  `RegisterComponent`, `'inventory'` → `InventoryComponent` guarded by `authGuard` (plus `home`,
+  `tasks`, `customize`, `account` — all authGuard-protected, `customize` also gated by
+  `adminGuard`). `manage` is a card hub (`ManageComponent`) linking to four flat sibling routes —
+  `manage/inventory`, `manage/tasks`, `manage/team` (all `manageGuard`: admin OR manager) and
+  `manage/danger-zone` (`adminGuard`, stricter — org export/delete) — rather than nested child
+  routes, matching the rest of the app's flat routing. No lazy loading or resolvers exist yet.
 - `app.component.html` hides the shared `<app-header>`/`<app-footer>` chrome on an explicit
   route allowlist (`router.url !== '/' && router.url !== '/register'`), not on a guard/data flag.
   **Any new unauthenticated/full-bleed page must be added to that condition too**, or it'll
-  render with the dashboard header (including the Logout button) around it.
+  render with the main app header (including the Logout button) around it.
 
 Directory layout under `src/app/`:
 ```
@@ -103,12 +107,18 @@ core/
   site-settings.service.ts # theme/logo signals; load() on app start, updateTheme()/uploadLogo()/removeLogo()
   guards/auth.guard.ts    # CanActivateFn — awaits authService.getSession() directly
   guards/manage.guard.ts  # admin OR manager
-  guards/admin.guard.ts   # admin only (Customize route)
+  guards/admin.guard.ts   # admin only (Customize route, manage/danger-zone)
 header/, footer/                                           # standalone layout components; header has the logout button
 login/                                                      # standalone login screen, real Supabase auth
 register/                                                   # standalone signup screen, real Supabase auth
-dashboard/                                                  # standalone dashboard: filters, item table, opens modal
+home/                                                        # post-login landing hub: cards linking to the pages below
+inventory/                                                  # standalone inventory page: filters, item table, opens modal
+tasks/                                                      # standalone personal "My Tasks" list (row-styled task-card)
+manage/                                                     # card hub (ManageComponent) linking to the four below
+  inventory/, tasks/, team/                                 # admin/manager only: inventory, tasks, and team administration
+  danger-zone/                                              # admin only: org data export + soft-delete (organizations.deleted_at)
 customize/                                                  # admin-only: theme picker + logo upload (site_settings)
+account/                                                    # profile info, avatar picker, light/dark mode toggle
 shared/
   components/modal-table/    # standalone Material dialog showing InventoryItem details
   models/inventory-item.model.ts   # InventoryItem class (constructor-based, no defaults)
@@ -133,7 +143,7 @@ session signal — other component state is still plain class fields, not signal
 asynchronously in the constructor (via `getSession().then(...)` plus `onAuthStateChange`), so it
 can lag on first render. `authGuard` therefore calls `getSession()` directly and awaits it,
 rather than reading the signal, to avoid a race where a valid session hasn't populated the signal
-yet on a hard refresh of `/dashboard`.
+yet on a hard refresh of `/inventory`.
 
 ## Supabase Schema
 
@@ -152,7 +162,7 @@ yet on a hard refresh of `/dashboard`.
   `storage_path`, `position`), readable by any authenticated user and writable only by
   `admin`/`manager`, same as `inventory_items` itself. A `before insert` trigger
   (`enforce_inventory_item_image_limit`) rejects a row once an item already has 10 images —
-  server-side backstop behind the client-side cap in `ManageComponent`. This migration also
+  server-side backstop behind the client-side cap in `ManageInventoryComponent`. This migration also
   creates the public `inventory-images` Storage bucket and matching `storage.objects` policies
   (public read; `admin`/`manager`-only insert/delete).
 - `add_inventory_item_activity_and_edit_access` — widens `inventory_items` UPDATE from
@@ -165,7 +175,7 @@ yet on a hard refresh of `/dashboard`.
   applies on the pre-login pages too), writable only by `admin`. Also creates the public
   `site-assets` Storage bucket (public read; `admin`-only insert/update/delete) for the logo file.
 
-`supabase/seed.sql` ports the dashboard's hardcoded dummy items into `inventory_items` inserts
+`supabase/seed.sql` ports the inventory page's hardcoded dummy items into `inventory_items` inserts
 for local dev (`checked_out_to` is left `null` since it's a real FK to `profiles` now and the
 seed doesn't create fake auth users).
 
@@ -187,16 +197,10 @@ uses Supabase's default shared email sender, which is rate-limited to a couple o
 until custom SMTP is configured in the dashboard. `AuthService.signUp()` returns
 `needsEmailConfirmation: true` when `signUp()` succeeds but no session comes back, and
 `RegisterComponent` shows a "check your email" message in that case rather than navigating to
-`/dashboard`. When testing signup repeatedly, expect to hit `over_email_send_rate_limit`
+`/home`. When testing signup repeatedly, expect to hit `over_email_send_rate_limit`
 (surfaces as a normal `error.message`) — that's the shared sender's limit, not a bug.
 
 ## Coding Conventions (from `.editorconfig`)
 
 - 2-space indentation, single quotes in `.ts` files, final newline required, trailing whitespace
   trimmed (except in `.md` files).
-
-## Known Issues
-
-- `README.md` has an unresolved git merge conflict (`<<<<<<< HEAD` / `=======` /
-  `>>>>>>> origin/main` markers are committed as-is). Flag this if you touch the README rather
-  than silently working around it.

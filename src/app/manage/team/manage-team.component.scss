@@ -1,0 +1,114 @@
+@use '../../shared/styles/page-toolbar';
+
+.manage-team-wrapper{
+  color: var(--mat-sys-on-surface);
+  padding: 3rem 1.5rem;
+  max-width: 100%;
+
+  h2{
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+  }
+
+  .container{
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+.team-list{
+  padding: 1.5rem 0.25rem;
+}
+
+.empty-hint{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+}
+
+.invite-link-section{
+  max-width: 40rem;
+  margin-bottom: 2rem;
+
+  h3{
+    margin: 0 0 0.5rem;
+    color: var(--mat-sys-primary);
+  }
+
+  .empty-hint{
+    margin: 0 0 1rem;
+  }
+}
+
+.invite-link-row{
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+
+  input{
+    flex: 1;
+    min-width: 0;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--mat-sys-outline-variant);
+    background: var(--mat-sys-surface-container-low);
+    color: var(--mat-sys-on-surface);
+    font: inherit;
+  }
+}
+
+mat-panel-title{
+  display: flex;
+  align-items: center;
+}
+
+mat-panel-description{
+  align-items: center;
+  justify-content: space-between;
+}
+
+// A single flex item (not each button separately) so mat-panel-description's
+// space-between pushes the whole group to the right as a unit, with the two
+// buttons staying adjacent to each other instead of getting spread apart.
+.team-member-actions{
+  display: flex;
+  align-items: center;
+}
+
+.team-member-edit{
+  color: var(--mat-sys-on-surface-variant);
+
+  &:hover{
+    color: var(--mat-sys-primary);
+  }
+}
+
+.team-member-remove{
+  color: var(--mat-sys-on-surface-variant);
+
+  &:hover{
+    color: var(--app-overdue-text);
+  }
+}
+
+// Stacked full-width sections (one per status) rather than side-by-side
+// columns — narrow columns couldn't comfortably fit task-card's row layout
+// (it wants ~28rem for its title/due-date/status grid), and cramming it in
+// anyway would've meant reinventing a second, inconsistent "row" look
+// instead of reusing the same component the My Tasks page already uses.
+.status-columns{
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1rem 0 0.5rem;
+
+  h4{
+    margin: 0 0 0.5rem;
+    color: var(--mat-sys-primary);
+  }
+}
+
+.member-task-rows{
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}

@@ -1,0 +1,88 @@
+<div class="manage-team-wrapper">
+  <div class="container">
+    <div class="page-toolbar">
+      <app-breadcrumbs />
+    </div>
+    <h2>Manage Team</h2>
+
+    <div class="team-list">
+      @if (inviteLink) {
+        <div class="invite-link-section">
+          <h3>Invite teammates</h3>
+          <p class="empty-hint">
+            Share this link — anyone who signs up with it joins your organization automatically.
+          </p>
+          <div class="invite-link-row">
+            <input type="text" [value]="inviteLink" readonly />
+            <button mat-stroked-button type="button" (click)="copyInviteLink()">
+              <mat-icon>{{ inviteLinkCopied ? 'check' : 'content_copy' }}</mat-icon>
+              {{ inviteLinkCopied ? 'Copied' : 'Copy' }}
+            </button>
+          </div>
+        </div>
+      }
+      @if (isLoadingTeam) {
+        <mat-spinner diameter="32"></mat-spinner>
+      } @else if (teamMembers.length === 0) {
+        <p class="empty-hint">No users found.</p>
+      } @else {
+        <mat-accordion multi>
+          @for (member of teamMembers; track member.profile.id) {
+            <mat-expansion-panel>
+              <mat-expansion-panel-header>
+                <mat-panel-title>
+                  <app-user-avatar [avatarKey]="member.profile.avatar_key" class="me-2" />
+                  {{ profileLabel(member.profile) }}
+                </mat-panel-title>
+                <mat-panel-description>
+                  <span class="team-member-role">{{ member.profile.role }}</span>
+                  @if (authService.role() === 'admin') {
+                    <span class="team-member-actions">
+                      <button
+                          mat-icon-button
+                          type="button"
+                          class="team-member-edit"
+                          [attr.aria-label]="'Edit ' + profileLabel(member.profile)"
+                          (click)="$event.stopPropagation(); openEditProfile(member.profile)"
+                        >
+                        <mat-icon>edit</mat-icon>
+                      </button>
+                      @if (member.profile.id !== currentUserId) {
+                        <button
+                            mat-icon-button
+                            type="button"
+                            class="team-member-remove"
+                            [attr.aria-label]="'Remove ' + profileLabel(member.profile)"
+                            (click)="$event.stopPropagation(); removeMember(member.profile)"
+                          >
+                          <mat-icon>person_remove</mat-icon>
+                        </button>
+                      }
+                    </span>
+                  }
+                </mat-panel-description>
+              </mat-expansion-panel-header>
+
+              <div class="status-columns">
+                @for (status of statuses; track status) {
+                  <div class="status-column">
+                    <h4>{{ statusLabels[status] }} ({{ member.tasksByStatus[status].length }})</h4>
+                    @if (member.tasksByStatus[status].length === 0) {
+                      <p class="empty-hint">No tasks.</p>
+                    } @else {
+                      <div class="member-task-rows">
+                        @for (task of member.tasksByStatus[status]; track task.id) {
+                          <app-task-card [task]="task" (open)="openTaskDetail($event)" />
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            </mat-expansion-panel>
+          }
+        </mat-accordion>
+      }
+    </div>
+  </div>
+</div>

@@ -1,6 +1,10 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatDialogRef } from '@angular/material/dialog';
+import { provideNativeDateAdapter } from '@angular/material/core';
 
 import { CreateTaskModalComponent } from './create-task-modal.component';
+import { AuthService } from '../../../core/auth.service';
+import { createFakeAuthService, createFakeMatDialogRef } from '../../../testing/fakes';
 
 describe('CreateTaskModalComponent', () => {
   let component: CreateTaskModalComponent;
@@ -8,7 +12,12 @@ describe('CreateTaskModalComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [CreateTaskModalComponent]
+      imports: [CreateTaskModalComponent],
+      providers: [
+        provideNativeDateAdapter(),
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: MatDialogRef, useValue: createFakeMatDialogRef() }
+      ]
     })
     .compileComponents();
 

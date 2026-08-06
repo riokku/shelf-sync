@@ -1,0 +1,47 @@
+// Default (md) size — used inline next to most name displays.
+.user-avatar{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  // Falls back to a neutral badge (no preset picked yet) rather than an
+  // empty circle — matches the generic person icon used elsewhere before
+  // this feature existed.
+  background: var(--mat-sys-surface-variant);
+  color: #ffffff;
+
+  mat-icon{
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+.user-avatar-empty{
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.user-avatar-sm{
+  width: 1.25rem;
+  height: 1.25rem;
+
+  mat-icon{
+    font-size: 0.75rem;
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+}
+
+.user-avatar-lg{
+  width: 3.5rem;
+  height: 3.5rem;
+
+  mat-icon{
+    font-size: 2rem;
+    width: 2rem;
+    height: 2rem;
+  }
+}

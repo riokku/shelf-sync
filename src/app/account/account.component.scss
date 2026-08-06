@@ -20,6 +20,7 @@ mat-card{
   max-width: 40rem;
 }
 
+.avatar-card,
 .appearance-card{
   margin-top: 1.5rem;
 
@@ -27,6 +28,56 @@ mat-card{
     color: var(--mat-sys-primary);
     margin: 0 0 0.5rem;
   }
+}
+
+.profile-header{
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+
+  h3{
+    color: inherit;
+    margin: 0;
+  }
+
+  .section-hint{
+    margin: 0;
+    text-transform: capitalize;
+  }
+}
+
+.avatar-picker{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.avatar-option{
+  padding: 0.25rem;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  line-height: 0;
+
+  &:hover:not(:disabled){
+    background: var(--mat-sys-surface-container);
+  }
+
+  &.selected{
+    border-color: var(--mat-sys-primary);
+  }
+
+  &:disabled{
+    cursor: default;
+    opacity: 0.6;
+  }
+}
+
+.error-message{
+  color: #ff6b6b;
+  margin: 0.75rem 0 0;
 }
 
 .section-hint{

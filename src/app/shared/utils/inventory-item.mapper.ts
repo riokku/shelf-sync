@@ -7,7 +7,8 @@ export function toInventoryItem(
   row: InventoryItemRow,
   images: string[],
   checkedOutToLabel: string,
-  activityLog: ActivityLogEntry[] = []
+  activityLog: ActivityLogEntry[] = [],
+  checkedOutToAvatarKey: string | null = null
 ): InventoryItem {
   const gallery = images.length > 0 ? images : (row.image ? [row.image] : []);
 
@@ -35,6 +36,7 @@ export function toInventoryItem(
     row.is_checked_out,
     checkedOutToLabel,
     row.checked_out_to,
+    checkedOutToAvatarKey,
     activityLog
   );
 }

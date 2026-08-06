@@ -1,0 +1,54 @@
+@use '../../shared/styles/page-toolbar';
+
+.danger-zone-wrapper{
+  color: var(--mat-sys-on-surface);
+  padding: 3rem 1.5rem;
+  max-width: 100%;
+
+  h2{
+    text-transform: uppercase;
+    margin: 1.5rem 0;
+  }
+
+  .container{
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+.danger-zone-card{
+  max-width: 40rem;
+  margin-bottom: 2rem;
+  padding: 1.75rem 2rem;
+  background: var(--mat-sys-surface-container-low);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 0.75rem;
+}
+
+.danger-zone-section{
+  max-width: 40rem;
+
+  h3{
+    color: var(--mat-sys-primary);
+    margin-bottom: 0.5rem;
+  }
+}
+
+.section-hint{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.error-message{
+  color: var(--app-error-text);
+  margin: 0.5rem 0;
+}
+
+.danger-card{
+  border-color: var(--app-error-text);
+
+  h3{
+    color: var(--app-error-text);
+  }
+}

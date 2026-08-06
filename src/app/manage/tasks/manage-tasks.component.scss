@@ -1,0 +1,200 @@
+@use '../../shared/styles/page-toolbar';
+
+.manage-tasks-wrapper{
+  color: var(--mat-sys-on-surface);
+  padding: 3rem 1.5rem;
+  max-width: 100%;
+
+  h2{
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+  }
+
+  .container{
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+.view-toggle{
+  margin-bottom: 1.5rem;
+}
+
+.manage-form{
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 0.25rem;
+  max-width: 60rem;
+}
+
+.field-row{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+
+  mat-form-field{
+    flex: 1 1 12rem;
+  }
+}
+
+.full-width{
+  width: 100%;
+}
+
+.error-message{
+  color: var(--app-error-text);
+  margin: -0.5rem 0 1rem;
+}
+
+.success-message{
+  color: var(--app-success-text);
+  margin: -0.5rem 0 1rem;
+}
+
+.empty-hint{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+}
+
+.all-tasks-view{
+  max-width: none;
+}
+
+.task-filters{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+
+  mat-form-field{
+    flex: 1 1 12rem;
+    max-width: 16rem;
+  }
+
+  button{
+    margin-top: 0.5rem;
+  }
+}
+
+.task-rows{
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+// Grid, not flex: .status-badge is content-sized (flex: 0 0 auto) and its
+// text length varies per row ("TO DO" vs "IN PROGRESS" vs "DONE"), which
+// was pushing the flexible columns before it (assignee, due date) to
+// different widths on every row. Grid's column tracks are fixed regardless
+// of what a given row's cells contain, so everything lines up.
+.task-row{
+  display: grid;
+  grid-template-columns: minmax(10rem, 2fr) minmax(8rem, 1fr) minmax(8rem, 1fr) 7.5rem 2.5rem;
+  align-items: center;
+  column-gap: 1.5rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: 0.5rem;
+  background: var(--mat-sys-surface-container-low);
+
+  &.overdue{
+    border-left: 4px solid var(--app-overdue-text);
+  }
+
+  &.clickable{
+    cursor: pointer;
+
+    &:hover{
+      background: var(--mat-sys-surface-container);
+    }
+  }
+}
+
+.task-row-main{
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.task-row-title{
+  font-weight: 600;
+}
+
+.task-row-item{
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--mat-sys-primary);
+  font-size: 0.8125rem;
+
+  mat-icon{
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+.task-row-assignee,
+.task-row-due{
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--mat-sys-on-surface-variant);
+
+  mat-icon{
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+.task-row.overdue .task-row-due{
+  color: var(--app-overdue-text);
+
+  mat-icon{
+    color: var(--app-overdue-text);
+  }
+}
+
+.status-badge{
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+
+  mat-icon{
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+.task-row-delete{
+  justify-self: end;
+  color: var(--mat-sys-on-surface-variant);
+
+  &:hover{
+    color: var(--app-overdue-text);
+  }
+}
+
+.status-todo{
+  background: var(--mat-sys-surface-variant);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.status-in_progress{
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+}
+
+.status-done{
+  background: #2b8a3e;
+  color: #ffffff;
+}

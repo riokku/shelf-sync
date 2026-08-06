@@ -10,6 +10,13 @@
   } @else if (profile) {
     <mat-card>
       <mat-card-content>
+        <div class="profile-header">
+          <app-user-avatar [avatarKey]="profile.avatar_key" size="lg" />
+          <div>
+            <h3>{{ profile.nickname || profile.full_name || profile.email }}</h3>
+            <p class="section-hint">{{ profile.role }}</p>
+          </div>
+        </div>
         <dl>
           <dt>Organization</dt>
           <dd>{{ organizationName || '—' }}</dd>
@@ -22,6 +29,31 @@
           <dt>Role</dt>
           <dd>{{ profile.role }}</dd>
         </dl>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="avatar-card">
+      <mat-card-content>
+        <h3>Avatar</h3>
+        <p class="section-hint">Pick an avatar to show next to your name across ShelfSync.</p>
+        <div class="avatar-picker">
+          @for (preset of avatarPresets; track preset.key) {
+            <button
+                type="button"
+                class="avatar-option"
+                [class.selected]="profile.avatar_key === preset.key"
+                [attr.aria-label]="'Select ' + preset.key + ' avatar'"
+                [attr.aria-pressed]="profile.avatar_key === preset.key"
+                [disabled]="isSavingAvatar"
+                (click)="selectAvatar(preset.key)"
+              >
+              <app-user-avatar [avatarKey]="preset.key" size="lg" />
+            </button>
+          }
+        </div>
+        @if (avatarError) {
+          <p class="error-message">{{ avatarError }}</p>
+        }
       </mat-card-content>
     </mat-card>
   } @else {

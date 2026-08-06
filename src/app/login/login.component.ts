@@ -55,7 +55,7 @@ export class LoginComponent {
       return;
     }
 
-    this.router.navigateByUrl(this.safeReturnUrl() ?? '/dashboard');
+    this.router.navigateByUrl(this.safeReturnUrl() ?? '/home');
   }
 
   /** Only follow returnUrl if it's a same-app relative path — it comes from

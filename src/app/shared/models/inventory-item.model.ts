@@ -3,6 +3,7 @@ export const MAX_INVENTORY_ITEM_IMAGES = 10;
 export interface ActivityLogEntry {
   timestamp: string;
   user: string;
+  userAvatarKey: string | null;
   message: string;
 }
 
@@ -34,6 +35,7 @@ export class InventoryItem {
   isCheckedOut: boolean;
   checkedOutTo: string;
   checkedOutToId: string | null;
+  checkedOutToAvatarKey: string | null;
   activityLog: ActivityLogEntry[];
 
   constructor(
@@ -60,6 +62,7 @@ export class InventoryItem {
     isCheckedOut: boolean,
     checkedOutTo: string,
     checkedOutToId: string | null,
+    checkedOutToAvatarKey: string | null,
     activityLog: ActivityLogEntry[]
   ) {
     //Tracking
@@ -96,6 +99,7 @@ export class InventoryItem {
     this.isCheckedOut = isCheckedOut;
     this.checkedOutTo = checkedOutTo;
     this.checkedOutToId = checkedOutToId;
+    this.checkedOutToAvatarKey = checkedOutToAvatarKey;
     this.activityLog = activityLog;
   }
 

@@ -2,10 +2,15 @@ import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { LoginComponent } from './login/login.component';
 import { RegisterComponent } from './register/register.component';
-import { DashboardComponent } from './dashboard/dashboard.component';
+import { HomeComponent } from './home/home.component';
+import { InventoryComponent } from './inventory/inventory.component';
 import { AccountComponent } from './account/account.component';
 import { TasksComponent } from './tasks/tasks.component';
 import { ManageComponent } from './manage/manage.component';
+import { ManageInventoryComponent } from './manage/inventory/manage-inventory.component';
+import { ManageTasksComponent } from './manage/tasks/manage-tasks.component';
+import { ManageTeamComponent } from './manage/team/manage-team.component';
+import { ManageDangerZoneComponent } from './manage/danger-zone/manage-danger-zone.component';
 import { CustomizeComponent } from './customize/customize.component';
 import { authGuard } from './core/guards/auth.guard';
 import { manageGuard } from './core/guards/manage.guard';
@@ -21,10 +26,15 @@ const routes: Routes = [
     component: RegisterComponent
   },
   {
-    path: 'dashboard',
-    component: DashboardComponent,
+    path: 'home',
+    component: HomeComponent,
+    canActivate: [authGuard]
+  },
+  {
+    path: 'inventory',
+    component: InventoryComponent,
     canActivate: [authGuard],
-    data: { breadcrumb: 'Dashboard' }
+    data: { breadcrumb: 'Inventory' }
   },
   {
     path: 'account',
@@ -43,6 +53,30 @@ const routes: Routes = [
     component: ManageComponent,
     canActivate: [authGuard, manageGuard],
     data: { breadcrumb: 'Manage' }
+  },
+  {
+    path: 'manage/inventory',
+    component: ManageInventoryComponent,
+    canActivate: [authGuard, manageGuard],
+    data: { breadcrumb: 'Manage Inventory' }
+  },
+  {
+    path: 'manage/tasks',
+    component: ManageTasksComponent,
+    canActivate: [authGuard, manageGuard],
+    data: { breadcrumb: 'Manage Tasks' }
+  },
+  {
+    path: 'manage/team',
+    component: ManageTeamComponent,
+    canActivate: [authGuard, manageGuard],
+    data: { breadcrumb: 'Manage Team' }
+  },
+  {
+    path: 'manage/danger-zone',
+    component: ManageDangerZoneComponent,
+    canActivate: [authGuard, adminGuard],
+    data: { breadcrumb: 'Danger Zone' }
   },
   {
     path: 'customize',

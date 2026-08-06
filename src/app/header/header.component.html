@@ -1,5 +1,5 @@
 <section class="header-wrapper">
-  <div class="brand">
+  <a class="brand" routerLink="/home">
     @if (siteSettings.logoUrl(); as logoUrl) {
       <img [src]="logoUrl" alt="Site logo" class="custom-logo" />
     } @else if (themeMode.mode() === 'light') {
@@ -7,11 +7,15 @@
     } @else {
       <img src="assets/logo-light.svg" alt="ShelfSync logo" class="custom-logo" />
     }
-  </div>
+  </a>
   <nav class="main-nav">
-    <a mat-button routerLink="/dashboard" routerLinkActive="active">
-      <mat-icon>dashboard</mat-icon>
-      Dashboard
+    <a mat-button routerLink="/home" routerLinkActive="active">
+      <mat-icon>home</mat-icon>
+      Home
+    </a>
+    <a mat-button routerLink="/inventory" routerLinkActive="active">
+      <mat-icon>inventory_2</mat-icon>
+      Inventory
     </a>
     <a mat-button routerLink="/tasks" routerLinkActive="active">
       <mat-icon>checklist</mat-icon>

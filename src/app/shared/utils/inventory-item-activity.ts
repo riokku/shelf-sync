@@ -2,7 +2,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '../models/database.types';
 import { ActivityLogEntry } from '../models/inventory-item.model';
 import { Profile } from '../../core/auth.service';
-import { resolveProfileName } from './profile-label';
+import { resolveProfileAvatarKey, resolveProfileName } from './profile-label';
 
 export async function loadInventoryActivityByItemId(
   supabase: SupabaseClient<Database>,
@@ -24,6 +24,7 @@ export async function loadInventoryActivityByItemId(
     const entry: ActivityLogEntry = {
       timestamp: row.created_at,
       user: row.user_id ? (resolveProfileName(row.user_id, profiles) || 'Unknown user') : 'System',
+      userAvatarKey: row.user_id ? resolveProfileAvatarKey(row.user_id, profiles) : null,
       message: row.message
     };
     const existing = activityByItemId.get(row.item_id) ?? [];

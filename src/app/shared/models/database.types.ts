@@ -244,18 +244,21 @@ export type Database = {
       organizations: {
         Row: {
           created_at: string
+          deleted_at: string | null
           id: string
           name: string
           slug: string
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           name: string
           slug: string
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           name?: string
           slug?: string
@@ -264,6 +267,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_key: string | null
           created_at: string
           email: string
           full_name: string | null
@@ -274,6 +278,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          avatar_key?: string | null
           created_at?: string
           email: string
           full_name?: string | null
@@ -284,6 +289,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          avatar_key?: string | null
           created_at?: string
           email?: string
           full_name?: string | null
@@ -426,6 +432,7 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      purge_expired_organizations: { Args: never; Returns: undefined }
     }
     Enums: {
       task_status: "todo" | "in_progress" | "done"

@@ -13,13 +13,14 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { InventoryItem, MAX_INVENTORY_ITEM_IMAGES, isLowStock } from '../../models/inventory-item.model';
 import { ImageGalleryComponent } from '../image-gallery/image-gallery.component';
+import { UserAvatarComponent } from '../user-avatar/user-avatar.component';
 import { CreateTaskModalComponent } from '../create-task-modal/create-task-modal.component';
 import { AuthService, Profile } from '../../../core/auth.service';
 import { SupabaseService } from '../../../core/supabase.service';
 import { InventoryFieldOptionsService } from '../../../core/inventory-field-options.service';
 import { toIsoDateString, parseIsoDate } from '../../utils/date';
 import { logInventoryItemActivity } from '../../utils/inventory-item-activity';
-import { profileDisplayName, resolveProfileName } from '../../utils/profile-label';
+import { profileDisplayName, resolveProfileAvatarKey, resolveProfileName } from '../../utils/profile-label';
 import {
   InventoryItemImageRecord,
   deleteInventoryItemImage,
@@ -64,7 +65,8 @@ const FIELD_LABELS: Record<string, string> = {
         MatSelectModule,
         MatProgressSpinnerModule,
         MatDatepickerModule,
-        ImageGalleryComponent
+        ImageGalleryComponent,
+        UserAvatarComponent
     ],
     templateUrl: './modal-table.component.html',
     styleUrl: './modal-table.component.scss'
@@ -165,9 +167,9 @@ export class ModalTableComponent {
   }
 
   /** Deep link straight to this item's detail popup — read by
-   *  DashboardComponent's ?item= handling in ngOnInit(). */
+   *  InventoryComponent's ?item= handling in ngOnInit(). */
   async copyLink(){
-    const url = `${window.location.origin}/dashboard?item=${this.data.id}`;
+    const url = `${window.location.origin}/inventory?item=${this.data.id}`;
     await navigator.clipboard.writeText(url);
     this.linkCopied = true;
     setTimeout(() => this.linkCopied = false, 1500);
@@ -335,6 +337,7 @@ export class ModalTableComponent {
       isCheckedOut: value.checkedOutTo !== null,
       checkedOutTo: resolveProfileName(value.checkedOutTo, this.orgProfiles),
       checkedOutToId: value.checkedOutTo,
+      checkedOutToAvatarKey: resolveProfileAvatarKey(value.checkedOutTo, this.orgProfiles),
       quantityTotal: value.quantityTotal,
       quantityPerContainer: value.quantityPerContainer ?? 0,
       quantityAllocated: value.quantityAllocated,
@@ -361,7 +364,7 @@ export class ModalTableComponent {
       const logError = await logInventoryItemActivity(this.supabase, this.data.id, session.user.id, message);
       if (!logError) {
         this.data.activityLog = [
-          { timestamp: new Date().toISOString(), user: userLabel, message },
+          { timestamp: new Date().toISOString(), user: userLabel, userAvatarKey: profile?.avatar_key ?? null, message },
           ...this.data.activityLog
         ];
       }

@@ -60,6 +60,15 @@ export class AuthService {
     return data;
   }
 
+  /** Re-fetches the caller's profile and updates the `profile` signal — for
+   *  self-service edits (e.g. picking an avatar on the Account page) so the
+   *  change shows up immediately anywhere else in the app that reads the
+   *  signal, without waiting for the next auth state change. */
+  async refreshProfile(): Promise<void> {
+    const session = await this.getSession();
+    await this.loadProfile(session);
+  }
+
   async signIn(email: string, password: string) {
     const { error } = await this.supabase.auth.signInWithPassword({ email, password });
     return error;

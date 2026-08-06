@@ -253,6 +253,15 @@
 }
 
 .activity-meta{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
   font-size: 0.75rem;
   color: var(--mat-sys-on-surface-variant);
+}
+
+.checked-out-to-value{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
 }

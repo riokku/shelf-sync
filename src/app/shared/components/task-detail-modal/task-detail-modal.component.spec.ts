@@ -1,6 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 
 import { TaskDetailModalComponent } from './task-detail-modal.component';
+import { createFakeMatDialogRef, createTestTask } from '../../../testing/fakes';
 
 describe('TaskDetailModalComponent', () => {
   let component: TaskDetailModalComponent;
@@ -8,7 +10,11 @@ describe('TaskDetailModalComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [TaskDetailModalComponent]
+      imports: [TaskDetailModalComponent],
+      providers: [
+        { provide: MatDialogRef, useValue: createFakeMatDialogRef() },
+        { provide: MAT_DIALOG_DATA, useValue: createTestTask() }
+      ]
     })
     .compileComponents();
 

@@ -7,6 +7,8 @@ import { AuthService, Profile } from '../core/auth.service';
 import { SupabaseService } from '../core/supabase.service';
 import { ThemeModeService } from '../core/theme-mode.service';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
+import { UserAvatarComponent } from '../shared/components/user-avatar/user-avatar.component';
+import { AVATAR_PRESETS } from '../shared/models/avatar-preset';
 
 @Component({
   selector: 'app-account',
@@ -16,6 +18,7 @@ import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrum
     MatIconModule,
     MatProgressSpinnerModule,
     BreadcrumbsComponent,
+    UserAvatarComponent,
   ],
   templateUrl: './account.component.html',
   styleUrl: './account.component.scss',
@@ -28,6 +31,10 @@ export class AccountComponent implements OnInit {
   profile: Profile | null = null;
   organizationName: string | null = null;
   isLoading = true;
+
+  readonly avatarPresets = AVATAR_PRESETS;
+  isSavingAvatar = false;
+  avatarError: string | null = null;
 
   async ngOnInit() {
     this.profile = await this.authService.getProfile();
@@ -42,5 +49,29 @@ export class AccountComponent implements OnInit {
     }
 
     this.isLoading = false;
+  }
+
+  async selectAvatar(avatarKey: string) {
+    if (!this.profile || this.isSavingAvatar || this.profile.avatar_key === avatarKey) {
+      return;
+    }
+
+    this.isSavingAvatar = true;
+    this.avatarError = null;
+
+    const { error } = await this.supabase
+      .from('profiles')
+      .update({ avatar_key: avatarKey })
+      .eq('id', this.profile.id);
+
+    this.isSavingAvatar = false;
+
+    if (error) {
+      this.avatarError = error.message;
+      return;
+    }
+
+    this.profile = { ...this.profile, avatar_key: avatarKey };
+    await this.authService.refreshProfile();
   }
 }

@@ -1,0 +1,185 @@
+<div class="manage-tasks-wrapper">
+  <div class="container">
+    <div class="page-toolbar">
+      <app-breadcrumbs />
+    </div>
+    <h2>Manage Tasks</h2>
+
+    <mat-button-toggle-group [(ngModel)]="viewMode" class="view-toggle">
+      <mat-button-toggle value="create">
+        <mat-icon>add_task</mat-icon>
+        Create task
+      </mat-button-toggle>
+      <mat-button-toggle value="all">
+        <mat-icon>checklist</mat-icon>
+        All tasks
+      </mat-button-toggle>
+    </mat-button-toggle-group>
+
+    @if (viewMode === 'create') {
+      <form [formGroup]="taskForm" (ngSubmit)="submitTask()" class="manage-form">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-icon matPrefix>title</mat-icon>
+          <input matInput placeholder="Title" formControlName="title" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-icon matPrefix>inventory_2</mat-icon>
+          <input
+              matInput
+              placeholder="Related item (search by name or ID)"
+              [formControl]="relatedItemSearchControl"
+              [matAutocomplete]="relatedItemAuto"
+            />
+          <mat-autocomplete #relatedItemAuto="matAutocomplete" (optionSelected)="onRelatedItemSelected($event)">
+            <mat-option [value]="null">Not item-specific</mat-option>
+            @for (item of filteredInventoryItemsForTask; track item.id) {
+              <mat-option [value]="item.name">{{ item.name }} ({{ item.id }})</mat-option>
+            }
+          </mat-autocomplete>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-icon matPrefix>notes</mat-icon>
+          <textarea matInput placeholder="Description" formControlName="description" rows="2"></textarea>
+        </mat-form-field>
+        <div class="field-row">
+          <mat-form-field appearance="outline">
+            <mat-icon matPrefix>flag</mat-icon>
+            <mat-select placeholder="Status" formControlName="status">
+              <mat-option value="todo">To do</mat-option>
+              <mat-option value="in_progress">In progress</mat-option>
+              <mat-option value="done">Done</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-icon matPrefix>person</mat-icon>
+            <mat-select placeholder="Assign to" formControlName="assignedTo">
+              <mat-option [value]="null">Unassigned</mat-option>
+              @for (profile of assignableProfiles; track profile.id) {
+                <mat-option [value]="profile.id">{{ profileLabel(profile) }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-icon matPrefix>event</mat-icon>
+            <input matInput [matDatepicker]="taskDueDatePicker" placeholder="Due date" formControlName="dueDate" />
+            <mat-datepicker-toggle matSuffix [for]="taskDueDatePicker"></mat-datepicker-toggle>
+            <mat-datepicker #taskDueDatePicker></mat-datepicker>
+          </mat-form-field>
+        </div>
+
+        @if (taskError) {
+          <p class="error-message">{{ taskError }}</p>
+        }
+        @if (taskSaved) {
+          <p class="success-message">Task created.</p>
+        }
+
+        <button mat-flat-button color="primary" type="submit" [disabled]="taskForm.invalid || isSavingTask">
+          @if (isSavingTask) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            <ng-container>
+              <mat-icon>add_task</mat-icon>
+              Create task
+            </ng-container>
+          }
+        </button>
+      </form>
+    } @else {
+      <div class="all-tasks-view">
+        <div class="task-filters">
+          <mat-form-field appearance="outline">
+            <mat-icon matPrefix>search</mat-icon>
+            <input matInput placeholder="Search by title or task ID" [(ngModel)]="taskFilterSearch" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-icon matPrefix>person</mat-icon>
+            <mat-select placeholder="Team member" [(ngModel)]="taskFilterAssignee">
+              <mat-option [value]="null">All members</mat-option>
+              @for (profile of assignableProfiles; track profile.id) {
+                <mat-option [value]="profile.id">{{ profileLabel(profile) }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-icon matPrefix>flag</mat-icon>
+            <mat-select placeholder="Status" [(ngModel)]="taskFilterStatus">
+              <mat-option [value]="null">All statuses</mat-option>
+              @for (status of statuses; track status) {
+                <mat-option [value]="status">{{ statusLabels[status] }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-icon matPrefix>event</mat-icon>
+            <input matInput [matDatepicker]="dueBeforePicker" placeholder="Due on or before" [(ngModel)]="taskFilterDueBefore" />
+            <mat-datepicker-toggle matSuffix [for]="dueBeforePicker"></mat-datepicker-toggle>
+            <mat-datepicker #dueBeforePicker></mat-datepicker>
+          </mat-form-field>
+          @if (hasActiveTaskFilters) {
+            <button mat-button type="button" (click)="clearTaskFilters()">
+              <mat-icon>clear</mat-icon>
+              Clear filters
+            </button>
+          }
+        </div>
+
+        @if (isLoadingTasks) {
+          <mat-spinner diameter="32"></mat-spinner>
+        } @else if (filteredAllTasks.length === 0) {
+          <p class="empty-hint">No tasks match these filters.</p>
+        } @else {
+          <div class="task-rows">
+            @for (task of filteredAllTasks; track task.id) {
+              <div
+                  class="task-row clickable"
+                  [class.overdue]="isTaskOverdue(task)"
+                  role="button"
+                  tabindex="0"
+                  [attr.aria-label]="'View details for ' + task.title"
+                  (click)="openTaskDetail(task)"
+                  (keydown.enter)="openTaskDetail(task)"
+                >
+                <div class="task-row-main">
+                  <span class="task-row-title">{{ task.title }}</span>
+                  @if (task.related_item_name) {
+                    <span class="task-row-item">
+                      <mat-icon>inventory_2</mat-icon>
+                      {{ task.related_item_name }}
+                    </span>
+                  }
+                </div>
+                <span class="task-row-assignee">
+                  <app-user-avatar [avatarKey]="assigneeAvatarKey(task.assigned_to)" size="sm" />
+                  {{ assigneeLabel(task.assigned_to) }}
+                </span>
+                <span class="task-row-due">
+                  @if (task.due_date) {
+                    @if (isTaskOverdue(task)) {
+                      <mat-icon>error</mat-icon>
+                    }
+                    Due {{ task.due_date | date: 'M/d/yy' }}
+                  } @else {
+                    No due date
+                  }
+                </span>
+                <span class="status-badge" [class]="'status-' + task.status">
+                  {{ statusLabels[task.status] }}
+                </span>
+                <button
+                    mat-icon-button
+                    type="button"
+                    class="task-row-delete"
+                    [attr.aria-label]="'Delete ' + task.title"
+                    (click)="$event.stopPropagation(); deleteTask(task)"
+                  >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>

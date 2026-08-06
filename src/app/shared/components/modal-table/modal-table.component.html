@@ -345,7 +345,13 @@
                     }
                   </td>
                   <td width="33%">
-                    <span class="semibold">Checked out to:</span> {{data.checkedOutTo || '—'}}
+                    <span class="semibold">Checked out to:</span>
+                    <span class="checked-out-to-value">
+                      @if (data.checkedOutTo) {
+                        <app-user-avatar [avatarKey]="data.checkedOutToAvatarKey" size="sm" />
+                      }
+                      {{data.checkedOutTo || '—'}}
+                    </span>
                   </td>
                   <td width="33%">&nbsp;</td>
                 </tr>
@@ -366,7 +372,10 @@
                   <mat-icon>{{ activityIcon(entry.message) }}</mat-icon>
                   <div class="activity-entry">
                     <span class="activity-message">{{ entry.message }}</span>
-                    <span class="activity-meta">{{ entry.user }} &middot; {{ entry.timestamp | date: 'M/d/yy, h:mm a' }}</span>
+                    <span class="activity-meta">
+                      <app-user-avatar [avatarKey]="entry.userAvatarKey" size="sm" />
+                      {{ entry.user }} &middot; {{ entry.timestamp | date: 'M/d/yy, h:mm a' }}
+                    </span>
                   </div>
                 </li>
               }

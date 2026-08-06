@@ -17,14 +17,14 @@ import { ModalTableComponent } from '../shared/components/modal-table/modal-tabl
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 import { SupabaseService } from '../core/supabase.service';
 import { toInventoryItem } from '../shared/utils/inventory-item.mapper';
-import { resolveProfileName } from '../shared/utils/profile-label';
+import { resolveProfileAvatarKey, resolveProfileName } from '../shared/utils/profile-label';
 import { loadInventoryImagesByItemId } from '../shared/utils/inventory-item-images';
 import { loadInventoryActivityByItemId } from '../shared/utils/inventory-item-activity';
 
 type StockLevel = 'out_of_stock' | 'low_stock' | 'sufficient_stock';
 
 @Component({
-    selector: 'app-dashboard',
+    selector: 'app-inventory',
     imports: [
         CommonModule,
         FormsModule,
@@ -39,10 +39,10 @@ type StockLevel = 'out_of_stock' | 'low_stock' | 'sufficient_stock';
         MatPaginatorModule,
         BreadcrumbsComponent
     ],
-    templateUrl: './dashboard.component.html',
-    styleUrl: './dashboard.component.scss'
+    templateUrl: './inventory.component.html',
+    styleUrl: './inventory.component.scss'
 })
-export class DashboardComponent implements OnInit{
+export class InventoryComponent implements OnInit{
 
   private supabase = inject(SupabaseService).client;
   private dialog = inject(MatDialog);
@@ -186,7 +186,8 @@ export class DashboardComponent implements OnInit{
         row,
         imagesByItemId.get(row.id) ?? [],
         resolveProfileName(row.checked_out_to, profileList),
-        activityByItemId.get(row.id) ?? []
+        activityByItemId.get(row.id) ?? [],
+        resolveProfileAvatarKey(row.checked_out_to, profileList)
       )
     );
     this.isLoading = false;

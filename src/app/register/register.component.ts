@@ -119,6 +119,6 @@ export class RegisterComponent implements OnInit {
       return;
     }
 
-    this.router.navigate(['/dashboard']);
+    this.router.navigate(['/home']);
   }
 }

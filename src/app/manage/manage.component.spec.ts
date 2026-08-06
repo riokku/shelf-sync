@@ -1,6 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 
 import { ManageComponent } from './manage.component';
+import { AuthService } from '../core/auth.service';
+import { createFakeAuthService, createFakeProfile } from '../testing/fakes';
 
 describe('ManageComponent', () => {
   let component: ManageComponent;
@@ -8,7 +11,11 @@ describe('ManageComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ManageComponent]
+      imports: [ManageComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: 'admin' })) }
+      ]
     })
     .compileComponents();
 

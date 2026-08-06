@@ -1,5 +1,6 @@
--- Local dev seed data, ported from the hardcoded array in
--- src/app/dashboard/dashboard.component.ts. checked_out_to is left null for
+-- Local dev seed data, ported from the hardcoded array that originally lived
+-- in src/app/inventory/inventory.component.ts (then src/app/dashboard/, before
+-- that page was renamed). checked_out_to is left null for
 -- every row since it's a real FK to profiles(auth users) now, and this seed
 -- doesn't create any auth users.
 --

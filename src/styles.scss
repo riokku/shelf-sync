@@ -215,10 +215,46 @@ mat-icon{
   }
 }
 
+// ConfirmDialogComponent — deliberately roomier than the denser data-heavy
+// dialogs above, since this one only ever holds a title, a sentence, and two
+// buttons; cramped spacing reads as an afterthought for something the user
+// is about to commit to.
+.confirm-dialog{
+  .mat-mdc-dialog-title{
+    padding: 1.5rem 2rem 0 !important;
+  }
+
+  .mat-mdc-dialog-content{
+    padding: 1.25rem 2rem 1.75rem !important;
+    font-size: 1rem;
+  }
+
+  .mat-mdc-dialog-actions{
+    padding: 0 1.5rem 1.5rem !important;
+  }
+}
+
+// Danger variant — a destructive confirmation (delete/remove) should read as
+// meaningfully more alarming than a routine "are you sure", not just swap
+// one button to red.
+.confirm-dialog-danger{
+  .mat-mdc-dialog-title{
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    background-color: var(--mat-sys-error-container);
+    color: var(--mat-sys-on-error-container);
+  }
+}
+
+.confirm-dialog-warning-icon{
+  color: var(--mat-sys-error);
+}
+
 // The item details dialog's content (several info tables) exceeds Material's
 // default 65vh content cap on typical screens, forcing an internal scrollbar.
 // The dialog itself is opened with maxHeight: '90vh' (see showDetails() in
-// dashboard.component.ts), which bounds the *whole* dialog including the
+// inventory.component.ts), which bounds the *whole* dialog including the
 // title/GUID bar; letting content grow unconstrained here means it only
 // takes whatever room is left within that outer cap, and the dialog surface
 // falls back to its own scrollbar (rather than clipping content off-screen)

@@ -11,3 +11,10 @@ export function resolveProfileName(id: string | null, profiles: Profile[]): stri
   const profile = profiles.find(p => p.id === id);
   return profile ? profileDisplayName(profile) : '';
 }
+
+export function resolveProfileAvatarKey(id: string | null, profiles: Profile[]): string | null {
+  if (!id) {
+    return null;
+  }
+  return profiles.find(p => p.id === id)?.avatar_key ?? null;
+}

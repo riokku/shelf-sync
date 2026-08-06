@@ -1,0 +1,56 @@
+<div class="danger-zone-wrapper">
+  <div class="container">
+    <div class="page-toolbar">
+      <app-breadcrumbs />
+    </div>
+    <h2>Danger Zone</h2>
+
+    <div class="danger-zone-card">
+      <section class="danger-zone-section">
+        <h3>Export organization data</h3>
+        <p class="section-hint">
+          Downloads a JSON file with every inventory item (and its photos, activity log), task,
+          team member, and setting in your organization.
+        </p>
+        @if (exportError) {
+          <p class="error-message">{{ exportError }}</p>
+        }
+        <button mat-stroked-button type="button" (click)="exportOrganizationData()" [disabled]="isExporting">
+          @if (isExporting) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            <ng-container>
+              <mat-icon>download</mat-icon>
+              Export data
+            </ng-container>
+          }
+        </button>
+      </section>
+    </div>
+
+    <div class="danger-zone-card danger-card">
+      <section class="danger-zone-section">
+        <h3>Delete organization</h3>
+        <p class="section-hint">
+          Permanently deletes "{{ organizationName }}" — every inventory item, task, and team
+          member's access — 30 days after you confirm. You'll be signed out immediately, and
+          every team member loses access right away too, not just after the 30 days. This can't
+          be undone once the grace period elapses.
+        </p>
+        @if (deleteError) {
+          <p class="error-message">{{ deleteError }}</p>
+        }
+        <button mat-flat-button color="warn" type="button" (click)="deleteOrganization()" [disabled]="isDeletingOrg || !organizationName">
+          @if (isDeletingOrg) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            <ng-container>
+              <mat-icon>delete_forever</mat-icon>
+              Delete organization
+            </ng-container>
+          }
+        </button>
+      </section>
+    </div>
+  </div>
+</div>

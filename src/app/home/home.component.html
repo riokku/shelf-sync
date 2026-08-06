@@ -1,0 +1,49 @@
+<div class="home-wrapper">
+  <div class="container">
+    <div class="page-toolbar">
+      <app-breadcrumbs />
+    </div>
+    <h2>Welcome back{{ greetingName ? ', ' + greetingName : '' }}</h2>
+    <p class="home-subtitle">Where do you want to go?</p>
+
+    <div class="home-grid">
+      <a class="home-card" routerLink="/inventory">
+        <mat-icon>inventory_2</mat-icon>
+        <h3>Inventory</h3>
+        <p>Browse and manage your inventory.</p>
+      </a>
+      <a class="home-card" routerLink="/tasks">
+        <mat-icon>checklist</mat-icon>
+        <h3>Tasks</h3>
+        <p>See what's assigned to you.</p>
+      </a>
+      @if (authService.canManage()) {
+        <a class="home-card" routerLink="/manage">
+          <span class="permission-badge">
+            <mat-icon>shield</mat-icon>
+            Manager+
+          </span>
+          <mat-icon>admin_panel_settings</mat-icon>
+          <h3>Manage</h3>
+          <p>Administer inventory, tasks, and your team.</p>
+        </a>
+      }
+      @if (authService.role() === 'admin') {
+        <a class="home-card" routerLink="/customize">
+          <span class="permission-badge">
+            <mat-icon>shield</mat-icon>
+            Admin
+          </span>
+          <mat-icon>palette</mat-icon>
+          <h3>Customize</h3>
+          <p>Branding and site settings.</p>
+        </a>
+      }
+      <a class="home-card" routerLink="/account">
+        <mat-icon>account_circle</mat-icon>
+        <h3>Account</h3>
+        <p>Your profile and organization.</p>
+      </a>
+    </div>
+  </div>
+</div>

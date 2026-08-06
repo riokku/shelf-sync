@@ -1,0 +1,9 @@
+<div
+    class="user-avatar"
+    [class.user-avatar-sm]="size === 'sm'"
+    [class.user-avatar-lg]="size === 'lg'"
+    [class.user-avatar-empty]="!preset"
+    [style.background]="preset?.color ?? null"
+  >
+  <mat-icon>{{ preset?.icon ?? 'person' }}</mat-icon>
+</div>

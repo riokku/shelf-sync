@@ -11,8 +11,8 @@ export const authGuard: CanActivateFn = async (_route, state) => {
     return true;
   }
 
-  // Preserves deep links (e.g. dashboard?item=<id>) through a login
+  // Preserves deep links (e.g. inventory?item=<id>) through a login
   // redirect — LoginComponent reads this back and navigates there instead
-  // of the plain dashboard once the user's actually signed in.
+  // of the plain /home landing page once the user's actually signed in.
   return router.createUrlTree(['/'], { queryParams: { returnUrl: state.url } });
 };

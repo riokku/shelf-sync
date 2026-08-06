@@ -1,0 +1,238 @@
+<div class="manage-inventory-wrapper">
+  <div class="container">
+    <div class="page-toolbar">
+      <app-breadcrumbs />
+    </div>
+    <h2>Manage Inventory</h2>
+
+    <mat-button-toggle-group [(ngModel)]="viewMode" class="view-toggle">
+      <mat-button-toggle value="create">
+        <mat-icon>add</mat-icon>
+        Create item
+      </mat-button-toggle>
+      <mat-button-toggle value="all">
+        <mat-icon>checklist</mat-icon>
+        All inventory
+      </mat-button-toggle>
+    </mat-button-toggle-group>
+
+    @if (viewMode === 'create') {
+      <form [formGroup]="inventoryForm" (ngSubmit)="submitInventoryItem()" class="manage-form">
+        <div class="form-section">
+          <h3>Item information</h3>
+          <div class="field-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Name</mat-label>
+              <mat-icon matPrefix>inventory_2</mat-icon>
+              <input matInput formControlName="name" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Category</mat-label>
+              <mat-icon matPrefix>category</mat-icon>
+              <mat-select formControlName="category">
+                <mat-option [value]="''">None</mat-option>
+                @for (option of inventoryFieldOptions.optionsFor('category'); track option) {
+                  <mat-option [value]="option">{{ option }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          </div>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Description</mat-label>
+            <mat-icon matPrefix>description</mat-icon>
+            <textarea matInput formControlName="description" rows="2"></textarea>
+          </mat-form-field>
+          <div class="image-upload-field">
+            <label class="image-upload-label">
+              <mat-icon>image</mat-icon>
+              Photos (up to {{ maxInventoryItemImages }})
+            </label>
+            <input
+                type="file"
+                accept="image/*"
+                multiple
+                [disabled]="selectedImageFiles.length >= maxInventoryItemImages"
+                (change)="onImagesSelected($event)"
+              />
+            @if (imageLimitError) {
+              <p class="error-message">{{ imageLimitError }}</p>
+            }
+            @if (imagePreviews.length > 0) {
+              <div class="image-preview-row">
+                @for (preview of imagePreviews; track $index) {
+                  <div class="image-preview-thumb">
+                    <img [src]="preview" alt="Selected item photo preview" />
+                    <button mat-icon-button type="button" (click)="removeSelectedImage($index)" aria-label="Remove photo">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+          <div class="field-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Physical location</mat-label>
+              <mat-icon matPrefix>place</mat-icon>
+              <mat-select formControlName="physicalLocation">
+                <mat-option [value]="''">None</mat-option>
+                @for (option of inventoryFieldOptions.optionsFor('physical_location'); track option) {
+                  <mat-option [value]="option">{{ option }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Digital location</mat-label>
+              <mat-icon matPrefix>link</mat-icon>
+              <input matInput formControlName="digitalLocation" />
+            </mat-form-field>
+          </div>
+          <div class="field-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Applicable year</mat-label>
+              <mat-icon matPrefix>event</mat-icon>
+              <input matInput formControlName="applicableYear" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Expiration date</mat-label>
+              <mat-icon matPrefix>event_busy</mat-icon>
+              <input matInput [matDatepicker]="expirationDatePicker" formControlName="expirationDate" />
+              <mat-datepicker-toggle matSuffix [for]="expirationDatePicker"></mat-datepicker-toggle>
+              <mat-datepicker #expirationDatePicker></mat-datepicker>
+            </mat-form-field>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3>Supplier information</h3>
+          <div class="field-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Supplier name</mat-label>
+              <mat-icon matPrefix>storefront</mat-icon>
+              <input matInput formControlName="supplierName" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Supplier lead time</mat-label>
+              <mat-icon matPrefix>schedule</mat-icon>
+              <input matInput formControlName="supplierLeadTime" />
+            </mat-form-field>
+          </div>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Order link</mat-label>
+            <mat-icon matPrefix>shopping_cart</mat-icon>
+            <input matInput formControlName="orderLink" />
+          </mat-form-field>
+        </div>
+
+        <div class="form-section">
+          <h3>Quantity &amp; price</h3>
+          <div class="field-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Quantity total</mat-label>
+              <mat-icon matPrefix>numbers</mat-icon>
+              <input matInput type="number" formControlName="quantityTotal" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Quantity per container</mat-label>
+              <mat-icon matPrefix>inventory</mat-icon>
+              <input matInput type="number" formControlName="quantityPerContainer" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Low quantity threshold</mat-label>
+              <mat-icon matPrefix>warning</mat-icon>
+              <input matInput type="number" formControlName="lowQuantityThreshold" />
+            </mat-form-field>
+          </div>
+          <div class="field-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Price per unit</mat-label>
+              <mat-icon matPrefix>attach_money</mat-icon>
+              <input matInput type="number" formControlName="pricePerUnit" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Price per container</mat-label>
+              <mat-icon matPrefix>attach_money</mat-icon>
+              <input matInput type="number" formControlName="pricePerContainer" />
+            </mat-form-field>
+          </div>
+        </div>
+
+        @if (itemError) {
+          <p class="error-message">{{ itemError }}</p>
+        }
+        @if (itemSaved) {
+          <p class="success-message">Item created.</p>
+        }
+
+        <button mat-flat-button color="primary" type="submit" [disabled]="inventoryForm.invalid || isSavingItem">
+          @if (isSavingItem) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            <ng-container>
+              <mat-icon>add</mat-icon>
+              Create item
+            </ng-container>
+          }
+        </button>
+      </form>
+    } @else {
+      <div class="all-items-view">
+        @if (isLoadingInventoryList) {
+          <mat-spinner diameter="32"></mat-spinner>
+        } @else if (allInventoryItems.length === 0) {
+          <p class="empty-hint">No inventory items yet.</p>
+        } @else {
+          <div class="task-rows">
+            @for (item of allInventoryItems; track item.id) {
+              <div
+                  class="task-row clickable"
+                  [class.overdue]="isInventoryItemLowStock(item)"
+                  role="button"
+                  tabindex="0"
+                  [attr.aria-label]="'View details for ' + item.name"
+                  (click)="openInventoryDetail(item)"
+                  (keydown.enter)="openInventoryDetail(item)"
+                >
+                <div class="task-row-main">
+                  <span class="task-row-title">{{ item.name }}</span>
+                  @if (item.is_checked_out) {
+                    <span class="task-row-checked-out">
+                      <mat-icon>person</mat-icon>
+                      Checked out
+                    </span>
+                  }
+                  @if (item.category) {
+                    <span class="task-row-item">
+                      <mat-icon>category</mat-icon>
+                      {{ item.category }}
+                    </span>
+                  }
+                </div>
+                <span class="task-row-assignee">
+                  <mat-icon>inventory</mat-icon>
+                  {{ item.quantity_remaining }} / {{ item.quantity_total }} remaining
+                </span>
+                <span class="task-row-due">
+                  @if (item.price_per_unit != null) {
+                    <mat-icon>attach_money</mat-icon>
+                    {{ item.price_per_unit | currency }} / unit
+                  } @else {
+                    No price set
+                  }
+                </span>
+                @if (isInventoryItemLowStock(item)) {
+                  <span class="status-badge status-low-stock">
+                    <mat-icon>warning</mat-icon>
+                    Low stock
+                  </span>
+                } @else {
+                  <span class="status-badge status-ok">In stock</span>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>
