@@ -56,6 +56,20 @@
   }
 }
 
+.transfer-pending-badge{
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--mat-sys-tertiary);
+  font-size: 0.8125rem;
+
+  mat-icon{
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
 .task-row-due{
   display: flex;
   align-items: center;

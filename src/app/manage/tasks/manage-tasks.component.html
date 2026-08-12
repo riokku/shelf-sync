@@ -150,8 +150,16 @@
                   }
                 </div>
                 <span class="task-row-assignee">
-                  <app-user-avatar [avatarKey]="assigneeAvatarKey(task.assigned_to)" size="sm" />
-                  {{ assigneeLabel(task.assigned_to) }}
+                  <span class="task-row-assignee-name">
+                    <app-user-avatar [avatarKey]="assigneeAvatarKey(task.assigned_to)" size="sm" />
+                    {{ assigneeLabel(task.assigned_to) }}
+                  </span>
+                  @if (pendingTransferLabel(task); as transferLabel) {
+                    <span class="task-row-transfer">
+                      <mat-icon>swap_horiz</mat-icon>
+                      Pending to {{ transferLabel }}
+                    </span>
+                  }
                 </span>
                 <span class="task-row-due">
                   @if (task.due_date) {

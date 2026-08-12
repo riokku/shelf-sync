@@ -134,7 +134,14 @@
   }
 }
 
-.task-row-assignee,
+.task-row-assignee{
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.task-row-assignee-name,
 .task-row-due{
   display: flex;
   align-items: center;
@@ -146,6 +153,20 @@
     font-size: 1rem;
     width: 1rem;
     height: 1rem;
+  }
+}
+
+.task-row-transfer{
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--mat-sys-tertiary);
+  font-size: 0.75rem;
+
+  mat-icon{
+    font-size: 0.9rem;
+    width: 0.9rem;
+    height: 0.9rem;
   }
 }
 

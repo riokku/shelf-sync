@@ -389,6 +389,9 @@
 @if (saveError) {
   <p class="error-message save-error">{{ saveError }}</p>
 }
+@if (discardError) {
+  <p class="error-message save-error">{{ discardError }}</p>
+}
 <mat-dialog-actions align="end">
   @if (isEditing) {
     <button mat-button type="button" (click)="cancelEdit()" [disabled]="isSaving">
@@ -405,6 +408,22 @@
       }
     </button>
   } @else {
+    <button
+        mat-stroked-button
+        type="button"
+        color="warn"
+        (click)="openDiscard()"
+        [disabled]="data.quantityRemaining <= 0 || isDiscarding"
+      >
+      @if (isDiscarding) {
+        <mat-spinner diameter="20"></mat-spinner>
+      } @else {
+        <ng-container>
+          <mat-icon>delete_sweep</mat-icon>
+          Discard
+        </ng-container>
+      }
+    </button>
     <button mat-stroked-button type="button" (click)="startEdit()">
       <mat-icon>edit</mat-icon>
       Edit

@@ -40,26 +40,94 @@
     </dd>
   </dl>
 
-  <mat-form-field appearance="outline" class="status-field">
-    <mat-icon matPrefix>flag</mat-icon>
-    <mat-select [(ngModel)]="selectedStatus">
-      @for (status of statuses; track status) {
-        <mat-option [value]="status">{{ statusLabels[status] }}</mat-option>
-      }
-    </mat-select>
-  </mat-form-field>
+  @if (!isPendingRecipient) {
+    <mat-form-field appearance="outline" class="status-field">
+      <mat-icon matPrefix>flag</mat-icon>
+      <mat-select [(ngModel)]="selectedStatus">
+        @for (status of statuses; track status) {
+          <mat-option [value]="status">{{ statusLabels[status] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
 
-  @if (error) {
-    <p class="error-message">{{ error }}</p>
+    @if (error) {
+      <p class="error-message">{{ error }}</p>
+    }
+  }
+
+  @if (isPendingRecipient) {
+    <div class="transfer-panel transfer-incoming">
+      <p>
+        <mat-icon>swap_horiz</mat-icon>
+        This task was offered to you by <span class="semibold">{{ assigneeLabel() }}</span>.
+      </p>
+      <div class="transfer-actions">
+        <button mat-stroked-button type="button" (click)="declineTransfer()" [disabled]="isRespondingToTransfer">
+          Decline
+        </button>
+        <button mat-flat-button color="primary" type="button" (click)="acceptTransfer()" [disabled]="isRespondingToTransfer">
+          @if (isRespondingToTransfer) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            Accept
+          }
+        </button>
+      </div>
+    </div>
+  } @else if (canManageTransfer) {
+    <div class="transfer-panel">
+      @if (task.pending_transfer_to) {
+        <p>
+          <mat-icon>hourglass_top</mat-icon>
+          Transfer pending — waiting on <span class="semibold">{{ pendingTransferLabel() }}</span> to accept.
+        </p>
+        <button mat-button type="button" (click)="cancelTransfer()" [disabled]="isRequestingTransfer">
+          @if (isRequestingTransfer) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            Cancel transfer
+          }
+        </button>
+      } @else {
+        <div class="transfer-request-row">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-icon matPrefix>swap_horiz</mat-icon>
+            <mat-select placeholder="Transfer to" [(ngModel)]="transferTarget">
+              @for (profile of transferablePeople; track profile.id) {
+                <mat-option [value]="profile.id">{{ profileLabel(profile) }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <button
+              mat-stroked-button
+              type="button"
+              (click)="requestTransfer()"
+              [disabled]="!transferTarget || isRequestingTransfer"
+            >
+            @if (isRequestingTransfer) {
+              <mat-spinner diameter="20"></mat-spinner>
+            } @else {
+              Request transfer
+            }
+          </button>
+        </div>
+      }
+    </div>
+  }
+
+  @if (transferError) {
+    <p class="error-message">{{ transferError }}</p>
   }
 </mat-dialog-content>
 <mat-dialog-actions align="end">
-  <button mat-button type="button" (click)="closeModal()">Cancel</button>
-  <button mat-flat-button color="primary" type="button" (click)="saveStatus()" [disabled]="isSaving">
-    @if (isSaving) {
-      <mat-spinner diameter="20"></mat-spinner>
-    } @else {
-      Save
-    }
-  </button>
+  <button mat-button type="button" (click)="closeModal()">{{ isPendingRecipient ? 'Close' : 'Cancel' }}</button>
+  @if (!isPendingRecipient) {
+    <button mat-flat-button color="primary" type="button" (click)="saveStatus()" [disabled]="isSaving">
+      @if (isSaving) {
+        <mat-spinner diameter="20"></mat-spinner>
+      } @else {
+        Save
+      }
+    </button>
+  }
 </mat-dialog-actions>

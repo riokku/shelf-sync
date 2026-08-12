@@ -16,6 +16,18 @@
         {{ task.related_item_name }}
       </span>
     }
+    @if (pendingTransferToLabel) {
+      <span class="transfer-pending-badge">
+        <mat-icon>swap_horiz</mat-icon>
+        Transfer pending to {{ pendingTransferToLabel }}
+      </span>
+    }
+    @if (transferFromLabel) {
+      <span class="transfer-pending-badge">
+        <mat-icon>swap_horiz</mat-icon>
+        Offered by {{ transferFromLabel }}
+      </span>
+    }
   </div>
   <span class="task-row-due">
     @if (task.due_date) {

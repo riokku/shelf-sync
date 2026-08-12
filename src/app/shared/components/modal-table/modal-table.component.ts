@@ -15,6 +15,7 @@ import { InventoryItem, MAX_INVENTORY_ITEM_IMAGES, isLowStock } from '../../mode
 import { ImageGalleryComponent } from '../image-gallery/image-gallery.component';
 import { UserAvatarComponent } from '../user-avatar/user-avatar.component';
 import { CreateTaskModalComponent } from '../create-task-modal/create-task-modal.component';
+import { DiscardInventoryModalComponent, DiscardInventoryModalResult } from '../discard-inventory-modal/discard-inventory-modal.component';
 import { AuthService, Profile } from '../../../core/auth.service';
 import { SupabaseService } from '../../../core/supabase.service';
 import { InventoryFieldOptionsService } from '../../../core/inventory-field-options.service';
@@ -91,6 +92,9 @@ export class ModalTableComponent {
   isSaving = false;
   saveError: string | null = null;
 
+  isDiscarding = false;
+  discardError: string | null = null;
+
   readonly maxInventoryItemImages = MAX_INVENTORY_ITEM_IMAGES;
   existingImages: InventoryItemImageRecord[] = [];
   removedImageIds = new Set<string>();
@@ -160,6 +164,74 @@ export class ModalTableComponent {
     });
   }
 
+  /** Open with any authenticated user, mirroring the edit flow above — same
+   *  RLS widened-to-any-authenticated-user policy backs both. Splits the
+   *  quantity/notes prompt (this dialog) from the actual write (below) so
+   *  the persistence + local-state-sync logic can stay next to saveEdit()'s,
+   *  which it closely mirrors. */
+  openDiscard(){
+    if (this.data.quantityRemaining <= 0 || this.isDiscarding) {
+      return;
+    }
+
+    const dialogRef = this.dialog.open(DiscardInventoryModalComponent, {
+      data: { itemName: this.data.name, quantityRemaining: this.data.quantityRemaining },
+      width: 'clamp(28rem, 50vw, 34rem)',
+      maxWidth: '90vw'
+    });
+
+    dialogRef.afterClosed().subscribe((result: DiscardInventoryModalResult | undefined) => {
+      if (result) {
+        void this.performDiscard(result.quantity, result.notes);
+      }
+    });
+  }
+
+  private async performDiscard(quantity: number, notes: string){
+    this.isDiscarding = true;
+    this.discardError = null;
+
+    const session = await this.authService.getSession();
+    if (!session) {
+      this.isDiscarding = false;
+      this.discardError = 'You must be signed in to discard inventory.';
+      return;
+    }
+
+    const beforeRemaining = this.data.quantityRemaining;
+    const beforeTotal = this.data.quantityTotal;
+    const afterRemaining = Math.max(beforeRemaining - quantity, 0);
+    const afterTotal = Math.max(beforeTotal - quantity, 0);
+
+    const { error } = await this.supabase.from('inventory_items').update({
+      quantity_remaining: afterRemaining,
+      quantity_total: afterTotal
+    }).eq('id', this.data.id);
+
+    if (error) {
+      this.isDiscarding = false;
+      this.discardError = error.message;
+      return;
+    }
+
+    this.data.quantityRemaining = afterRemaining;
+    this.data.quantityTotal = afterTotal;
+
+    const profile = this.authService.profile();
+    const userLabel = profile ? profileDisplayName(profile) : (session.user.email ?? 'Unknown user');
+    const message = `Discarded ${quantity} unit(s) (Quantity remaining ${beforeRemaining} → ${afterRemaining}). Reason: ${notes}`;
+
+    const logError = await logInventoryItemActivity(this.supabase, this.data.id, session.user.id, message);
+    if (!logError) {
+      this.data.activityLog = [
+        { timestamp: new Date().toISOString(), user: userLabel, userAvatarKey: profile?.avatar_key ?? null, message },
+        ...this.data.activityLog
+      ];
+    }
+
+    this.isDiscarding = false;
+  }
+
   async copyId(){
     await navigator.clipboard.writeText(this.data.id);
     this.idCopied = true;
@@ -188,6 +260,9 @@ export class ModalTableComponent {
     }
     if (lower.includes('allocated')) {
       return 'inventory_2';
+    }
+    if (lower.includes('discarded')) {
+      return 'delete_sweep';
     }
     if (lower.includes('updated')) {
       return 'edit';

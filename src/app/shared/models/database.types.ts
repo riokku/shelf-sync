@@ -360,6 +360,7 @@ export type Database = {
           due_date: string | null
           id: string
           organization_id: string
+          pending_transfer_to: string | null
           related_item_name: string | null
           status: Database["public"]["Enums"]["task_status"]
           title: string
@@ -373,6 +374,7 @@ export type Database = {
           due_date?: string | null
           id?: string
           organization_id?: string
+          pending_transfer_to?: string | null
           related_item_name?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title: string
@@ -386,6 +388,7 @@ export type Database = {
           due_date?: string | null
           id?: string
           organization_id?: string
+          pending_transfer_to?: string | null
           related_item_name?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title?: string
@@ -413,6 +416,13 @@ export type Database = {
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "tasks_pending_transfer_to_fkey"
+            columns: ["pending_transfer_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -420,6 +430,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_task_transfer: { Args: { task_id: string }; Returns: undefined }
       admin_set_user_role: {
         Args: {
           new_role: Database["public"]["Enums"]["user_role"]
@@ -427,12 +438,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      cancel_task_transfer: { Args: { task_id: string }; Returns: undefined }
       current_user_org_id: { Args: never; Returns: string }
       current_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      decline_task_transfer: { Args: { task_id: string }; Returns: undefined }
       purge_expired_organizations: { Args: never; Returns: undefined }
+      request_task_transfer: {
+        Args: { target_id: string; task_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       task_status: "todo" | "in_progress" | "done"

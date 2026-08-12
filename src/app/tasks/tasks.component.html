@@ -7,34 +7,47 @@
 
   @if (isLoading) {
     <mat-spinner diameter="32"></mat-spinner>
-  } @else if (tasks.length === 0) {
-    <p>You have no tasks assigned to you.</p>
   } @else {
-    <section class="task-section">
-      <h3>Not completed</h3>
-      @if (incompleteTasks.length === 0) {
-        <p class="empty-hint">Nothing outstanding — nice work.</p>
-      } @else {
+    @if (incomingTransfers.length > 0) {
+      <section class="task-section">
+        <h3>Incoming transfer requests</h3>
         <div class="task-rows">
-          @for (task of incompleteTasks; track task.id) {
-            <app-task-card [task]="task" (open)="openTask($event)" />
+          @for (task of incomingTransfers; track task.id) {
+            <app-task-card [task]="task" [transferFromLabel]="transferSenderLabel(task)" (open)="openTask($event)" />
           }
         </div>
-      }
-    </section>
+      </section>
+    }
 
-    <section class="task-section">
-      <h3>Completed</h3>
-      @if (completedTasks.length === 0) {
-        <p class="empty-hint">No completed tasks yet.</p>
-      } @else {
-        <div class="task-rows">
-          @for (task of completedTasks; track task.id) {
-            <app-task-card [task]="task" (open)="openTask($event)" />
-          }
-        </div>
-      }
-    </section>
+    @if (tasks.length === 0) {
+      <p>You have no tasks assigned to you.</p>
+    } @else {
+      <section class="task-section">
+        <h3>Not completed</h3>
+        @if (incompleteTasks.length === 0) {
+          <p class="empty-hint">Nothing outstanding — nice work.</p>
+        } @else {
+          <div class="task-rows">
+            @for (task of incompleteTasks; track task.id) {
+              <app-task-card [task]="task" [pendingTransferToLabel]="pendingTransferToLabel(task)" (open)="openTask($event)" />
+            }
+          </div>
+        }
+      </section>
+
+      <section class="task-section">
+        <h3>Completed</h3>
+        @if (completedTasks.length === 0) {
+          <p class="empty-hint">No completed tasks yet.</p>
+        } @else {
+          <div class="task-rows">
+            @for (task of completedTasks; track task.id) {
+              <app-task-card [task]="task" [pendingTransferToLabel]="pendingTransferToLabel(task)" (open)="openTask($event)" />
+            }
+          </div>
+        }
+      </section>
+    }
   }
   </div>
 </div>

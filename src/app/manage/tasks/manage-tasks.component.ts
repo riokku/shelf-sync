@@ -167,6 +167,12 @@ export class ManageTasksComponent implements OnInit {
     return resolveProfileAvatarKey(assignedTo, this.assignableProfiles);
   }
 
+  pendingTransferLabel(task: Task): string | null {
+    return task.pending_transfer_to
+      ? (resolveProfileName(task.pending_transfer_to, this.assignableProfiles) || 'someone')
+      : null;
+  }
+
   isTaskOverdue(task: Task): boolean {
     return !!task.due_date && task.status !== 'done' && task.due_date < getTodayIsoDate();
   }
