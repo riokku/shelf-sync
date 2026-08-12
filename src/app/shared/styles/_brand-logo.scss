@@ -2,15 +2,28 @@
 // that component's own .scss (view encapsulation means these rules must be
 // compiled into brand-logo's own stylesheet, not just the page embedding it).
 
-// Larger standalone mark above the "ShelfSync" wordmark. The wordmark
-// itself is static now (see .happy-title below) — this mark is the only
-// animated piece of the intro, so there's no cross-animation timing to
+// Icon mark beside the "ShelfSync" wordmark, rather than stacked above
+// it — a compact horizontal lockup instead of a full-width intro banner.
+// The wordmark itself is static now (see .happy-title below) — this mark
+// is the only animated piece, so there's no cross-animation timing to
 // keep in sync.
+.brand-logo-row{
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .brand-logo{
   display: block;
-  height: 8rem;
+  // Taller than .brand-wordmark (below) on purpose — the icon mark reads
+  // small next to the wordmark's cap-height at matching box heights, so it
+  // runs a bit bigger than the text's own box. align-items:center on
+  // .brand-logo-row still centers each box independently regardless of
+  // this size difference; see brand-logo.component.html's dy comment for
+  // how the two boxes' *ink* centers (not just their boxes) are kept
+  // aligned across the two different heights.
+  height: 5rem;
   width: auto;
-  margin: 0 0 1rem;
   overflow: visible;
 }
 
@@ -44,8 +57,12 @@
   }
 }
 
-svg{
-  width: clamp(20rem, 100%, 100%);
+// Sized off height (not the old fixed-minimum width) so it scales down
+// to sit at the same height as .brand-logo beside it, rather than forcing
+// at least 20rem of width regardless of how much room the two have.
+.brand-wordmark{
+  height: 4rem;
+  width: auto;
   font-weight: 700;
   text {
     font-size: 7rem;

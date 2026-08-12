@@ -128,10 +128,9 @@ h1{
 }
 
 // Sits below .register-fields (or the benefits list) rather than inside
-// it — a standalone, full-width call to action either way.
+// it — a standalone call to action either way. Left at its natural
+// (shrink-to-fit) width rather than stretched to match the fields above.
 button{
-  display: block;
-  width: 100%;
   border-radius: 6px !important;
   padding: 0.5rem 1rem;
 }

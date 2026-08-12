@@ -3,7 +3,19 @@
   flex-flow: column;
   min-height: 100%;
   max-width: 100%;
-  background: url('../assets/background.png');
+  background-image: url('../assets/background.png');
+  background-repeat: repeat;
+  // fixed rather than the default scroll — anchors the tile grid to the
+  // *viewport* instead of this element's own box. The landing page's
+  // .hero-wave/.steps-wave (landing.component.scss) punch wave-shaped
+  // holes through their own sections to reveal this same image; with the
+  // default scroll attachment, their tiles would only coincidentally line
+  // up with this one (only if their absolute page position happened to be
+  // an exact multiple of the tile size), producing a visible seam at the
+  // wave's edge. Fixed attachment means any two elements sharing this
+  // image always sample the same on-screen "wallpaper" regardless of
+  // where either one sits in the document, so they align by construction.
+  background-attachment: fixed;
 
   // The dark textured background.png above predates light mode and has no
   // light-mode counterpart asset — rather than showing that dark texture

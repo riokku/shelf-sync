@@ -6,55 +6,43 @@
 // visitor's light/dark preference via --mat-sys-* tokens same as the rest
 // of the app.
 // No background-color here (deliberately) — body already carries the same
-// var(--mat-sys-surface) globally (styles.scss), and this element is the
-// *direct* parent of .landing-bg below. A z-index:-1 child can only ever
-// paint behind its own in-flow SIBLINGS, never behind its own direct
-// parent's background/border — that's fixed painting order, not something
-// z-index reorders — so if .landing painted its own background here, it
-// would permanently hide .landing-bg regardless of z-index or opacity.
-// Letting body's background show through instead sidesteps that entirely.
+// var(--mat-sys-surface) globally (styles.scss). This used to matter for
+// keeping a fixed background-pattern layer visible behind this element
+// (now removed — the hero/steps/CTA section backgrounds carry the page's
+// visual interest instead), but stays background-less regardless so body's
+// own surface color shows through in the gaps between sections.
 .landing{
   position: relative;
   color: var(--mat-sys-on-surface);
   overflow-x: hidden;
 }
 
-// A faint, endlessly-drifting tile of inventory-box outlines behind the
-// whole page — fixed rather than scrolling with content, so it reads as
-// one constant ambient backdrop. A handful of individually-positioned
-// icons was tried first, but every section here has an opaque background
-// of its own (the hero's gradient, each card) that fully hides anything
-// z-indexed behind it at that exact spot — a repeating pattern covering
-// the entire viewport means it always shows through *some* of the gaps
-// (section padding, gutters between cards) regardless of exact layout.
-// Painted via mask-image (an alpha stencil) with an actual background-color
-// behind it, rather than baking a color into the SVG itself — Chrome
-// doesn't resolve currentColor for an SVG referenced from background-image
-// (it silently paints black), which made an earlier attempt invisible
-// against this page's dark surfaces. A mask's color comes from whatever
-// paints behind it, so this one correctly follows the light/dark theme.
-$box-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='8' y='8' width='48' height='48' rx='4' fill='none' stroke='white' stroke-width='2'/%3E%3Cpath d='M32 8 L32 32 M8 32 L56 32' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E");
-
-.landing-bg{
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  opacity: 0.09;
-  background-color: var(--mat-sys-on-surface);
-  -webkit-mask-image: $box-tile;
-  mask-image: $box-tile;
-  -webkit-mask-size: 5rem 5rem;
-  mask-size: 5rem 5rem;
-  animation: pattern-drift 50s ease-in-out infinite alternate;
-}
-
-@keyframes pattern-drift{
-  from{ -webkit-mask-position: 0 0; mask-position: 0 0; }
-  to{ -webkit-mask-position: 3rem 4rem; mask-position: 3rem 4rem; }
+// Wraps .landing-nav and .hero together — .hero-backdrop (a child of
+// *this*, not of .hero) now spans both, so the fixed-dark gradient
+// treatment covers the nav bar too instead of stopping at the hero's own
+// top edge. Fixed dark regardless of the visitor's light/dark preference —
+// see the top-of-file note — which is why .landing-nav's own children
+// below are pinned to explicit light colors rather than the usual
+// var(--mat-sys-on-surface)/on-surface-variant tokens: those resolve
+// per-toggle, but this region's background no longer does.
+.hero-region{
+  position: relative;
+  // position:relative alone (without an explicit z-index) does NOT
+  // establish a stacking context — so .hero-backdrop's z-index:-1 below
+  // was escaping past this element, .landing, and even app-root/
+  // .site-wrapper, landing in the root stacking context where it lost
+  // outright to <body>'s own opaque background-color (confirmed via
+  // document.elementsFromPoint(): .hero-backdrop was painting *behind*
+  // <body>, not just behind its own content). isolation:isolate forces
+  // this element to contain its own negative-z-index children instead of
+  // leaking them out, with no other visual side effects.
+  isolation: isolate;
+  color-scheme: dark;
+  color: #ffffff;
 }
 
 .landing-nav{
+  position: relative;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -68,7 +56,13 @@ $box-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vie
   align-items: center;
   gap: 0.625rem;
   text-decoration: none;
-  color: var(--mat-sys-on-surface);
+  // Pinned white — see .hero-region's own comment above. Previously
+  // var(--mat-sys-on-surface), which followed the visitor's light/dark
+  // toggle correctly back when the nav sat on the plain, toggle-following
+  // page background; now that it always sits on .hero-region's fixed-dark
+  // gradient, that token would resolve to near-black text in light mode
+  // and become illegible against it.
+  color: #ffffff;
 }
 
 .brand-mark{
@@ -87,9 +81,18 @@ $box-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vie
   display: flex;
   align-items: center;
   gap: 0.5rem;
+
+  // Plain mat-button's default color comes from --mat-sys-primary, a
+  // light-dark() token — .hero-region's color-scheme:dark above already
+  // forces that to resolve to its dark-mode (light lavender) value
+  // regardless of the visitor's toggle, so "Log in" doesn't need an
+  // explicit override the way .mat-mdc-outlined-button gets one in
+  // .hero-actions below. mat-flat-button's filled background comes from
+  // the same token too and needs no change either.
 }
 
-// Fixed dark hero, independent of the visitor's light/dark preference — see
+// Fixed dark hero, independent of the visitor's light/dark preference —
+// color itself now lives on .hero-region above (shared with the nav); see
 // the top-of-file note. The gradient mixes in the active color theme's
 // primary/tertiary tokens (SiteSettingsService's [data-theme] preset is
 // readable by anon, so it's already applied before login), so this section
@@ -104,24 +107,109 @@ $box-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vie
   max-width: 1400px;
   margin: 0 auto;
   padding: 3rem 2rem 5rem;
-  color-scheme: dark;
-  color: #ffffff;
 }
 
-// Base gradient plus two slowly-drifting blurred "glow" blobs, clipped to
-// this backdrop rather than .hero itself so the negative inset (the
-// bleed past the section's own edges, for the rounded-bottom overhang look)
-// stays intact while the blobs' own movement is still contained and can't
-// spill into the section below.
+// Base gradient plus two slowly-drifting blurred "glow" blobs. A child of
+// .hero-region (covering nav + hero) rather than .hero itself now, sized
+// via inset:0 against .hero-region's own height — which comes from normal
+// document flow (nav + hero stacked), so this backdrop always covers
+// exactly both regardless of nav wrapping or hero text length at any
+// viewport, without a hardcoded height. No border-radius — .hero-wave
+// (below) supplies the transition into the section beneath instead.
+// Full-bleed horizontally via the classic centered-max-width breakout
+// (left/right 50% + negative 50vw margins, same trick .steps-section's
+// band below uses) — this only reaches true viewport edges because
+// .hero-region's content (.landing-nav, .hero) is horizontally centered,
+// so its own midpoint already coincides with the viewport's.
+// The linear-gradient's tail end was originally a flat #14141a — nearly
+// identical to the plain page's own dark-mode surface color one section
+// down, which left .hero-wave's curve with almost nothing to contrast
+// against right where it needed contrast most. Ending on a tertiary-
+// tinted dark tone instead keeps real color in the gradient all the way
+// to the bottom edge, so the wave's cut reads as an actual shape rather
+// than two near-identical shades of near-black.
 .hero-backdrop{
   position: absolute;
-  inset: -2rem -2rem 0;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
   z-index: -1;
   overflow: hidden;
-  border-radius: 0 0 2.5rem 2.5rem;
   background:
     radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--mat-sys-tertiary) 45%, transparent), transparent 55%),
-    linear-gradient(135deg, color-mix(in srgb, var(--mat-sys-primary) 55%, black) 0%, #14141a 65%);
+    linear-gradient(160deg, color-mix(in srgb, var(--mat-sys-primary) 55%, black) 0%, color-mix(in srgb, var(--mat-sys-tertiary) 40%, #14141a) 100%);
+}
+
+// The curve shape used to be an SVG <path fill="..."> painting a solid
+// color over the gradient to *fake* a cutout — approximating "the real
+// page background" with a flat color guess. It's a real cutout now: a
+// plain div, mask-imaged into the wave silhouette, carrying the *same*
+// background.png texture .site-wrapper itself paints behind the whole
+// page (app.component.scss) — so what shows through the curve is
+// genuinely the page's own background, not a lookalike. Sits at the very
+// bottom of .hero-backdrop's own box (so it inherits its overflow:hidden
+// + bled inset rather than needing a second one), painted last among the
+// backdrop's children so it's the topmost thing within the backdrop's own
+// stacking context.
+//
+// background-attachment:fixed (matching .site-wrapper's own, see that
+// component) rather than the default scroll is what makes the two align
+// pixel-for-pixel without any manual offset math: fixed anchors the tile
+// grid to the *viewport*, not to each element's own box, so any two
+// elements sharing this same image/attachment always sample the same
+// virtual wallpaper regardless of where either one sits in the document.
+//
+// preserveAspectRatio='none' on the <svg> root is required — without it,
+// the SVG defaults to xMidYMid meet, which preserves its own 1200:120
+// aspect ratio (fitting the box by *height*) and centers the result
+// horizontally, regardless of what CSS mask-size says. That's what
+// produced the "wave only in the center, flat at both edges" bug: the
+// rendered mask came out ~800px wide (120px-tall box × the 10:1 aspect)
+// centered in a much wider element, instead of stretching to fill it.
+$wave-mask-hero: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath fill='white' d='M0,40 C200,90 400,0 600,40 C800,80 1000,10 1200,50 L1200,120 L0,120 Z'/%3E%3C/svg%3E");
+
+.hero-wave{
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 5rem;
+  display: block;
+  -webkit-mask-image: $wave-mask-hero;
+  mask-image: $wave-mask-hero;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  // A soft tertiary-colored glow traces the curve's silhouette regardless
+  // of how the texture's own tones compare to the gradient right above
+  // it, giving the shape something to read by beyond "does this look
+  // different from what's above it".
+  filter: drop-shadow(0 -3px 8px color-mix(in srgb, var(--mat-sys-tertiary) 55%, transparent));
+  background-image: url(../../assets/background.png);
+  background-repeat: repeat;
+  background-attachment: fixed;
+}
+
+// background.png predates light mode and has no light-mode counterpart
+// (see .site-wrapper's own matching comment in app.component.scss) — in
+// light mode the *real* page background is a flat surface color instead,
+// so this needs to swap the same way .site-wrapper does, independently of
+// .hero's own pinned-dark styling (.hero forces color-scheme:dark for its
+// *own* gradient/text, but what the wave reveals should still track the
+// visitor's *actual* toggle, not .hero's fixed treatment).
+//
+// :host-context() rather than a plain `html[data-mode='light']` ancestor
+// selector — this stylesheet is view-encapsulated, so Angular would
+// otherwise scope the `html` part with this component's own [_ngcontent]
+// attribute, which the real <html> element never carries, and the rule
+// would silently never match anything.
+:host-context(html[data-mode='light']) .hero-wave{
+  background: var(--mat-sys-surface);
 }
 
 .hero-glow{
@@ -177,7 +265,8 @@ $box-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vie
 .hero-copy h1,
 .hero-subtitle,
 .hero-actions,
-.hero-note{
+.hero-note,
+.hero-visual{
   opacity: 0;
   animation: fade-up 0.7s ease-out forwards;
 }
@@ -243,10 +332,15 @@ $box-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vie
 // padding, so this puts the mock window's own right edge exactly on the
 // same vertical line as the feature cards/section content below it,
 // whatever the viewport width, rather than leaving it floating in the
-// middle of its column.
+// middle of its column. Joins the same fade-up sequence as the hero copy
+// (see the .eyebrow/etc. rule above) rather than appearing instantly —
+// it was left out of that rule entirely before, so everything else in
+// the hero eased in on load except this. Last in the stagger, after
+// .hero-note's 0.4s, so the copy reads first and the visual caps it off.
 .hero-visual{
   display: flex;
   justify-content: flex-end;
+  animation-delay: 0.5s;
 }
 
 // A stylized, non-interactive glimpse of the inventory/tasks UI — plain CSS,
@@ -332,12 +426,24 @@ $box-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vie
   color: var(--mat-sys-on-surface-variant);
 }
 
+// display:inline-flex + a fixed height + line-height:1, rather than just
+// padding top/bottom on an inline element — different badge text ("In
+// stock" vs "In progress" vs "Checked out" etc.) was rendering at
+// slightly different heights under plain padding, since each string's own
+// "normal" line-height nudges the box by sub-pixel amounts depending on
+// content. Fixing the height and centering the text within it via flex
+// guarantees every badge is exactly the same height regardless of what
+// it says.
 .mock-badge{
   flex-shrink: 0;
-  padding: 0.2rem 0.625rem;
+  display: inline-flex;
+  align-items: center;
+  height: 1.25rem;
+  padding: 0 0.625rem;
   border-radius: 999px;
   font-size: 0.6875rem;
   font-weight: 600;
+  line-height: 1;
   white-space: nowrap;
 }
 
@@ -491,6 +597,124 @@ $box-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vie
   }
 }
 
+// A second, differently-shaped section break (see .hero-wave above for the
+// curved one) — a diagonally-sliced band tinted a touch darker/lighter
+// than the plain page background, giving "how it works" its own visual
+// zone instead of sitting on the same flat background as .features on
+// both sides of it. Full-bleed via the classic centered-max-width
+// breakout (left/right 50% + negative 50vw margins) rather than only
+// tinting this section's own 1400px-capped box, so the band still reaches
+// the actual viewport edges on wide screens instead of leaving bare page
+// background in the side gutters.
+//
+// preserveAspectRatio='none' on the <svg> root — see $wave-mask-hero
+// above for why it's required (without it the mask renders at its own
+// 1200:120 aspect ratio, centered, instead of stretching to the box).
+$wave-mask-steps: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath fill='white' d='M0,0 L0,45 C200,65 320,20 480,40 C650,62 780,28 950,48 C1050,60 1120,38 1200,50 L1200,0 Z'/%3E%3C/svg%3E");
+
+.steps-section{
+  position: relative;
+  // Same fix as .hero above — position:relative alone doesn't contain a
+  // negative-z-index child, so ::before's z-index:-1 (below) was escaping
+  // past this section entirely and losing to <body>'s own background.
+  isolation: isolate;
+
+  &::before{
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+    z-index: -1;
+    // Starts on a lighter, tertiary-tinted tone rather than flat
+    // var(--mat-sys-surface) — the same idea as .hero-backdrop's own
+    // gradient staying colorful right up to *its* wave instead of fading
+    // to a flat near-black, so the curve has something to contrast
+    // against (a flat match against what .steps-wave reveals made the
+    // wave itself barely readable, the same "nothing to contrast against"
+    // problem .hero-wave's own tail color was fixed for earlier). Mixed
+    // against var(--mat-sys-surface) rather than a hardcoded dark hex the
+    // way .hero-backdrop's does — .hero is pinned permanently dark so a
+    // dark-leaning mix always suits it, but this section follows the
+    // visitor's light/dark toggle, so its own "lighter" tint needs to
+    // scale off whichever surface tone is actually active rather than
+    // always skewing dark. Ends on the same color .cta-backdrop's own
+    // diagonal scrim *starts* on (color-mix(primary 55%, black), see that
+    // gradient below), so this band doesn't fade out independently and
+    // leave .cta-region to pick up the darkening on its own — the two
+    // gradients meet on a shared color, reading as one continuous sweep
+    // down into the video instead of two adjacent-but-unrelated fades.
+    background: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--mat-sys-tertiary) 25%, var(--mat-sys-surface)) 0%,
+      color-mix(in srgb, var(--mat-sys-primary) 55%, black) 100%
+    );
+    // No clip-path anymore — a plain rectangle. It used to have a
+    // diagonal top cut (and, before that, a matching diagonal bottom cut
+    // too — see .steps-wave below for why the bottom one was dropped
+    // first), but a straight diagonal read as a harsh line against this
+    // page's other curved transition (.hero-wave). .steps-wave now
+    // supplies a wavy top edge instead, the same way .hero-wave supplies
+    // one at the bottom of the hero — the plain rectangle here is exactly
+    // what .hero-backdrop's own gradient box is underneath its wave.
+  }
+
+  // Wave cut into the top of the band above, mirroring .hero-wave: a plain
+  // div, mask-imaged into the curve silhouette, sitting on top of
+  // ::before's rectangle. Reveals the *real* page background — the same
+  // background.png texture .site-wrapper paints behind the whole page
+  // (app.component.scss) — rather than a flat color guess at what
+  // .features' own background resolves to (the section above this one,
+  // not below — this wave reveals what's *above* it, the opposite of
+  // .hero-wave's direction). Sitting after ::before in paint order
+  // (pseudo-elements always paint first) is what puts it on top without
+  // needing z-index gymnastics beyond matching ::before's own -1.
+  .steps-wave{
+    position: absolute;
+    top: 0;
+    // Same full-bleed breakout as ::before above — this element is a
+    // sibling of it, not a descendant, so it needs its own copy of the
+    // 50vw trick to span the same full viewport width rather than just
+    // this section's own 1400px-capped column. No explicit width needed
+    // (unlike when this was an <svg>, a *replaced* element whose auto-
+    // width resolves from intrinsic size rather than the left/right/
+    // margin equation) — a plain div is non-replaced, so it auto-computes
+    // its width from left+right+margins exactly like ::before does.
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+    height: 5rem;
+    z-index: -1;
+    display: block;
+    -webkit-mask-image: $wave-mask-steps;
+    mask-image: $wave-mask-steps;
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    background-image: url(../../assets/background.png);
+    background-repeat: repeat;
+    background-attachment: fixed;
+
+    // background.png predates light mode and has no light-mode
+    // counterpart (see .site-wrapper's own matching comment in
+    // app.component.scss) — in light mode the *real* page background is
+    // a flat surface color instead, so this swaps the same way
+    // .site-wrapper does. Unlike .hero-wave, .steps-section was never
+    // pinned to a fixed color-scheme, so no :host-context() detour is
+    // needed here — a plain data-mode class on <html> reached normally
+    // would work too, but :host-context() is used for consistency with
+    // .hero-wave's own version of this same rule.
+    :host-context(html[data-mode='light']) &{
+      background: var(--mat-sys-surface);
+    }
+  }
+}
+
 // Steps read as a numbered sequence — outlined tertiary circles sitting
 // beside their text in a row, bordered rather than filled — instead of
 // repeating the feature cards' filled icon-on-top tile layout above.
@@ -510,6 +734,15 @@ $box-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vie
     padding: 1.5rem;
     border-radius: 0.75rem;
     border: 1px solid var(--mat-sys-outline-variant);
+    // Solid rather than transparent now that .steps-section sits on its
+    // own gradient band — without this, the band's own color would show
+    // through every card too and the cards would stop reading as distinct
+    // from the band behind them. The band's gradient has already darkened
+    // well past its own var(--mat-sys-surface) starting point by the time
+    // it reaches these cards further down the section, so a flat surface
+    // background still contrasts against it despite starting on that same
+    // color.
+    background: var(--mat-sys-surface);
   }
 
   h3{
@@ -533,13 +766,29 @@ $box-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vie
 // Video-backed, like the hero — a bookend for the page, and reason enough
 // to pin this section to a fixed dark treatment (color-scheme:dark, plain
 // white text) rather than following the visitor's light/dark toggle, same
-// as the hero itself does for the same reason.
-.cta-banner{
+// as the hero itself does for the same reason. No border-radius/overflow
+// here anymore — those were for the old "floating rounded card" treatment,
+// inset from the viewport same as the text content; now that .cta-backdrop
+// bleeds full-bleed edge-to-edge (see below), a rounded card clipped
+// within this section's own 1400px-capped box no longer matches what's
+// actually behind the text.
+// Wraps .cta-banner and <app-footer> together — .cta-backdrop (a child of
+// *this*, not of .cta-banner) now spans both, the same technique
+// .hero-region above uses for the nav, so the video keeps playing behind
+// the footer instead of cutting off at the banner's own bottom edge.
+.cta-region{
   position: relative;
-  overflow: hidden;
-  border-radius: 1.5rem;
+  // Same fix as .hero-region above — position:relative alone doesn't
+  // contain a negative-z-index child on its own, so .cta-backdrop
+  // (z-index:-1, below) was likewise escaping past this element and
+  // losing to <body>'s own background.
+  isolation: isolate;
   color-scheme: dark;
   color: #ffffff;
+}
+
+.cta-banner{
+  position: relative;
 
   p{
     margin: 0 0 1.75rem;
@@ -551,9 +800,20 @@ $box-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vie
   }
 }
 
+// Full-bleed via the same centered-max-width breakout as .hero-backdrop
+// and .steps-section's band above, rather than filling .cta-banner's own
+// 1400px-capped box — the video/scrim now reach true viewport edges
+// regardless of screen width, matching the other two section backgrounds.
+// Sized off .cta-region's own height (banner + footer stacked in normal
+// flow) via inset:0 rather than a fixed height, so it always covers
+// exactly both regardless of either's content length at any viewport.
 .cta-backdrop{
   position: absolute;
   inset: 0;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
   z-index: -1;
   overflow: hidden;
 
@@ -566,14 +826,46 @@ $box-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vie
   }
 
   // A darker, theme-tinted scrim than the login page's own video gets —
-  // this one has to keep the heading/paragraph text above it readable
-  // against whatever the footage is doing at any given moment.
+  // this one has to keep the heading/paragraph text (and now the footer
+  // below it) readable against whatever the footage is doing at any given
+  // moment. The gradient runs the *whole* height of banner+footer now, but
+  // its dark tail color is constant from 75%-100% regardless of exactly
+  // how tall that combined height ends up being, so the footer — always
+  // near the very bottom — reliably lands in the darkest part.
+  //
+  // Two stacked layers (first listed paints on top): a short *vertical*
+  // top-down fade in the same color .steps-section's own band ends its
+  // gradient on (color-mix(primary 55%, black)), down to transparent by
+  // 20% — then the existing 135deg diagonal scrim underneath, unchanged.
+  // The diagonal alone wasn't enough of a match at this seam: a 135deg
+  // gradient's color varies across x as well as y, so only the *left*
+  // edge of its top row actually lands on its 0% color — moving right
+  // along that same top edge, the diagonal has already progressed well
+  // past it, noticeably darker than what the band above just handed off.
+  // That mismatch grew more obvious the wider the viewport, reading as a
+  // harsh cut on anything wider than a narrow column. A vertical fade
+  // doesn't have that problem — it's the same color across the full
+  // width, so it actually meets the band's own (also horizontally
+  // uniform) ending color everywhere along the seam, not just at one edge.
   &:after{
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, color-mix(in srgb, var(--mat-sys-primary) 55%, black) 0%, rgba(8, 8, 10, 0.88) 75%);
+    background:
+      linear-gradient(to bottom, color-mix(in srgb, var(--mat-sys-primary) 55%, black) 0%, transparent 20%),
+      linear-gradient(135deg, color-mix(in srgb, var(--mat-sys-primary) 55%, black) 0%, rgba(8, 8, 10, 0.88) 75%);
   }
+}
+
+// footer-on-dark (see FooterComponent's own styles for the other half of
+// this) — <app-footer> normally has no background/color of its own, so it
+// just inherits whatever's around it; setting a small top gap here keeps
+// it from sitting flush against the "Create your organization" button
+// above it now that they're visually one continuous dark region instead
+// of two separate sections.
+.footer-on-dark{
+  display: block;
+  padding-top: 1rem;
 }
 
 // Scroll-triggered entrance for the feature cards and how-it-works steps —
@@ -609,7 +901,8 @@ $box-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vie
   .hero-copy h1,
   .hero-subtitle,
   .hero-actions,
-  .hero-note{
+  .hero-note,
+  .hero-visual{
     opacity: 1;
   }
 }

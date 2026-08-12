@@ -21,5 +21,18 @@
     :host-context([data-mode='light']) &{
       filter: invert(1);
     }
+
+    // footer-on-dark opts out of the invert above — some embeddings (the
+    // landing page's CTA/footer region) are permanently dark regardless of
+    // the visitor's light/dark toggle, so [data-mode='light'] alone isn't
+    // a reliable signal there; inverting anyway would turn this white mark
+    // black and lose it against that dark background. :host(.footer-on-dark)
+    // (a class on <app-footer> itself, set by the embedding page) rather
+    // than another :host-context() — the override needs equal-or-higher
+    // specificity than the rule above to win the tie, and comes after it
+    // in source order for the same reason.
+    :host(.footer-on-dark) &{
+      filter: none;
+    }
   }
 }

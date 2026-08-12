@@ -2,7 +2,6 @@ import { AfterViewInit, Component, DestroyRef, ElementRef, WritableSignal, injec
 import { RouterModule } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { ThemeModeService } from '../core/theme-mode.service';
 import { FooterComponent } from '../footer/footer.component';
 
 /** Public marketing page at `/` — the value-prop pitch for signed-out
@@ -17,12 +16,6 @@ import { FooterComponent } from '../footer/footer.component';
   styleUrl: './landing.component.scss'
 })
 export class LandingComponent implements AfterViewInit {
-  // Only used to pick the right static wordmark (logo-light/-dark.svg) for
-  // the nav bar, matching HeaderComponent's own fallback logic — this page
-  // is org-agnostic (pre-login, no organization context yet), so it never
-  // reads SiteSettingsService's per-organization custom logo the way the
-  // authenticated header does.
-  protected themeMode = inject(ThemeModeService);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
   private readonly destroyRef = inject(DestroyRef);
 

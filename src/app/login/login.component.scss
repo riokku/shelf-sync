@@ -120,11 +120,10 @@ h1{
   }
 }
 
-// Sits below .login-fields rather than inside it — a standalone,
-// full-width call to action instead of one more field in the card.
+// Sits below .login-fields rather than inside it — a standalone call to
+// action instead of one more field in the card. Left at its natural
+// (shrink-to-fit) width rather than stretched to match the fields above.
 button{
-  display: block;
-  width: 100%;
   border-radius: 6px !important;
   padding: 0.5rem 1rem;
 }

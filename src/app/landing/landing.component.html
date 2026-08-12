@@ -1,113 +1,128 @@
 <div class="landing">
-  <div class="landing-bg" aria-hidden="true"></div>
-
-  <header class="landing-nav">
-    <a class="brand" routerLink="/">
-      @if (themeMode.mode() === 'light') {
-        <img src="assets/logo-dark.svg" alt="ShelfSync logo" class="brand-mark" />
-      } @else {
-        <img src="assets/logo-light.svg" alt="ShelfSync logo" class="brand-mark" />
-      }
-      <span class="brand-name">ShelfSync</span>
-    </a>
-    <nav class="landing-nav-actions">
-      <a mat-button routerLink="/login">Log in</a>
-      <a mat-flat-button color="primary" routerLink="/register">
-        Get started free
-      </a>
-    </nav>
-  </header>
-
-  <section class="hero">
+  <!-- Wraps the nav *and* the hero so .hero-backdrop (a child of this,
+       not of .hero specifically) naturally spans both — its height comes
+       from normal document flow (nav + hero stacked) rather than a
+       hardcoded number, so it stays correct regardless of nav wrapping or
+       hero text length at any viewport. -->
+  <div class="hero-region">
     <div class="hero-backdrop" aria-hidden="true">
       <span class="hero-glow hero-glow-1"></span>
       <span class="hero-glow hero-glow-2"></span>
+      <!-- Wave shape cut into the bottom of the hero's own gradient,
+           revealing the *real* page background beneath in a curve rather
+           than the hard edge/rounded-corner a plain border-radius gives.
+           A plain div rather than an SVG now — see .hero-wave for why: it
+           needs its own background-image (the same textured
+           background.png the page background uses), which a bare <path>
+           can't carry, so the wave shape itself lives in a CSS mask
+           instead of an SVG fill. -->
+      <div class="hero-wave" aria-hidden="true"></div>
     </div>
-    <div class="hero-copy">
-      <span class="eyebrow">Inventory management, simplified</span>
-      <h1>Know what you have. Know where it went.</h1>
-      <p class="hero-subtitle">
-        ShelfSync gives your team real-time inventory tracking, task
-        management, and a full activity history — in one place, with
-        role-based access so everyone sees exactly what they should.
-      </p>
-      <div class="hero-actions">
+
+    <header class="landing-nav">
+      <a class="brand" routerLink="/">
+        <!-- Always the light-on-dark mark now, not gated on themeMode —
+             the nav sits on .hero-region's fixed-dark backdrop regardless
+             of the visitor's light/dark toggle, same reasoning as the
+             hero copy's own hardcoded white text below. -->
+        <img src="assets/logo-light.svg" alt="ShelfSync logo" class="brand-mark" />
+        <span class="brand-name">ShelfSync</span>
+      </a>
+      <nav class="landing-nav-actions">
+        <a mat-button routerLink="/login">Log in</a>
         <a mat-flat-button color="primary" routerLink="/register">
-          <mat-icon>rocket_launch</mat-icon>
           Get started free
         </a>
-        <a mat-stroked-button routerLink="/login">
-          <mat-icon>login</mat-icon>
-          Log in
-        </a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow">Inventory management, simplified</span>
+        <h1>Know what you have. Know where it went.</h1>
+        <p class="hero-subtitle">
+          ShelfSync gives your team real-time inventory tracking, task
+          management, and a full activity history — in one place, with
+          role-based access so everyone sees exactly what they should.
+        </p>
+        <div class="hero-actions">
+          <a mat-flat-button color="primary" routerLink="/register">
+            <mat-icon>rocket_launch</mat-icon>
+            Get started free
+          </a>
+          <a mat-stroked-button routerLink="/login">
+            <mat-icon>login</mat-icon>
+            Log in
+          </a>
+        </div>
+        <p class="hero-note">No credit card required &middot; Set up your organization in minutes</p>
       </div>
-      <p class="hero-note">No credit card required &middot; Set up your organization in minutes</p>
-    </div>
 
-    <div class="hero-visual" aria-hidden="true">
-      <div class="mock-window">
-        <div class="mock-window-bar">
-          <span class="mock-dot"></span>
-          <span class="mock-dot"></span>
-          <span class="mock-dot"></span>
-          <span class="mock-window-title">Inventory</span>
-        </div>
-        <div class="mock-row">
-          <mat-icon>build</mat-icon>
-          <div class="mock-row-text">
-            <span class="mock-row-title">Cordless drill kit</span>
-            <span class="mock-row-subtitle">Qty remaining: 12</span>
+      <div class="hero-visual" aria-hidden="true">
+        <div class="mock-window">
+          <div class="mock-window-bar">
+            <span class="mock-dot"></span>
+            <span class="mock-dot"></span>
+            <span class="mock-dot"></span>
+            <span class="mock-window-title">Inventory</span>
           </div>
-          <span class="mock-badge badge-success">In stock</span>
-        </div>
+          <div class="mock-row">
+            <mat-icon>build</mat-icon>
+            <div class="mock-row-text">
+              <span class="mock-row-title">Cordless drill kit</span>
+              <span class="mock-row-subtitle">Qty remaining: 12</span>
+            </div>
+            <span class="mock-badge badge-success">In stock</span>
+          </div>
 
-        <!-- Every changing pair below stays in the DOM as two elements
-             crossfading via opacity (see .value-swap) rather than
-             swapping text outright — keeps the badge/qty from jumping
-             between two widths. Each row also gets a brief highlight via
-             .flash (LandingComponent.toggleWithFlash()) right as its
-             value changes. -->
-        <div class="mock-row" [class.flash]="restockFlash()">
-          <mat-icon>engineering</mat-icon>
-          <div class="mock-row-text">
-            <span class="mock-row-title">Safety harness, size M</span>
-            <span class="mock-row-subtitle value-swap">
-              <span [class.is-hidden]="restocked()">Qty remaining: 3</span>
-              <span class="is-overlay" [class.is-hidden]="!restocked()">Qty remaining: 10</span>
+          <!-- Every changing pair below stays in the DOM as two elements
+               crossfading via opacity (see .value-swap) rather than
+               swapping text outright — keeps the badge/qty from jumping
+               between two widths. Each row also gets a brief highlight via
+               .flash (LandingComponent.toggleWithFlash()) right as its
+               value changes. -->
+          <div class="mock-row" [class.flash]="restockFlash()">
+            <mat-icon>engineering</mat-icon>
+            <div class="mock-row-text">
+              <span class="mock-row-title">Safety harness, size M</span>
+              <span class="mock-row-subtitle value-swap">
+                <span [class.is-hidden]="restocked()">Qty remaining: 3</span>
+                <span class="is-overlay" [class.is-hidden]="!restocked()">Qty remaining: 10</span>
+              </span>
+            </div>
+            <span class="value-swap">
+              <span class="mock-badge badge-warning" [class.is-hidden]="restocked()">Low stock</span>
+              <span class="mock-badge badge-success is-overlay" [class.is-hidden]="!restocked()">In stock</span>
             </span>
           </div>
-          <span class="value-swap">
-            <span class="mock-badge badge-warning" [class.is-hidden]="restocked()">Low stock</span>
-            <span class="mock-badge badge-success is-overlay" [class.is-hidden]="!restocked()">In stock</span>
-          </span>
-        </div>
 
-        <div class="mock-row" [class.flash]="checkedInFlash()">
-          <mat-icon>laptop</mat-icon>
-          <div class="mock-row-text">
-            <span class="mock-row-title">Site laptop — #A14</span>
-            <span class="mock-row-subtitle">Last used by J. Alvarez</span>
+          <div class="mock-row" [class.flash]="checkedInFlash()">
+            <mat-icon>laptop</mat-icon>
+            <div class="mock-row-text">
+              <span class="mock-row-title">Site laptop — #A14</span>
+              <span class="mock-row-subtitle">Last used by J. Alvarez</span>
+            </div>
+            <span class="value-swap">
+              <span class="mock-badge badge-tertiary" [class.is-hidden]="checkedIn()">Checked out</span>
+              <span class="mock-badge badge-primary is-overlay" [class.is-hidden]="!checkedIn()">Checked in</span>
+            </span>
           </div>
-          <span class="value-swap">
-            <span class="mock-badge badge-tertiary" [class.is-hidden]="checkedIn()">Checked out</span>
-            <span class="mock-badge badge-primary is-overlay" [class.is-hidden]="!checkedIn()">Checked in</span>
-          </span>
-        </div>
 
-        <div class="mock-row" [class.flash]="restockFlash()">
-          <mat-icon>checklist</mat-icon>
-          <div class="mock-row-text">
-            <span class="mock-row-title">Restock harnesses</span>
-            <span class="mock-row-subtitle">Assigned to R. Kaur · Due Friday</span>
+          <div class="mock-row" [class.flash]="restockFlash()">
+            <mat-icon>checklist</mat-icon>
+            <div class="mock-row-text">
+              <span class="mock-row-title">Restock harnesses</span>
+              <span class="mock-row-subtitle">Assigned to R. Kaur · Due Friday</span>
+            </div>
+            <span class="value-swap">
+              <span class="mock-badge badge-secondary" [class.is-hidden]="restocked()">In progress</span>
+              <span class="mock-badge badge-neutral is-overlay" [class.is-hidden]="!restocked()">Done</span>
+            </span>
           </div>
-          <span class="value-swap">
-            <span class="mock-badge badge-secondary" [class.is-hidden]="restocked()">In progress</span>
-            <span class="mock-badge badge-neutral is-overlay" [class.is-hidden]="!restocked()">Done</span>
-          </span>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
+  </div>
 
   <section class="features" id="features">
     <h2>Everything your team needs to stay on top of inventory</h2>
@@ -127,6 +142,15 @@
   </section>
 
   <section class="steps-section">
+    <!-- Wave cut into the *top* of this section's band, replacing the
+         diagonal cut it used to have — mirrors .hero-wave below the hero.
+         Reveals the *real* page background (the same textured
+         background.png the rest of the page uses) instead of .features'
+         flat surface color — see .hero-wave's own note for why this is a
+         plain div with a CSS mask now rather than an SVG fill. Three
+         uneven beats (rather than one symmetric S-curve) reads as a more
+         natural ripple instead of a single mechanical dip. -->
+    <div class="steps-wave" aria-hidden="true"></div>
     <h2>Up and running in three steps</h2>
     <ol class="steps">
       @for (step of steps; track step.title; let i = $index) {
@@ -141,17 +165,30 @@
     </ol>
   </section>
 
-  <section class="cta-banner">
+  <!-- Wraps the CTA banner *and* the footer so .cta-backdrop (a child of
+       this, not of .cta-banner specifically) naturally spans both, the
+       same technique .hero-region above uses for the nav — the video
+       keeps playing behind the footer instead of cutting off at the
+       banner's own bottom edge. -->
+  <div class="cta-region">
     <div class="cta-backdrop" aria-hidden="true">
       <video src="assets/login-video.mp4" autoplay loop [muted]="true" playsinline></video>
     </div>
-    <h2>Ready to get organized?</h2>
-    <p>Create your organization free and see your inventory in one place today.</p>
-    <a mat-flat-button color="primary" routerLink="/register">
-      <mat-icon>rocket_launch</mat-icon>
-      Create your organization
-    </a>
-  </section>
 
-  <app-footer />
+    <section class="cta-banner">
+      <h2>Ready to get organized?</h2>
+      <p>Create your organization free and see your inventory in one place today.</p>
+      <a mat-flat-button color="primary" routerLink="/register">
+        <mat-icon>rocket_launch</mat-icon>
+        Create your organization
+      </a>
+    </section>
+
+    <!-- footer-on-dark: this region is permanently dark (see .cta-region),
+         unlike every other place <app-footer> is embedded — tells the
+         footer's own logo to skip its usual light-mode invert, which
+         would otherwise turn the white mark black and lose it against
+         this video. -->
+    <app-footer class="footer-on-dark" />
+  </div>
 </div>
