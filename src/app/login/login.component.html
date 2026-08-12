@@ -1,57 +1,53 @@
-<div class="page-wrapper">
-  <div class="video">
+<div class="login-page">
+  <div class="login-backdrop" aria-hidden="true">
     <video src="../../assets/login-video.mp4" autoplay loop [muted]="true" playsinline></video>
   </div>
-  <section class="content-wrapper">
-    <div class="row">
-      <div class="col-12 col-sm-12 col-md-6">
-        <div class="logo-wrapper">
-          <div>
-            <app-brand-logo />
-            <h2>
-              Inventory management made simple.
-            </h2>
-          </div>
+
+  <div class="login-panel">
+    <div class="login-panel-inner">
+      <span class="eyebrow">Inventory management made simple.</span>
+      <a routerLink="/" class="login-logo-link" aria-label="ShelfSync home">
+        <app-brand-logo />
+      </a>
+      <h1>Welcome back!</h1>
+      <form [formGroup]="form" (ngSubmit)="attemptLogin()">
+        <div class="login-fields">
+          <mat-form-field appearance="outline">
+            <mat-icon matPrefix>person</mat-icon>
+            <input matInput placeholder="Email" type="email" formControlName="email" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-icon matPrefix>lock</mat-icon>
+            <input matInput placeholder="Password" type="password" formControlName="password" />
+          </mat-form-field>
+          @if (errorMessage) {
+            <p class="error-message">{{ errorMessage }}</p>
+          }
         </div>
-      </div>
-      <div class="col-12 col-sm-12 col-md-6">
-        <div class="login-wrapper">
-          <div class="login-form-wrapper">
-          <h1>Welcome back</h1>
-          <form [formGroup]="form" (ngSubmit)="attemptLogin()">
-            <mat-form-field appearance="outline">
-              <mat-icon matPrefix>person</mat-icon>
-              <input matInput placeholder="Email" type="email" formControlName="email" />
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-icon matPrefix>lock</mat-icon>
-              <input matInput placeholder="Password" type="password" formControlName="password" />
-            </mat-form-field>
-            @if (errorMessage) {
-              <p class="error-message">{{ errorMessage }}</p>
+        <button
+            mat-flat-button
+            color="primary"
+            type="submit"
+            [disabled]="form.invalid || isLoading"
+            >
+            @if (isLoading) {
+              <mat-spinner diameter="20"></mat-spinner>
+            } @else {
+              <ng-container>
+                <mat-icon class="me-2 pe-2">login</mat-icon>
+                Login
+              </ng-container>
             }
-            <button
-                mat-flat-button
-                color="primary"
-                type="submit"
-                [disabled]="form.invalid || isLoading"
-                >
-                @if (isLoading) {
-                  <mat-spinner diameter="20"></mat-spinner>
-                } @else {
-                  <ng-container>
-                    <mat-icon class="me-2 pe-2">login</mat-icon>
-                    Login
-                  </ng-container>
-                }
-            </button>
-            <p class="switch-link">
-              Don't have an account? <a [routerLink]="['/register']">Sign up</a>
-            </p>
-          </form>
-          </div>
-        </div>
-      </div>
+        </button>
+        <p class="switch-link">
+          Don't have an account? <a [routerLink]="['/register']">Sign up</a>
+        </p>
+      </form>
     </div>
-  </section>
+  </div>
+
+  <a routerLink="/" class="back-link" aria-label="Back to home">
+    <mat-icon>arrow_back</mat-icon>
+    Back
+  </a>
 </div>

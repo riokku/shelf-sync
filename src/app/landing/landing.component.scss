@@ -1,0 +1,651 @@
+// Public marketing page — unlike the login/register pages (each pinned
+// dark throughout, no light/dark control of their own), this page is not
+// pinned to a fixed dark color-scheme: only the hero section below opts
+// into a fixed dark treatment (for visual punch, matching the video-backed
+// login/register panels); everything below it follows the signed-out
+// visitor's light/dark preference via --mat-sys-* tokens same as the rest
+// of the app.
+// No background-color here (deliberately) — body already carries the same
+// var(--mat-sys-surface) globally (styles.scss), and this element is the
+// *direct* parent of .landing-bg below. A z-index:-1 child can only ever
+// paint behind its own in-flow SIBLINGS, never behind its own direct
+// parent's background/border — that's fixed painting order, not something
+// z-index reorders — so if .landing painted its own background here, it
+// would permanently hide .landing-bg regardless of z-index or opacity.
+// Letting body's background show through instead sidesteps that entirely.
+.landing{
+  position: relative;
+  color: var(--mat-sys-on-surface);
+  overflow-x: hidden;
+}
+
+// A faint, endlessly-drifting tile of inventory-box outlines behind the
+// whole page — fixed rather than scrolling with content, so it reads as
+// one constant ambient backdrop. A handful of individually-positioned
+// icons was tried first, but every section here has an opaque background
+// of its own (the hero's gradient, each card) that fully hides anything
+// z-indexed behind it at that exact spot — a repeating pattern covering
+// the entire viewport means it always shows through *some* of the gaps
+// (section padding, gutters between cards) regardless of exact layout.
+// Painted via mask-image (an alpha stencil) with an actual background-color
+// behind it, rather than baking a color into the SVG itself — Chrome
+// doesn't resolve currentColor for an SVG referenced from background-image
+// (it silently paints black), which made an earlier attempt invisible
+// against this page's dark surfaces. A mask's color comes from whatever
+// paints behind it, so this one correctly follows the light/dark theme.
+$box-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='8' y='8' width='48' height='48' rx='4' fill='none' stroke='white' stroke-width='2'/%3E%3Cpath d='M32 8 L32 32 M8 32 L56 32' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E");
+
+.landing-bg{
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.09;
+  background-color: var(--mat-sys-on-surface);
+  -webkit-mask-image: $box-tile;
+  mask-image: $box-tile;
+  -webkit-mask-size: 5rem 5rem;
+  mask-size: 5rem 5rem;
+  animation: pattern-drift 50s ease-in-out infinite alternate;
+}
+
+@keyframes pattern-drift{
+  from{ -webkit-mask-position: 0 0; mask-position: 0 0; }
+  to{ -webkit-mask-position: 3rem 4rem; mask-position: 3rem 4rem; }
+}
+
+.landing-nav{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.brand{
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  text-decoration: none;
+  color: var(--mat-sys-on-surface);
+}
+
+.brand-mark{
+  display: block;
+  height: 2rem;
+  width: auto;
+}
+
+.brand-name{
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.landing-nav-actions{
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+// Fixed dark hero, independent of the visitor's light/dark preference — see
+// the top-of-file note. The gradient mixes in the active color theme's
+// primary/tertiary tokens (SiteSettingsService's [data-theme] preset is
+// readable by anon, so it's already applied before login), so this section
+// still recolors itself per-organization theme rather than always looking
+// the same regardless of which preset is picked in Customize.
+.hero{
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 3rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 3rem 2rem 5rem;
+  color-scheme: dark;
+  color: #ffffff;
+}
+
+// Base gradient plus two slowly-drifting blurred "glow" blobs, clipped to
+// this backdrop rather than .hero itself so the negative inset (the
+// bleed past the section's own edges, for the rounded-bottom overhang look)
+// stays intact while the blobs' own movement is still contained and can't
+// spill into the section below.
+.hero-backdrop{
+  position: absolute;
+  inset: -2rem -2rem 0;
+  z-index: -1;
+  overflow: hidden;
+  border-radius: 0 0 2.5rem 2.5rem;
+  background:
+    radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--mat-sys-tertiary) 45%, transparent), transparent 55%),
+    linear-gradient(135deg, color-mix(in srgb, var(--mat-sys-primary) 55%, black) 0%, #14141a 65%);
+}
+
+.hero-glow{
+  position: absolute;
+  width: 26rem;
+  height: 26rem;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.55;
+}
+
+// Both blobs share one keyframe, parameterized by --dx/--dy, rather than
+// each getting its own near-identical @keyframes block.
+.hero-glow-1{
+  top: -6rem;
+  left: -4rem;
+  background: color-mix(in srgb, var(--mat-sys-tertiary) 70%, transparent);
+  animation: drift 16s ease-in-out infinite alternate;
+  --dx: 2.5rem;
+  --dy: 3rem;
+}
+
+.hero-glow-2{
+  bottom: -8rem;
+  right: -6rem;
+  background: color-mix(in srgb, var(--mat-sys-primary) 70%, transparent);
+  animation: drift 20s ease-in-out infinite alternate;
+  --dx: -3rem;
+  --dy: -2rem;
+}
+
+@keyframes drift{
+  from{ transform: translate(0, 0) scale(1); }
+  to{ transform: translate(var(--dx), var(--dy)) scale(1.12); }
+}
+
+// Staggered fade/slide-in for the hero copy, played once on load — the
+// hero is always above the fold, so this runs immediately rather than
+// waiting on the scroll-triggered `.reveal` handling below (see
+// LandingComponent.revealOnScroll()) that the rest of the page uses.
+@keyframes fade-up{
+  from{
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  to{
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.eyebrow,
+.hero-copy h1,
+.hero-subtitle,
+.hero-actions,
+.hero-note{
+  opacity: 0;
+  animation: fade-up 0.7s ease-out forwards;
+}
+
+.eyebrow{
+  display: inline-block;
+  padding: 0.3rem 0.75rem;
+  margin-bottom: 1rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  animation-delay: 0s;
+}
+
+.hero-copy{
+  h1{
+    margin: 0 0 1rem;
+    font-size: clamp(2.25rem, 4vw, 3.25rem);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    animation-delay: 0.1s;
+  }
+}
+
+.hero-subtitle{
+  margin: 0 0 1.75rem;
+  max-width: 34rem;
+  font-size: 1.0625rem;
+  color: rgba(255, 255, 255, 0.85);
+  animation-delay: 0.2s;
+}
+
+.hero-actions{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  animation-delay: 0.3s;
+
+  a{
+    border-radius: 6px;
+  }
+
+  .mat-mdc-outlined-button{
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+}
+
+.hero-note{
+  margin: 0;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.8125rem;
+  animation-delay: 0.4s;
+}
+
+// Right-aligned rather than centered — .hero and .features/.steps-section/
+// .cta-banner below all share the same max-width:1400px + 2rem side
+// padding, so this puts the mock window's own right edge exactly on the
+// same vertical line as the feature cards/section content below it,
+// whatever the viewport width, rather than leaving it floating in the
+// middle of its column.
+.hero-visual{
+  display: flex;
+  justify-content: flex-end;
+}
+
+// A stylized, non-interactive glimpse of the inventory/tasks UI — plain CSS,
+// no real data or screenshot asset, just enough to make the value prop
+// (real-time stock levels, checkouts, tasks) concrete at a glance.
+.mock-window{
+  width: 100%;
+  max-width: 30rem;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: var(--mat-sys-surface-container-low);
+  box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.35);
+  color: var(--mat-sys-on-surface);
+}
+
+.mock-window-bar{
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.75rem 1rem;
+  background: var(--mat-sys-surface-container);
+}
+
+.mock-dot{
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--mat-sys-outline-variant);
+}
+
+.mock-window-title{
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--mat-sys-on-surface-variant);
+  text-transform: uppercase;
+}
+
+.mock-row{
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+
+  mat-icon{
+    flex-shrink: 0;
+    color: var(--mat-sys-primary);
+  }
+}
+
+// A brief highlight sweeping across a row right as one of its values
+// changes. LandingComponent.toggleWithFlash() adds `.flash` and removes
+// it again ~1.5s later (matching this animation's own length) rather than
+// leaving it on — the class has to actually come off between pulses, or
+// re-adding it on the next change wouldn't restart the animation.
+.mock-row.flash{
+  animation: row-flash 1.5s ease-out;
+}
+
+@keyframes row-flash{
+  from{ background-color: color-mix(in srgb, var(--mat-sys-primary) 10%, transparent); }
+  to{ background-color: transparent; }
+}
+
+.mock-row-text{
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.mock-row-title{
+  font-size: 0.875rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mock-row-subtitle{
+  font-size: 0.75rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.mock-badge{
+  flex-shrink: 0;
+  padding: 0.2rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+// Colors start from the real badge each stands in for (.low-stock-badge /
+// .checked-out-badge in inventory.component.scss, .status-in_progress /
+// .status-done in task-card.component.scss), but "Checked in"/"In
+// progress"/"Done" have been moved off the real app's exact colors
+// (tertiary for the latter two, success-green for the first) onto their
+// own Material role each — on the real app's separate pages these never
+// appear side by side, but stacked into one mock card the way they are
+// here, sharing a color across different statuses reads as one color
+// running out rather than a deliberate choice.
+.badge-success{
+  background: #2b8a3e;
+  color: #ffffff;
+}
+
+.badge-warning{
+  background: #f59f00;
+  color: #1a1a1a;
+}
+
+.badge-tertiary{
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+}
+
+.badge-primary{
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+}
+
+.badge-secondary{
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+}
+
+.badge-neutral{
+  background: var(--mat-sys-surface-container-highest);
+  color: var(--mat-sys-on-surface);
+}
+
+// Any pair of children inside .value-swap crossfades via opacity rather
+// than swapping text outright — used for both the mock-badge pairs and
+// the harness row's plain qty-text pair. The non-overlay child stays in
+// normal flow (it's what actually sizes the wrapper); .is-overlay sits
+// exactly on top of it, so the wrapper settles on whichever child is
+// wider instead of jumping between two sizes as they cross-fade.
+.value-swap{
+  position: relative;
+  display: inline-block;
+
+  > *{
+    transition: opacity 0.4s ease;
+  }
+}
+
+.is-overlay{
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+// Badges sit at each row's right edge (mock-row-text's flex:1 pushes
+// everything after it flush right) — anchor the overlay to the *right*
+// here specifically, or the narrower "Checked in"/"In stock"/"Done" pill
+// would appear to shift left instead of staying pinned to that edge once
+// the wider "Checked out"/"Low stock"/"In progress" one fades out.
+.mock-badge.is-overlay{
+  left: auto;
+  right: 0;
+}
+
+.is-hidden{
+  opacity: 0;
+}
+
+.features,
+.steps-section,
+.cta-banner{
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 5rem 2rem;
+  text-align: center;
+}
+
+.features h2,
+.steps-section h2,
+.cta-banner h2{
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  letter-spacing: -0.01em;
+}
+
+.section-subtitle{
+  margin: 0 auto 3rem;
+  max-width: 32rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.feature-card p,
+.steps p{
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.9375rem;
+}
+
+.feature-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1.5rem;
+  text-align: left;
+}
+
+.feature-card{
+  padding: 1.75rem;
+  border-radius: 0.75rem;
+  background: var(--mat-sys-surface-container-low);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+
+  &:hover{
+    transform: translateY(-0.25rem);
+    box-shadow: 0 0.75rem 1.75rem rgba(0, 0, 0, 0.12);
+  }
+
+  h3{
+    margin: 0.875rem 0 0.5rem;
+  }
+}
+
+// A filled, rounded-square chip behind each feature's icon — primary-
+// colored, tile-style — vs. the steps' outlined tertiary-colored circle
+// below. Two different shapes/colors/fills so the two sections (which
+// otherwise share the same card shell) read as visually distinct rather
+// than a repeat of the same tile.
+.feature-icon{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 0.875rem;
+  border-radius: 0.75rem;
+  background: var(--mat-sys-primary-container);
+
+  mat-icon{
+    font-size: 1.5rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    color: var(--mat-sys-on-primary-container);
+  }
+}
+
+// Steps read as a numbered sequence — outlined tertiary circles sitting
+// beside their text in a row, bordered rather than filled — instead of
+// repeating the feature cards' filled icon-on-top tile layout above.
+.steps{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+
+  li{
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--mat-sys-outline-variant);
+  }
+
+  h3{
+    margin: 0 0 0.375rem;
+  }
+}
+
+.step-number{
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  border: 2px solid var(--mat-sys-tertiary);
+  color: var(--mat-sys-tertiary);
+  font-weight: 700;
+}
+
+// Video-backed, like the hero — a bookend for the page, and reason enough
+// to pin this section to a fixed dark treatment (color-scheme:dark, plain
+// white text) rather than following the visitor's light/dark toggle, same
+// as the hero itself does for the same reason.
+.cta-banner{
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  color-scheme: dark;
+  color: #ffffff;
+
+  p{
+    margin: 0 0 1.75rem;
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  a{
+    border-radius: 6px;
+  }
+}
+
+.cta-backdrop{
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+
+  video{
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  // A darker, theme-tinted scrim than the login page's own video gets —
+  // this one has to keep the heading/paragraph text above it readable
+  // against whatever the footage is doing at any given moment.
+  &:after{
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--mat-sys-primary) 55%, black) 0%, rgba(8, 8, 10, 0.88) 75%);
+  }
+}
+
+// Scroll-triggered entrance for the feature cards and how-it-works steps —
+// LandingComponent.revealOnScroll() adds `.is-visible` the first time each
+// `.reveal` element crosses into the viewport. Each one's stagger delay is
+// set inline from its index (see [style.transition-delay.ms] in the
+// template) rather than as a :nth-child rule per item here.
+.reveal{
+  opacity: 0;
+  transform: translateY(1.25rem);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+
+  &.is-visible{
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// A hard floor, not a nicety — every animation/transition on this page
+// (hero fade-up, the drifting glow blobs, the scroll reveal above) is
+// purely decorative, so switch it all off wholesale rather than auditing
+// each rule for whether it's "essential" motion. LandingComponent.
+// revealOnScroll() already marks `.reveal` elements visible immediately in
+// this case rather than relying on this rule alone, since IntersectionObserver
+// would otherwise still delay when they appear.
+@media (prefers-reduced-motion: reduce){
+  .landing *{
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .eyebrow,
+  .hero-copy h1,
+  .hero-subtitle,
+  .hero-actions,
+  .hero-note{
+    opacity: 1;
+  }
+}
+
+@media (max-width: 900px){
+  .hero{
+    grid-template-columns: 1fr;
+    padding-bottom: 3rem;
+  }
+
+  // Stacked full-width here, rather than sharing a row with .hero-copy —
+  // the right-alignment above only makes sense split across two columns,
+  // so it reverts to centered rather than hugging the right edge of the
+  // now-full-width row.
+  .hero-visual{
+    order: -1;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 600px){
+  .landing-nav{
+    padding: 1rem 1.25rem;
+  }
+
+  .brand-name{
+    display: none;
+  }
+
+  .hero{
+    padding: 2rem 1.25rem 2.5rem;
+  }
+
+  .features,
+  .steps-section,
+  .cta-banner{
+    padding: 3.5rem 1.25rem;
+  }
+}

@@ -1,0 +1,157 @@
+<div class="landing">
+  <div class="landing-bg" aria-hidden="true"></div>
+
+  <header class="landing-nav">
+    <a class="brand" routerLink="/">
+      @if (themeMode.mode() === 'light') {
+        <img src="assets/logo-dark.svg" alt="ShelfSync logo" class="brand-mark" />
+      } @else {
+        <img src="assets/logo-light.svg" alt="ShelfSync logo" class="brand-mark" />
+      }
+      <span class="brand-name">ShelfSync</span>
+    </a>
+    <nav class="landing-nav-actions">
+      <a mat-button routerLink="/login">Log in</a>
+      <a mat-flat-button color="primary" routerLink="/register">
+        Get started free
+      </a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="hero-backdrop" aria-hidden="true">
+      <span class="hero-glow hero-glow-1"></span>
+      <span class="hero-glow hero-glow-2"></span>
+    </div>
+    <div class="hero-copy">
+      <span class="eyebrow">Inventory management, simplified</span>
+      <h1>Know what you have. Know where it went.</h1>
+      <p class="hero-subtitle">
+        ShelfSync gives your team real-time inventory tracking, task
+        management, and a full activity history — in one place, with
+        role-based access so everyone sees exactly what they should.
+      </p>
+      <div class="hero-actions">
+        <a mat-flat-button color="primary" routerLink="/register">
+          <mat-icon>rocket_launch</mat-icon>
+          Get started free
+        </a>
+        <a mat-stroked-button routerLink="/login">
+          <mat-icon>login</mat-icon>
+          Log in
+        </a>
+      </div>
+      <p class="hero-note">No credit card required &middot; Set up your organization in minutes</p>
+    </div>
+
+    <div class="hero-visual" aria-hidden="true">
+      <div class="mock-window">
+        <div class="mock-window-bar">
+          <span class="mock-dot"></span>
+          <span class="mock-dot"></span>
+          <span class="mock-dot"></span>
+          <span class="mock-window-title">Inventory</span>
+        </div>
+        <div class="mock-row">
+          <mat-icon>build</mat-icon>
+          <div class="mock-row-text">
+            <span class="mock-row-title">Cordless drill kit</span>
+            <span class="mock-row-subtitle">Qty remaining: 12</span>
+          </div>
+          <span class="mock-badge badge-success">In stock</span>
+        </div>
+
+        <!-- Every changing pair below stays in the DOM as two elements
+             crossfading via opacity (see .value-swap) rather than
+             swapping text outright — keeps the badge/qty from jumping
+             between two widths. Each row also gets a brief highlight via
+             .flash (LandingComponent.toggleWithFlash()) right as its
+             value changes. -->
+        <div class="mock-row" [class.flash]="restockFlash()">
+          <mat-icon>engineering</mat-icon>
+          <div class="mock-row-text">
+            <span class="mock-row-title">Safety harness, size M</span>
+            <span class="mock-row-subtitle value-swap">
+              <span [class.is-hidden]="restocked()">Qty remaining: 3</span>
+              <span class="is-overlay" [class.is-hidden]="!restocked()">Qty remaining: 10</span>
+            </span>
+          </div>
+          <span class="value-swap">
+            <span class="mock-badge badge-warning" [class.is-hidden]="restocked()">Low stock</span>
+            <span class="mock-badge badge-success is-overlay" [class.is-hidden]="!restocked()">In stock</span>
+          </span>
+        </div>
+
+        <div class="mock-row" [class.flash]="checkedInFlash()">
+          <mat-icon>laptop</mat-icon>
+          <div class="mock-row-text">
+            <span class="mock-row-title">Site laptop — #A14</span>
+            <span class="mock-row-subtitle">Last used by J. Alvarez</span>
+          </div>
+          <span class="value-swap">
+            <span class="mock-badge badge-tertiary" [class.is-hidden]="checkedIn()">Checked out</span>
+            <span class="mock-badge badge-primary is-overlay" [class.is-hidden]="!checkedIn()">Checked in</span>
+          </span>
+        </div>
+
+        <div class="mock-row" [class.flash]="restockFlash()">
+          <mat-icon>checklist</mat-icon>
+          <div class="mock-row-text">
+            <span class="mock-row-title">Restock harnesses</span>
+            <span class="mock-row-subtitle">Assigned to R. Kaur · Due Friday</span>
+          </div>
+          <span class="value-swap">
+            <span class="mock-badge badge-secondary" [class.is-hidden]="restocked()">In progress</span>
+            <span class="mock-badge badge-neutral is-overlay" [class.is-hidden]="!restocked()">Done</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="features" id="features">
+    <h2>Everything your team needs to stay on top of inventory</h2>
+    <p class="section-subtitle">One shared source of truth, instead of a spreadsheet nobody trusts.</p>
+
+    <div class="feature-grid">
+      @for (feature of features; track feature.title; let i = $index) {
+        <div class="feature-card reveal" [style.transition-delay.ms]="i * 80">
+          <span class="feature-icon">
+            <mat-icon>{{ feature.icon }}</mat-icon>
+          </span>
+          <h3>{{ feature.title }}</h3>
+          <p>{{ feature.description }}</p>
+        </div>
+      }
+    </div>
+  </section>
+
+  <section class="steps-section">
+    <h2>Up and running in three steps</h2>
+    <ol class="steps">
+      @for (step of steps; track step.title; let i = $index) {
+        <li class="reveal" [style.transition-delay.ms]="i * 120">
+          <span class="step-number">{{ i + 1 }}</span>
+          <div class="step-body">
+            <h3>{{ step.title }}</h3>
+            <p>{{ step.description }}</p>
+          </div>
+        </li>
+      }
+    </ol>
+  </section>
+
+  <section class="cta-banner">
+    <div class="cta-backdrop" aria-hidden="true">
+      <video src="assets/login-video.mp4" autoplay loop [muted]="true" playsinline></video>
+    </div>
+    <h2>Ready to get organized?</h2>
+    <p>Create your organization free and see your inventory in one place today.</p>
+    <a mat-flat-button color="primary" routerLink="/register">
+      <mat-icon>rocket_launch</mat-icon>
+      Create your organization
+    </a>
+  </section>
+
+  <app-footer />
+</div>

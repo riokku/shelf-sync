@@ -40,11 +40,14 @@ describe('AppComponent', () => {
     expect(fixture.componentInstance.title).toEqual('ShelfSync');
   });
 
-  it('hides header/footer chrome on the login and register paths, shows it elsewhere', () => {
+  it('hides header/footer chrome on the landing, login, and register paths, shows it elsewhere', () => {
     const fixture = TestBed.createComponent(AppComponent);
     const app = fixture.componentInstance;
 
     fakeRouter.url = '/';
+    expect(app.showChrome()).toBe(false);
+
+    fakeRouter.url = '/login';
     expect(app.showChrome()).toBe(false);
 
     fakeRouter.url = '/register';

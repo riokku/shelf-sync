@@ -1,5 +1,6 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
+import { LandingComponent } from './landing/landing.component';
 import { LoginComponent } from './login/login.component';
 import { RegisterComponent } from './register/register.component';
 import { HomeComponent } from './home/home.component';
@@ -16,73 +17,95 @@ import { authGuard } from './core/guards/auth.guard';
 import { manageGuard } from './core/guards/manage.guard';
 import { adminGuard } from './core/guards/admin.guard';
 
+// Every route gets an explicit `title` — Angular's default TitleStrategy
+// only ever writes document.title when the *active* route defines one and
+// silently leaves the previous title in place otherwise, so leaving any
+// route without one risks it inheriting whatever the last-visited route set
+// (see LandingComponent, the first route to actually set a title).
 const routes: Routes = [
   {
     path: '',
-    component: LoginComponent
+    component: LandingComponent,
+    title: 'ShelfSync | Inventory management, simplified'
+  },
+  {
+    path: 'login',
+    component: LoginComponent,
+    title: 'ShelfSync | Log in'
   },
   {
     path: 'register',
-    component: RegisterComponent
+    component: RegisterComponent,
+    title: 'ShelfSync | Sign up'
   },
   {
     path: 'home',
     component: HomeComponent,
-    canActivate: [authGuard]
+    canActivate: [authGuard],
+    title: 'ShelfSync | Home'
   },
   {
     path: 'inventory',
     component: InventoryComponent,
     canActivate: [authGuard],
-    data: { breadcrumb: 'Inventory' }
+    data: { breadcrumb: 'Inventory' },
+    title: 'ShelfSync | Inventory'
   },
   {
     path: 'account',
     component: AccountComponent,
     canActivate: [authGuard],
-    data: { breadcrumb: 'Account' }
+    data: { breadcrumb: 'Account' },
+    title: 'ShelfSync | Account'
   },
   {
     path: 'tasks',
     component: TasksComponent,
     canActivate: [authGuard],
-    data: { breadcrumb: 'Tasks' }
+    data: { breadcrumb: 'Tasks' },
+    title: 'ShelfSync | Tasks'
   },
   {
     path: 'manage',
     component: ManageComponent,
     canActivate: [authGuard, manageGuard],
-    data: { breadcrumb: 'Manage' }
+    data: { breadcrumb: 'Manage' },
+    title: 'ShelfSync | Manage'
   },
   {
     path: 'manage/inventory',
     component: ManageInventoryComponent,
     canActivate: [authGuard, manageGuard],
-    data: { breadcrumb: 'Manage Inventory' }
+    data: { breadcrumb: 'Manage Inventory' },
+    title: 'ShelfSync | Manage Inventory'
   },
   {
     path: 'manage/tasks',
     component: ManageTasksComponent,
     canActivate: [authGuard, manageGuard],
-    data: { breadcrumb: 'Manage Tasks' }
+    data: { breadcrumb: 'Manage Tasks' },
+    title: 'ShelfSync | Manage Tasks'
   },
   {
     path: 'manage/team',
     component: ManageTeamComponent,
     canActivate: [authGuard, manageGuard],
-    data: { breadcrumb: 'Manage Team' }
+    data: { breadcrumb: 'Manage Team' },
+    title: 'ShelfSync | Manage Team'
   },
   {
     path: 'manage/danger-zone',
     component: ManageDangerZoneComponent,
     canActivate: [authGuard, adminGuard],
-    data: { breadcrumb: 'Danger Zone' }
+    data: { breadcrumb: 'Danger Zone' },
+    title: 'ShelfSync | Danger Zone'
   },
   {
     path: 'customize',
     component: CustomizeComponent,
     canActivate: [authGuard, adminGuard],
-    data: { breadcrumb: 'Customize' }
+    data: { breadcrumb: 'Customize' },
+    title: 'ShelfSync | Customize'
   }
 ];
 

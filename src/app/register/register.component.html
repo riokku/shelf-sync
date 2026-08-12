@@ -1,46 +1,55 @@
-<div class="page-wrapper">
-  <div class="video">
+<div class="register-page">
+  <div class="register-backdrop" aria-hidden="true">
     <video src="../../assets/login-video.mp4" autoplay loop [muted]="true" playsinline></video>
   </div>
-  <section class="content-wrapper">
-    <div class="row">
-      <div class="col-12 col-sm-12 col-md-5">
-        <div class="logo-wrapper">
-          <div>
-            <app-brand-logo />
-            <ul class="benefits-list">
-              <li>
-                <mat-icon>check_circle</mat-icon>
-                Real-time inventory tracking with low-stock alerts
-              </li>
-              <li>
-                <mat-icon>check_circle</mat-icon>
-                Task management for your whole team
-              </li>
-              <li>
-                <mat-icon>check_circle</mat-icon>
-                Full activity history for every item
-              </li>
-              <li>
-                <mat-icon>check_circle</mat-icon>
-                Role-based access to keep your data secure
-              </li>
-            </ul>
-          </div>
+
+  <div class="register-panel">
+    <div class="register-panel-inner">
+      @if (confirmationSent) {
+        <div class="confirmation-message">
+          <mat-icon>mark_email_read</mat-icon>
+          <p>Check your email to confirm your account before logging in.</p>
+          <a routerLink="/login">Back to login</a>
         </div>
-      </div>
-      <div class="col-12 col-sm-12 col-md-7">
-        <div class="login-wrapper">
-          @if (confirmationSent) {
-            <div class="confirmation-message">
-              <mat-icon>mark_email_read</mat-icon>
-              <p>Check your email to confirm your account before logging in.</p>
-              <a [routerLink]="['/']">Back to login</a>
-            </div>
-          } @else {
-            <div class="register-form-wrapper">
-            <h1>Create an account</h1>
-            <form [formGroup]="form" (ngSubmit)="attemptRegister()">
+      } @else {
+        <span class="eyebrow">Inventory management made simple.</span>
+        <a routerLink="/" class="register-logo-link" aria-label="ShelfSync home">
+          <app-brand-logo />
+        </a>
+        <h1>Create an account</h1>
+
+        @if (!showForm()) {
+          <!-- The value-prop pitch first, form second — clicking "Get
+               started" swaps this out for the actual signup form below
+               rather than throwing six fields at a visitor immediately. -->
+          <ul class="benefits-list">
+            <li>
+              <mat-icon>check_circle</mat-icon>
+              Real-time inventory tracking with low-stock alerts
+            </li>
+            <li>
+              <mat-icon>check_circle</mat-icon>
+              Task management for your whole team
+            </li>
+            <li>
+              <mat-icon>check_circle</mat-icon>
+              Full activity history for every item
+            </li>
+            <li>
+              <mat-icon>check_circle</mat-icon>
+              Role-based access to keep your data secure
+            </li>
+          </ul>
+          <button mat-flat-button color="primary" type="button" (click)="revealForm()">
+            <mat-icon class="me-2">rocket_launch</mat-icon>
+            Get started
+          </button>
+          <p class="switch-link">
+            Already have an account? <a routerLink="/login">Log in</a>
+          </p>
+        } @else {
+          <form [formGroup]="form" (ngSubmit)="attemptRegister()">
+            <div class="register-fields">
               @if (joiningOrganization) {
                 <p class="joining-organization">
                   @if (joiningOrganizationLogoUrl) {
@@ -89,29 +98,33 @@
               @if (errorMessage) {
                 <p class="error-message">{{ errorMessage }}</p>
               }
-              <button
-                  mat-flat-button
-                  color="primary"
-                  type="submit"
-                  [disabled]="form.invalid || isLoading"
-                  >
-                  @if (isLoading) {
-                    <mat-spinner diameter="20"></mat-spinner>
-                  } @else {
-                    <ng-container>
-                      <mat-icon class="me-2">person_add</mat-icon>
-                      Create account
-                    </ng-container>
-                  }
-              </button>
-              <p class="switch-link">
-                Already have an account? <a [routerLink]="['/']">Log in</a>
-              </p>
-            </form>
             </div>
-          }
-        </div>
-      </div>
+            <button
+                mat-flat-button
+                color="primary"
+                type="submit"
+                [disabled]="form.invalid || isLoading"
+                >
+                @if (isLoading) {
+                  <mat-spinner diameter="20"></mat-spinner>
+                } @else {
+                  <ng-container>
+                    <mat-icon class="me-2">person_add</mat-icon>
+                    Create account
+                  </ng-container>
+                }
+            </button>
+            <p class="switch-link">
+              Already have an account? <a routerLink="/login">Log in</a>
+            </p>
+          </form>
+        }
+      }
     </div>
-  </section>
+  </div>
+
+  <a routerLink="/" class="back-link" aria-label="Back to home">
+    <mat-icon>arrow_back</mat-icon>
+    Back
+  </a>
 </div>

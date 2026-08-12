@@ -1,1 +1,184 @@
-@use '../shared/styles/auth-shell';
+// The brand video is now one full-bleed backdrop behind the *whole* page
+// (see .login-backdrop) rather than a discrete right-hand panel — the left
+// portion is a translucent overlay on top of it (.login-panel), letting
+// the footage bleed through behind the logo/tagline/heading, while
+// .login-fields (the actual inputs) stays fully opaque so typing doesn't
+// compete with motion behind it. No longer the shared auth-shell partial's
+// "centered glass card floating over a full-page video" treatment (that
+// partial is gone now — register.component.scss owns its own version of
+// this same layout for the same reason).
+.login-page{
+  position: relative;
+  display: flex;
+  min-height: 100vh;
+  overflow: hidden;
+  // Pinned dark regardless of the visitor's light/dark toggle, same
+  // justification as auth-shell's own .page-wrapper: this page has no
+  // light/dark control of its own, and Material's form-field internals
+  // (labels, outlines, icons) would otherwise resolve via light-dark()
+  // tokens against a background that never actually goes light.
+  color-scheme: dark;
+}
+
+// No z-index here (deliberately) — .login-panel right below is a flex
+// item, which per the flexbox spec paints in DOM order regardless of its
+// `position` value, same as a positioned element would. Since this
+// backdrop comes first in the markup, plain DOM order already keeps it
+// behind the panel without needing a negative z-index to force it —
+// which matters here beyond tidiness: a negative-z absolutely-positioned
+// video specifically breaks screenshot capture in at least one headless
+// Chrome + software-rendering combination, even though the live video
+// keeps playing and its geometry stays correct throughout.
+.login-backdrop{
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+
+  video{
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  // Dims the footage everywhere — .login-panel's own translucent
+  // background (below) stacks an *additional* tint on top of this over
+  // just its own portion, so the left side reads darker than the right.
+  &:after{
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.25);
+  }
+}
+
+.login-panel{
+  flex: 0 0 33.333%;
+  min-width: 22rem;
+  max-width: 34rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2.5rem;
+  // Translucent rather than solid — same token the rest of the site's
+  // dark surfaces use (styles.scss' body, the landing page), just mixed
+  // down so the video shows through behind it instead of a flat block.
+  background: color-mix(in srgb, var(--mat-sys-surface) 80%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.login-panel-inner{
+  width: 100%;
+  max-width: 22rem;
+}
+
+h1{
+  color: #ffffff;
+  font-size: 2rem;
+  text-align: left;
+  margin: 0 0 1.5rem;
+}
+
+// Same treatment as .eyebrow on the landing page's hero — a rounded pill
+// sitting above the title (here, the ShelfSync wordmark itself, one step
+// further up than the landing page's own hero heading).
+.eyebrow{
+  display: inline-block;
+  padding: 0.3rem 0.75rem;
+  margin: 0 0 1.25rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+// Wraps app-brand-logo so the logo/wordmark link back to the public
+// landing page, same as the landing page's own header does with its
+// brand mark — a plain <a> around it would otherwise pick up default
+// link styling (underline) that doesn't suit a logo.
+.login-logo-link{
+  display: inline-block;
+  margin-bottom: 0.75rem;
+  text-decoration: none;
+}
+
+// Just a spacing wrapper now (no card background/border) — separates the
+// fields as a group from the standalone button below.
+.login-fields{
+  margin-bottom: 1.25rem;
+
+  mat-form-field{
+    display: block;
+
+    &:not(:last-child){
+      margin-bottom: 0.5rem;
+    }
+  }
+}
+
+// Sits below .login-fields rather than inside it — a standalone,
+// full-width call to action instead of one more field in the card.
+button{
+  display: block;
+  width: 100%;
+  border-radius: 6px !important;
+  padding: 0.5rem 1rem;
+}
+
+.error-message{
+  color: #ff6b6b;
+  margin: 0;
+}
+
+.switch-link{
+  margin-top: 1rem;
+  color: #ffffff;
+
+  a{
+    color: var(--mat-sys-primary);
+  }
+}
+
+// Last in the markup (after .login-backdrop and .login-panel) so it
+// paints on top of both rather than getting caught under .login-panel's
+// own blur/translucency — deliberately understated (low-opacity text,
+// no background of its own) rather than a full button, since it's a
+// secondary escape hatch back to the marketing page, not the page's
+// primary action.
+.back-link{
+  position: absolute;
+  top: 2rem;
+  left: 2rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s ease;
+
+  mat-icon{
+    font-size: 1.125rem;
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  &:hover{
+    color: #ffffff;
+  }
+}
+
+// The video is a full-page backdrop now rather than a discrete side
+// panel, so there's nothing to hide on narrow screens — .login-panel
+// just widens to cover it edge to edge, same translucent treatment.
+@media (max-width: 900px){
+  .login-panel{
+    flex: 1 1 100%;
+    max-width: 100%;
+  }
+}

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import {
   AbstractControl,
   FormControl,
@@ -65,12 +65,21 @@ export class RegisterComponent implements OnInit {
   joiningOrganizationLogoUrl: string | null = null;
   invalidInviteLink = false;
 
+  /** Toggles the value-prop pitch (benefits list + "Get started") for the
+   *  actual signup form — see revealForm(). Starts true instead when
+   *  arriving via an invite link (org= present in ngOnInit): that's
+   *  already a different context than an organic signup, so skipping
+   *  straight to the form rather than the generic marketing pitch. */
+  protected readonly showForm = signal(false);
+
   async ngOnInit() {
     const slug = this.route.snapshot.queryParamMap.get('org');
     if (!slug) {
       this.requireOrganizationName();
       return;
     }
+
+    this.showForm.set(true);
 
     const org = await this.authService.resolveOrganizationBySlug(slug);
     if (org) {
@@ -80,6 +89,10 @@ export class RegisterComponent implements OnInit {
       this.invalidInviteLink = true;
       this.requireOrganizationName();
     }
+  }
+
+  protected revealForm(): void {
+    this.showForm.set(true);
   }
 
   private requireOrganizationName() {

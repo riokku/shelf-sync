@@ -1,33 +1,88 @@
-@use '../shared/styles/auth-shell';
-
-// Wider than login's shared default — the sign-up form has six fields
-// (org name, full name, nickname, email, password, confirm password) vs.
-// login's two, so it needs more breathing room than auth-shell's base width.
-.content-wrapper{
-  width: clamp(800px, 70vw, 1100px);
+// Same split layout as the login page — a translucent form panel over a
+// full-bleed brand video — but no longer sharing the auth-shell partial
+// (login already dropped it; this page's own content, wider panel for the
+// two-up field rows, and the benefits-list/form toggle diverge enough that
+// extending a shared base added more confusion than it saved). See
+// login.component.scss for the fuller rationale on the backdrop/panel
+// structure and the deliberately-omitted z-index on the backdrop.
+.register-page{
+  position: relative;
+  display: flex;
+  min-height: 100vh;
+  overflow: hidden;
+  color-scheme: dark;
 }
 
-// Pairs fields side by side where it makes sense (name/nickname,
-// password/confirm) now that the wider container has room; org name and
-// email each stay on their own full-width row. Matches the same
-// field-row/full-width pattern already used in manage.component.scss.
-.field-row{
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
+.register-backdrop{
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
 
-  mat-form-field{
-    flex: 1 1 12rem;
+  video{
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  &:after{
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.25);
   }
 }
 
-.full-width{
+// Wider than login's panel — the field-row pairs (name/nickname,
+// password/confirm) need more room than login's two full-width fields to
+// sit side by side without cramping.
+.register-panel{
+  flex: 0 0 38%;
+  min-width: 28rem;
+  max-width: 42rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2.5rem;
+  background: color-mix(in srgb, var(--mat-sys-surface) 80%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.register-panel-inner{
   width: 100%;
+  max-width: 30rem;
+}
+
+h1{
+  color: #ffffff;
+  font-size: 2rem;
+  text-align: left;
+  margin: 0 0 1.5rem;
+}
+
+.eyebrow{
+  display: inline-block;
+  padding: 0.3rem 0.75rem;
+  margin: 0 0 1.25rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.register-logo-link{
+  display: inline-block;
+  margin-bottom: 0.75rem;
+  text-decoration: none;
 }
 
 .benefits-list{
   list-style: none;
-  margin: 0;
+  margin: 0 0 1.5rem;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -47,13 +102,60 @@
   }
 }
 
+// Just a spacing wrapper (no card background/border), same as login's
+// .login-fields — separates the fields as a group from the standalone
+// button below.
+.register-fields{
+  margin-bottom: 1.25rem;
+
+  > *:not(:last-child){
+    margin-bottom: 0.75rem;
+  }
+}
+
+.field-row{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+
+  mat-form-field{
+    flex: 1 1 12rem;
+  }
+}
+
+.full-width{
+  width: 100%;
+}
+
+// Sits below .register-fields (or the benefits list) rather than inside
+// it — a standalone, full-width call to action either way.
+button{
+  display: block;
+  width: 100%;
+  border-radius: 6px !important;
+  padding: 0.5rem 1rem;
+}
+
+.error-message{
+  color: #ff6b6b;
+  margin: 0 0 0.75rem;
+}
+
+.switch-link{
+  margin-top: 1rem;
+  color: #ffffff;
+
+  a{
+    color: var(--mat-sys-primary);
+  }
+}
+
 .joining-organization{
   display: flex;
   align-items: center;
   gap: 0.5rem;
   color: #ffffff;
   font-size: 0.95rem;
-  margin-bottom: 1rem;
 
   mat-icon{
     color: var(--mat-sys-primary);
@@ -84,5 +186,40 @@
 
   a{
     color: var(--mat-sys-primary);
+  }
+}
+
+// Last in the markup (after .register-backdrop and .register-panel) so
+// it paints on top of both rather than getting caught under .register-
+// panel's own blur/translucency — deliberately understated (low-opacity
+// text, no background of its own), same treatment as login's .back-link.
+.back-link{
+  position: absolute;
+  top: 2rem;
+  left: 2rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s ease;
+
+  mat-icon{
+    font-size: 1.125rem;
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  &:hover{
+    color: #ffffff;
+  }
+}
+
+@media (max-width: 900px){
+  .register-panel{
+    flex: 1 1 100%;
+    max-width: 100%;
   }
 }
