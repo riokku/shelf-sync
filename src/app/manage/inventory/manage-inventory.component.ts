@@ -1,5 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { CurrencyPipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -24,11 +24,13 @@ import { loadInventoryImagesByItemId, uploadInventoryItemImages } from '../../sh
 import { loadInventoryActivityByItemId } from '../../shared/utils/inventory-item-activity';
 
 type InventoryItemRow = Database['public']['Tables']['inventory_items']['Row'];
+type StatusFilter = 'active' | 'include_retired' | 'retired_only';
 
 @Component({
   selector: 'app-manage-inventory',
   imports: [
     CurrencyPipe,
+    DatePipe,
     FormsModule,
     ReactiveFormsModule,
     MatFormFieldModule,
@@ -51,11 +53,39 @@ export class ManageInventoryComponent implements OnInit {
 
   private assignableProfiles: Profile[] = [];
 
-  viewMode: 'create' | 'all' = 'create';
+  viewMode: 'create' | 'all' | 'retirements' = 'create';
   allInventoryItems: InventoryItemRow[] = [];
   isLoadingInventoryList = true;
+  statusFilter: StatusFilter = 'active';
   private inventoryImagesByItemId = new Map<string, string[]>();
   private inventoryActivityByItemId = new Map<string, ActivityLogEntry[]>();
+
+  /** Derived from the same allInventoryItems load rather than a second
+   *  query — "all inventory" already fetches every item regardless of
+   *  status, so filtering it down (or the pending-retirement queue below)
+   *  is just a client-side filter of data that's already there. */
+  get visibleInventoryItems(): InventoryItemRow[] {
+    if (this.statusFilter === 'retired_only') {
+      return this.allInventoryItems.filter(item => item.status === 'retired');
+    }
+    if (this.statusFilter === 'include_retired') {
+      return this.allInventoryItems;
+    }
+    return this.allInventoryItems.filter(item => item.status !== 'retired');
+  }
+
+  get pendingRetirementItems(): InventoryItemRow[] {
+    return this.allInventoryItems
+      .filter(item => item.status === 'retirement_pending')
+      .sort((a, b) => (a.retirement_requested_at ?? '').localeCompare(b.retirement_requested_at ?? ''));
+  }
+
+  get pendingRetirementCount(): number {
+    return this.pendingRetirementItems.length;
+  }
+
+  isProcessingRetirement = false;
+  retirementError: string | null = null;
 
   readonly maxInventoryItemImages = MAX_INVENTORY_ITEM_IMAGES;
   selectedImageFiles: File[] = [];
@@ -120,6 +150,45 @@ export class ManageInventoryComponent implements OnInit {
     return item.low_quantity_threshold != null && item.quantity_remaining < item.low_quantity_threshold;
   }
 
+  isInventoryItemOutOfStock(item: InventoryItemRow): boolean {
+    return item.quantity_remaining <= 0;
+  }
+
+  retirementRequesterLabel(item: InventoryItemRow): string {
+    return resolveProfileName(item.retirement_requested_by, this.assignableProfiles) || 'Unknown user';
+  }
+
+  async approveRetirement(item: InventoryItemRow){
+    await this.runRetirementAction(
+      this.supabase.rpc('approve_item_retirement', { item_id: item.id })
+    );
+  }
+
+  async declineRetirement(item: InventoryItemRow){
+    await this.runRetirementAction(
+      this.supabase.rpc('decline_item_retirement', { item_id: item.id })
+    );
+  }
+
+  private async runRetirementAction(call: PromiseLike<{ error: { message: string } | null }>){
+    if (this.isProcessingRetirement) {
+      return;
+    }
+    this.isProcessingRetirement = true;
+    this.retirementError = null;
+
+    const { error } = await call;
+
+    if (error) {
+      this.retirementError = error.message;
+      this.isProcessingRetirement = false;
+      return;
+    }
+
+    await this.loadInventoryItems();
+    this.isProcessingRetirement = false;
+  }
+
   openInventoryDetail(row: InventoryItemRow) {
     const images = this.inventoryImagesByItemId.get(row.id) ?? [];
     const activityLog = this.inventoryActivityByItemId.get(row.id) ?? [];
@@ -129,7 +198,9 @@ export class ManageInventoryComponent implements OnInit {
         images,
         resolveProfileName(row.checked_out_to, this.assignableProfiles),
         activityLog,
-        resolveProfileAvatarKey(row.checked_out_to, this.assignableProfiles)
+        resolveProfileAvatarKey(row.checked_out_to, this.assignableProfiles),
+        resolveProfileName(row.retirement_requested_by, this.assignableProfiles),
+        resolveProfileName(row.retired_by, this.assignableProfiles)
       ),
       width: 'clamp(45rem, 78vw, 70rem)',
       maxWidth: '90vw',

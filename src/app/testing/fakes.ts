@@ -2,7 +2,8 @@ import { computed, signal } from '@angular/core';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { of } from 'rxjs';
 import { AuthService, Profile } from '../core/auth.service';
-import { InventoryItem } from '../shared/models/inventory-item.model';
+import { SupabaseService } from '../core/supabase.service';
+import { InventoryItem, InventoryItemStatus } from '../shared/models/inventory-item.model';
 import { Database } from '../shared/models/database.types';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
@@ -20,6 +21,7 @@ export function createFakeProfile(overrides: Partial<Profile> = {}): Profile {
     full_name: 'Test User',
     nickname: null,
     role: 'staff',
+    membership_status: 'approved',
     organization_id: 'org-1',
     avatar_key: null,
     created_at: '2026-01-01T00:00:00.000Z',
@@ -63,6 +65,36 @@ export function createFakeActivatedRoute(queryParams: Record<string, string> = {
   } as unknown as ActivatedRoute;
 }
 
+/** Minimal chainable stand-in for supabase-js's query/RPC builders — every
+ *  method just returns itself, so `.from(...).select(...).eq(...)` etc.
+ *  chains freely no matter which methods a given component happens to
+ *  call, and the whole thing is awaitable (thenable), always resolving to
+ *  `result`. Not a real fake of query behavior (nothing here inspects which
+ *  table/filters were used) — it exists purely so a component that queries
+ *  Supabase from its constructor or ngOnInit (e.g. for a nav badge count)
+ *  doesn't hit the real hosted project during a unit test that isn't
+ *  actually exercising that query, the same reasoning createFakeAuthService
+ *  avoids constructing the real AuthService above. */
+function createFakeQueryBuilder(result: { data?: unknown; count?: number; error?: unknown } = { data: [], count: 0, error: null }) {
+  const builder: Record<string, unknown> = {
+    then: (resolve: (value: typeof result) => void) => resolve(result),
+  };
+  for (const method of ['select', 'eq', 'neq', 'not', 'in', 'order', 'limit', 'single', 'maybeSingle', 'insert', 'update', 'delete', 'upsert']) {
+    builder[method] = () => builder;
+  }
+  return builder;
+}
+
+export function createFakeSupabaseService(result?: { data?: unknown; count?: number; error?: unknown }): SupabaseService {
+  const fake = {
+    client: {
+      from: () => createFakeQueryBuilder(result),
+      rpc: () => createFakeQueryBuilder(result),
+    },
+  };
+  return fake as unknown as SupabaseService;
+}
+
 export function createFakeMatDialogRef() {
   return {
     close: (_result?: unknown) => {},
@@ -86,6 +118,8 @@ export function createTestInventoryItem(overrides: Partial<{
   checkedOutTo: string;
   checkedOutToId: string | null;
   checkedOutToAvatarKey: string | null;
+  status: InventoryItemStatus;
+  retirementRequestedById: string | null;
 }> = {}): InventoryItem {
   return new InventoryItem(
     overrides.id ?? 'item-1',
@@ -112,7 +146,14 @@ export function createTestInventoryItem(overrides: Partial<{
     overrides.checkedOutTo ?? '',
     overrides.checkedOutToId ?? null,
     overrides.checkedOutToAvatarKey ?? null,
-    []
+    [],
+    overrides.status ?? 'active',
+    overrides.retirementRequestedById ?? null,
+    '',
+    '',
+    '',
+    '',
+    ''
   );
 }
 

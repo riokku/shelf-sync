@@ -166,6 +166,12 @@ export type Database = {
           quantity_per_container: number | null
           quantity_remaining: number
           quantity_total: number
+          retired_at: string | null
+          retired_by: string | null
+          retirement_request_note: string | null
+          retirement_requested_at: string | null
+          retirement_requested_by: string | null
+          status: string
           supplier_lead_time: string | null
           supplier_name: string | null
           updated_at: string
@@ -193,6 +199,12 @@ export type Database = {
           quantity_per_container?: number | null
           quantity_remaining?: number
           quantity_total?: number
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_request_note?: string | null
+          retirement_requested_at?: string | null
+          retirement_requested_by?: string | null
+          status?: string
           supplier_lead_time?: string | null
           supplier_name?: string | null
           updated_at?: string
@@ -220,6 +232,12 @@ export type Database = {
           quantity_per_container?: number | null
           quantity_remaining?: number
           quantity_total?: number
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_request_note?: string | null
+          retirement_requested_at?: string | null
+          retirement_requested_by?: string | null
+          status?: string
           supplier_lead_time?: string | null
           supplier_name?: string | null
           updated_at?: string
@@ -237,6 +255,20 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_retired_by_fkey"
+            columns: ["retired_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_retirement_requested_by_fkey"
+            columns: ["retirement_requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -272,6 +304,7 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          membership_status: Database["public"]["Enums"]["membership_status"]
           nickname: string | null
           organization_id: string
           role: Database["public"]["Enums"]["user_role"]
@@ -283,6 +316,7 @@ export type Database = {
           email: string
           full_name?: string | null
           id: string
+          membership_status?: Database["public"]["Enums"]["membership_status"]
           nickname?: string | null
           organization_id: string
           role?: Database["public"]["Enums"]["user_role"]
@@ -294,6 +328,7 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          membership_status?: Database["public"]["Enums"]["membership_status"]
           nickname?: string | null
           organization_id?: string
           role?: Database["public"]["Enums"]["user_role"]
@@ -431,11 +466,17 @@ export type Database = {
     }
     Functions: {
       accept_task_transfer: { Args: { task_id: string }; Returns: undefined }
+      admin_approve_member: { Args: { target_id: string }; Returns: undefined }
       admin_set_user_role: {
         Args: {
           new_role: Database["public"]["Enums"]["user_role"]
           target_id: string
         }
+        Returns: undefined
+      }
+      approve_item_retirement: { Args: { item_id: string }; Returns: undefined }
+      cancel_item_retirement_request: {
+        Args: { item_id: string }
         Returns: undefined
       }
       cancel_task_transfer: { Args: { task_id: string }; Returns: undefined }
@@ -444,14 +485,20 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      decline_item_retirement: { Args: { item_id: string }; Returns: undefined }
       decline_task_transfer: { Args: { task_id: string }; Returns: undefined }
       purge_expired_organizations: { Args: never; Returns: undefined }
+      request_item_retirement: {
+        Args: { item_id: string; note?: string }
+        Returns: undefined
+      }
       request_task_transfer: {
         Args: { target_id: string; task_id: string }
         Returns: undefined
       }
     }
     Enums: {
+      membership_status: "pending" | "approved"
       task_status: "todo" | "in_progress" | "done"
       user_role: "admin" | "manager" | "staff"
     }
@@ -584,6 +631,7 @@ export const Constants = {
   },
   public: {
     Enums: {
+      membership_status: ["pending", "approved"],
       task_status: ["todo", "in_progress", "done"],
       user_role: ["admin", "manager", "staff"],
     },

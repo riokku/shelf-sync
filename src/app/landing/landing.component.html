@@ -8,15 +8,6 @@
     <div class="hero-backdrop" aria-hidden="true">
       <span class="hero-glow hero-glow-1"></span>
       <span class="hero-glow hero-glow-2"></span>
-      <!-- Wave shape cut into the bottom of the hero's own gradient,
-           revealing the *real* page background beneath in a curve rather
-           than the hard edge/rounded-corner a plain border-radius gives.
-           A plain div rather than an SVG now — see .hero-wave for why: it
-           needs its own background-image (the same textured
-           background.png the page background uses), which a bare <path>
-           can't carry, so the wave shape itself lives in a CSS mask
-           instead of an SVG fill. -->
-      <div class="hero-wave" aria-hidden="true"></div>
     </div>
 
     <header class="landing-nav">
@@ -124,56 +115,91 @@
     </section>
   </div>
 
-  <section class="features" id="features">
-    <h2>Everything your team needs to stay on top of inventory</h2>
-    <p class="section-subtitle">One shared source of truth, instead of a spreadsheet nobody trusts.</p>
-
-    <div class="feature-grid">
-      @for (feature of features; track feature.title; let i = $index) {
-        <div class="feature-card reveal" [style.transition-delay.ms]="i * 80">
-          <span class="feature-icon">
-            <mat-icon>{{ feature.icon }}</mat-icon>
-          </span>
-          <h3>{{ feature.title }}</h3>
-          <p>{{ feature.description }}</p>
-        </div>
-      }
-    </div>
-  </section>
-
-  <section class="steps-section">
-    <!-- Wave cut into the *top* of this section's band, replacing the
-         diagonal cut it used to have — mirrors .hero-wave below the hero.
-         Reveals the *real* page background (the same textured
-         background.png the rest of the page uses) instead of .features'
-         flat surface color — see .hero-wave's own note for why this is a
-         plain div with a CSS mask now rather than an SVG fill. Three
-         uneven beats (rather than one symmetric S-curve) reads as a more
-         natural ripple instead of a single mechanical dip. -->
-    <div class="steps-wave" aria-hidden="true"></div>
-    <h2>Up and running in three steps</h2>
-    <ol class="steps">
-      @for (step of steps; track step.title; let i = $index) {
-        <li class="reveal" [style.transition-delay.ms]="i * 120">
-          <span class="step-number">{{ i + 1 }}</span>
-          <div class="step-body">
-            <h3>{{ step.title }}</h3>
-            <p>{{ step.description }}</p>
-          </div>
-        </li>
-      }
-    </ol>
-  </section>
-
-  <!-- Wraps the CTA banner *and* the footer so .cta-backdrop (a child of
-       this, not of .cta-banner specifically) naturally spans both, the
-       same technique .hero-region above uses for the nav — the video
-       keeps playing behind the footer instead of cutting off at the
-       banner's own bottom edge. -->
-  <div class="cta-region">
-    <div class="cta-backdrop" aria-hidden="true">
+  <!-- Wraps .features so .features-backdrop (video + scrim) can be sized
+       off this wrapper's own height, the same technique .hero-region and
+       .bottom-region use. -->
+  <div class="features-region">
+    <div class="features-backdrop" aria-hidden="true">
       <video src="assets/login-video.mp4" autoplay loop [muted]="true" playsinline></video>
+      <!-- Wave transitioning in from the hero, painted here rather than
+           as a solid-fill overlay sitting *in* .hero-backdrop (the
+           previous approach) — that always left a visible flat-colored
+           strip between the curve and the real video, since the fill was
+           only ever an approximation of "whatever's next", never the
+           video itself. .features-backdrop extends upward into the
+           hero's own bottom 5rem (see that rule's own comment) so the
+           video is genuinely present there; this wave just hides it in
+           the shape *above* the curve with a color matching .hero-backdrop's
+           own gradient tail exactly, so hero's gradient reads as
+           continuing seamlessly right up to the curve — and *below* the
+           curve there's no fill at all, just the real video showing
+           through unmodified. -->
+      <!-- <div class="hero-wave" aria-hidden="true"></div> -->
     </div>
+
+    <section class="features" id="features">
+      <h2>Everything your team needs to stay on top of inventory</h2>
+      <p class="section-subtitle">One shared source of truth, instead of a spreadsheet nobody trusts.</p>
+
+      <div class="feature-grid">
+        @for (feature of features; track feature.title; let i = $index) {
+          <div class="feature-card reveal" [style.transition-delay.ms]="i * 80">
+            <span class="feature-icon">
+              <mat-icon>{{ feature.icon }}</mat-icon>
+            </span>
+            <h3>{{ feature.title }}</h3>
+            <p>{{ feature.description }}</p>
+          </div>
+        }
+      </div>
+    </section>
+  </div>
+
+  <!-- Wraps the steps section, the CTA banner, *and* the footer into one
+       continuous wave-and-gradient region — the bottom-of-page mirror of
+       .hero-region above: one shared gradient background (.bottom-backdrop)
+       sized off this wrapper's own height, with one wave (.bottom-wave) at
+       its top handing off from .features-region, the same relationship
+       .hero-wave has to .features-region at the top of the page, just
+       flipped. Replaces what used to be two separate treatments — the
+       steps band's own gradient-and-wave, and a second video-backed
+       .cta-region wrapping just the banner and footer — with a single
+       continuous one, since splitting the "how it works" and "get
+       organized" sections in two here no longer served a purpose once
+       neither carries its own video. -->
+  <div class="bottom-region">
+    <div class="bottom-backdrop" aria-hidden="true">
+      <!-- Wave cut into the *top* of this region, mirroring .hero-wave at
+           the bottom of the hero: same idea, opposite end of the page.
+           Reveals what .bottom-backdrop's own gradient starts on rather
+           than .features-region's video, the same way .hero-wave reveals
+           what's next rather than what .hero-backdrop's gradient ends on. -->
+      <div class="bottom-wave" aria-hidden="true"></div>
+
+      <!-- Same drifting-glow treatment as .hero-glow-1/2, mirrored: this
+           section's gradient is .hero-backdrop's own reversed (tertiary at
+           top, primary at bottom — see .bottom-backdrop's own comment), so
+           the blob colors are swapped to match rather than repeating
+           hero's top/bottom color assignment verbatim. -->
+      <span class="bottom-glow bottom-glow-1"></span>
+      <span class="bottom-glow bottom-glow-2"></span>
+    </div>
+
+    <section class="steps-section">
+      <h2>Up and running in three steps</h2>
+      <p class="section-subtitle">From sign-up to a fully stocked inventory, in minutes.</p>
+      <ol class="steps">
+        @for (step of steps; track step.title; let i = $index) {
+          <li class="reveal" [style.transition-delay.ms]="i * 120">
+            <span class="step-number">{{ i + 1 }}</span>
+            <div class="step-body">
+              <h3>{{ step.title }}</h3>
+              <p>{{ step.description }}</p>
+            </div>
+          </li>
+        }
+      </ol>
+    </section>
 
     <section class="cta-banner">
       <h2>Ready to get organized?</h2>
@@ -184,11 +210,11 @@
       </a>
     </section>
 
-    <!-- footer-on-dark: this region is permanently dark (see .cta-region),
-         unlike every other place <app-footer> is embedded — tells the
-         footer's own logo to skip its usual light-mode invert, which
-         would otherwise turn the white mark black and lose it against
-         this video. -->
+    <!-- footer-on-dark: this region is permanently dark (see
+         .bottom-region), unlike every other place <app-footer> is
+         embedded — tells the footer's own logo to skip its usual
+         light-mode invert, which would otherwise turn the white mark
+         black and lose it against this dark background. -->
     <app-footer class="footer-on-dark" />
   </div>
 </div>

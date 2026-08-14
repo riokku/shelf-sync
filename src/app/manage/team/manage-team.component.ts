@@ -1,5 +1,8 @@
 import { Component, OnInit, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -26,7 +29,10 @@ interface TeamMember {
 @Component({
   selector: 'app-manage-team',
   imports: [
+    FormsModule,
     MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
     MatIconModule,
     MatProgressSpinnerModule,
     MatExpansionModule,
@@ -43,12 +49,39 @@ export class ManageTeamComponent implements OnInit {
   private dialog = inject(MatDialog);
 
   protected currentUserId: string | null = null;
+  /** Approved members only — pendingMembers (below) holds the rest, kept
+   *  separate since they haven't got real task/team standing to show yet. */
   private assignableProfiles: Profile[] = [];
+  pendingMembers: Profile[] = [];
+  isProcessingMembership = false;
+  membershipError: string | null = null;
 
   readonly statuses = TASK_STATUSES;
   readonly statusLabels = TASK_STATUS_LABELS;
   teamMembers: TeamMember[] = [];
   isLoadingTeam = true;
+
+  teamSearchTerm = '';
+
+  /** Matches against full_name (covers first *and* last name — profiles
+   *  doesn't split them into separate columns, so a substring match on the
+   *  combined name already covers searching by either) and nickname
+   *  separately, not just whichever one profileLabel() happens to display. */
+  get filteredTeamMembers(): TeamMember[] {
+    const term = this.teamSearchTerm.trim().toLowerCase();
+    if (!term) {
+      return this.teamMembers;
+    }
+    return this.teamMembers.filter(member => {
+      const profile = member.profile;
+      return !!profile.full_name?.toLowerCase().includes(term)
+        || !!profile.nickname?.toLowerCase().includes(term);
+    });
+  }
+
+  onTeamSearchChange(value: string) {
+    this.teamSearchTerm = value;
+  }
 
   inviteLink: string | null = null;
   inviteLinkCopied = false;
@@ -66,7 +99,9 @@ export class ManageTeamComponent implements OnInit {
 
   private async loadProfiles() {
     const { data } = await this.supabase.from('profiles').select('*').order('full_name');
-    this.assignableProfiles = data ?? [];
+    const profiles = data ?? [];
+    this.assignableProfiles = profiles.filter(profile => profile.membership_status === 'approved');
+    this.pendingMembers = profiles.filter(profile => profile.membership_status === 'pending');
   }
 
   private async loadTeamTasks() {
@@ -156,19 +191,33 @@ export class ManageTeamComponent implements OnInit {
    *  their own team-membership disappear. The underlying auth.users login
    *  isn't removed (that needs the Supabase Admin API), but every RLS policy
    *  keyed off current_user_role()/current_user_org_id() now fails closed
-   *  for them since their profile row is gone. */
+   *  for them since their profile row is gone. Same mechanism doubles as
+   *  "deny" for a pending join request (see denyMember()) — there's no
+   *  separate 'denied' status, a denied request just never becomes a row.
+   */
   removeMember(profile: Profile) {
     if (profile.id === this.currentUserId) {
       return;
     }
 
+    this.confirmAndDeleteProfile(profile, {
+      title: 'Remove team member?',
+      message: `Remove ${profileDisplayName(profile)} from your organization? This can't be undone — they'll lose access immediately.`,
+      confirmLabel: 'Remove'
+    });
+  }
+
+  denyMember(profile: Profile) {
+    this.confirmAndDeleteProfile(profile, {
+      title: 'Deny join request?',
+      message: `Deny ${profileDisplayName(profile)}'s request to join your organization? Their account will still exist, but they won't be able to join.`,
+      confirmLabel: 'Deny'
+    });
+  }
+
+  private confirmAndDeleteProfile(profile: Profile, dialogText: { title: string; message: string; confirmLabel: string }) {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
-      data: {
-        title: 'Remove team member?',
-        message: `Remove ${profileDisplayName(profile)} from your organization? This can't be undone — they'll lose access immediately.`,
-        confirmLabel: 'Remove',
-        danger: true
-      },
+      data: { ...dialogText, danger: true },
       width: 'clamp(75%, 25rem, 60%)'
     });
 
@@ -179,13 +228,34 @@ export class ManageTeamComponent implements OnInit {
 
       const { error } = await this.supabase.from('profiles').delete().eq('id', profile.id);
       if (error) {
-        alert(`Failed to remove team member: ${error.message}`);
+        alert(`Failed: ${error.message}`);
         return;
       }
 
       await this.loadProfiles();
       await this.loadTeamTasks();
     });
+  }
+
+  async approveMember(profile: Profile) {
+    if (this.isProcessingMembership) {
+      return;
+    }
+
+    this.isProcessingMembership = true;
+    this.membershipError = null;
+
+    const { error } = await this.supabase.rpc('admin_approve_member', { target_id: profile.id });
+
+    this.isProcessingMembership = false;
+
+    if (error) {
+      this.membershipError = error.message;
+      return;
+    }
+
+    await this.loadProfiles();
+    await this.loadTeamTasks();
   }
 
   openTaskDetail(task: Task) {

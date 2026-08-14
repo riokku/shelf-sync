@@ -60,6 +60,31 @@
     color: var(--mat-sys-on-surface-variant);
     font-size: 0.875rem;
   }
+
+  // Pending-count badge (Tasks/Team cards) — a tad larger than Material's
+  // 16px default, and bold. Same technique header.component.scss uses for
+  // its own nav badge: the four --mat-badge-* lines are genuine CSS custom
+  // properties (reach MatBadge's internal DOM via inheritance, no ::ng-deep
+  // needed), while the explicit flex centering below needs ::ng-deep since
+  // .mat-badge-content is DOM MatBadge's own template renders, not this
+  // component's — replaces Material's default text-align + line-height
+  // centering trick, which drifts once the badge is enlarged like this.
+  --mat-badge-container-size: 22px;
+  --mat-badge-line-height: 22px;
+  --mat-badge-text-size: 0.8125rem;
+  --mat-badge-text-weight: 700;
+
+  // :not(.mat-badge-hidden) matters: this selector's specificity would
+  // otherwise beat Material's own `.mat-badge-hidden .mat-badge-content
+  // {display: none}` rule (two classes) and force the badge to stay
+  // visible — as an empty flex box — even when matBadgeHidden is true (a
+  // card with nothing pending, e.g. Danger Zone always, or Team for a
+  // manager).
+  &:not(.mat-badge-hidden) ::ng-deep .mat-badge-content{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
 
 .manage-card-danger{

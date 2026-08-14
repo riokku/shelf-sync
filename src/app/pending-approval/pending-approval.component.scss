@@ -1,0 +1,57 @@
+@use '../shared/styles/page-toolbar';
+
+.pending-approval-wrapper{
+  color: var(--mat-sys-on-surface);
+  padding: 3rem 1.5rem;
+  max-width: 100%;
+
+  .container{
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+.loading-row{
+  display: flex;
+  justify-content: center;
+  padding: 3rem 0;
+}
+
+// Same card treatment as .home-card (home.component.scss), just one
+// centered block instead of a grid of link cards, and not a link itself.
+.status-card{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 28rem;
+  margin: 2rem auto;
+  padding: 2.5rem 2rem;
+  border-radius: 0.75rem;
+  background: var(--mat-sys-surface-container-low);
+  text-align: center;
+
+  // Scoped to .status-icon specifically, not `mat-icon` generally — this
+  // card also has a "Sign out" button with its own (normal-sized) icon,
+  // which shouldn't shrink along with the headline one above.
+  .status-icon{
+    font-size: 1.75rem;
+    width: 1.75rem;
+    height: 1.75rem;
+    color: var(--mat-sys-primary);
+  }
+
+  h2{
+    margin: 0;
+  }
+
+  p{
+    margin: 0 0 0.5rem;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  .semibold{
+    color: var(--mat-sys-on-surface);
+    font-weight: 600;
+  }
+}

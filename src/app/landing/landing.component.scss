@@ -106,7 +106,7 @@
   gap: 3rem;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 3rem 2rem 5rem;
+  padding: 3rem 2rem 6rem;
 }
 
 // Base gradient plus two slowly-drifting blurred "glow" blobs. A child of
@@ -143,74 +143,9 @@
     linear-gradient(160deg, color-mix(in srgb, var(--mat-sys-primary) 55%, black) 0%, color-mix(in srgb, var(--mat-sys-tertiary) 40%, #14141a) 100%);
 }
 
-// The curve shape used to be an SVG <path fill="..."> painting a solid
-// color over the gradient to *fake* a cutout — approximating "the real
-// page background" with a flat color guess. It's a real cutout now: a
-// plain div, mask-imaged into the wave silhouette, carrying the *same*
-// background.png texture .site-wrapper itself paints behind the whole
-// page (app.component.scss) — so what shows through the curve is
-// genuinely the page's own background, not a lookalike. Sits at the very
-// bottom of .hero-backdrop's own box (so it inherits its overflow:hidden
-// + bled inset rather than needing a second one), painted last among the
-// backdrop's children so it's the topmost thing within the backdrop's own
-// stacking context.
-//
-// background-attachment:fixed (matching .site-wrapper's own, see that
-// component) rather than the default scroll is what makes the two align
-// pixel-for-pixel without any manual offset math: fixed anchors the tile
-// grid to the *viewport*, not to each element's own box, so any two
-// elements sharing this same image/attachment always sample the same
-// virtual wallpaper regardless of where either one sits in the document.
-//
-// preserveAspectRatio='none' on the <svg> root is required — without it,
-// the SVG defaults to xMidYMid meet, which preserves its own 1200:120
-// aspect ratio (fitting the box by *height*) and centers the result
-// horizontally, regardless of what CSS mask-size says. That's what
-// produced the "wave only in the center, flat at both edges" bug: the
-// rendered mask came out ~800px wide (120px-tall box × the 10:1 aspect)
-// centered in a much wider element, instead of stretching to fill it.
-$wave-mask-hero: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath fill='white' d='M0,40 C200,90 400,0 600,40 C800,80 1000,10 1200,50 L1200,120 L0,120 Z'/%3E%3C/svg%3E");
-
-.hero-wave{
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  height: 5rem;
-  display: block;
-  -webkit-mask-image: $wave-mask-hero;
-  mask-image: $wave-mask-hero;
-  -webkit-mask-size: 100% 100%;
-  mask-size: 100% 100%;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  // A soft tertiary-colored glow traces the curve's silhouette regardless
-  // of how the texture's own tones compare to the gradient right above
-  // it, giving the shape something to read by beyond "does this look
-  // different from what's above it".
-  filter: drop-shadow(0 -3px 8px color-mix(in srgb, var(--mat-sys-tertiary) 55%, transparent));
-  background-image: url(../../assets/background.png);
-  background-repeat: repeat;
-  background-attachment: fixed;
-}
-
-// background.png predates light mode and has no light-mode counterpart
-// (see .site-wrapper's own matching comment in app.component.scss) — in
-// light mode the *real* page background is a flat surface color instead,
-// so this needs to swap the same way .site-wrapper does, independently of
-// .hero's own pinned-dark styling (.hero forces color-scheme:dark for its
-// *own* gradient/text, but what the wave reveals should still track the
-// visitor's *actual* toggle, not .hero's fixed treatment).
-//
-// :host-context() rather than a plain `html[data-mode='light']` ancestor
-// selector — this stylesheet is view-encapsulated, so Angular would
-// otherwise scope the `html` part with this component's own [_ngcontent]
-// attribute, which the real <html> element never carries, and the rule
-// would silently never match anything.
-:host-context(html[data-mode='light']) .hero-wave{
-  background: var(--mat-sys-surface);
-}
+// The hero's own wave transition used to live here as a solid-fill
+// overlay approximating "whatever's next" — see .hero-wave (now inside
+// .features-backdrop) for why that moved and what replaced it.
 
 .hero-glow{
   position: absolute;
@@ -521,13 +456,125 @@ $wave-mask-hero: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/sv
   opacity: 0;
 }
 
+// Wraps .features, same technique .hero-region/.bottom-region use —
+// pinned dark like both of them (see .hero's own top-of-file note on why),
+// since a video background reads as dark footage either way and the
+// visitor's light/dark toggle has nothing sensible to vary here.
+// .features-backdrop (below) is sized off this wrapper's own height via
+// inset:0 rather than a fixed number, so it always matches exactly
+// regardless of how tall .features itself ends up (feature-card count,
+// text wrapping, etc.) at any viewport.
+.features-region{
+  position: relative;
+  isolation: isolate;
+  color-scheme: dark;
+  color: #ffffff;
+}
+
+// Full-bleed via the same centered-max-width breakout .hero-backdrop and
+// .bottom-backdrop use, rather than filling .features' own 1400px-capped
+// box. A flat, constant scrim rather than a gradient matched to the wave
+// colors on either side (tried previously) — precisely matching a
+// gradient's edges to .hero-wave/.bottom-wave's own fills turned out to
+// be more trouble than it was worth: those wave colors are only
+// medium-dark on their own, so getting the plateau in between dark enough
+// for text without the edges reading as a lighter interruption took
+// fussy, hard-to-tune stop percentages. A single flat darkening layer
+// sidesteps all of that — plenty dark for the h2/subtitle text throughout
+// (the feature cards below have their own opaque backgrounds regardless),
+// with no edge color to keep in sync with anything else.
+//
+// top:-5rem rather than inset:0's implicit top:0 — extends this box (and
+// the <video> inside it, which stretches to fill it) upward into the
+// hero's own bottom 5rem, so the wave has real footage to cut into rather
+// than an approximation of one. The wave is then cut out of *this*
+// element via the two-layer mask below, rather than painted over it by a
+// separate filled element (what .hero-wave used to do): above the curve
+// this box is simply absent, so .hero-region's own gradient — glow blobs,
+// 160deg angle and all — shows through untouched, exactly as if the hero
+// just continued. Below the curve, real video. No fill of any kind
+// anywhere, so there's nothing left that can fail to match.
+//
+// Two mask layers, composited additively (the default):
+//   1. the wave SVG, pinned to the top and sized to exactly the 5rem
+//      extension zone — opaque below its curve, transparent above.
+//   2. a plain opaque rectangle for everything under that zone, sized
+//      calc(100% - 5rem) and pinned to the bottom.
+// Splitting it this way keeps the wave a fixed 5rem tall regardless of
+// how tall .features itself grows, which a single full-height mask image
+// couldn't do — it would stretch the curve with the section.
+$wave-mask-hero-reveal-below: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath fill='white' d='M0,30 C200,105 400,0 600,30 C800,95 1000,0 1200,55 L1200,120 L0,120 Z'/%3E%3C/svg%3E");
+
+.features-backdrop{
+  position: absolute;
+  top: -4rem;
+  bottom: 0;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+  z-index: -1;
+  overflow: hidden;
+
+  -webkit-mask-image: $wave-mask-hero-reveal-below, linear-gradient(#000, #000);
+  mask-image: $wave-mask-hero-reveal-below, linear-gradient(#000, #000);
+  -webkit-mask-size: 100% 5rem, 100% calc(100% - 5rem);
+  mask-size: 100% 5rem, 100% calc(100% - 5rem);
+  -webkit-mask-position: left top, left bottom;
+  mask-position: left top, left bottom;
+  -webkit-mask-repeat: no-repeat, no-repeat;
+  mask-repeat: no-repeat, no-repeat;
+
+  video{
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  // inset:0 — covers the full video, the wave zone at the top included.
+  // This used to start at top:5rem to spare that zone, back when a filled
+  // .hero-wave sat in it and a scrim over both made the curve's two sides
+  // trend toward the same near-black. There's no fill to protect anymore:
+  // the parent's own mask has already clipped this layer along with the
+  // video above the curve, so a plain inset:0 only ever darkens what
+  // shows *below* it. That's what makes the edge a hard cut — hero
+  // gradient at full strength above, 28%-brightness video below, and no
+  // transition zone between them.
+  &:after{
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(8, 8, 10, 0.72);
+  }
+}
+
+// Retired — the wave is cut out of .features-backdrop itself now (see its
+// mask above) rather than painted on top of it by this element. Its fill
+// was a single flat color standing in for "the color .hero-backdrop's
+// gradient ends on", which was never actually true across the full width:
+// that gradient runs at 160deg, so its tail color only lands near the
+// bottom-left corner, and .hero-glow-2 bleeds into the same zone besides.
+// The flat swatch therefore read as a distinct band sitting on top of the
+// hero rather than a continuation of it. Kept as display:none rather than
+// deleted so the <div class="hero-wave"> left in the template is inert;
+// safe to drop from both once that markup goes.
+.hero-wave{
+  display: none;
+}
+
 .features,
 .steps-section,
 .cta-banner{
   max-width: 1400px;
   margin: 0 auto;
-  padding: 5rem 2rem;
+  padding: 5rem 2rem 1rem 2rem;
   text-align: center;
+}
+
+.features{
+  padding: 5rem 2rem 11rem 2rem;
 }
 
 .features h2,
@@ -538,10 +585,26 @@ $wave-mask-hero: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/sv
   letter-spacing: -0.01em;
 }
 
+// All three h2s above read white — .features h2 and .steps-section h2 and
+// .cta-banner h2 alike now inherit color:#fff from their shared pinned-
+// dark ancestor (.features-region / .bottom-region), rather than each
+// needing its own explicit override. .steps li's own card background
+// still follows the toggle normally regardless, so its h3/p/step-number
+// contrast against *that*, not the region's background directly, the
+// same way .feature-card's own text does against its card.
+
+// Shared by .features and .steps-section's own subtitle paragraph — both
+// sit on a permanently-dark backdrop (.features-region / .bottom-region),
+// so this is pinned to a plain translucent white like .hero-subtitle's own
+// treatment rather than the toggle-following var(--mat-sys-on-surface-variant)
+// a lighter-backed section would use. font-size matches .hero-subtitle and
+// .cta-banner p — every subtitle-level paragraph on this page reads at the
+// same size, regardless of which section it's in.
 .section-subtitle{
   margin: 0 auto 3rem;
   max-width: 32rem;
-  color: var(--mat-sys-on-surface-variant);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 1.0625rem;
 }
 
 .feature-card p,
@@ -551,9 +614,17 @@ $wave-mask-hero: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/sv
   font-size: 0.9375rem;
 }
 
+// Fixed 3 columns rather than grid's auto-fit/minmax (which was sizing
+// columns off the *card's* min width, independent of .steps below) — 3
+// is also .steps' own card count, so at every width this renders as 1fr
+// columns spanning the exact same 1400px content box .steps fills with
+// its 3 cards, instead of .feature-grid's 6 cards settling on some other
+// column count with its own, narrower total row width. 6 divides evenly
+// by 3 (and by the 2/1 step-downs at the breakpoints below), so every row
+// is always full — no half-empty trailing row to center or stretch.
 .feature-grid{
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 1.5rem;
   text-align: left;
 }
@@ -597,122 +668,123 @@ $wave-mask-hero: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/sv
   }
 }
 
-// A second, differently-shaped section break (see .hero-wave above for the
-// curved one) — a diagonally-sliced band tinted a touch darker/lighter
-// than the plain page background, giving "how it works" its own visual
-// zone instead of sitting on the same flat background as .features on
-// both sides of it. Full-bleed via the classic centered-max-width
-// breakout (left/right 50% + negative 50vw margins) rather than only
-// tinting this section's own 1400px-capped box, so the band still reaches
-// the actual viewport edges on wide screens instead of leaving bare page
-// background in the side gutters.
-//
-// preserveAspectRatio='none' on the <svg> root — see $wave-mask-hero
-// above for why it's required (without it the mask renders at its own
-// 1200:120 aspect ratio, centered, instead of stretching to the box).
-$wave-mask-steps: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath fill='white' d='M0,0 L0,45 C200,65 320,20 480,40 C650,62 780,28 950,48 C1050,60 1120,38 1200,50 L1200,0 Z'/%3E%3C/svg%3E");
-
-.steps-section{
+// Wraps .steps-section, .cta-banner, and <app-footer> into one continuous
+// region — the bottom-of-page mirror of .hero-region: pinned dark for the
+// same reason (see .hero's own top-of-file note), with .bottom-backdrop
+// (below) sized off this wrapper's own height via inset:0 rather than a
+// fixed number, so it always covers exactly steps+banner+footer stacked
+// regardless of content length at any viewport.
+.bottom-region{
   position: relative;
-  // Same fix as .hero above — position:relative alone doesn't contain a
-  // negative-z-index child, so ::before's z-index:-1 (below) was escaping
-  // past this section entirely and losing to <body>'s own background.
+  // Same fix as .hero-region above — position:relative alone doesn't
+  // contain a negative-z-index child on its own, so .bottom-backdrop
+  // (z-index:-1, below) would otherwise escape past this element and
+  // lose to <body>'s own background.
   isolation: isolate;
+  color-scheme: dark;
+  color: #ffffff;
+}
 
-  &::before{
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 50%;
-    right: 50%;
-    margin-left: -50vw;
-    margin-right: -50vw;
-    z-index: -1;
-    // Starts on a lighter, tertiary-tinted tone rather than flat
-    // var(--mat-sys-surface) — the same idea as .hero-backdrop's own
-    // gradient staying colorful right up to *its* wave instead of fading
-    // to a flat near-black, so the curve has something to contrast
-    // against (a flat match against what .steps-wave reveals made the
-    // wave itself barely readable, the same "nothing to contrast against"
-    // problem .hero-wave's own tail color was fixed for earlier). Mixed
-    // against var(--mat-sys-surface) rather than a hardcoded dark hex the
-    // way .hero-backdrop's does — .hero is pinned permanently dark so a
-    // dark-leaning mix always suits it, but this section follows the
-    // visitor's light/dark toggle, so its own "lighter" tint needs to
-    // scale off whichever surface tone is actually active rather than
-    // always skewing dark. Ends on the same color .cta-backdrop's own
-    // diagonal scrim *starts* on (color-mix(primary 55%, black), see that
-    // gradient below), so this band doesn't fade out independently and
-    // leave .cta-region to pick up the darkening on its own — the two
-    // gradients meet on a shared color, reading as one continuous sweep
-    // down into the video instead of two adjacent-but-unrelated fades.
-    background: linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--mat-sys-tertiary) 25%, var(--mat-sys-surface)) 0%,
-      color-mix(in srgb, var(--mat-sys-primary) 55%, black) 100%
-    );
-    // No clip-path anymore — a plain rectangle. It used to have a
-    // diagonal top cut (and, before that, a matching diagonal bottom cut
-    // too — see .steps-wave below for why the bottom one was dropped
-    // first), but a straight diagonal read as a harsh line against this
-    // page's other curved transition (.hero-wave). .steps-wave now
-    // supplies a wavy top edge instead, the same way .hero-wave supplies
-    // one at the bottom of the hero — the plain rectangle here is exactly
-    // what .hero-backdrop's own gradient box is underneath its wave.
-  }
+// The bottom-of-page mirror of .hero-backdrop: same gradient colors,
+// reversed — starts (top, at the wave) on the tertiary-tinted tone
+// .hero-backdrop's gradient *ends* on near its own wave, and ends
+// (bottom, at the very end of the page) on the primary-tinted tone
+// .hero-backdrop *starts* on at the very top of the page. Two gradients
+// mirroring each other stop-for-stop, just flipped, is what makes this
+// read as a deliberate bookend rather than an unrelated dark section.
+// Full-bleed via the same centered-max-width breakout .hero-backdrop
+// uses, rather than filling any child section's own 1400px-capped box.
+//
+// top:-5rem and the mask below are the exact mirror of .features-backdrop's
+// own treatment at the top of the video, with one thing flipped: up there
+// the video region paints *after* the hero, so masking the video was what
+// revealed the hero beneath it. Down here this region is the later
+// sibling and paints over the video, so it's this element that gets
+// extended upward into .features-region's own bottom 5rem and masked, and
+// what shows above the curve is the real video — scrim and all — rather
+// than any fill standing in for it.
+//
+// Two mask layers, composited additively (the default), same split and
+// same reason as .features-backdrop's: the wave stays a fixed 5rem tall
+// no matter how tall steps+banner+footer grow, which a single full-height
+// mask image couldn't do.
+$wave-mask-bottom-reveal-below: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath fill='white' d='M0,45 C200,77 320,5 480,37 C650,72 780,17 950,49 C1050,69 1120,33 1200,53 L1200,120 L0,120 Z'/%3E%3C/svg%3E");
 
-  // Wave cut into the top of the band above, mirroring .hero-wave: a plain
-  // div, mask-imaged into the curve silhouette, sitting on top of
-  // ::before's rectangle. Reveals the *real* page background — the same
-  // background.png texture .site-wrapper paints behind the whole page
-  // (app.component.scss) — rather than a flat color guess at what
-  // .features' own background resolves to (the section above this one,
-  // not below — this wave reveals what's *above* it, the opposite of
-  // .hero-wave's direction). Sitting after ::before in paint order
-  // (pseudo-elements always paint first) is what puts it on top without
-  // needing z-index gymnastics beyond matching ::before's own -1.
-  .steps-wave{
-    position: absolute;
-    top: 0;
-    // Same full-bleed breakout as ::before above — this element is a
-    // sibling of it, not a descendant, so it needs its own copy of the
-    // 50vw trick to span the same full viewport width rather than just
-    // this section's own 1400px-capped column. No explicit width needed
-    // (unlike when this was an <svg>, a *replaced* element whose auto-
-    // width resolves from intrinsic size rather than the left/right/
-    // margin equation) — a plain div is non-replaced, so it auto-computes
-    // its width from left+right+margins exactly like ::before does.
-    left: 50%;
-    right: 50%;
-    margin-left: -50vw;
-    margin-right: -50vw;
-    height: 5rem;
-    z-index: -1;
-    display: block;
-    -webkit-mask-image: $wave-mask-steps;
-    mask-image: $wave-mask-steps;
-    -webkit-mask-size: 100% 100%;
-    mask-size: 100% 100%;
-    -webkit-mask-repeat: no-repeat;
-    mask-repeat: no-repeat;
-    background-image: url(../../assets/background.png);
-    background-repeat: repeat;
-    background-attachment: fixed;
+.bottom-backdrop{
+  position: absolute;
+  top: -5rem;
+  bottom: 0;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+  z-index: -1;
+  overflow: hidden;
 
-    // background.png predates light mode and has no light-mode
-    // counterpart (see .site-wrapper's own matching comment in
-    // app.component.scss) — in light mode the *real* page background is
-    // a flat surface color instead, so this swaps the same way
-    // .site-wrapper does. Unlike .hero-wave, .steps-section was never
-    // pinned to a fixed color-scheme, so no :host-context() detour is
-    // needed here — a plain data-mode class on <html> reached normally
-    // would work too, but :host-context() is used for consistency with
-    // .hero-wave's own version of this same rule.
-    :host-context(html[data-mode='light']) &{
-      background: var(--mat-sys-surface);
-    }
-  }
+  -webkit-mask-image: $wave-mask-bottom-reveal-below, linear-gradient(#000, #000);
+  mask-image: $wave-mask-bottom-reveal-below, linear-gradient(#000, #000);
+  -webkit-mask-size: 100% 5rem, 100% calc(100% - 5rem);
+  mask-size: 100% 5rem, 100% calc(100% - 5rem);
+  -webkit-mask-position: left top, left bottom;
+  mask-position: left top, left bottom;
+  -webkit-mask-repeat: no-repeat, no-repeat;
+  mask-repeat: no-repeat, no-repeat;
+
+  background: linear-gradient(160deg, color-mix(in srgb, var(--mat-sys-tertiary) 40%, #14141a) 0%, color-mix(in srgb, var(--mat-sys-primary) 55%, black) 100%);
+}
+
+// Same shape/blur/drift as .hero-glow, just under a section-scoped name
+// rather than sharing the class outright — keeps each section's blobs
+// tunable (size, blur, opacity) independently of the other's even though
+// today's values match. Colors mirror .bottom-backdrop's own reversed
+// gradient (tertiary near the top, primary near the bottom) rather than
+// repeating .hero-glow-1/2's top=tertiary/bottom=primary assignment
+// verbatim, which happens to land the same way here since this section's
+// gradient is itself hero's reversed. Positioned the same corners as
+// .hero-glow-1/2 (top-left, bottom-right) for the same bookend reason the
+// gradient colors are reversed rather than repeated. .bottom-backdrop's
+// own overflow:hidden clips these to the section same as .hero-backdrop
+// does for .hero-glow, and its mask (above) clips whatever of bottom-glow-1
+// lands in the wave's top 5rem the same as it does the gradient — the
+// blob just fades in and out through the curve rather than needing to be
+// positioned to avoid it.
+.bottom-glow{
+  position: absolute;
+  width: 26rem;
+  height: 26rem;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.55;
+}
+
+.bottom-glow-1{
+  top: -6rem;
+  left: -4rem;
+  background: color-mix(in srgb, var(--mat-sys-tertiary) 70%, transparent);
+  animation: drift 18s ease-in-out infinite alternate;
+  --dx: 3rem;
+  --dy: 2.5rem;
+}
+
+.bottom-glow-2{
+  bottom: -8rem;
+  right: -6rem;
+  background: color-mix(in srgb, var(--mat-sys-primary) 70%, transparent);
+  animation: drift 22s ease-in-out infinite alternate;
+  --dx: -2.5rem;
+  --dy: -3rem;
+}
+
+// Retired, same as .hero-wave above — the wave is cut out of
+// .bottom-backdrop itself now (see its mask) rather than painted inside
+// it by this element. This one was doubly redundant: its fill was the
+// exact color .bottom-backdrop's gradient starts on, and it sat inside
+// that very backdrop, so it was a shape painted in its own background
+// color and never produced a visible edge at all. Kept as display:none
+// rather than deleted so the <div class="bottom-wave"> left in the
+// template is inert; safe to drop from both once that markup goes.
+.bottom-wave{
+  display: none;
 }
 
 // Steps read as a numbered sequence — outlined tertiary circles sitting
@@ -763,97 +835,22 @@ $wave-mask-steps: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/s
   font-weight: 700;
 }
 
-// Video-backed, like the hero — a bookend for the page, and reason enough
-// to pin this section to a fixed dark treatment (color-scheme:dark, plain
-// white text) rather than following the visitor's light/dark toggle, same
-// as the hero itself does for the same reason. No border-radius/overflow
-// here anymore — those were for the old "floating rounded card" treatment,
-// inset from the viewport same as the text content; now that .cta-backdrop
-// bleeds full-bleed edge-to-edge (see below), a rounded card clipped
-// within this section's own 1400px-capped box no longer matches what's
-// actually behind the text.
-// Wraps .cta-banner and <app-footer> together — .cta-backdrop (a child of
-// *this*, not of .cta-banner) now spans both, the same technique
-// .hero-region above uses for the nav, so the video keeps playing behind
-// the footer instead of cutting off at the banner's own bottom edge.
-.cta-region{
-  position: relative;
-  // Same fix as .hero-region above — position:relative alone doesn't
-  // contain a negative-z-index child on its own, so .cta-backdrop
-  // (z-index:-1, below) was likewise escaping past this element and
-  // losing to <body>'s own background.
-  isolation: isolate;
-  color-scheme: dark;
-  color: #ffffff;
-}
-
+// No own backdrop, position, or isolation anymore — .bottom-backdrop
+// (above) covers this section too now, as one continuous region with
+// .steps-section and the footer, rather than each carrying its own video
+// and gradient. color:#fff for the heading/paragraph comes from
+// .bottom-region's own pinned text color, inherited.
 .cta-banner{
-  position: relative;
-
+  // font-size matches .hero-subtitle and .section-subtitle — see that
+  // rule's own comment; this p is the CTA's subtitle in all but name.
   p{
     margin: 0 0 1.75rem;
     color: rgba(255, 255, 255, 0.8);
+    font-size: 1.0625rem;
   }
 
   a{
     border-radius: 6px;
-  }
-}
-
-// Full-bleed via the same centered-max-width breakout as .hero-backdrop
-// and .steps-section's band above, rather than filling .cta-banner's own
-// 1400px-capped box — the video/scrim now reach true viewport edges
-// regardless of screen width, matching the other two section backgrounds.
-// Sized off .cta-region's own height (banner + footer stacked in normal
-// flow) via inset:0 rather than a fixed height, so it always covers
-// exactly both regardless of either's content length at any viewport.
-.cta-backdrop{
-  position: absolute;
-  inset: 0;
-  left: 50%;
-  right: 50%;
-  margin-left: -50vw;
-  margin-right: -50vw;
-  z-index: -1;
-  overflow: hidden;
-
-  video{
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  // A darker, theme-tinted scrim than the login page's own video gets —
-  // this one has to keep the heading/paragraph text (and now the footer
-  // below it) readable against whatever the footage is doing at any given
-  // moment. The gradient runs the *whole* height of banner+footer now, but
-  // its dark tail color is constant from 75%-100% regardless of exactly
-  // how tall that combined height ends up being, so the footer — always
-  // near the very bottom — reliably lands in the darkest part.
-  //
-  // Two stacked layers (first listed paints on top): a short *vertical*
-  // top-down fade in the same color .steps-section's own band ends its
-  // gradient on (color-mix(primary 55%, black)), down to transparent by
-  // 20% — then the existing 135deg diagonal scrim underneath, unchanged.
-  // The diagonal alone wasn't enough of a match at this seam: a 135deg
-  // gradient's color varies across x as well as y, so only the *left*
-  // edge of its top row actually lands on its 0% color — moving right
-  // along that same top edge, the diagonal has already progressed well
-  // past it, noticeably darker than what the band above just handed off.
-  // That mismatch grew more obvious the wider the viewport, reading as a
-  // harsh cut on anything wider than a narrow column. A vertical fade
-  // doesn't have that problem — it's the same color across the full
-  // width, so it actually meets the band's own (also horizontally
-  // uniform) ending color everywhere along the seam, not just at one edge.
-  &:after{
-    content: '';
-    position: absolute;
-    inset: 0;
-    background:
-      linear-gradient(to bottom, color-mix(in srgb, var(--mat-sys-primary) 55%, black) 0%, transparent 20%),
-      linear-gradient(135deg, color-mix(in srgb, var(--mat-sys-primary) 55%, black) 0%, rgba(8, 8, 10, 0.88) 75%);
   }
 }
 
@@ -910,7 +907,17 @@ $wave-mask-steps: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/s
 @media (max-width: 900px){
   .hero{
     grid-template-columns: 1fr;
-    padding-bottom: 3rem;
+    // Was 3rem — but .features-backdrop's video now extends upward into
+    // this exact padding zone (see that rule's own comment) at a fixed
+    // 5rem regardless of viewport, to give .hero-wave real footage to
+    // reveal instead of a solid-fill guess. 3rem of clearance wasn't
+    // enough: .hero-copy's own content sits closer to .hero's bottom
+    // edge on this stacked single-column layout than the desktop
+    // side-by-side one, and the video ended up covering .hero-note
+    // ("No credit card required...") entirely. Matching the padding to
+    // the extension height guarantees clearance regardless of exactly
+    // how tall .hero-copy's content ends up at any width in this range.
+    padding-bottom: 5rem;
   }
 
   // Stacked full-width here, rather than sharing a row with .hero-copy —
@@ -920,6 +927,13 @@ $wave-mask-steps: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/s
   .hero-visual{
     order: -1;
     justify-content: center;
+  }
+
+  // Step down with the viewport same as .feature-grid's desktop 3
+  // columns above — 6 still divides evenly by 2, so this stays full rows
+  // with no partial trailing row, same reasoning as the default rule.
+  .feature-grid{
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -932,13 +946,33 @@ $wave-mask-steps: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/s
     display: none;
   }
 
+  // Single column at the same width the rest of the page stacks to.
+  .feature-grid{
+    grid-template-columns: 1fr;
+  }
+
   .hero{
-    padding: 2rem 1.25rem 2.5rem;
+    // Bottom kept at the same 5rem the 900px breakpoint uses (see that
+    // rule's own comment) rather than shrinking further here — needs to
+    // stay at least as tall as .features-backdrop's fixed 5rem video
+    // extension regardless of how narrow the viewport gets.
+    padding: 2rem 1.25rem 5rem;
   }
 
   .features,
   .steps-section,
   .cta-banner{
     padding: 3.5rem 1.25rem;
+  }
+
+  // Bottom pulled back up to 5rem, overriding the 3.5rem just set —
+  // .bottom-backdrop now extends upward into this exact padding zone at a
+  // fixed 5rem regardless of viewport (see that rule's own comment), and
+  // it's opaque, so 3.5rem of clearance would leave it covering the last
+  // feature card. Exactly the same reasoning as .hero's own padding-bottom
+  // at both breakpoints above, for exactly the same reason at the other
+  // end of the video.
+  .features{
+    padding-bottom: 5rem;
   }
 }

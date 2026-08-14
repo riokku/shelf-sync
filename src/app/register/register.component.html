@@ -9,6 +9,12 @@
         <div class="confirmation-message">
           <mat-icon>mark_email_read</mat-icon>
           <p>Check your email to confirm your account before logging in.</p>
+          @if (joiningOrganization) {
+            <p>
+              After that, an admin at {{ joiningOrganization.name }} will need to approve your
+              request before you can get in — you'll see a status page once you log in.
+            </p>
+          }
           <a routerLink="/login">Back to login</a>
         </div>
       } @else {

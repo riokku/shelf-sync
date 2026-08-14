@@ -8,19 +8,37 @@
       <h2>Inventory</h2>
     </div>
   </div>
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="search-wrapper">
+        <mat-form-field appearance="outline">
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput placeholder="Search by name or ID" [ngModel]="searchTerm" (ngModelChange)="onSearchChange($event)" />
+        </mat-form-field>
+      </div>
+    </div>
+  </div>
   <div class="row">
     <div class="col-12 col-md-4 col-lg-3">
       <div class="filter-wrapper">
-        <div class="search-wrapper">
-          <mat-form-field appearance="outline">
-            <mat-icon matPrefix>search</mat-icon>
-            <input matInput placeholder="Search by name or ID" [ngModel]="searchTerm" (ngModelChange)="onSearchChange($event)" />
-          </mat-form-field>
-        </div>
         <h3>
           Filter
         </h3>
         <mat-accordion multi>
+          <mat-expansion-panel>
+            <mat-expansion-panel-header>
+              <mat-panel-title><mat-icon class="me-2">inventory_2</mat-icon> Status</mat-panel-title>
+            </mat-expansion-panel-header>
+            <mat-radio-group
+                [ngModel]="statusFilter"
+                (ngModelChange)="setStatusFilter($event)"
+                class="status-filter-group"
+              >
+              <div><mat-radio-button value="active">Active only</mat-radio-button></div>
+              <div><mat-radio-button value="include_retired">Include retired items</mat-radio-button></div>
+              <div><mat-radio-button value="retired_only">Only retired items</mat-radio-button></div>
+            </mat-radio-group>
+          </mat-expansion-panel>
           <mat-expansion-panel>
             <mat-expansion-panel-header>
               <mat-panel-title><mat-icon class="me-2">warning</mat-icon> Stock level</mat-panel-title>
@@ -120,24 +138,42 @@
               @for (item of pagedInventoryList; track item.id) {
                 <div class="col-12 col-md-6 col-lg-4 inventory-card">
                   <mat-card>
-                    <img mat-card-image alt="Card" src="{{item.image}}" />
+                    <img mat-card-image alt="Card" src="{{item.image}}" [class.retired-image]="item.status === 'retired'" />
                     <div class="image-badges">
-                      @if (item.isCheckedOut) {
-                        <span class="checked-out-badge">
-                          <mat-icon>person</mat-icon>
-                          Checked out
+                      @if (item.status === 'retired') {
+                        <span class="retired-badge">
+                          <mat-icon>inventory_2</mat-icon>
+                          Retired
+                        </span>
+                      } @else {
+                        @if (item.isCheckedOut) {
+                          <span class="checked-out-badge">
+                            <mat-icon>person</mat-icon>
+                            Checked out
+                          </span>
+                        }
+                        @if (isOutOfStock(item)) {
+                          <span class="out-of-stock-badge">
+                            <mat-icon>remove_shopping_cart</mat-icon>
+                            Out of stock
+                          </span>
+                        } @else if (isLowStock(item)) {
+                          <span class="low-stock-badge">
+                            <mat-icon>warning</mat-icon>
+                            Low stock
+                          </span>
+                        }
+                        @if (item.status === 'retirement_pending') {
+                          <span class="pending-retirement-badge">
+                            <mat-icon>hourglass_top</mat-icon>
+                            Pending retirement
+                          </span>
+                        }
+                        <span class="quantity-badge">
+                          <mat-icon>inventory_2</mat-icon>
+                          {{ item.quantityRemaining }}
                         </span>
                       }
-                      @if (isLowStock(item)) {
-                        <span class="low-stock-badge">
-                          <mat-icon>warning</mat-icon>
-                          Low stock
-                        </span>
-                      }
-                      <span class="quantity-badge">
-                        <mat-icon>inventory_2</mat-icon>
-                        {{ item.quantityRemaining }}
-                      </span>
                     </div>
                     <mat-card-header>
                       <mat-card-title>{{item.name}}</mat-card-title>

@@ -1,0 +1,30 @@
+form{
+  display: flex;
+  flex-direction: column;
+}
+
+.full-width{
+  width: 100%;
+}
+
+.retirement-title-icon{
+  vertical-align: middle;
+  margin-right: 0.375rem;
+  color: var(--mat-sys-primary);
+}
+
+.retirement-item-name{
+  margin: 0 0 0.5rem;
+  color: var(--mat-sys-on-surface-variant);
+
+  .semibold{
+    color: var(--mat-sys-on-surface);
+    font-weight: 600;
+  }
+}
+
+.retirement-hint{
+  margin: 0 0 1rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+}

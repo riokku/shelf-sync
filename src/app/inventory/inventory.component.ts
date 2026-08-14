@@ -6,13 +6,14 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatRadioModule } from '@angular/material/radio';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute } from '@angular/router';
-import { InventoryItem, isLowStock } from '../shared/models/inventory-item.model';
+import { InventoryItem, isLowStock, isOutOfStock } from '../shared/models/inventory-item.model';
 import { ModalTableComponent } from '../shared/components/modal-table/modal-table.component';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 import { SupabaseService } from '../core/supabase.service';
@@ -22,6 +23,7 @@ import { loadInventoryImagesByItemId } from '../shared/utils/inventory-item-imag
 import { loadInventoryActivityByItemId } from '../shared/utils/inventory-item-activity';
 
 type StockLevel = 'out_of_stock' | 'low_stock' | 'sufficient_stock';
+type StatusFilter = 'active' | 'include_retired' | 'retired_only';
 
 @Component({
     selector: 'app-inventory',
@@ -33,6 +35,7 @@ type StockLevel = 'out_of_stock' | 'low_stock' | 'sufficient_stock';
         MatInputModule,
         MatExpansionModule,
         MatCheckboxModule,
+        MatRadioModule,
         MatCardModule,
         MatButtonModule,
         MatProgressSpinnerModule,
@@ -53,6 +56,7 @@ export class InventoryComponent implements OnInit{
 
   searchTerm = '';
   readonly isLowStock = isLowStock;
+  readonly isOutOfStock = isOutOfStock;
 
   readonly stockLevelOptions: { value: StockLevel; label: string }[] = [
     { value: 'out_of_stock', label: 'Out of stock' },
@@ -62,12 +66,23 @@ export class InventoryComponent implements OnInit{
   selectedStockLevels: StockLevel[] = [];
   selectedCategories: string[] = [];
   selectedPhysicalLocations: string[] = [];
+  statusFilter: StatusFilter = 'active';
 
   readonly pageSize = 12;
   pageIndex = 0;
 
   get filteredInventoryList(): InventoryItem[] {
     let list = this.inventoryList;
+
+    // 'active' (the default) hides fully retired items but still shows
+    // items pending retirement; 'retired_only' flips that around instead
+    // of just clearing the hide, since finding a specific retired item in
+    // among everything else active isn't what that option is for.
+    if (this.statusFilter === 'active') {
+      list = list.filter(item => item.status !== 'retired');
+    } else if (this.statusFilter === 'retired_only') {
+      list = list.filter(item => item.status === 'retired');
+    }
 
     if (this.selectedStockLevels.length > 0) {
       list = list.filter(item => this.selectedStockLevels.includes(this.stockLevelOf(item)));
@@ -137,7 +152,8 @@ export class InventoryComponent implements OnInit{
     return this.selectedStockLevels.length > 0
       || this.selectedCategories.length > 0
       || this.selectedPhysicalLocations.length > 0
-      || !!this.searchTerm;
+      || !!this.searchTerm
+      || this.statusFilter !== 'active';
   }
 
   clearFilters() {
@@ -145,6 +161,12 @@ export class InventoryComponent implements OnInit{
     this.selectedCategories = [];
     this.selectedPhysicalLocations = [];
     this.searchTerm = '';
+    this.statusFilter = 'active';
+    this.pageIndex = 0;
+  }
+
+  setStatusFilter(value: StatusFilter) {
+    this.statusFilter = value;
     this.pageIndex = 0;
   }
 
@@ -187,7 +209,9 @@ export class InventoryComponent implements OnInit{
         imagesByItemId.get(row.id) ?? [],
         resolveProfileName(row.checked_out_to, profileList),
         activityByItemId.get(row.id) ?? [],
-        resolveProfileAvatarKey(row.checked_out_to, profileList)
+        resolveProfileAvatarKey(row.checked_out_to, profileList),
+        resolveProfileName(row.retirement_requested_by, profileList),
+        resolveProfileName(row.retired_by, profileList)
       )
     );
     this.isLoading = false;

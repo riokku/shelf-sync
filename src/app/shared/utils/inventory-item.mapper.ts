@@ -1,4 +1,4 @@
-import { ActivityLogEntry, InventoryItem } from '../models/inventory-item.model';
+import { ActivityLogEntry, InventoryItem, InventoryItemStatus } from '../models/inventory-item.model';
 import { Database } from '../models/database.types';
 
 type InventoryItemRow = Database['public']['Tables']['inventory_items']['Row'];
@@ -8,7 +8,9 @@ export function toInventoryItem(
   images: string[],
   checkedOutToLabel: string,
   activityLog: ActivityLogEntry[] = [],
-  checkedOutToAvatarKey: string | null = null
+  checkedOutToAvatarKey: string | null = null,
+  retirementRequestedByLabel = '',
+  retiredByLabel = ''
 ): InventoryItem {
   const gallery = images.length > 0 ? images : (row.image ? [row.image] : []);
 
@@ -37,6 +39,13 @@ export function toInventoryItem(
     checkedOutToLabel,
     row.checked_out_to,
     checkedOutToAvatarKey,
-    activityLog
+    activityLog,
+    row.status as InventoryItemStatus,
+    row.retirement_requested_by,
+    retirementRequestedByLabel,
+    row.retirement_request_note ?? '',
+    row.retirement_requested_at ?? '',
+    retiredByLabel,
+    row.retired_at ?? ''
   );
 }

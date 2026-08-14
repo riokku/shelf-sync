@@ -12,12 +12,24 @@
         <h3>Inventory</h3>
         <p>Create new items and browse everything in stock.</p>
       </a>
-      <a class="manage-card" routerLink="/manage/tasks">
+      <a
+          class="manage-card"
+          routerLink="/manage/tasks"
+          [matBadge]="pendingTaskTransferCount"
+          [matBadgeHidden]="pendingTaskTransferCount === 0"
+          matBadgeColor="warn"
+        >
         <mat-icon>checklist</mat-icon>
         <h3>Tasks</h3>
         <p>Create tasks and see everything assigned across your team.</p>
       </a>
-      <a class="manage-card" routerLink="/manage/team">
+      <a
+          class="manage-card"
+          routerLink="/manage/team"
+          [matBadge]="pendingJoinRequestCount"
+          [matBadgeHidden]="pendingJoinRequestCount === 0"
+          matBadgeColor="warn"
+        >
         <mat-icon>group</mat-icon>
         <h3>Team</h3>
         <p>Invite teammates, edit roles, and remove members.</p>

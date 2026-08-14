@@ -163,6 +163,27 @@
   }
 }
 
+// Same layout as .low-stock-warning, neutral tone instead of amber —
+// retired isn't a problem to flag, just a status to state, and takes
+// priority over the low-stock notice (retired items are always at or under
+// their low quantity threshold too, having necessarily hit zero to get
+// there).
+.retired-notice{
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.5rem 1.5rem;
+  background: var(--mat-sys-surface-variant);
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+  font-weight: 600;
+
+  mat-icon{
+    flex-shrink: 0;
+  }
+}
+
 .low-stock-value{
   color: var(--app-warning-text);
 
@@ -194,6 +215,16 @@
   &.available{
     background: #2b8a3e;
     color: #ffffff;
+  }
+
+  &.pending-retirement{
+    background: #f59f00;
+    color: #1a1a1a;
+  }
+
+  &.retired{
+    background: var(--mat-sys-surface-variant);
+    color: var(--mat-sys-on-surface-variant);
   }
 }
 

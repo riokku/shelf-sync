@@ -75,6 +75,15 @@ export class TaskDetailModalComponent implements OnInit {
     return this.currentUserId === this.task.assigned_to || this.authService.canManage();
   }
 
+  /** Gates the whole transfer panel, not just the "request a new transfer"
+   *  form — a done task shouldn't offer to start a transfer, but a transfer
+   *  already in flight (started before the task was marked done) still
+   *  needs a way to resolve, so this stays true for an already-pending one
+   *  even once done. */
+  get canShowTransferPanel(): boolean {
+    return this.canManageTransfer && (!!this.task.pending_transfer_to || this.task.status !== 'done');
+  }
+
   get transferablePeople(): Profile[] {
     return this.orgProfiles.filter(profile => profile.id !== this.task.assigned_to);
   }

@@ -19,7 +19,12 @@
     <mat-icon>{{ linkCopied ? 'check' : 'link' }}</mat-icon>
   </button>
 </div>
-@if (isLowStock) {
+@if (data.status === 'retired') {
+  <p class="retired-notice">
+    <mat-icon>inventory_2</mat-icon>
+    This item has been retired and is no longer active inventory.
+  </p>
+} @else if (isLowStock) {
   <p class="low-stock-warning">
     <mat-icon>warning</mat-icon>
     Remaining quantity ({{ data.quantityRemaining }}) is below the low quantity threshold ({{ data.lowQuantityThreshold }}).
@@ -353,8 +358,49 @@
                       {{data.checkedOutTo || '—'}}
                     </span>
                   </td>
-                  <td width="33%">&nbsp;</td>
+                  <td width="33%">
+                    @if (data.status === 'retirement_pending') {
+                      <span class="semibold">Retirement:</span>
+                      <span class="status-pill pending-retirement">
+                        <mat-icon>hourglass_top</mat-icon>
+                        Pending retirement
+                      </span>
+                    } @else if (data.status === 'retired') {
+                      <span class="semibold">Retirement:</span>
+                      <span class="status-pill retired">
+                        <mat-icon>inventory_2</mat-icon>
+                        Retired
+                      </span>
+                    } @else {
+                      &nbsp;
+                    }
+                  </td>
                 </tr>
+                @if (data.status === 'retirement_pending') {
+                  <tr>
+                    <td colspan="3">
+                      <span class="semibold">Requested by:</span>
+                      {{ data.retirementRequestedByLabel || '—' }}
+                      @if (data.retirementRequestedAt) {
+                        &middot; {{ data.retirementRequestedAt | date: 'M/d/yy' }}
+                      }
+                      @if (data.retirementRequestNote) {
+                        <br />
+                        <span class="semibold">Reason:</span> {{ data.retirementRequestNote }}
+                      }
+                    </td>
+                  </tr>
+                } @else if (data.status === 'retired') {
+                  <tr>
+                    <td colspan="3">
+                      <span class="semibold">Retired by:</span>
+                      {{ data.retiredByLabel || '—' }}
+                      @if (data.retiredAt) {
+                        &middot; {{ data.retiredAt | date: 'M/d/yy' }}
+                      }
+                    </td>
+                  </tr>
+                }
               </table>
             }
           </section>
@@ -392,6 +438,9 @@
 @if (discardError) {
   <p class="error-message save-error">{{ discardError }}</p>
 }
+@if (retirementError) {
+  <p class="error-message save-error">{{ retirementError }}</p>
+}
 <mat-dialog-actions align="end">
   @if (isEditing) {
     <button mat-button type="button" (click)="cancelEdit()" [disabled]="isSaving">
@@ -408,22 +457,52 @@
       }
     </button>
   } @else {
-    <button
-        mat-stroked-button
-        type="button"
-        color="warn"
-        (click)="openDiscard()"
-        [disabled]="data.quantityRemaining <= 0 || isDiscarding"
-      >
-      @if (isDiscarding) {
-        <mat-spinner diameter="20"></mat-spinner>
-      } @else {
-        <ng-container>
-          <mat-icon>delete_sweep</mat-icon>
-          Discard
-        </ng-container>
+    @if (data.status === 'retirement_pending') {
+      @if (canCancelRetirementRequest) {
+        <button mat-button type="button" (click)="cancelRetirementRequest()" [disabled]="isProcessingRetirement">
+          Cancel request
+        </button>
       }
-    </button>
+      @if (authService.canManage()) {
+        <button mat-stroked-button type="button" color="warn" (click)="declineRetirement()" [disabled]="isProcessingRetirement">
+          <mat-icon>close</mat-icon>
+          Decline
+        </button>
+        <button mat-flat-button color="primary" type="button" (click)="approveRetirement()" [disabled]="isProcessingRetirement">
+          @if (isProcessingRetirement) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            <ng-container>
+              <mat-icon>check</mat-icon>
+              Approve
+            </ng-container>
+          }
+        </button>
+      }
+    } @else if (canRequestRetirement) {
+      <button mat-stroked-button type="button" (click)="openRequestRetirement()" [disabled]="isProcessingRetirement">
+        <mat-icon>inventory_2</mat-icon>
+        Request retirement
+      </button>
+    }
+    @if (data.quantityRemaining > 0) {
+      <button
+          mat-stroked-button
+          type="button"
+          color="warn"
+          (click)="openDiscard()"
+          [disabled]="isDiscarding"
+        >
+        @if (isDiscarding) {
+          <mat-spinner diameter="20"></mat-spinner>
+        } @else {
+          <ng-container>
+            <mat-icon>delete_sweep</mat-icon>
+            Discard
+          </ng-container>
+        }
+      </button>
+    }
     <button mat-stroked-button type="button" (click)="startEdit()">
       <mat-icon>edit</mat-icon>
       Edit

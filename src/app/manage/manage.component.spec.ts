@@ -3,7 +3,8 @@ import { provideRouter } from '@angular/router';
 
 import { ManageComponent } from './manage.component';
 import { AuthService } from '../core/auth.service';
-import { createFakeAuthService, createFakeProfile } from '../testing/fakes';
+import { SupabaseService } from '../core/supabase.service';
+import { createFakeAuthService, createFakeProfile, createFakeSupabaseService } from '../testing/fakes';
 
 describe('ManageComponent', () => {
   let component: ManageComponent;
@@ -14,7 +15,11 @@ describe('ManageComponent', () => {
       imports: [ManageComponent],
       providers: [
         provideRouter([]),
-        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: 'admin' })) }
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: 'admin' })) },
+        // The admin profile above means ngOnInit's pending-count queries
+        // (for the Tasks/Team card badges) actually run during this test —
+        // fake the client so that hits nothing real.
+        { provide: SupabaseService, useValue: createFakeSupabaseService() }
       ]
     })
     .compileComponents();

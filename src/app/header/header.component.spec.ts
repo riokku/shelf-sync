@@ -3,7 +3,8 @@ import { provideRouter } from '@angular/router';
 
 import { HeaderComponent } from './header.component';
 import { AuthService } from '../core/auth.service';
-import { createFakeAuthService } from '../testing/fakes';
+import { SupabaseService } from '../core/supabase.service';
+import { createFakeAuthService, createFakeSupabaseService } from '../testing/fakes';
 
 describe('HeaderComponent', () => {
   let component: HeaderComponent;
@@ -14,7 +15,11 @@ describe('HeaderComponent', () => {
       imports: [HeaderComponent],
       providers: [
         provideRouter([]),
-        { provide: AuthService, useValue: createFakeAuthService() }
+        { provide: AuthService, useValue: createFakeAuthService() },
+        // The default fake profile has no manage role, so the pending-count
+        // queries this badge would trigger don't actually fire here — faked
+        // anyway so that stays true if this spec's profile ever changes.
+        { provide: SupabaseService, useValue: createFakeSupabaseService() }
       ]
     })
     .compileComponents();

@@ -22,7 +22,14 @@
       Tasks
     </a>
     @if (authService.canManage()) {
-      <a mat-button routerLink="/manage" routerLinkActive="active">
+      <a
+          mat-button
+          routerLink="/manage"
+          routerLinkActive="active"
+          [matBadge]="pendingManageCount()"
+          [matBadgeHidden]="pendingManageCount() === 0"
+          matBadgeColor="warn"
+        >
         <mat-icon>admin_panel_settings</mat-icon>
         Manage
       </a>

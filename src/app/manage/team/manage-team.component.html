@@ -21,13 +21,74 @@
           </div>
         </div>
       }
+      @if (authService.role() === 'admin' && pendingMembers.length > 0) {
+        <div class="pending-members-section">
+          <h3>Pending join requests</h3>
+          @if (membershipError) {
+            <p class="error-message">{{ membershipError }}</p>
+          }
+          <div class="pending-members-list">
+            @for (profile of pendingMembers; track profile.id) {
+              <div class="pending-member-row">
+                <span class="pending-member-name">
+                  <app-user-avatar [avatarKey]="profile.avatar_key" size="sm" />
+                  {{ profileLabel(profile) }}
+                </span>
+                <span class="pending-member-email">{{ profile.email }}</span>
+                <div class="pending-member-actions">
+                  <button
+                      mat-stroked-button
+                      type="button"
+                      color="warn"
+                      [disabled]="isProcessingMembership"
+                      (click)="denyMember(profile)"
+                    >
+                    <mat-icon>close</mat-icon>
+                    Deny
+                  </button>
+                  <button
+                      mat-flat-button
+                      type="button"
+                      color="primary"
+                      [disabled]="isProcessingMembership"
+                      (click)="approveMember(profile)"
+                    >
+                    @if (isProcessingMembership) {
+                      <mat-spinner diameter="20"></mat-spinner>
+                    } @else {
+                      <ng-container>
+                        <mat-icon>check</mat-icon>
+                        Approve
+                      </ng-container>
+                    }
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+      <div class="current-team-header">
+        <h3>Current team</h3>
+        <mat-form-field appearance="outline" class="team-search-field">
+          <mat-icon matPrefix>search</mat-icon>
+          <input
+              matInput
+              placeholder="Search by name or nickname"
+              [ngModel]="teamSearchTerm"
+              (ngModelChange)="onTeamSearchChange($event)"
+            />
+        </mat-form-field>
+      </div>
       @if (isLoadingTeam) {
         <mat-spinner diameter="32"></mat-spinner>
       } @else if (teamMembers.length === 0) {
         <p class="empty-hint">No users found.</p>
+      } @else if (filteredTeamMembers.length === 0) {
+        <p class="empty-hint">No team members match your search.</p>
       } @else {
         <mat-accordion multi>
-          @for (member of teamMembers; track member.profile.id) {
+          @for (member of filteredTeamMembers; track member.profile.id) {
             <mat-expansion-panel>
               <mat-expansion-panel-header>
                 <mat-panel-title>

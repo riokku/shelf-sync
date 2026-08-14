@@ -18,11 +18,42 @@
   }
 }
 
+// Own full-width row above the filter/gallery split now, rather than
+// confined to the filter sidebar's ~25% column — the .mb-4 on that row
+// handles spacing below, so this doesn't need its own margin anymore.
 .search-wrapper{
-  margin-bottom: 1.5rem;
-
   mat-form-field{
+    display: block;
     width: 100%;
+
+    // Material's own outline (drawn on .mat-mdc-text-field-wrapper below)
+    // painted a plain solid line; hidden here so only the gradient border
+    // added below shows, rather than the two stacking.
+    --mat-form-field-outlined-outline-color: transparent;
+    --mat-form-field-outlined-hover-outline-color: transparent;
+    --mat-form-field-outlined-focus-outline-color: transparent;
+  }
+
+  // .mat-mdc-text-field-wrapper is the actual box (icon + input) Material
+  // draws its outline around — not the whole mat-form-field, which also
+  // includes the (empty, in this field) hint/error subscript strip below
+  // it. Same gradient as .filter-wrapper's divider, same "solid layer on
+  // top clipped to the interior, gradient layer behind clipped to the
+  // full border box" trick that's the standard way to fake a gradient
+  // border, since border-color itself can't take a gradient directly.
+  //
+  // ::ng-deep: .mat-mdc-text-field-wrapper is internal DOM MatFormField's
+  // own template renders, not an element InventoryComponent's template
+  // creates directly — a plain scoped selector never matches it (Angular's
+  // emulated encapsulation only tags elements a component's *own* template
+  // renders, not a child component's internal view), so reaching in needs
+  // to explicitly pierce that boundary.
+  ::ng-deep .mat-mdc-text-field-wrapper{
+    border: 1px solid transparent;
+    border-radius: var(--mat-form-field-outlined-container-shape, 4px);
+    background:
+      linear-gradient(var(--mat-sys-surface), var(--mat-sys-surface)) padding-box,
+      linear-gradient(to right, var(--mat-sys-primary) 0%, #ffffff 50%, var(--mat-sys-primary) 100%) border-box;
   }
 }
 
@@ -127,6 +158,9 @@
 
 .checked-out-badge,
 .low-stock-badge,
+.out-of-stock-badge,
+.pending-retirement-badge,
+.retired-badge,
 .quantity-badge{
   position: absolute;
   display: inline-flex;
@@ -158,11 +192,55 @@
   color: #1a1a1a;
 }
 
+// Same corner as low-stock-badge — the two never show at once now that
+// out-of-stock takes precedence in the template (0 remaining is always
+// "below threshold" too, so this used to just show as low-stock instead).
+.out-of-stock-badge{
+  top: 0.5rem;
+  right: 0.5rem;
+  background: #e03131;
+  color: #fff;
+}
+
 .quantity-badge{
   bottom: 0.5rem;
   right: 0.5rem;
   background: rgba(0, 0, 0, 0.65);
   color: #fff;
+}
+
+// Bottom-left — the one open corner, since checked-out-badge/low-stock-badge
+// already claim the top two and quantity-badge claims bottom-right.
+.pending-retirement-badge{
+  bottom: 0.5rem;
+  left: 0.5rem;
+  background: #f59f00;
+  color: #1a1a1a;
+}
+
+// Top-left, same corner checked-out-badge would otherwise use — free once
+// retired, since the template only ever renders this one badge for a
+// retired item, nothing else in .image-badges.
+.retired-badge{
+  top: 0.5rem;
+  left: 0.5rem;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+}
+
+// Retired items stay recognizable at a glance in the gallery without a
+// second badge to say so — a light desaturate/dim on the photo itself,
+// same idea as a "sold" sticker fading a listing photo.
+.retired-image{
+  filter: grayscale(60%);
+  opacity: 0.75;
+}
+
+.status-filter-group{
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
 }
 
 mat-accordion mat-accordion{

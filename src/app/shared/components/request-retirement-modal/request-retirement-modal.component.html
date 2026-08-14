@@ -1,0 +1,29 @@
+<h2 mat-dialog-title>
+  <mat-icon class="retirement-title-icon">inventory_2</mat-icon>
+  Request retirement
+</h2>
+<form [formGroup]="requestForm" (ngSubmit)="submit()">
+  <mat-dialog-content>
+    <p class="retirement-item-name">
+      <span class="semibold">{{ data.itemName }}</span>
+      &middot; 0 remaining
+    </p>
+    <p class="retirement-hint">
+      This sends a retirement request to your organization's managers. The item stays active
+      until it's approved.
+    </p>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Reason (optional)</mat-label>
+      <mat-icon matPrefix>notes</mat-icon>
+      <textarea matInput placeholder="Why should this item be retired?" formControlName="notes" rows="2"></textarea>
+    </mat-form-field>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancel()">Cancel</button>
+    <button mat-flat-button color="primary" type="submit">
+      <mat-icon>inventory_2</mat-icon>
+      Request retirement
+    </button>
+  </mat-dialog-actions>
+</form>

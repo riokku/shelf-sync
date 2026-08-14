@@ -14,6 +14,13 @@
         <mat-icon>checklist</mat-icon>
         All inventory
       </mat-button-toggle>
+      <mat-button-toggle value="retirements">
+        <mat-icon>inventory_2</mat-icon>
+        Requests
+        @if (pendingRetirementCount > 0) {
+          ({{ pendingRetirementCount }})
+        }
+      </mat-button-toggle>
     </mat-button-toggle-group>
 
     @if (viewMode === 'create') {
@@ -175,15 +182,20 @@
           }
         </button>
       </form>
-    } @else {
+    } @else if (viewMode === 'all') {
       <div class="all-items-view">
         @if (isLoadingInventoryList) {
           <mat-spinner diameter="32"></mat-spinner>
         } @else if (allInventoryItems.length === 0) {
           <p class="empty-hint">No inventory items yet.</p>
         } @else {
+          <mat-button-toggle-group class="status-filter-toggle" [(ngModel)]="statusFilter">
+            <mat-button-toggle value="active">Active only</mat-button-toggle>
+            <mat-button-toggle value="include_retired">Include retired</mat-button-toggle>
+            <mat-button-toggle value="retired_only">Retired only</mat-button-toggle>
+          </mat-button-toggle-group>
           <div class="task-rows">
-            @for (item of allInventoryItems; track item.id) {
+            @for (item of visibleInventoryItems; track item.id) {
               <div
                   class="task-row clickable"
                   [class.overdue]="isInventoryItemLowStock(item)"
@@ -220,7 +232,22 @@
                     No price set
                   }
                 </span>
-                @if (isInventoryItemLowStock(item)) {
+                @if (item.status === 'retirement_pending') {
+                  <span class="status-badge status-pending-retirement">
+                    <mat-icon>hourglass_top</mat-icon>
+                    Pending retirement
+                  </span>
+                } @else if (item.status === 'retired') {
+                  <span class="status-badge status-retired">
+                    <mat-icon>inventory_2</mat-icon>
+                    Retired
+                  </span>
+                } @else if (isInventoryItemOutOfStock(item)) {
+                  <span class="status-badge status-out-of-stock">
+                    <mat-icon>remove_shopping_cart</mat-icon>
+                    Out of stock
+                  </span>
+                } @else if (isInventoryItemLowStock(item)) {
                   <span class="status-badge status-low-stock">
                     <mat-icon>warning</mat-icon>
                     Low stock
@@ -228,6 +255,66 @@
                 } @else {
                   <span class="status-badge status-ok">In stock</span>
                 }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="retirements-view">
+        @if (retirementError) {
+          <p class="error-message">{{ retirementError }}</p>
+        }
+        @if (isLoadingInventoryList) {
+          <mat-spinner diameter="32"></mat-spinner>
+        } @else if (pendingRetirementItems.length === 0) {
+          <p class="empty-hint">No pending retirement requests.</p>
+        } @else {
+          <div class="task-rows">
+            @for (item of pendingRetirementItems; track item.id) {
+              <div class="task-row retirement-request-row">
+                <div class="task-row-main clickable" role="button" tabindex="0"
+                    [attr.aria-label]="'View details for ' + item.name"
+                    (click)="openInventoryDetail(item)"
+                    (keydown.enter)="openInventoryDetail(item)"
+                  >
+                  <span class="task-row-title">{{ item.name }}</span>
+                  <span class="task-row-item">
+                    <mat-icon>person</mat-icon>
+                    Requested by {{ retirementRequesterLabel(item) }}
+                    @if (item.retirement_requested_at) {
+                      &middot; {{ item.retirement_requested_at | date: 'M/d/yy' }}
+                    }
+                  </span>
+                  @if (item.retirement_request_note) {
+                    <span class="task-row-item retirement-note">
+                      <mat-icon>notes</mat-icon>
+                      {{ item.retirement_request_note }}
+                    </span>
+                  }
+                </div>
+                <div class="retirement-request-actions">
+                  <button
+                      mat-stroked-button
+                      type="button"
+                      color="warn"
+                      [disabled]="isProcessingRetirement"
+                      (click)="declineRetirement(item)"
+                    >
+                    <mat-icon>close</mat-icon>
+                    Decline
+                  </button>
+                  <button
+                      mat-flat-button
+                      type="button"
+                      color="primary"
+                      [disabled]="isProcessingRetirement"
+                      (click)="approveRetirement(item)"
+                    >
+                    <mat-icon>check</mat-icon>
+                    Approve
+                  </button>
+                </div>
               </div>
             }
           </div>

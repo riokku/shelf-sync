@@ -11,6 +11,17 @@ export function isLowStock(item: InventoryItem): boolean {
   return item.quantityRemaining < item.lowQuantityThreshold;
 }
 
+/** Out of stock is the more severe, more specific case of low stock (0 is
+ *  always < a positive threshold) — badge rendering checks this first and
+ *  falls back to isLowStock() so the two badges stay mutually exclusive.
+ *  isLowStock() itself is left as-is since it also drives the item detail
+ *  popup's warning banner text, which is still accurate at zero. */
+export function isOutOfStock(item: InventoryItem): boolean {
+  return item.quantityRemaining <= 0;
+}
+
+export type InventoryItemStatus = 'active' | 'retirement_pending' | 'retired';
+
 export class InventoryItem {
   id: string;
   name: string;
@@ -37,6 +48,13 @@ export class InventoryItem {
   checkedOutToId: string | null;
   checkedOutToAvatarKey: string | null;
   activityLog: ActivityLogEntry[];
+  status: InventoryItemStatus;
+  retirementRequestedById: string | null;
+  retirementRequestedByLabel: string;
+  retirementRequestNote: string;
+  retirementRequestedAt: string;
+  retiredByLabel: string;
+  retiredAt: string;
 
   constructor(
     id: string,
@@ -63,7 +81,14 @@ export class InventoryItem {
     checkedOutTo: string,
     checkedOutToId: string | null,
     checkedOutToAvatarKey: string | null,
-    activityLog: ActivityLogEntry[]
+    activityLog: ActivityLogEntry[],
+    status: InventoryItemStatus,
+    retirementRequestedById: string | null,
+    retirementRequestedByLabel: string,
+    retirementRequestNote: string,
+    retirementRequestedAt: string,
+    retiredByLabel: string,
+    retiredAt: string
   ) {
     //Tracking
     this.id = id;
@@ -101,6 +126,15 @@ export class InventoryItem {
     this.checkedOutToId = checkedOutToId;
     this.checkedOutToAvatarKey = checkedOutToAvatarKey;
     this.activityLog = activityLog;
+
+    //Retirement information
+    this.status = status;
+    this.retirementRequestedById = retirementRequestedById;
+    this.retirementRequestedByLabel = retirementRequestedByLabel;
+    this.retirementRequestNote = retirementRequestNote;
+    this.retirementRequestedAt = retirementRequestedAt;
+    this.retiredByLabel = retiredByLabel;
+    this.retiredAt = retiredAt;
   }
 
 }

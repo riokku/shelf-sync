@@ -16,11 +16,12 @@ import { ImageGalleryComponent } from '../image-gallery/image-gallery.component'
 import { UserAvatarComponent } from '../user-avatar/user-avatar.component';
 import { CreateTaskModalComponent } from '../create-task-modal/create-task-modal.component';
 import { DiscardInventoryModalComponent, DiscardInventoryModalResult } from '../discard-inventory-modal/discard-inventory-modal.component';
+import { RequestRetirementModalComponent, RequestRetirementModalResult } from '../request-retirement-modal/request-retirement-modal.component';
 import { AuthService, Profile } from '../../../core/auth.service';
 import { SupabaseService } from '../../../core/supabase.service';
 import { InventoryFieldOptionsService } from '../../../core/inventory-field-options.service';
 import { toIsoDateString, parseIsoDate } from '../../utils/date';
-import { logInventoryItemActivity } from '../../utils/inventory-item-activity';
+import { loadInventoryActivityByItemId, logInventoryItemActivity } from '../../utils/inventory-item-activity';
 import { profileDisplayName, resolveProfileAvatarKey, resolveProfileName } from '../../utils/profile-label';
 import {
   InventoryItemImageRecord,
@@ -94,6 +95,12 @@ export class ModalTableComponent {
 
   isDiscarding = false;
   discardError: string | null = null;
+
+  /** Shared across request/cancel/approve/decline — they're all single
+   *  short-lived RPC calls, so one flag disabling all four buttons while any
+   *  is in flight is enough; no need for a separate one per action. */
+  isProcessingRetirement = false;
+  retirementError: string | null = null;
 
   readonly maxInventoryItemImages = MAX_INVENTORY_ITEM_IMAGES;
   existingImages: InventoryItemImageRecord[] = [];
@@ -230,6 +237,119 @@ export class ModalTableComponent {
     }
 
     this.isDiscarding = false;
+  }
+
+  /** Only reachable once stock is actually at zero — same gate the
+   *  request_item_retirement RPC enforces server-side, so this is just the
+   *  UI-level mirror of it, not the real guard. */
+  get canRequestRetirement(): boolean {
+    return this.data.status === 'active' && this.data.quantityRemaining <= 0;
+  }
+
+  get canCancelRetirementRequest(): boolean {
+    if (this.data.status !== 'retirement_pending') {
+      return false;
+    }
+    const profile = this.authService.profile();
+    return this.data.retirementRequestedById === profile?.id || this.authService.canManage();
+  }
+
+  openRequestRetirement(){
+    if (!this.canRequestRetirement || this.isProcessingRetirement) {
+      return;
+    }
+
+    const dialogRef = this.dialog.open(RequestRetirementModalComponent, {
+      data: { itemName: this.data.name },
+      width: 'clamp(26rem, 45vw, 32rem)',
+      maxWidth: '90vw'
+    });
+
+    dialogRef.afterClosed().subscribe((result: RequestRetirementModalResult | undefined) => {
+      if (!result) {
+        return;
+      }
+      void this.runRetirementAction(
+        () => this.supabase.rpc('request_item_retirement', { item_id: this.data.id, note: result.note || undefined }),
+        () => {
+          const profile = this.authService.profile();
+          this.data.status = 'retirement_pending';
+          this.data.retirementRequestedById = profile?.id ?? null;
+          this.data.retirementRequestedByLabel = profile ? profileDisplayName(profile) : '';
+          this.data.retirementRequestNote = result.note;
+          this.data.retirementRequestedAt = new Date().toISOString();
+        }
+      );
+    });
+  }
+
+  cancelRetirementRequest(){
+    void this.runRetirementAction(
+      () => this.supabase.rpc('cancel_item_retirement_request', { item_id: this.data.id }),
+      () => this.resetRetirementToActive()
+    );
+  }
+
+  approveRetirement(){
+    void this.runRetirementAction(
+      () => this.supabase.rpc('approve_item_retirement', { item_id: this.data.id }),
+      () => {
+        const profile = this.authService.profile();
+        this.data.status = 'retired';
+        this.data.retiredByLabel = profile ? profileDisplayName(profile) : '';
+        this.data.retiredAt = new Date().toISOString();
+      }
+    );
+  }
+
+  declineRetirement(){
+    void this.runRetirementAction(
+      () => this.supabase.rpc('decline_item_retirement', { item_id: this.data.id }),
+      () => this.resetRetirementToActive()
+    );
+  }
+
+  private resetRetirementToActive(){
+    this.data.status = 'active';
+    this.data.retirementRequestedById = null;
+    this.data.retirementRequestedByLabel = '';
+    this.data.retirementRequestNote = '';
+    this.data.retirementRequestedAt = '';
+  }
+
+  /** Shared runner for all four retirement RPCs: applies the known local
+   *  effect (rather than reloading the whole item) on success, same
+   *  optimistic-update approach performDiscard() uses above, then refreshes
+   *  just the activity log — the RPC itself writes that log row server-side,
+   *  so it can't be predicted client-side the way the log message can for
+   *  edits/discards done directly from here. */
+  private async runRetirementAction(
+    call: () => PromiseLike<{ error: { message: string } | null }>,
+    applyLocalChange: () => void
+  ){
+    if (this.isProcessingRetirement) {
+      return;
+    }
+    this.isProcessingRetirement = true;
+    this.retirementError = null;
+
+    const { error } = await call();
+
+    if (error) {
+      this.isProcessingRetirement = false;
+      this.retirementError = error.message;
+      return;
+    }
+
+    applyLocalChange();
+    await this.refreshActivityLog();
+    this.isProcessingRetirement = false;
+  }
+
+  private async refreshActivityLog(){
+    const { data: profiles } = await this.supabase.from('profiles').select('*').order('full_name');
+    const activityByItemId = await loadInventoryActivityByItemId(this.supabase, [this.data.id], profiles ?? []);
+    this.data.activityLog = activityByItemId.get(this.data.id) ?? [];
   }
 
   async copyId(){

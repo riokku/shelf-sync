@@ -13,7 +13,9 @@ import { ManageTasksComponent } from './manage/tasks/manage-tasks.component';
 import { ManageTeamComponent } from './manage/team/manage-team.component';
 import { ManageDangerZoneComponent } from './manage/danger-zone/manage-danger-zone.component';
 import { CustomizeComponent } from './customize/customize.component';
+import { PendingApprovalComponent } from './pending-approval/pending-approval.component';
 import { authGuard } from './core/guards/auth.guard';
+import { approvedGuard } from './core/guards/approved.guard';
 import { manageGuard } from './core/guards/manage.guard';
 import { adminGuard } from './core/guards/admin.guard';
 
@@ -41,69 +43,78 @@ const routes: Routes = [
   {
     path: 'home',
     component: HomeComponent,
-    canActivate: [authGuard],
+    canActivate: [approvedGuard],
     title: 'ShelfSync | Home'
+  },
+  {
+    path: 'pending-approval',
+    component: PendingApprovalComponent,
+    // Plain authGuard, not approvedGuard — that would just bounce this
+    // route back to itself. This is the one place a signed-in-but-not-yet-
+    // approved (or denied) session is actually allowed to land.
+    canActivate: [authGuard],
+    title: 'ShelfSync | Pending approval'
   },
   {
     path: 'inventory',
     component: InventoryComponent,
-    canActivate: [authGuard],
+    canActivate: [approvedGuard],
     data: { breadcrumb: 'Inventory' },
     title: 'ShelfSync | Inventory'
   },
   {
     path: 'account',
     component: AccountComponent,
-    canActivate: [authGuard],
+    canActivate: [approvedGuard],
     data: { breadcrumb: 'Account' },
     title: 'ShelfSync | Account'
   },
   {
     path: 'tasks',
     component: TasksComponent,
-    canActivate: [authGuard],
+    canActivate: [approvedGuard],
     data: { breadcrumb: 'Tasks' },
     title: 'ShelfSync | Tasks'
   },
   {
     path: 'manage',
     component: ManageComponent,
-    canActivate: [authGuard, manageGuard],
+    canActivate: [approvedGuard, manageGuard],
     data: { breadcrumb: 'Manage' },
     title: 'ShelfSync | Manage'
   },
   {
     path: 'manage/inventory',
     component: ManageInventoryComponent,
-    canActivate: [authGuard, manageGuard],
+    canActivate: [approvedGuard, manageGuard],
     data: { breadcrumb: 'Manage Inventory' },
     title: 'ShelfSync | Manage Inventory'
   },
   {
     path: 'manage/tasks',
     component: ManageTasksComponent,
-    canActivate: [authGuard, manageGuard],
+    canActivate: [approvedGuard, manageGuard],
     data: { breadcrumb: 'Manage Tasks' },
     title: 'ShelfSync | Manage Tasks'
   },
   {
     path: 'manage/team',
     component: ManageTeamComponent,
-    canActivate: [authGuard, manageGuard],
+    canActivate: [approvedGuard, manageGuard],
     data: { breadcrumb: 'Manage Team' },
     title: 'ShelfSync | Manage Team'
   },
   {
     path: 'manage/danger-zone',
     component: ManageDangerZoneComponent,
-    canActivate: [authGuard, adminGuard],
+    canActivate: [approvedGuard, adminGuard],
     data: { breadcrumb: 'Danger Zone' },
     title: 'ShelfSync | Danger Zone'
   },
   {
     path: 'customize',
     component: CustomizeComponent,
-    canActivate: [authGuard, adminGuard],
+    canActivate: [approvedGuard, adminGuard],
     data: { breadcrumb: 'Customize' },
     title: 'ShelfSync | Customize'
   }
