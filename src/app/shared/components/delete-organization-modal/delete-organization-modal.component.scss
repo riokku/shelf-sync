@@ -1,0 +1,13 @@
+form{
+  display: flex;
+  flex-direction: column;
+}
+
+.full-width{
+  width: 100%;
+}
+
+.semibold{
+  color: var(--mat-sys-on-surface);
+  font-weight: 600;
+}

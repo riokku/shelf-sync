@@ -202,3 +202,45 @@ mat-panel-description{
   flex-direction: column;
   gap: 0.75rem;
 }
+
+// Same "mobile" line login/register/landing already use for their own
+// narrowest breakpoint.
+@media (max-width: 600px){
+  .invite-link-row{
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pending-member-row{
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pending-member-actions{
+    justify-content: flex-end;
+  }
+
+  // mat-expansion-panel-header is a fixed height by default (Material's own
+  // --mat-expansion-header-collapsed/expanded-state-height tokens) sized
+  // for title and description sitting on one row — overridden to auto here
+  // so the wrap below has room to grow into, rather than clipping.
+  mat-expansion-panel-header{
+    --mat-expansion-header-collapsed-state-height: auto;
+    --mat-expansion-header-expanded-state-height: auto;
+    padding: 0.75rem 1.25rem;
+
+    // .mat-content is Material's own internal flex row wrapping
+    // mat-panel-title/mat-panel-description — reachable without ::ng-deep
+    // failing since mat-expansion-panel-header itself is an element this
+    // component's own template declares, even though .mat-content isn't.
+    ::ng-deep .mat-content{
+      flex-wrap: wrap;
+      row-gap: 0.5rem;
+    }
+  }
+
+  mat-panel-description{
+    flex-basis: 100%;
+    justify-content: flex-start;
+  }
+}

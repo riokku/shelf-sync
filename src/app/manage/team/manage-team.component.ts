@@ -8,6 +8,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatDialog } from '@angular/material/dialog';
 import { SupabaseService } from '../../core/supabase.service';
+import { NotificationService } from '../../core/notification.service';
 import { AuthService, Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { UserAvatarComponent } from '../../shared/components/user-avatar/user-avatar.component';
@@ -47,6 +48,7 @@ export class ManageTeamComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
   protected authService = inject(AuthService);
   private dialog = inject(MatDialog);
+  private notification = inject(NotificationService);
 
   protected currentUserId: string | null = null;
   /** Approved members only — pendingMembers (below) holds the rest, kept
@@ -203,7 +205,8 @@ export class ManageTeamComponent implements OnInit {
     this.confirmAndDeleteProfile(profile, {
       title: 'Remove team member?',
       message: `Remove ${profileDisplayName(profile)} from your organization? This can't be undone — they'll lose access immediately.`,
-      confirmLabel: 'Remove'
+      confirmLabel: 'Remove',
+      successMessage: 'Member removed'
     });
   }
 
@@ -211,13 +214,18 @@ export class ManageTeamComponent implements OnInit {
     this.confirmAndDeleteProfile(profile, {
       title: 'Deny join request?',
       message: `Deny ${profileDisplayName(profile)}'s request to join your organization? Their account will still exist, but they won't be able to join.`,
-      confirmLabel: 'Deny'
+      confirmLabel: 'Deny',
+      successMessage: 'Request denied'
     });
   }
 
-  private confirmAndDeleteProfile(profile: Profile, dialogText: { title: string; message: string; confirmLabel: string }) {
+  private confirmAndDeleteProfile(
+    profile: Profile,
+    dialogText: { title: string; message: string; confirmLabel: string; successMessage: string }
+  ) {
+    const { successMessage, ...confirmData } = dialogText;
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
-      data: { ...dialogText, danger: true },
+      data: { ...confirmData, danger: true },
       width: 'clamp(75%, 25rem, 60%)'
     });
 
@@ -226,14 +234,16 @@ export class ManageTeamComponent implements OnInit {
         return;
       }
 
+      this.membershipError = null;
       const { error } = await this.supabase.from('profiles').delete().eq('id', profile.id);
       if (error) {
-        alert(`Failed: ${error.message}`);
+        this.membershipError = `Failed: ${error.message}`;
         return;
       }
 
       await this.loadProfiles();
       await this.loadTeamTasks();
+      this.notification.success(successMessage);
     });
   }
 
@@ -256,6 +266,7 @@ export class ManageTeamComponent implements OnInit {
 
     await this.loadProfiles();
     await this.loadTeamTasks();
+    this.notification.success('Member approved');
   }
 
   openTaskDetail(task: Task) {

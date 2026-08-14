@@ -5,108 +5,115 @@
     </div>
     <h2>Customize</h2>
 
-    <mat-tab-group>
-      <mat-tab label="Style">
-        <div class="customize-tab-content">
-          <div class="customize-card">
-            <section class="customize-section">
-              <h3>Theme</h3>
-              <p class="section-hint">
-                Pick a color theme for the whole site. Selecting one previews it immediately, but it only
-                applies for everyone once you save.
-              </p>
-              <div class="theme-swatch-row">
-                @for (preset of presets; track preset.key) {
-                  <button
-                      type="button"
-                      class="theme-swatch"
-                      [class.selected]="selectedTheme === preset.key"
-                      (click)="selectTheme(preset.key)"
-                    >
-                    <span class="swatch-color" [style.background]="preset.swatch"></span>
-                    {{ preset.label }}
-                  </button>
-                }
-              </div>
-              @if (themeError) {
-                <p class="error-message">{{ themeError }}</p>
-              }
-              @if (themeSaved) {
-                <p class="success-message">Theme saved for everyone.</p>
-              }
-              <button
-                  mat-flat-button
-                  color="primary"
-                  type="button"
-                  (click)="saveTheme()"
-                  [disabled]="isSavingTheme || selectedTheme === siteSettings.theme()"
-                >
-                @if (isSavingTheme) {
-                  <mat-spinner diameter="20"></mat-spinner>
-                } @else {
-                  <ng-container>
-                    <mat-icon>check</mat-icon>
-                    Save theme
-                  </ng-container>
-                }
-              </button>
-            </section>
+    <mat-button-toggle-group [(ngModel)]="viewMode" class="view-toggle">
+      <mat-button-toggle value="style">
+        <mat-icon>palette</mat-icon>
+        Style
+      </mat-button-toggle>
+      <mat-button-toggle value="data">
+        <mat-icon>tune</mat-icon>
+        Data
+      </mat-button-toggle>
+    </mat-button-toggle-group>
 
-            <section class="customize-section">
-              <h3>Logo</h3>
-              <p class="section-hint">
-                Appears in the top-left of the nav bar for everyone. Leave unset to use the default
-                ShelfSync mark.
-              </p>
-              @if (currentLogoUrl) {
-                <img [src]="currentLogoUrl" alt="Logo preview" class="logo-preview" />
+    @if (viewMode === 'style') {
+      <div class="customize-tab-content">
+        <div class="customize-card">
+          <section class="customize-section">
+            <h3>Theme</h3>
+            <p class="section-hint">
+              Pick a color theme for the whole site. Selecting one previews it immediately, but it only
+              applies for everyone once you save.
+            </p>
+            <div class="theme-swatch-row">
+              @for (preset of presets; track preset.key) {
+                <button
+                    type="button"
+                    class="theme-swatch"
+                    [class.selected]="selectedTheme === preset.key"
+                    (click)="selectTheme(preset.key)"
+                  >
+                  <span class="swatch-color" [style.background]="preset.swatch"></span>
+                  {{ preset.label }}
+                </button>
+              }
+            </div>
+            @if (themeError) {
+              <p class="error-message">{{ themeError }}</p>
+            }
+            @if (themeSaved) {
+              <p class="success-message">Theme saved for everyone.</p>
+            }
+            <button
+                mat-flat-button
+                color="primary"
+                type="button"
+                (click)="saveTheme()"
+                [disabled]="isSavingTheme || selectedTheme === siteSettings.theme()"
+              >
+              @if (isSavingTheme) {
+                <mat-spinner diameter="20"></mat-spinner>
               } @else {
-                <p class="empty-hint">No custom logo set — using the default mark.</p>
+                <ng-container>
+                  <mat-icon>check</mat-icon>
+                  Save theme
+                </ng-container>
               }
-              <input type="file" accept="image/*" (change)="onLogoSelected($event)" />
-              @if (logoError) {
-                <p class="error-message">{{ logoError }}</p>
-              }
-              <div class="logo-actions">
-                @if (selectedLogoFile) {
-                  <button mat-flat-button color="primary" type="button" (click)="saveLogo()" [disabled]="isSavingLogo">
-                    @if (isSavingLogo) {
-                      <mat-spinner diameter="20"></mat-spinner>
-                    } @else {
-                      <ng-container>
-                        <mat-icon>check</mat-icon>
-                        Save logo
-                      </ng-container>
-                    }
-                  </button>
-                }
-                @if (siteSettings.logoUrl() && !selectedLogoFile) {
-                  <button mat-stroked-button type="button" (click)="removeLogo()" [disabled]="isSavingLogo">
-                    <mat-icon>delete</mat-icon>
-                    Remove logo
-                  </button>
-                }
-              </div>
-            </section>
-          </div>
-        </div>
-      </mat-tab>
+            </button>
+          </section>
 
-      <mat-tab label="Data">
-        <div class="customize-tab-content">
-          <div class="customize-card">
-            <section class="customize-section">
-              <h3>Inventory field options</h3>
-              <p class="section-hint">
-                Approved values for these fields — only these options appear when creating or editing an
-                inventory item.
-              </p>
-              <app-field-options-editor fieldName="category" label="Category" />
-              <app-field-options-editor fieldName="physical_location" label="Physical location" />
-            </section>
-          </div>
+          <section class="customize-section">
+            <h3>Logo</h3>
+            <p class="section-hint">
+              Appears in the top-left of the nav bar for everyone. Leave unset to use the default
+              ShelfSync mark.
+            </p>
+            @if (currentLogoUrl) {
+              <img [src]="currentLogoUrl" alt="Logo preview" class="logo-preview" />
+            } @else {
+              <p class="empty-hint">No custom logo set — using the default mark.</p>
+            }
+            <input type="file" accept="image/*" (change)="onLogoSelected($event)" />
+            @if (logoError) {
+              <p class="error-message">{{ logoError }}</p>
+            }
+            <div class="logo-actions">
+              @if (selectedLogoFile) {
+                <button mat-flat-button color="primary" type="button" (click)="saveLogo()" [disabled]="isSavingLogo">
+                  @if (isSavingLogo) {
+                    <mat-spinner diameter="20"></mat-spinner>
+                  } @else {
+                    <ng-container>
+                      <mat-icon>check</mat-icon>
+                      Save logo
+                    </ng-container>
+                  }
+                </button>
+              }
+              @if (siteSettings.logoUrl() && !selectedLogoFile) {
+                <button mat-stroked-button type="button" (click)="removeLogo()" [disabled]="isSavingLogo">
+                  <mat-icon>delete</mat-icon>
+                  Remove logo
+                </button>
+              }
+            </div>
+          </section>
         </div>
-      </mat-tab>
-    </mat-tab-group>
+      </div>
+    } @else {
+      <div class="customize-tab-content">
+        <div class="customize-card">
+          <section class="customize-section">
+            <h3>Inventory field options</h3>
+            <p class="section-hint">
+              Approved values for these fields — only these options appear when creating or editing an
+              inventory item.
+            </p>
+            <app-field-options-editor fieldName="category" label="Category" />
+            <app-field-options-editor fieldName="physical_location" label="Physical location" />
+          </section>
+        </div>
+      </div>
+    }
   </div>
 </div>

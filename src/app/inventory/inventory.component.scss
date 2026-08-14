@@ -188,8 +188,8 @@
 .low-stock-badge{
   top: 0.5rem;
   right: 0.5rem;
-  background: #f59f00;
-  color: #1a1a1a;
+  background: var(--app-warning-bg);
+  color: var(--app-warning-on-bg);
 }
 
 // Same corner as low-stock-badge — the two never show at once now that
@@ -198,8 +198,8 @@
 .out-of-stock-badge{
   top: 0.5rem;
   right: 0.5rem;
-  background: #e03131;
-  color: #fff;
+  background: var(--app-danger-bg);
+  color: var(--app-danger-on-bg);
 }
 
 .quantity-badge{
@@ -214,8 +214,8 @@
 .pending-retirement-badge{
   bottom: 0.5rem;
   left: 0.5rem;
-  background: #f59f00;
-  color: #1a1a1a;
+  background: var(--app-warning-bg);
+  color: var(--app-warning-on-bg);
 }
 
 // Top-left, same corner checked-out-badge would otherwise use — free once

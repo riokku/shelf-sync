@@ -60,4 +60,96 @@
       Logout
     </button>
   </div>
+
+  <!-- Same links as .main-nav/.header-actions above, collapsed behind one
+       trigger below the 900px breakpoint (see header.component.scss) rather
+       than trying to reflow the full row — hidden/shown purely by CSS
+       rather than a Breakpoint Observer, so there's no extra component
+       state to keep in sync with it. -->
+  <button
+      mat-icon-button
+      type="button"
+      class="mobile-menu-trigger"
+      (click)="openMobileMenu()"
+      aria-label="Open menu"
+    >
+    <mat-icon>menu</mat-icon>
+  </button>
 </section>
+
+<!-- A self-managed fixed-position panel rather than MatMenu — a menu is a
+     dropdown sized to its content and anchored to its trigger, which could
+     end up wider than the space left next to the hamburger button on a
+     narrow viewport and push the page into horizontal scroll. This is
+     pinned to the right edge and width-capped instead (see .mobile-nav-
+     drawer below), so it can't do that, and slides in edge-to-edge the way
+     a mobile nav drawer is expected to look. Always in the DOM (not @if)
+     so the transform transition below can animate both the open *and*
+     close direction — [attr.inert] disables it (focus, clicks, everything)
+     while closed instead, rather than removing it outright. -->
+<div class="mobile-nav-backdrop" [class.open]="isMobileMenuOpen()" (click)="closeMobileMenu()"></div>
+<div
+    class="mobile-nav-drawer"
+    [class.open]="isMobileMenuOpen()"
+    [attr.inert]="isMobileMenuOpen() ? null : ''"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Menu"
+    cdkTrapFocus
+    [cdkTrapFocusAutoCapture]="isMobileMenuOpen()"
+    (keydown.escape)="closeMobileMenu()"
+  >
+  <div class="mobile-nav-drawer-header">
+    <span class="mobile-nav-drawer-title">Menu</span>
+    <button mat-icon-button type="button" (click)="closeMobileMenu()" aria-label="Close menu">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+  <nav class="mobile-nav-links">
+    <a mat-button routerLink="/home" routerLinkActive="active">
+      <mat-icon>home</mat-icon>
+      Home
+    </a>
+    <a mat-button routerLink="/inventory" routerLinkActive="active">
+      <mat-icon>inventory_2</mat-icon>
+      Inventory
+    </a>
+    <a mat-button routerLink="/tasks" routerLinkActive="active">
+      <mat-icon>checklist</mat-icon>
+      Tasks
+    </a>
+    @if (authService.canManage()) {
+      <a
+          mat-button
+          routerLink="/manage"
+          routerLinkActive="active"
+          class="mobile-menu-badge"
+          [matBadge]="pendingManageCount()"
+          [matBadgeHidden]="pendingManageCount() === 0"
+          matBadgeColor="warn"
+        >
+        <mat-icon>admin_panel_settings</mat-icon>
+        Manage
+      </a>
+    }
+    @if (authService.role() === 'admin') {
+      <a mat-button routerLink="/customize" routerLinkActive="active">
+        <mat-icon>palette</mat-icon>
+        Customize
+      </a>
+    }
+    <mat-divider></mat-divider>
+    <button mat-button type="button" (click)="themeMode.toggle()">
+      <mat-icon>{{ themeMode.mode() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
+      {{ themeMode.mode() === 'dark' ? 'Light mode' : 'Dark mode' }}
+    </button>
+    <a mat-button routerLink="/account" routerLinkActive="active">
+      <mat-icon>account_circle</mat-icon>
+      Account
+    </a>
+    <button mat-button type="button" (click)="logout()">
+      <mat-icon>logout</mat-icon>
+      Logout
+    </button>
+  </nav>
+</div>

@@ -19,6 +19,7 @@ import { DiscardInventoryModalComponent, DiscardInventoryModalResult } from '../
 import { RequestRetirementModalComponent, RequestRetirementModalResult } from '../request-retirement-modal/request-retirement-modal.component';
 import { AuthService, Profile } from '../../../core/auth.service';
 import { SupabaseService } from '../../../core/supabase.service';
+import { NotificationService } from '../../../core/notification.service';
 import { InventoryFieldOptionsService } from '../../../core/inventory-field-options.service';
 import { toIsoDateString, parseIsoDate } from '../../utils/date';
 import { loadInventoryActivityByItemId, logInventoryItemActivity } from '../../utils/inventory-item-activity';
@@ -81,6 +82,7 @@ export class ModalTableComponent {
   protected inventoryFieldOptions = inject(InventoryFieldOptionsService);
   private dialog = inject(MatDialog);
   private supabase = inject(SupabaseService).client;
+  private notification = inject(NotificationService);
 
   idCopied = false;
   linkCopied = false;
@@ -278,7 +280,8 @@ export class ModalTableComponent {
           this.data.retirementRequestedByLabel = profile ? profileDisplayName(profile) : '';
           this.data.retirementRequestNote = result.note;
           this.data.retirementRequestedAt = new Date().toISOString();
-        }
+        },
+        'Retirement requested'
       );
     });
   }
@@ -286,7 +289,8 @@ export class ModalTableComponent {
   cancelRetirementRequest(){
     void this.runRetirementAction(
       () => this.supabase.rpc('cancel_item_retirement_request', { item_id: this.data.id }),
-      () => this.resetRetirementToActive()
+      () => this.resetRetirementToActive(),
+      'Retirement request cancelled'
     );
   }
 
@@ -298,14 +302,16 @@ export class ModalTableComponent {
         this.data.status = 'retired';
         this.data.retiredByLabel = profile ? profileDisplayName(profile) : '';
         this.data.retiredAt = new Date().toISOString();
-      }
+      },
+      'Item retired'
     );
   }
 
   declineRetirement(){
     void this.runRetirementAction(
       () => this.supabase.rpc('decline_item_retirement', { item_id: this.data.id }),
-      () => this.resetRetirementToActive()
+      () => this.resetRetirementToActive(),
+      'Retirement request declined'
     );
   }
 
@@ -325,7 +331,8 @@ export class ModalTableComponent {
    *  edits/discards done directly from here. */
   private async runRetirementAction(
     call: () => PromiseLike<{ error: { message: string } | null }>,
-    applyLocalChange: () => void
+    applyLocalChange: () => void,
+    successMessage: string
   ){
     if (this.isProcessingRetirement) {
       return;
@@ -344,6 +351,7 @@ export class ModalTableComponent {
     applyLocalChange();
     await this.refreshActivityLog();
     this.isProcessingRetirement = false;
+    this.notification.success(successMessage);
   }
 
   private async refreshActivityLog(){

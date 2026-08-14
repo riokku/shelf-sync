@@ -12,10 +12,12 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialog } from '@angular/material/dialog';
 import { SupabaseService } from '../../core/supabase.service';
+import { NotificationService } from '../../core/notification.service';
 import { AuthService, Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { UserAvatarComponent } from '../../shared/components/user-avatar/user-avatar.component';
 import { TaskDetailModalComponent } from '../../shared/components/task-detail-modal/task-detail-modal.component';
+import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { Database } from '../../shared/models/database.types';
 import { TASK_STATUSES, TASK_STATUS_LABELS, TaskStatus } from '../../shared/models/task-status';
 import { toIsoDateString, getTodayIsoDate } from '../../shared/utils/date';
@@ -49,6 +51,7 @@ export class ManageTasksComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
   private authService = inject(AuthService);
   private dialog = inject(MatDialog);
+  private notification = inject(NotificationService);
 
   private currentUserId: string | null = null;
   assignableProfiles: Profile[] = [];
@@ -57,6 +60,7 @@ export class ManageTasksComponent implements OnInit {
   readonly statusLabels = TASK_STATUS_LABELS;
   allTasks: Task[] = [];
   isLoadingTasks = true;
+  deleteTaskError: string | null = null;
 
   viewMode: 'create' | 'all' = 'create';
   taskFilterSearch = '';
@@ -199,19 +203,32 @@ export class ManageTasksComponent implements OnInit {
     });
   }
 
-  async deleteTask(task: Task) {
-    const confirmed = confirm(`Delete "${task.title}"? This can't be undone.`);
-    if (!confirmed) {
-      return;
-    }
+  deleteTask(task: Task) {
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Delete task?',
+        message: `Delete "${task.title}"? This can't be undone.`,
+        confirmLabel: 'Delete',
+        danger: true
+      },
+      width: 'clamp(75%, 25rem, 60%)'
+    });
 
-    const { error } = await this.supabase.from('tasks').delete().eq('id', task.id);
-    if (error) {
-      alert(`Failed to delete task: ${error.message}`);
-      return;
-    }
+    dialogRef.afterClosed().subscribe(async (confirmed) => {
+      if (!confirmed) {
+        return;
+      }
 
-    await this.loadTasks();
+      this.deleteTaskError = null;
+      const { error } = await this.supabase.from('tasks').delete().eq('id', task.id);
+      if (error) {
+        this.deleteTaskError = `Failed to delete task: ${error.message}`;
+        return;
+      }
+
+      await this.loadTasks();
+      this.notification.success('Task deleted');
+    });
   }
 
   async submitTask() {

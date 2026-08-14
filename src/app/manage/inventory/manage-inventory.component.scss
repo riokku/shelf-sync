@@ -231,13 +231,13 @@
 }
 
 .status-low-stock{
-  background: #f59f00;
-  color: #1a1a1a;
+  background: var(--app-warning-bg);
+  color: var(--app-warning-on-bg);
 }
 
 .status-out-of-stock{
-  background: #e03131;
-  color: #fff;
+  background: var(--app-danger-bg);
+  color: var(--app-danger-on-bg);
 }
 
 .status-ok{
@@ -246,8 +246,8 @@
 }
 
 .status-pending-retirement{
-  background: #f59f00;
-  color: #1a1a1a;
+  background: var(--app-warning-bg);
+  color: var(--app-warning-on-bg);
 }
 
 .status-retired{
@@ -281,4 +281,31 @@
   display: flex;
   gap: 0.5rem;
   flex-shrink: 0;
+}
+
+// 900px, matching the header's own breakpoint, rather than the site's
+// narrower 600px "phone" line — .task-row's 4 grid columns have a real
+// combined minimum width (each column's own minmax() floor, plus 3 column
+// gaps, plus the row's own padding) of just over 650px, so anything below
+// ~700-750px was already forcing the desktop grid narrower than its own
+// minimum and pushing the status badge past the row's right edge, well
+// before 600px ever kicked in to fix it (same root cause manage-tasks.
+// component.scss's own row had — see that file's own note). Same
+// threshold applied to .retirement-request-row alongside it for
+// consistency, even though its flex layout (no fixed minmax columns) isn't
+// at the same hard-overflow risk.
+@media (max-width: 900px){
+  .task-row{
+    grid-template-columns: 1fr;
+    row-gap: 0.5rem;
+  }
+
+  .retirement-request-row{
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .retirement-request-actions{
+    justify-content: flex-end;
+  }
 }

@@ -107,6 +107,6 @@
 }
 
 .status-done{
-  background: #2b8a3e;
-  color: #ffffff;
+  background: var(--app-success-bg);
+  color: var(--app-success-on-bg);
 }

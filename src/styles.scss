@@ -119,6 +119,14 @@ html {
   --mat-dialog-subhead-color: var(--mat-sys-on-surface);
   --mat-dialog-supporting-text-color: var(--mat-sys-on-surface-variant);
 
+  // Material's own dialog surface reads its shadow from this token
+  // (falling back to `none` when unset, which is what every dialog was
+  // getting) — a real box-shadow here covers every popup in the app at
+  // once. Paired with the border below for a bit more presence than the
+  // default flat surface color alone gives, especially in dark mode where
+  // a shadow by itself barely reads against an already-dark backdrop.
+  --mat-dialog-container-elevation-shadow: 0 28px 65px rgba(0, 0, 0, 0.22), 0 12px 28px rgba(0, 0, 0, 0.15);
+
   // Semantic accent colors used for status/feedback text across the app
   // (error messages, overdue-task indicators, success messages, low-stock
   // warnings) — independent of the [data-theme] color preset above, so
@@ -130,6 +138,21 @@ html {
   --app-overdue-text: light-dark(#c92a2a, #e03131);
   --app-success-text: light-dark(#2b8a3e, #51cf66);
   --app-warning-text: light-dark(#a15c00, #f59f00);
+
+  // Semantic *badge* colors (warning/danger/success pills — low stock, out
+  // of stock, retired, done, etc.) — distinct from the four plain-text
+  // tokens just above, which sit directly on the page's own surface and so
+  // need a light/dark-aware light-dark() pair for contrast. A badge carries
+  // its own opaque background everywhere it's used, so the same fixed pair
+  // already read fine in both modes; these three pairs just give the six
+  // hex values previously hardcoded across five different component
+  // stylesheets one shared source instead.
+  --app-warning-bg: #f59f00;
+  --app-warning-on-bg: #1a1a1a;
+  --app-danger-bg: #e03131;
+  --app-danger-on-bg: #ffffff;
+  --app-success-bg: #2b8a3e;
+  --app-success-on-bg: #ffffff;
 }
 
 body {
@@ -196,6 +219,36 @@ mat-icon{
 
 .mat-mdc-dialog-content{
   color: var(--mat-sys-on-surface);
+}
+
+// Border on every dialog surface — see the
+// --mat-dialog-container-elevation-shadow token above for the box-shadow
+// half of this, set once there rather than repeated per dialog since
+// Material's own surface rule already reads it via var(...).
+.mat-mdc-dialog-surface{
+  border: 1.5px solid var(--mat-sys-outline-variant);
+}
+
+// Darkens the rest of the page behind an open dialog more than Material's
+// own default (rgba(0,0,0,.32)) — makes the surface + its shadow above
+// stand out against the backdrop instead of just the immediate area around
+// the dialog. Global CDK class, so this covers every dialog (and any other
+// overlay using the "dark" backdrop, e.g. a datepicker opened as a mobile
+// dialog) the same way the two tokens above do.
+.cdk-overlay-dark-backdrop{
+  background: rgba(0, 0, 0, 0.6);
+}
+
+// NotificationService's success toast (core/notification.service.ts) — the
+// two tokens below are genuine CSS custom properties MatSnackBar's own
+// surface reads via var(...), same mechanism as the dialog tokens above, so
+// setting them on the panelClass is enough with no ::ng-deep needed. Reuses
+// the --app-success-bg/-on-bg pair defined above (badge colors) rather than
+// Material's own default inverse-surface tone, so a success toast reads as
+// the same "success" the rest of the app already uses that color for.
+.app-success-snackbar{
+  --mat-snack-bar-container-color: var(--app-success-bg);
+  --mat-snack-bar-supporting-text-color: var(--app-success-on-bg);
 }
 
 .item-details-dialog,

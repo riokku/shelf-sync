@@ -216,6 +216,37 @@
 }
 
 .status-done{
-  background: #2b8a3e;
-  color: #ffffff;
+  background: var(--app-success-bg);
+  color: var(--app-success-on-bg);
+}
+
+// 900px, matching the header's own breakpoint, rather than the site's
+// narrower 600px "phone" line — .task-row's 5 grid columns have a real
+// combined minimum width (each column's own minmax() floor, plus 4 column
+// gaps, plus the row's own padding) of just over 700px, so anything below
+// ~750-800px was already forcing the desktop grid narrower than its own
+// minimum and pushing the status badge/delete button past the row's right
+// edge, well before 600px ever kicked in to fix it. Flex + wrap instead
+// of that grid, forced onto exactly two lines: the title stays full-width
+// on its own, everything else (assignee, due date, badge, delete button)
+// flows together on a second line and wraps further within *that* line if
+// it still doesn't fit, rather than escaping the row.
+@media (max-width: 900px){
+  .task-row{
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 0.75rem;
+    row-gap: 0.5rem;
+  }
+
+  .task-row-main{
+    flex: 1 1 100%;
+  }
+
+  // Pushes the delete button to the end of the second line, same role
+  // justify-self: end played in the grid layout above.
+  .task-row-delete{
+    margin-left: auto;
+  }
 }

@@ -6,6 +6,9 @@
     <h2>Manage Team</h2>
 
     <div class="team-list">
+      @if (membershipError) {
+        <p class="error-message">{{ membershipError }}</p>
+      }
       @if (inviteLink) {
         <div class="invite-link-section">
           <h3>Invite teammates</h3>
@@ -24,9 +27,6 @@
       @if (authService.role() === 'admin' && pendingMembers.length > 0) {
         <div class="pending-members-section">
           <h3>Pending join requests</h3>
-          @if (membershipError) {
-            <p class="error-message">{{ membershipError }}</p>
-          }
           <div class="pending-members-list">
             @for (profile of pendingMembers; track profile.id) {
               <div class="pending-member-row">

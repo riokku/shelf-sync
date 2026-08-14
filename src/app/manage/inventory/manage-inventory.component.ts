@@ -11,6 +11,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialog } from '@angular/material/dialog';
 import { SupabaseService } from '../../core/supabase.service';
+import { NotificationService } from '../../core/notification.service';
 import { Profile } from '../../core/auth.service';
 import { InventoryFieldOptionsService } from '../../core/inventory-field-options.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
@@ -50,6 +51,7 @@ export class ManageInventoryComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
   protected inventoryFieldOptions = inject(InventoryFieldOptionsService);
   private dialog = inject(MatDialog);
+  private notification = inject(NotificationService);
 
   private assignableProfiles: Profile[] = [];
 
@@ -160,17 +162,19 @@ export class ManageInventoryComponent implements OnInit {
 
   async approveRetirement(item: InventoryItemRow){
     await this.runRetirementAction(
-      this.supabase.rpc('approve_item_retirement', { item_id: item.id })
+      this.supabase.rpc('approve_item_retirement', { item_id: item.id }),
+      'Item retired'
     );
   }
 
   async declineRetirement(item: InventoryItemRow){
     await this.runRetirementAction(
-      this.supabase.rpc('decline_item_retirement', { item_id: item.id })
+      this.supabase.rpc('decline_item_retirement', { item_id: item.id }),
+      'Retirement request declined'
     );
   }
 
-  private async runRetirementAction(call: PromiseLike<{ error: { message: string } | null }>){
+  private async runRetirementAction(call: PromiseLike<{ error: { message: string } | null }>, successMessage: string){
     if (this.isProcessingRetirement) {
       return;
     }
@@ -187,6 +191,7 @@ export class ManageInventoryComponent implements OnInit {
 
     await this.loadInventoryItems();
     this.isProcessingRetirement = false;
+    this.notification.success(successMessage);
   }
 
   openInventoryDetail(row: InventoryItemRow) {

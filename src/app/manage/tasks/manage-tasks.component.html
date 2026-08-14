@@ -124,6 +124,9 @@
           }
         </div>
 
+        @if (deleteTaskError) {
+          <p class="error-message">{{ deleteTaskError }}</p>
+        }
         @if (isLoadingTasks) {
           <mat-spinner diameter="32"></mat-spinner>
         } @else if (filteredAllTasks.length === 0) {

@@ -1,0 +1,25 @@
+<h2 mat-dialog-title>
+  <mat-icon class="confirm-dialog-warning-icon">warning</mat-icon>
+  Delete organization?
+</h2>
+<form (ngSubmit)="confirm()">
+  <mat-dialog-content>
+    <p>
+      This will delete <span class="semibold">{{ data.organizationName }}</span> and everything in
+      it — inventory, tasks, and every team member's access — after a 30-day grace period, and
+      you'll be signed out immediately.
+    </p>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Type {{ data.organizationName }} to confirm</mat-label>
+      <input matInput [formControl]="confirmationControl" autocomplete="off" />
+    </mat-form-field>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancel()">Cancel</button>
+    <button mat-flat-button color="warn" type="submit" [disabled]="!canConfirm">
+      <mat-icon>delete_forever</mat-icon>
+      Delete organization
+    </button>
+  </mat-dialog-actions>
+</form>

@@ -392,13 +392,13 @@
 // here, sharing a color across different statuses reads as one color
 // running out rather than a deliberate choice.
 .badge-success{
-  background: #2b8a3e;
-  color: #ffffff;
+  background: var(--app-success-bg);
+  color: var(--app-success-on-bg);
 }
 
 .badge-warning{
-  background: #f59f00;
-  color: #1a1a1a;
+  background: var(--app-warning-bg);
+  color: var(--app-warning-on-bg);
 }
 
 .badge-tertiary{

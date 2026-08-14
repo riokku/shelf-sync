@@ -1,11 +1,13 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../../core/auth.service';
 import { SupabaseService } from '../../core/supabase.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
+import { DeleteOrganizationModalComponent } from '../../shared/components/delete-organization-modal/delete-organization-modal.component';
 
 const INVENTORY_IMAGES_BUCKET = 'inventory-images';
 
@@ -19,6 +21,7 @@ export class ManageDangerZoneComponent implements OnInit {
   protected authService = inject(AuthService);
   private supabase = inject(SupabaseService).client;
   private router = inject(Router);
+  private dialog = inject(MatDialog);
 
   organizationId: string | null = null;
   organizationName: string | null = null;
@@ -109,35 +112,38 @@ export class ManageDangerZoneComponent implements OnInit {
   /** Soft delete only — sets deleted_at rather than removing any rows. The
    *  scheduled purge job (see the add_organization_deletion migration) does
    *  the real, permanent delete after a 30-day grace period. */
-  async deleteOrganization() {
+  deleteOrganization() {
     if (this.isDeletingOrg || !this.organizationId || !this.organizationName) {
       return;
     }
 
-    const typed = prompt(
-      `This will delete "${this.organizationName}" and everything in it — inventory, tasks, and every team member's` +
-      ` access — after a 30-day grace period, and you'll be signed out immediately.\n\n` +
-      `Type the organization name to confirm: ${this.organizationName}`
-    );
-    if (typed !== this.organizationName) {
-      return;
-    }
+    const dialogRef = this.dialog.open(DeleteOrganizationModalComponent, {
+      data: { organizationName: this.organizationName },
+      width: 'clamp(28rem, 50vw, 34rem)',
+      maxWidth: '90vw'
+    });
 
-    this.isDeletingOrg = true;
-    this.deleteError = null;
+    dialogRef.afterClosed().subscribe(async (confirmed) => {
+      if (!confirmed || !this.organizationId) {
+        return;
+      }
 
-    const { error } = await this.supabase
-      .from('organizations')
-      .update({ deleted_at: new Date().toISOString() })
-      .eq('id', this.organizationId);
+      this.isDeletingOrg = true;
+      this.deleteError = null;
 
-    if (error) {
-      this.isDeletingOrg = false;
-      this.deleteError = error.message;
-      return;
-    }
+      const { error } = await this.supabase
+        .from('organizations')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', this.organizationId);
 
-    await this.authService.signOut();
-    this.router.navigate(['/']);
+      if (error) {
+        this.isDeletingOrg = false;
+        this.deleteError = error.message;
+        return;
+      }
+
+      await this.authService.signOut();
+      this.router.navigate(['/']);
+    });
   }
 }

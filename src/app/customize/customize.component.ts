@@ -1,8 +1,9 @@
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatTabsModule } from '@angular/material/tabs';
 import { InventoryFieldOptionsService } from '../core/inventory-field-options.service';
 import { SiteSettingsService } from '../core/site-settings.service';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
@@ -11,7 +12,7 @@ import { THEME_PRESETS } from '../shared/models/theme-preset';
 
 @Component({
   selector: 'app-customize',
-  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, MatTabsModule, BreadcrumbsComponent, FieldOptionsEditorComponent],
+  imports: [FormsModule, MatButtonModule, MatButtonToggleModule, MatIconModule, MatProgressSpinnerModule, BreadcrumbsComponent, FieldOptionsEditorComponent],
   templateUrl: './customize.component.html',
   styleUrl: './customize.component.scss'
 })
@@ -22,6 +23,13 @@ export class CustomizeComponent implements OnInit, OnDestroy {
   async ngOnInit() {
     await this.inventoryFieldOptions.load();
   }
+
+  // Same pill-style toggle as manage/tasks and manage/inventory's own
+  // create/all view switches, rather than mat-tab-group — this page only
+  // ever had the two tabs, and this matches the rest of the app's "Manage"
+  // section instead of being the one place still using Material's own tab
+  // strip.
+  viewMode: 'style' | 'data' = 'style';
 
   readonly presets = THEME_PRESETS;
   selectedTheme = this.siteSettings.theme();

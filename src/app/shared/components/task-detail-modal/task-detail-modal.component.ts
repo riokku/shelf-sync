@@ -8,6 +8,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SupabaseService } from '../../../core/supabase.service';
+import { NotificationService } from '../../../core/notification.service';
 import { AuthService, Profile } from '../../../core/auth.service';
 import { Database } from '../../models/database.types';
 import { TASK_STATUSES, TASK_STATUS_LABELS } from '../../models/task-status';
@@ -37,6 +38,7 @@ type Task = Database['public']['Tables']['tasks']['Row'];
 export class TaskDetailModalComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
   private dialog = inject(MatDialog);
+  private notification = inject(NotificationService);
   protected authService = inject(AuthService);
   dialogRef = inject(MatDialogRef<TaskDetailModalComponent>);
   task = inject<Task>(MAT_DIALOG_DATA);
@@ -128,6 +130,7 @@ export class TaskDetailModalComponent implements OnInit {
       return;
     }
 
+    this.notification.success('Transfer requested');
     this.dialogRef.close({ ...this.task, pending_transfer_to: this.transferTarget });
   }
 
@@ -148,6 +151,7 @@ export class TaskDetailModalComponent implements OnInit {
       return;
     }
 
+    this.notification.success('Transfer cancelled');
     this.dialogRef.close({ ...this.task, pending_transfer_to: null });
   }
 
@@ -168,6 +172,7 @@ export class TaskDetailModalComponent implements OnInit {
       return;
     }
 
+    this.notification.success('Task accepted');
     this.dialogRef.close({ ...this.task, assigned_to: this.currentUserId, pending_transfer_to: null });
   }
 
@@ -188,6 +193,7 @@ export class TaskDetailModalComponent implements OnInit {
       return;
     }
 
+    this.notification.success('Transfer declined');
     this.dialogRef.close({ ...this.task, pending_transfer_to: null });
   }
 
