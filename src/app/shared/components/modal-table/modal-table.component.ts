@@ -17,6 +17,7 @@ import { UserAvatarComponent } from '../user-avatar/user-avatar.component';
 import { CreateTaskModalComponent } from '../create-task-modal/create-task-modal.component';
 import { DiscardInventoryModalComponent, DiscardInventoryModalResult } from '../discard-inventory-modal/discard-inventory-modal.component';
 import { RequestRetirementModalComponent, RequestRetirementModalResult } from '../request-retirement-modal/request-retirement-modal.component';
+import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.component';
 import { AuthService, Profile } from '../../../core/auth.service';
 import { SupabaseService } from '../../../core/supabase.service';
 import { NotificationService } from '../../../core/notification.service';
@@ -294,17 +295,36 @@ export class ModalTableComponent {
     );
   }
 
+  // Confirmed first, unlike the other three retirement actions — this is
+  // the one that's actually irreversible (retires the item org-wide, no
+  // "cancel" the way a pending request has), same bar as ConfirmDialog's
+  // other danger: true uses (delete task, remove member).
   approveRetirement(){
-    void this.runRetirementAction(
-      () => this.supabase.rpc('approve_item_retirement', { item_id: this.data.id }),
-      () => {
-        const profile = this.authService.profile();
-        this.data.status = 'retired';
-        this.data.retiredByLabel = profile ? profileDisplayName(profile) : '';
-        this.data.retiredAt = new Date().toISOString();
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Approve retirement?',
+        message: `Retire "${this.data.name}"? It'll be hidden from the default inventory view. This can't be undone.`,
+        confirmLabel: 'Approve',
+        danger: true
       },
-      'Item retired'
-    );
+      width: 'clamp(75%, 25rem, 60%)'
+    });
+
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (!confirmed) {
+        return;
+      }
+      void this.runRetirementAction(
+        () => this.supabase.rpc('approve_item_retirement', { item_id: this.data.id }),
+        () => {
+          const profile = this.authService.profile();
+          this.data.status = 'retired';
+          this.data.retiredByLabel = profile ? profileDisplayName(profile) : '';
+          this.data.retiredAt = new Date().toISOString();
+        },
+        'Item retired'
+      );
+    });
   }
 
   declineRetirement(){
@@ -481,7 +501,11 @@ export class ModalTableComponent {
   }
 
   async saveEdit(){
-    if (this.editForm.invalid || this.isSaving) {
+    if (this.isSaving) {
+      return;
+    }
+    if (this.editForm.invalid) {
+      this.editForm.markAllAsTouched();
       return;
     }
 

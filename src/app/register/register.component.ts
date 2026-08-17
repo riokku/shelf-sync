@@ -101,7 +101,11 @@ export class RegisterComponent implements OnInit {
   }
 
   async attemptRegister() {
-    if (this.form.invalid || this.isLoading) {
+    if (this.isLoading) {
+      return;
+    }
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
       return;
     }
 

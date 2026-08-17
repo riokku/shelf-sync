@@ -16,6 +16,7 @@ import { ActivatedRoute } from '@angular/router';
 import { InventoryItem, isLowStock, isOutOfStock } from '../shared/models/inventory-item.model';
 import { ModalTableComponent } from '../shared/components/modal-table/modal-table.component';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
+import { EmptyStateComponent } from '../shared/components/empty-state/empty-state.component';
 import { SupabaseService } from '../core/supabase.service';
 import { toInventoryItem } from '../shared/utils/inventory-item.mapper';
 import { resolveProfileAvatarKey, resolveProfileName } from '../shared/utils/profile-label';
@@ -40,7 +41,8 @@ type StatusFilter = 'active' | 'include_retired' | 'retired_only';
         MatButtonModule,
         MatProgressSpinnerModule,
         MatPaginatorModule,
-        BreadcrumbsComponent
+        BreadcrumbsComponent,
+        EmptyStateComponent
     ],
     templateUrl: './inventory.component.html',
     styleUrl: './inventory.component.scss'

@@ -32,6 +32,9 @@
               <mat-label>Name</mat-label>
               <mat-icon matPrefix>inventory_2</mat-icon>
               <input matInput formControlName="name" />
+              @if (inventoryForm.controls.name.hasError('required')) {
+                <mat-error>Name is required.</mat-error>
+              }
             </mat-form-field>
             <mat-form-field appearance="outline">
               <mat-label>Category</mat-label>
@@ -138,6 +141,11 @@
               <mat-label>Quantity total</mat-label>
               <mat-icon matPrefix>numbers</mat-icon>
               <input matInput type="number" formControlName="quantityTotal" />
+              @if (inventoryForm.controls.quantityTotal.hasError('required')) {
+                <mat-error>Quantity total is required.</mat-error>
+              } @else if (inventoryForm.controls.quantityTotal.hasError('min')) {
+                <mat-error>Quantity total can't be negative.</mat-error>
+              }
             </mat-form-field>
             <mat-form-field appearance="outline">
               <mat-label>Quantity per container</mat-label>
@@ -171,7 +179,7 @@
           <p class="success-message">Item created.</p>
         }
 
-        <button mat-flat-button color="primary" type="submit" [disabled]="inventoryForm.invalid || isSavingItem">
+        <button mat-flat-button color="primary" type="submit" [disabled]="isSavingItem">
           @if (isSavingItem) {
             <mat-spinner diameter="20"></mat-spinner>
           } @else {
@@ -187,13 +195,23 @@
         @if (isLoadingInventoryList) {
           <mat-spinner diameter="32"></mat-spinner>
         } @else if (allInventoryItems.length === 0) {
-          <p class="empty-hint">No inventory items yet.</p>
+          <app-empty-state icon="inventory_2" message="No inventory items yet." />
         } @else {
           <mat-button-toggle-group class="status-filter-toggle" [(ngModel)]="statusFilter">
             <mat-button-toggle value="active">Active only</mat-button-toggle>
             <mat-button-toggle value="include_retired">Include retired</mat-button-toggle>
             <mat-button-toggle value="retired_only">Retired only</mat-button-toggle>
           </mat-button-toggle-group>
+          @if (visibleInventoryItems.length === 0) {
+            <app-empty-state icon="filter_alt_off" message="No items match this filter.">
+              @if (statusFilter !== 'active') {
+                <button mat-stroked-button type="button" (click)="statusFilter = 'active'">
+                  <mat-icon>clear</mat-icon>
+                  Show active items
+                </button>
+              }
+            </app-empty-state>
+          } @else {
           <div class="task-rows">
             @for (item of visibleInventoryItems; track item.id) {
               <div
@@ -206,7 +224,7 @@
                   (keydown.enter)="openInventoryDetail(item)"
                 >
                 <div class="task-row-main">
-                  <span class="task-row-title">{{ item.name }}</span>
+                  <span class="task-row-title" [title]="item.name">{{ item.name }}</span>
                   @if (item.is_checked_out) {
                     <span class="task-row-checked-out">
                       <mat-icon>person</mat-icon>
@@ -258,6 +276,7 @@
               </div>
             }
           </div>
+          }
         }
       </div>
     } @else {
@@ -268,7 +287,7 @@
         @if (isLoadingInventoryList) {
           <mat-spinner diameter="32"></mat-spinner>
         } @else if (pendingRetirementItems.length === 0) {
-          <p class="empty-hint">No pending retirement requests.</p>
+          <app-empty-state icon="inventory_2" message="No pending retirement requests." />
         } @else {
           <div class="task-rows">
             @for (item of pendingRetirementItems; track item.id) {
@@ -278,7 +297,7 @@
                     (click)="openInventoryDetail(item)"
                     (keydown.enter)="openInventoryDetail(item)"
                   >
-                  <span class="task-row-title">{{ item.name }}</span>
+                  <span class="task-row-title" [title]="item.name">{{ item.name }}</span>
                   <span class="task-row-item">
                     <mat-icon>person</mat-icon>
                     Requested by {{ retirementRequesterLabel(item) }}

@@ -9,25 +9,32 @@
     }
 
     <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Title</mat-label>
       <mat-icon matPrefix>title</mat-icon>
-      <input matInput placeholder="Title" formControlName="title" />
+      <input matInput formControlName="title" />
+      @if (taskForm.controls.title.hasError('required')) {
+        <mat-error>Title is required.</mat-error>
+      }
     </mat-form-field>
     <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Description</mat-label>
       <mat-icon matPrefix>notes</mat-icon>
-      <textarea matInput placeholder="Description" formControlName="description" rows="2"></textarea>
+      <textarea matInput formControlName="description" rows="2"></textarea>
     </mat-form-field>
     <div class="field-row">
       <mat-form-field appearance="outline">
+        <mat-label>Status</mat-label>
         <mat-icon matPrefix>flag</mat-icon>
-        <mat-select placeholder="Status" formControlName="status">
+        <mat-select formControlName="status">
           @for (status of statuses; track status) {
             <mat-option [value]="status">{{ statusLabels[status] }}</mat-option>
           }
         </mat-select>
       </mat-form-field>
       <mat-form-field appearance="outline">
+        <mat-label>Assign to</mat-label>
         <mat-icon matPrefix>person</mat-icon>
-        <mat-select placeholder="Assign to" formControlName="assignedTo">
+        <mat-select formControlName="assignedTo">
           <mat-option [value]="null">Unassigned</mat-option>
           @for (profile of assignableProfiles; track profile.id) {
             <mat-option [value]="profile.id">{{ profileLabel(profile) }}</mat-option>
@@ -35,8 +42,9 @@
         </mat-select>
       </mat-form-field>
       <mat-form-field appearance="outline">
+        <mat-label>Due date</mat-label>
         <mat-icon matPrefix>event</mat-icon>
-        <input matInput [matDatepicker]="dueDatePicker" placeholder="Due date" formControlName="dueDate" />
+        <input matInput [matDatepicker]="dueDatePicker" formControlName="dueDate" />
         <mat-datepicker-toggle matSuffix [for]="dueDatePicker"></mat-datepicker-toggle>
         <mat-datepicker #dueDatePicker></mat-datepicker>
       </mat-form-field>
@@ -48,7 +56,7 @@
   </mat-dialog-content>
   <mat-dialog-actions align="end">
     <button mat-button type="button" (click)="cancel()">Cancel</button>
-    <button mat-flat-button color="primary" type="submit" [disabled]="taskForm.invalid || isSaving">
+    <button mat-flat-button color="primary" type="submit" [disabled]="isSaving">
       @if (isSaving) {
         <mat-spinner diameter="20"></mat-spinner>
       } @else {

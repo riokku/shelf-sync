@@ -26,9 +26,12 @@ user (not just admin/manager) can edit an inventory item's fields directly from 
 Edit/Save/Cancel flow; saving writes the changes to `inventory_items` and logs a diffed,
 human-readable summary ("Updated Quantity remaining (80 → 25), ...") to `inventory_item_activity`.
 Editing also covers photos (add/remove against `inventory_item_images`, same 10-photo cap as
-creation) via shared helpers in `shared/utils/inventory-item-images.ts`. It does not cover
-checkout state (`is_checked_out`/`checked_out_to` — deliberately deferred, see the Supabase Schema
-section below).
+creation) via shared helpers in `shared/utils/inventory-item-images.ts`, and checkout state
+(`is_checked_out`/`checked_out_to`, editable via a "Checked out to" selector in the same
+Edit/Save/Cancel flow) — both are part of the same widened, any-authenticated-user UPDATE access as
+every other field. `status`/`retirement_*`/`retired_*` are the exception: excluded from that column
+grant and writable only through the retirement RPCs (see the Supabase Schema section below), so
+editing never lets someone bypass the approval workflow.
 
 Admins get a `customize` route (guarded by a dedicated `adminGuard`, stricter than the
 admin-or-manager `manageGuard`) for site-wide branding: a color theme picker and a logo upload,
@@ -174,6 +177,66 @@ yet on a hard refresh of `/inventory`.
   holding `theme` and `logo_storage_path`. Readable by `anon` and `authenticated` (so branding
   applies on the pre-login pages too), writable only by `admin`. Also creates the public
   `site-assets` Storage bucket (public read; `admin`-only insert/update/delete) for the logo file.
+- `create_organizations` — `organizations` (the tenant boundary; every profile belongs to exactly
+  one via `profiles.organization_id`), `current_user_org_id()` (SECURITY DEFINER helper, same
+  recursive-lookup-avoidance reasoning as `current_user_role()`), and a rewritten
+  `handle_new_user()` that creates-or-joins an org at signup from `signUp()`'s metadata
+  (`organization_name` → new org, caller becomes `admin`; `invite_organization_id` → join existing
+  org, caller becomes `staff`). Paired same-day with `scope_inventory_and_tasks_by_organization`
+  and `scope_site_settings_by_organization`, which AND `organization_id = current_user_org_id()`
+  into every existing policy on `inventory_items`/`tasks`/`site_settings`.
+- `create_inventory_field_options` — `inventory_field_options`, admin-curated dropdown values for
+  `inventory_items.category`/`physical_location`/`digital_location` (those columns stay plain
+  text; this table only constrains what the create/edit UI offers, so older values that predate or
+  fall off the list still display fine). Org-scoped select for any authenticated user,
+  insert/delete admin-only. Backs `InventoryFieldOptionsService`.
+- `add_organization_deletion` — org-level soft delete (`organizations.deleted_at`, settable only
+  by an admin on their own org) backing the `manage/danger-zone` route, with a `pg_cron`-scheduled
+  `purge_expired_organizations()` hard-deleting anything past a 30-day grace period. Also folds the
+  deleted-org check into `current_user_org_id()` (so a soft-deleted org's members fail every RLS
+  check schema-wide, no per-policy changes needed) and fixes two FK behaviors: `tasks.created_by`
+  no longer cascades a delete (removing a team member used to silently destroy every task they'd
+  *created*, not just unassign them), and the three tenant-scoped tables' `organization_id` FKs
+  now cascade so the scheduled purge can run a plain `delete from organizations`.
+- `add_task_transfers` — lets any assignee (not just admin/manager) hand a task off to someone
+  else without it leaving their queue until accepted. Adds `tasks.pending_transfer_to` and four
+  SECURITY DEFINER RPCs (`request_task_transfer`/`cancel_task_transfer`/`accept_task_transfer`/
+  `decline_task_transfer`) as the only way `assigned_to`/`pending_transfer_to` ever change —
+  `assigned_to`/`pending_transfer_to` are pulled out of the ordinary column grant for exactly that
+  reason. This is also the migration that establishes the request/cancel/accept-or-decline RPC
+  shape `add_inventory_item_retirement` and `add_member_approval` below both reuse.
+- `add_inventory_item_retirement` — retirement workflow for out-of-stock items: any org member can
+  request retiring an item once `quantity_remaining` hits 0, admin/manager approves or declines.
+  Adds `inventory_items.status` (`active`/`retirement_pending`/`retired`) plus
+  `retirement_requested_by/at`/`retirement_request_note`/`retired_by/at`, and four SECURITY
+  DEFINER RPCs (`request_item_retirement`/`cancel_item_retirement_request`/
+  `approve_item_retirement`/`decline_item_retirement`) as the only way those columns change. Also
+  the migration that first gives `inventory_items` a column-scoped `revoke`/`grant` (it never had
+  one before, unlike `tasks`) — everything `ModalTableComponent`'s edit flow actually touches
+  (including `is_checked_out`/`checked_out_to`) stays grantable to any authenticated user; the new
+  retirement columns become RPC-only.
+- `add_member_approval` — admin approval for org join requests: joining via an invite link used to
+  grant full staff access the instant signup succeeded; now it creates a pending request instead.
+  Adds `profiles.membership_status` (`pending`/`approved`, excluded from the ordinary column grant
+  for the same reason `role` is — otherwise a pending user could just approve themselves) and
+  `admin_approve_member()`. `current_user_org_id()` returns `null` for a pending caller, so — same
+  mechanism as the soft-delete fail-closed behavior above — every org-scoped policy schema-wide
+  rejects them automatically. Denying a request reuses `ManageTeamComponent`'s existing
+  delete-the-profile mechanism; there's no separate "denied" status.
+- `fix_org_isolation_bugs` — security-review fixes: restores the deleted-org join
+  `add_organization_deletion` added to `current_user_org_id()`, which `add_member_approval`
+  had accidentally dropped when it rewrote the same function; makes the org-ownership check in all
+  eight task-transfer/retirement RPCs above null-safe (`current_user_org_id() is null` was
+  previously compared with `!=` directly, which is NULL in PL/pgSQL and so silently failed *open*
+  for exactly the pending/deleted-org callers it most needed to reject); and adds org-scoped
+  INSERT/DELETE policies to the `inventory-images` Storage bucket, which had none before (any
+  admin/manager of *any* org could write or delete another org's item photos).
+- `close_task_assignee_column_gap` — the last piece of `tasks`' column-scoping story: the
+  "Assignees can update their own tasks" policy still let a plain assignee (not admin/manager)
+  write `title`/`description`/`due_date`/`related_item_name` directly, even though the only UI
+  touching this (`TaskDetailModalComponent.saveStatus()`) ever sends `status`. Drops that policy
+  and adds `update_task_status()`, a SECURITY DEFINER RPC mirroring `request_task_transfer()`'s
+  shape, as the only way a plain assignee can change a task now.
 
 `supabase/seed.sql` ports the inventory page's hardcoded dummy items into `inventory_items` inserts
 for local dev (`checked_out_to` is left `null` since it's a real FK to `profiles` now and the
@@ -184,10 +247,14 @@ seed doesn't create fake auth users).
 column-level `GRANT`s can't be used to say "admins can edit column X, other users can't": the
 grant applies to `authenticated` as a whole. Where that distinction matters (e.g. `profiles.role`),
 the fix is a `SECURITY DEFINER` RPC that checks `current_user_role()` internally, not a raw
-table `UPDATE` gated by RLS alone. Follow `admin_set_user_role()` as the template. Two spots are
-flagged as deliberately deferred with this same issue: staff self-checkout on `inventory_items`
-and status-only updates on `tasks` — both currently allow the assignee/staff user to edit the
-whole row via RLS, not just the intended column(s).
+table `UPDATE` gated by RLS alone. Follow `admin_set_user_role()` as the template. Two spots that
+used to have this gap (a non-admin/manager user could edit a whole row via RLS, not just the
+intended column(s)) are now both closed: `inventory_items`'s column grant (from
+`add_inventory_item_retirement`) excludes `status`/`retirement_*`/`retired_*`, forcing those
+through the retirement RPCs; `tasks`'s "Assignees can update their own tasks" policy (which still
+granted a plain assignee `title`/`description`/`due_date`/`related_item_name`, not just `status`)
+was dropped in `close_task_assignee_column_gap` in favor of `update_task_status()`, mirroring
+`request_task_transfer()`'s shape.
 
 Regenerate `src/app/shared/models/database.types.ts` after any schema change with
 `npm run supabase:gen:types` (requires the project to be linked — see Commands above).

@@ -19,14 +19,18 @@
     @if (viewMode === 'create') {
       <form [formGroup]="taskForm" (ngSubmit)="submitTask()" class="manage-form">
         <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Title</mat-label>
           <mat-icon matPrefix>title</mat-icon>
-          <input matInput placeholder="Title" formControlName="title" />
+          <input matInput formControlName="title" />
+          @if (taskForm.controls.title.hasError('required')) {
+            <mat-error>Title is required.</mat-error>
+          }
         </mat-form-field>
         <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Related item (search by name or ID)</mat-label>
           <mat-icon matPrefix>inventory_2</mat-icon>
           <input
               matInput
-              placeholder="Related item (search by name or ID)"
               [formControl]="relatedItemSearchControl"
               [matAutocomplete]="relatedItemAuto"
             />
@@ -38,21 +42,24 @@
           </mat-autocomplete>
         </mat-form-field>
         <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Description</mat-label>
           <mat-icon matPrefix>notes</mat-icon>
-          <textarea matInput placeholder="Description" formControlName="description" rows="2"></textarea>
+          <textarea matInput formControlName="description" rows="2"></textarea>
         </mat-form-field>
         <div class="field-row">
           <mat-form-field appearance="outline">
+            <mat-label>Status</mat-label>
             <mat-icon matPrefix>flag</mat-icon>
-            <mat-select placeholder="Status" formControlName="status">
+            <mat-select formControlName="status">
               <mat-option value="todo">To do</mat-option>
               <mat-option value="in_progress">In progress</mat-option>
               <mat-option value="done">Done</mat-option>
             </mat-select>
           </mat-form-field>
           <mat-form-field appearance="outline">
+            <mat-label>Assign to</mat-label>
             <mat-icon matPrefix>person</mat-icon>
-            <mat-select placeholder="Assign to" formControlName="assignedTo">
+            <mat-select formControlName="assignedTo">
               <mat-option [value]="null">Unassigned</mat-option>
               @for (profile of assignableProfiles; track profile.id) {
                 <mat-option [value]="profile.id">{{ profileLabel(profile) }}</mat-option>
@@ -60,8 +67,9 @@
             </mat-select>
           </mat-form-field>
           <mat-form-field appearance="outline">
+            <mat-label>Due date</mat-label>
             <mat-icon matPrefix>event</mat-icon>
-            <input matInput [matDatepicker]="taskDueDatePicker" placeholder="Due date" formControlName="dueDate" />
+            <input matInput [matDatepicker]="taskDueDatePicker" formControlName="dueDate" />
             <mat-datepicker-toggle matSuffix [for]="taskDueDatePicker"></mat-datepicker-toggle>
             <mat-datepicker #taskDueDatePicker></mat-datepicker>
           </mat-form-field>
@@ -74,7 +82,7 @@
           <p class="success-message">Task created.</p>
         }
 
-        <button mat-flat-button color="primary" type="submit" [disabled]="taskForm.invalid || isSavingTask">
+        <button mat-flat-button color="primary" type="submit" [disabled]="isSavingTask">
           @if (isSavingTask) {
             <mat-spinner diameter="20"></mat-spinner>
           } @else {
@@ -130,7 +138,14 @@
         @if (isLoadingTasks) {
           <mat-spinner diameter="32"></mat-spinner>
         } @else if (filteredAllTasks.length === 0) {
-          <p class="empty-hint">No tasks match these filters.</p>
+          <app-empty-state icon="search_off" message="No tasks match these filters.">
+            @if (hasActiveTaskFilters) {
+              <button mat-stroked-button type="button" (click)="clearTaskFilters()">
+                <mat-icon>clear</mat-icon>
+                Clear filters
+              </button>
+            }
+          </app-empty-state>
         } @else {
           <div class="task-rows">
             @for (task of filteredAllTasks; track task.id) {
@@ -144,7 +159,7 @@
                   (keydown.enter)="openTaskDetail(task)"
                 >
                 <div class="task-row-main">
-                  <span class="task-row-title">{{ task.title }}</span>
+                  <span class="task-row-title" [title]="task.title">{{ task.title }}</span>
                   @if (task.related_item_name) {
                     <span class="task-row-item">
                       <mat-icon>inventory_2</mat-icon>

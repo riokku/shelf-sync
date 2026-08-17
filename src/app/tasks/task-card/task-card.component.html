@@ -9,7 +9,7 @@
     (keydown.space)="open.emit(task)"
   >
   <div class="task-row-main">
-    <span class="task-row-title">{{ task.title }}</span>
+    <span class="task-row-title" [title]="task.title">{{ task.title }}</span>
     @if (task.related_item_name) {
       <span class="task-row-item">
         <mat-icon>inventory_2</mat-icon>

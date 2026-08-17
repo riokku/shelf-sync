@@ -38,7 +38,11 @@ export class LoginComponent {
   errorMessage: string | null = null;
 
   async attemptLogin() {
-    if (this.form.invalid || this.isLoading) {
+    if (this.isLoading) {
+      return;
+    }
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
       return;
     }
 

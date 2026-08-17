@@ -13,12 +13,22 @@
       <form [formGroup]="form" (ngSubmit)="attemptLogin()">
         <div class="login-fields">
           <mat-form-field appearance="outline">
+            <mat-label>Email</mat-label>
             <mat-icon matPrefix>person</mat-icon>
-            <input matInput placeholder="Email" type="email" formControlName="email" />
+            <input matInput type="email" formControlName="email" />
+            @if (form.controls.email.hasError('required')) {
+              <mat-error>Email is required.</mat-error>
+            } @else if (form.controls.email.hasError('email')) {
+              <mat-error>Enter a valid email address.</mat-error>
+            }
           </mat-form-field>
           <mat-form-field appearance="outline">
+            <mat-label>Password</mat-label>
             <mat-icon matPrefix>lock</mat-icon>
-            <input matInput placeholder="Password" type="password" formControlName="password" />
+            <input matInput type="password" formControlName="password" />
+            @if (form.controls.password.hasError('required')) {
+              <mat-error>Password is required.</mat-error>
+            }
           </mat-form-field>
           @if (errorMessage) {
             <p class="error-message">{{ errorMessage }}</p>
@@ -28,7 +38,7 @@
             mat-flat-button
             color="primary"
             type="submit"
-            [disabled]="form.invalid || isLoading"
+            [disabled]="isLoading"
             >
             @if (isLoading) {
               <mat-spinner diameter="20"></mat-spinner>

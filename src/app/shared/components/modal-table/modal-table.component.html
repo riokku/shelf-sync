@@ -81,6 +81,13 @@
             <section class="info-section">
               <app-image-gallery [images]="data.images" [itemName]="data.name" />
             </section>
+          } @else {
+            <section class="info-section">
+              <div class="no-photos-placeholder">
+                <mat-icon>inventory_2</mat-icon>
+                <p>No photos yet</p>
+              </div>
+            </section>
           }
 
           <section class="info-section">
@@ -94,6 +101,9 @@
                   <mat-label>Name</mat-label>
                   <mat-icon matPrefix>title</mat-icon>
                   <input matInput formControlName="name" />
+                  @if (editForm.controls.name.hasError('required')) {
+                    <mat-error>Name is required.</mat-error>
+                  }
                 </mat-form-field>
               </div>
               <div class="edit-field-row">
@@ -187,16 +197,27 @@
                   <mat-label>Total</mat-label>
                   <mat-icon matPrefix>numbers</mat-icon>
                   <input matInput type="number" formControlName="quantityTotal" />
+                  @if (editForm.controls.quantityTotal.hasError('required')) {
+                    <mat-error>Required.</mat-error>
+                  } @else if (editForm.controls.quantityTotal.hasError('min')) {
+                    <mat-error>Can't be negative.</mat-error>
+                  }
                 </mat-form-field>
                 <mat-form-field appearance="outline">
                   <mat-label>Allocated</mat-label>
                   <mat-icon matPrefix>inventory</mat-icon>
                   <input matInput type="number" formControlName="quantityAllocated" />
+                  @if (editForm.controls.quantityAllocated.hasError('min')) {
+                    <mat-error>Can't be negative.</mat-error>
+                  }
                 </mat-form-field>
                 <mat-form-field appearance="outline">
                   <mat-label>Remaining</mat-label>
                   <mat-icon matPrefix>inventory_2</mat-icon>
                   <input matInput type="number" formControlName="quantityRemaining" />
+                  @if (editForm.controls.quantityRemaining.hasError('min')) {
+                    <mat-error>Can't be negative.</mat-error>
+                  }
                 </mat-form-field>
               </div>
               <div class="edit-field-row">
@@ -446,7 +467,7 @@
     <button mat-button type="button" (click)="cancelEdit()" [disabled]="isSaving">
       Cancel
     </button>
-    <button mat-flat-button color="primary" type="button" (click)="saveEdit()" [disabled]="editForm.invalid || isSaving">
+    <button mat-flat-button color="primary" type="button" (click)="saveEdit()" [disabled]="isSaving">
       @if (isSaving) {
         <mat-spinner diameter="20"></mat-spinner>
       } @else {

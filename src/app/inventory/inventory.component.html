@@ -105,7 +105,7 @@
       } @else if (inventoryList.length === 0) {
         <div class="row">
           <div class="col-12">
-            <p class="empty-hint">No inventory items yet.</p>
+            <app-empty-state icon="inventory_2" message="No inventory items yet." />
           </div>
         </div>
       } @else {
@@ -121,14 +121,12 @@
         @if (filteredInventoryList.length === 0) {
           <div class="row">
             <div class="col-12">
-              <div class="no-results">
-                <mat-icon class="no-results-icon">search_off</mat-icon>
-                <p>No items match your filters.</p>
+              <app-empty-state icon="search_off" message="No items match your filters.">
                 <button mat-stroked-button type="button" (click)="clearFilters()">
-                  <mat-icon class="clear-filters-icon">clear</mat-icon>
+                  <mat-icon>clear</mat-icon>
                   Clear filters
                 </button>
-              </div>
+              </app-empty-state>
             </div>
           </div>
         } @else {
@@ -138,7 +136,13 @@
               @for (item of pagedInventoryList; track item.id) {
                 <div class="col-12 col-md-6 col-lg-4 inventory-card">
                   <mat-card>
-                    <img mat-card-image alt="Card" src="{{item.image}}" [class.retired-image]="item.status === 'retired'" />
+                    @if (item.image) {
+                      <img mat-card-image [alt]="item.name" [src]="item.image" [class.retired-image]="item.status === 'retired'" />
+                    } @else {
+                      <div mat-card-image class="image-placeholder" [class.retired-image]="item.status === 'retired'">
+                        <mat-icon>inventory_2</mat-icon>
+                      </div>
+                    }
                     <div class="image-badges">
                       @if (item.status === 'retired') {
                         <span class="retired-badge">
@@ -176,8 +180,8 @@
                       }
                     </div>
                     <mat-card-header>
-                      <mat-card-title>{{item.name}}</mat-card-title>
-                      <mat-card-subtitle>{{item.category}}</mat-card-subtitle>
+                      <mat-card-title [title]="item.name">{{item.name}}</mat-card-title>
+                      <mat-card-subtitle [title]="item.category">{{item.category}}</mat-card-subtitle>
                     </mat-card-header>
                     <mat-card-content>
                       <p class="mb-0">

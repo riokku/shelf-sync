@@ -496,6 +496,13 @@ export type Database = {
         Args: { target_id: string; task_id: string }
         Returns: undefined
       }
+      update_task_status: {
+        Args: {
+          new_status: Database["public"]["Enums"]["task_status"]
+          task_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       membership_status: "pending" | "approved"

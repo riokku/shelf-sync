@@ -69,7 +69,11 @@ export class CreateTaskModalComponent implements OnInit {
   }
 
   async submit() {
-    if (this.taskForm.invalid || this.isSaving || !this.currentUserId) {
+    if (this.isSaving || !this.currentUserId) {
+      return;
+    }
+    if (this.taskForm.invalid) {
+      this.taskForm.markAllAsTouched();
       return;
     }
 

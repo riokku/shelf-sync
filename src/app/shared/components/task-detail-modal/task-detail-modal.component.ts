@@ -256,10 +256,14 @@ export class TaskDetailModalComponent implements OnInit {
     this.isSaving = true;
     this.error = null;
 
-    const { error } = await this.supabase
-      .from('tasks')
-      .update({ status: this.selectedStatus })
-      .eq('id', this.task.id);
+    // Goes through update_task_status() rather than a raw table update — a
+    // plain assignee (not admin/manager) no longer has any direct UPDATE
+    // access to tasks at all, only this RPC, which is column-scoped to
+    // status alone. See close_task_assignee_column_gap migration.
+    const { error } = await this.supabase.rpc('update_task_status', {
+      task_id: this.task.id,
+      new_status: this.selectedStatus
+    });
 
     this.isSaving = false;
 

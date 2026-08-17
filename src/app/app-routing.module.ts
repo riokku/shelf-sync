@@ -14,6 +14,7 @@ import { ManageTeamComponent } from './manage/team/manage-team.component';
 import { ManageDangerZoneComponent } from './manage/danger-zone/manage-danger-zone.component';
 import { CustomizeComponent } from './customize/customize.component';
 import { PendingApprovalComponent } from './pending-approval/pending-approval.component';
+import { NotFoundComponent } from './not-found/not-found.component';
 import { authGuard } from './core/guards/auth.guard';
 import { approvedGuard } from './core/guards/approved.guard';
 import { manageGuard } from './core/guards/manage.guard';
@@ -117,6 +118,17 @@ const routes: Routes = [
     canActivate: [approvedGuard, adminGuard],
     data: { breadcrumb: 'Customize' },
     title: 'ShelfSync | Customize'
+  },
+  // Catches any URL that doesn't match a route above — must stay last.
+  // Unguarded (reachable by a signed-out visitor too, see
+  // NotFoundComponent's own doc comment). Gets an explicit `title` like
+  // every other route above, precisely because Angular's TitleStrategy
+  // would otherwise leave the previously-visited page's title in place —
+  // confusing paired with a "page not found" body.
+  {
+    path: '**',
+    component: NotFoundComponent,
+    title: 'ShelfSync | Page not found'
   }
 ];
 

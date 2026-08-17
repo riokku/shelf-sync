@@ -20,12 +20,12 @@
     }
 
     @if (tasks.length === 0) {
-      <p>You have no tasks assigned to you.</p>
+      <app-empty-state icon="task_alt" message="You have no tasks assigned to you." />
     } @else {
       <section class="task-section">
         <h3>Not completed</h3>
         @if (incompleteTasks.length === 0) {
-          <p class="empty-hint">Nothing outstanding — nice work.</p>
+          <app-empty-state icon="celebration" message="Nothing outstanding — nice work." [compact]="true" />
         } @else {
           <div class="task-rows">
             @for (task of incompleteTasks; track task.id) {
@@ -38,7 +38,7 @@
       <section class="task-section">
         <h3>Completed</h3>
         @if (completedTasks.length === 0) {
-          <p class="empty-hint">No completed tasks yet.</p>
+          <app-empty-state icon="pending" message="No completed tasks yet." [compact]="true" />
         } @else {
           <div class="task-rows">
             @for (task of completedTasks; track task.id) {

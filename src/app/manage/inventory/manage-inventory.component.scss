@@ -117,11 +117,6 @@
   margin: -0.5rem 0 1rem;
 }
 
-.empty-hint{
-  color: var(--mat-sys-on-surface-variant);
-  font-size: 0.875rem;
-}
-
 .all-items-view{
   max-width: none;
 }
@@ -165,7 +160,11 @@
 }
 
 .task-row-title{
+  display: block;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .task-row-item{

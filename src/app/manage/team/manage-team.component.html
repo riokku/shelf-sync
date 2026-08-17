@@ -83,9 +83,14 @@
       @if (isLoadingTeam) {
         <mat-spinner diameter="32"></mat-spinner>
       } @else if (teamMembers.length === 0) {
-        <p class="empty-hint">No users found.</p>
+        <app-empty-state icon="group_off" message="No users found." />
       } @else if (filteredTeamMembers.length === 0) {
-        <p class="empty-hint">No team members match your search.</p>
+        <app-empty-state icon="search_off" message="No team members match your search.">
+          <button mat-stroked-button type="button" (click)="onTeamSearchChange('')">
+            <mat-icon>clear</mat-icon>
+            Clear search
+          </button>
+        </app-empty-state>
       } @else {
         <mat-accordion multi>
           @for (member of filteredTeamMembers; track member.profile.id) {

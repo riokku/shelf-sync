@@ -78,45 +78,43 @@
   padding: 3rem 0;
 }
 
-.empty-hint{
-  color: var(--mat-sys-on-surface-variant);
-  font-size: 0.875rem;
-}
-
-.no-results{
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 3rem 1rem;
-  text-align: center;
-  color: var(--mat-sys-on-surface-variant);
-
-  .no-results-icon{
-    font-size: 2.5rem;
-    width: 2.5rem;
-    height: 2.5rem;
-    opacity: 0.6;
-  }
-
-  .clear-filters-icon{
-    font-size: 1.125rem;
-    width: 1.125rem;
-    height: 1.125rem;
-  }
-
-  p{
-    margin: 0;
-    font-size: 0.9375rem;
-  }
-}
-
 .inventory-gallery-wrapper{
   row-gap: 1.5rem;
   .inventory-card{
     img{
       aspect-ratio: 16/9;
       object-fit: cover;
+    }
+
+    // Stands in for [mat-card-image] when an item has no photo of its own
+    // (inventory-item.mapper.ts falls back to an empty string) — a plain
+    // <img src=""> there would otherwise ask the browser to re-fetch the
+    // current page and render as a broken-image glyph in every card.
+    .image-placeholder{
+      aspect-ratio: 16/9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--mat-sys-surface-variant);
+
+      mat-icon{
+        font-size: 2.5rem;
+        width: 2.5rem;
+        height: 2.5rem;
+        color: var(--mat-sys-on-surface-variant);
+        opacity: 0.6;
+      }
+    }
+
+    // The description below already clamps to 3 lines (see mat-card-content
+    // p below) — the title/category line has no such treatment, so a long
+    // item name was the thing actually breaking the grid's even row heights.
+    mat-card-title,
+    mat-card-subtitle{
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   }
 }

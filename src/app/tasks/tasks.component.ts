@@ -7,13 +7,14 @@ import { Database } from '../shared/models/database.types';
 import { TaskDetailModalComponent } from '../shared/components/task-detail-modal/task-detail-modal.component';
 import { TaskCardComponent } from './task-card/task-card.component';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
+import { EmptyStateComponent } from '../shared/components/empty-state/empty-state.component';
 import { resolveProfileName } from '../shared/utils/profile-label';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
 
 @Component({
   selector: 'app-tasks',
-  imports: [MatProgressSpinnerModule, TaskCardComponent, BreadcrumbsComponent],
+  imports: [MatProgressSpinnerModule, TaskCardComponent, BreadcrumbsComponent, EmptyStateComponent],
   templateUrl: './tasks.component.html',
   styleUrl: './tasks.component.scss',
 })

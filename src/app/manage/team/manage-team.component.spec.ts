@@ -2,8 +2,9 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { ManageTeamComponent } from './manage-team.component';
-import { AuthService } from '../../core/auth.service';
-import { createFakeAuthService, createFakeProfile } from '../../testing/fakes';
+import { AuthService, Profile } from '../../core/auth.service';
+import { SupabaseService } from '../../core/supabase.service';
+import { createFakeAuthService, createFakeProfile, createFakeSupabaseService } from '../../testing/fakes';
 
 describe('ManageTeamComponent', () => {
   let component: ManageTeamComponent;
@@ -14,7 +15,10 @@ describe('ManageTeamComponent', () => {
       imports: [ManageTeamComponent],
       providers: [
         provideRouter([]),
-        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: 'admin' })) }
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: 'admin' })) },
+        // ngOnInit loads profiles/tasks/invite-link on construction — faked
+        // so this hits nothing real, same reasoning as every other spec.
+        { provide: SupabaseService, useValue: createFakeSupabaseService() }
       ]
     })
     .compileComponents();
@@ -26,5 +30,51 @@ describe('ManageTeamComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  describe('filteredTeamMembers', () => {
+    function memberOf(profile: Partial<Profile>) {
+      return {
+        profile: createFakeProfile(profile),
+        tasksByStatus: { todo: [], in_progress: [], done: [] }
+      };
+    }
+
+    beforeEach(() => {
+      component.teamMembers = [
+        memberOf({ id: 'user-1', full_name: 'Jane Doe', nickname: null }),
+        memberOf({ id: 'user-2', full_name: 'John Smith', nickname: 'Slugger' }),
+        memberOf({ id: 'user-3', full_name: 'Jamie Lee', nickname: null })
+      ];
+    });
+
+    it('returns every member when the search term is empty', () => {
+      expect(component.filteredTeamMembers.length).toBe(3);
+    });
+
+    it('matches by full name, case-insensitively', () => {
+      component.teamSearchTerm = 'doe';
+      expect(component.filteredTeamMembers.map(m => m.profile.id)).toEqual(['user-1']);
+    });
+
+    it('matches by nickname when the name itself does not match', () => {
+      component.teamSearchTerm = 'slugger';
+      expect(component.filteredTeamMembers.map(m => m.profile.id)).toEqual(['user-2']);
+    });
+
+    it('matches a shared substring across multiple members', () => {
+      component.teamSearchTerm = 'ja';
+      expect(component.filteredTeamMembers.map(m => m.profile.id)).toEqual(['user-1', 'user-3']);
+    });
+
+    it('returns nothing when no member matches', () => {
+      component.teamSearchTerm = 'nonexistent';
+      expect(component.filteredTeamMembers).toEqual([]);
+    });
+
+    it('trims surrounding whitespace on the search term', () => {
+      component.teamSearchTerm = '  doe  ';
+      expect(component.filteredTeamMembers.map(m => m.profile.id)).toEqual(['user-1']);
+    });
   });
 });

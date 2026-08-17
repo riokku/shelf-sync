@@ -51,7 +51,11 @@ export class EditProfileModalComponent {
   error: string | null = null;
 
   async save() {
-    if (this.form.invalid || this.isSaving) {
+    if (this.isSaving) {
+      return;
+    }
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
       return;
     }
 

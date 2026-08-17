@@ -48,6 +48,33 @@
   }
 }
 
+// Stands in for app-image-gallery when an item has no photos — previously
+// this section just didn't render at all, leaving no indication the empty
+// space above General information was intentional rather than a loading gap.
+.no-photos-placeholder{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 12rem;
+  border-radius: 0.5rem;
+  background: var(--mat-sys-surface-variant);
+  color: var(--mat-sys-on-surface-variant);
+
+  mat-icon{
+    font-size: 2.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    opacity: 0.6;
+  }
+
+  p{
+    margin: 0;
+    font-size: 0.875rem;
+  }
+}
+
 .edit-field-row{
   display: flex;
   flex-wrap: wrap;

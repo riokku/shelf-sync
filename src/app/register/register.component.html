@@ -70,32 +70,60 @@
                   <p class="error-message">This invite link is invalid or has expired. Create a new organization instead.</p>
                 }
                 <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Organization name</mat-label>
                   <mat-icon matPrefix>domain</mat-icon>
-                  <input matInput placeholder="Organization name" type="text" formControlName="organizationName" />
+                  <input matInput type="text" formControlName="organizationName" />
+                  @if (form.controls.organizationName.hasError('required')) {
+                    <mat-error>Organization name is required.</mat-error>
+                  }
                 </mat-form-field>
               }
               <div class="field-row">
                 <mat-form-field appearance="outline">
+                  <mat-label>Full name</mat-label>
                   <mat-icon matPrefix>badge</mat-icon>
-                  <input matInput placeholder="Full name" type="text" formControlName="fullName" />
+                  <input matInput type="text" formControlName="fullName" />
+                  @if (form.controls.fullName.hasError('required')) {
+                    <mat-error>Full name is required.</mat-error>
+                  }
                 </mat-form-field>
                 <mat-form-field appearance="outline">
+                  <mat-label>Nickname</mat-label>
                   <mat-icon matPrefix>face</mat-icon>
-                  <input matInput placeholder="Nickname" type="text" formControlName="nickname" />
+                  <input matInput type="text" formControlName="nickname" />
+                  @if (form.controls.nickname.hasError('required')) {
+                    <mat-error>Nickname is required.</mat-error>
+                  }
                 </mat-form-field>
               </div>
               <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Email</mat-label>
                 <mat-icon matPrefix>person</mat-icon>
-                <input matInput placeholder="Email" type="email" formControlName="email" />
+                <input matInput type="email" formControlName="email" />
+                @if (form.controls.email.hasError('required')) {
+                  <mat-error>Email is required.</mat-error>
+                } @else if (form.controls.email.hasError('email')) {
+                  <mat-error>Enter a valid email address.</mat-error>
+                }
               </mat-form-field>
               <div class="field-row">
                 <mat-form-field appearance="outline">
+                  <mat-label>Password</mat-label>
                   <mat-icon matPrefix>lock</mat-icon>
-                  <input matInput placeholder="Password" type="password" formControlName="password" />
+                  <input matInput type="password" formControlName="password" />
+                  @if (form.controls.password.hasError('required')) {
+                    <mat-error>Password is required.</mat-error>
+                  } @else if (form.controls.password.hasError('minlength')) {
+                    <mat-error>Password must be at least 6 characters.</mat-error>
+                  }
                 </mat-form-field>
                 <mat-form-field appearance="outline">
+                  <mat-label>Confirm</mat-label>
                   <mat-icon matPrefix>lock</mat-icon>
-                  <input matInput placeholder="Confirm" type="password" formControlName="confirmPassword" />
+                  <input matInput type="password" formControlName="confirmPassword" />
+                  @if (form.controls.confirmPassword.hasError('required')) {
+                    <mat-error>Please confirm your password.</mat-error>
+                  }
                 </mat-form-field>
               </div>
               @if (form.errors?.['passwordMismatch'] && form.controls.confirmPassword.touched) {
@@ -109,7 +137,7 @@
                 mat-flat-button
                 color="primary"
                 type="submit"
-                [disabled]="form.invalid || isLoading"
+                [disabled]="isLoading"
                 >
                 @if (isLoading) {
                   <mat-spinner diameter="20"></mat-spinner>

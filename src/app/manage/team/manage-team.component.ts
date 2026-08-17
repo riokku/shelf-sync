@@ -16,6 +16,7 @@ import { TaskCardComponent } from '../../tasks/task-card/task-card.component';
 import { TaskDetailModalComponent } from '../../shared/components/task-detail-modal/task-detail-modal.component';
 import { EditProfileModalComponent } from '../../shared/components/edit-profile-modal/edit-profile-modal.component';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
+import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { Database } from '../../shared/models/database.types';
 import { TASK_STATUSES, TASK_STATUS_LABELS, TaskStatus } from '../../shared/models/task-status';
 import { profileDisplayName } from '../../shared/utils/profile-label';
@@ -39,7 +40,8 @@ interface TeamMember {
     MatExpansionModule,
     BreadcrumbsComponent,
     UserAvatarComponent,
-    TaskCardComponent
+    TaskCardComponent,
+    EmptyStateComponent
   ],
   templateUrl: './manage-team.component.html',
   styleUrl: './manage-team.component.scss',

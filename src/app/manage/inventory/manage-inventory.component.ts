@@ -16,6 +16,8 @@ import { Profile } from '../../core/auth.service';
 import { InventoryFieldOptionsService } from '../../core/inventory-field-options.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { ModalTableComponent } from '../../shared/components/modal-table/modal-table.component';
+import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
+import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { Database } from '../../shared/models/database.types';
 import { ActivityLogEntry, MAX_INVENTORY_ITEM_IMAGES } from '../../shared/models/inventory-item.model';
 import { toIsoDateString } from '../../shared/utils/date';
@@ -42,7 +44,8 @@ type StatusFilter = 'active' | 'include_retired' | 'retired_only';
     MatIconModule,
     MatProgressSpinnerModule,
     MatDatepickerModule,
-    BreadcrumbsComponent
+    BreadcrumbsComponent,
+    EmptyStateComponent
   ],
   templateUrl: './manage-inventory.component.html',
   styleUrl: './manage-inventory.component.scss',
@@ -160,11 +163,30 @@ export class ManageInventoryComponent implements OnInit {
     return resolveProfileName(item.retirement_requested_by, this.assignableProfiles) || 'Unknown user';
   }
 
-  async approveRetirement(item: InventoryItemRow){
-    await this.runRetirementAction(
-      this.supabase.rpc('approve_item_retirement', { item_id: item.id }),
-      'Item retired'
-    );
+  // Confirmed first, unlike declineRetirement() below — this is the one
+  // that's actually irreversible (retires the item org-wide, no "cancel"
+  // the way a pending request has), same bar as ConfirmDialog's other
+  // danger: true uses (delete task, remove member).
+  approveRetirement(item: InventoryItemRow){
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Approve retirement?',
+        message: `Retire "${item.name}"? It'll be hidden from the default inventory view. This can't be undone.`,
+        confirmLabel: 'Approve',
+        danger: true
+      },
+      width: 'clamp(75%, 25rem, 60%)'
+    });
+
+    dialogRef.afterClosed().subscribe(async confirmed => {
+      if (!confirmed) {
+        return;
+      }
+      await this.runRetirementAction(
+        this.supabase.rpc('approve_item_retirement', { item_id: item.id }),
+        'Item retired'
+      );
+    });
   }
 
   async declineRetirement(item: InventoryItemRow){
@@ -249,7 +271,11 @@ export class ManageInventoryComponent implements OnInit {
   }
 
   async submitInventoryItem() {
-    if (this.inventoryForm.invalid || this.isSavingItem) {
+    if (this.isSavingItem) {
+      return;
+    }
+    if (this.inventoryForm.invalid) {
+      this.inventoryForm.markAllAsTouched();
       return;
     }
 

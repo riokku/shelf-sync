@@ -16,6 +16,7 @@ import { NotificationService } from '../../core/notification.service';
 import { AuthService, Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { UserAvatarComponent } from '../../shared/components/user-avatar/user-avatar.component';
+import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { TaskDetailModalComponent } from '../../shared/components/task-detail-modal/task-detail-modal.component';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { Database } from '../../shared/models/database.types';
@@ -42,7 +43,8 @@ type RelatedItemOption = Pick<Database['public']['Tables']['inventory_items']['R
     MatProgressSpinnerModule,
     MatDatepickerModule,
     BreadcrumbsComponent,
-    UserAvatarComponent
+    UserAvatarComponent,
+    EmptyStateComponent
   ],
   templateUrl: './manage-tasks.component.html',
   styleUrl: './manage-tasks.component.scss',
@@ -232,7 +234,11 @@ export class ManageTasksComponent implements OnInit {
   }
 
   async submitTask() {
-    if (this.taskForm.invalid || this.isSavingTask || !this.currentUserId) {
+    if (this.isSavingTask || !this.currentUserId) {
+      return;
+    }
+    if (this.taskForm.invalid) {
+      this.taskForm.markAllAsTouched();
       return;
     }
 
