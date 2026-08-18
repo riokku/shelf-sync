@@ -3,6 +3,8 @@ import { RouterModule, Routes } from '@angular/router';
 import { LandingComponent } from './landing/landing.component';
 import { LoginComponent } from './login/login.component';
 import { RegisterComponent } from './register/register.component';
+import { ForgotPasswordComponent } from './forgot-password/forgot-password.component';
+import { ResetPasswordComponent } from './reset-password/reset-password.component';
 import { HomeComponent } from './home/home.component';
 import { InventoryComponent } from './inventory/inventory.component';
 import { AccountComponent } from './account/account.component';
@@ -40,6 +42,16 @@ const routes: Routes = [
     path: 'register',
     component: RegisterComponent,
     title: 'ShelfSync | Sign up'
+  },
+  {
+    path: 'forgot-password',
+    component: ForgotPasswordComponent,
+    title: 'ShelfSync | Reset your password'
+  },
+  {
+    path: 'reset-password',
+    component: ResetPasswordComponent,
+    title: 'ShelfSync | Choose a new password'
   },
   {
     path: 'home',

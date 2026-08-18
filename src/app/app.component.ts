@@ -36,12 +36,12 @@ export class AppComponent {
   }
 
   /** Hides the header/footer chrome on the public/unauthenticated pages —
-   *  the marketing landing page plus login/register. Compares path only
-   *  (ignoring query params) so links like /register?org=<slug> still count
-   *  as the register page. */
+   *  the marketing landing page plus login/register/forgot-password/
+   *  reset-password. Compares path only (ignoring query params) so links
+   *  like /register?org=<slug> still count as the register page. */
   showChrome(): boolean {
     const path = this.router.url.split('?')[0];
-    return path !== '/' && path !== '/login' && path !== '/register';
+    return !['/', '/login', '/register', '/forgot-password', '/reset-password'].includes(path);
   }
 
 }

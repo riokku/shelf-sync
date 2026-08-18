@@ -62,6 +62,8 @@ export function createFakeAuthService(
     signUp: async () => ({ error: null, needsEmailConfirmation: false }),
     resolveOrganizationBySlug: async () => null,
     signOut: async () => {},
+    requestPasswordReset: async () => null,
+    updatePassword: async () => null,
   };
   return fake as unknown as AuthService;
 }
