@@ -13,7 +13,15 @@
       <mat-icon>home</mat-icon>
       Home
     </a>
-    <a mat-button routerLink="/inventory" routerLinkActive="active">
+    <a
+        mat-button
+        routerLink="/inventory"
+        routerLinkActive="active"
+        [matBadge]="lowStockCount()"
+        [matBadgeHidden]="lowStockCount() === 0"
+        matBadgeColor="warn"
+        [matTooltip]="lowStockCount() > 0 ? lowStockCount() + ' item(s) low or out of stock' : ''"
+      >
       <mat-icon>inventory_2</mat-icon>
       Inventory
     </a>
@@ -115,7 +123,15 @@
       <mat-icon>home</mat-icon>
       Home
     </a>
-    <a mat-button routerLink="/inventory" routerLinkActive="active">
+    <a
+        mat-button
+        routerLink="/inventory"
+        routerLinkActive="active"
+        class="mobile-menu-badge"
+        [matBadge]="lowStockCount()"
+        [matBadgeHidden]="lowStockCount() === 0"
+        matBadgeColor="warn"
+      >
       <mat-icon>inventory_2</mat-icon>
       Inventory
     </a>

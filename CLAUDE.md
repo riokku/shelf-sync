@@ -48,6 +48,15 @@ Password recovery (`/forgot-password`, `/reset-password`), Supabase-native clien
 assigned to someone (both `TaskDetailModalComponent` and task-creation) are all covered in detail
 in the Supabase Schema section below, next to the migrations that back them.
 
+Low/out-of-stock items were previously only a per-item badge you'd notice while already browsing
+Inventory — `HeaderComponent`'s Inventory nav link and `HomeComponent`'s Inventory card now also
+carry an aggregate "needs restocking" count (`shared/utils/inventory-stock.ts`'s
+`needsRestockAttention()`, combining low-stock and out-of-stock since the latter isn't strictly a
+subset of the former when no threshold is configured), visible to any authenticated user rather
+than gated to Manager+ the way the nearby pending-approvals badge is — restocking is everyone's
+concern, not an approval queue. Each loads its own count independently rather than sharing one
+service, matching how this app's other small badges already do the same.
+
 Inventory items can carry a `barcode` (manufacturer UPC/EAN scanned off a retail product, or a
 ShelfSync-generated QR label for an internal asset that never had one — see
 `shared/utils/barcode.ts`'s `buildItemQrValue()`/`parseItemQrValue()` for the encoding). The shared

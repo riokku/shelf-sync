@@ -27,6 +27,7 @@ import { resolveProfileAvatarKey, resolveProfileName } from '../../shared/utils/
 import { loadInventoryImagesByItemId, uploadInventoryItemImages } from '../../shared/utils/inventory-item-images';
 import { loadInventoryActivityByItemId } from '../../shared/utils/inventory-item-activity';
 import { parseItemQrValue } from '../../shared/utils/barcode';
+import { isRowLowStock, isRowOutOfStock } from '../../shared/utils/inventory-stock';
 
 type InventoryItemRow = Database['public']['Tables']['inventory_items']['Row'];
 type StatusFilter = 'active' | 'include_retired' | 'retired_only';
@@ -156,11 +157,11 @@ export class ManageInventoryComponent implements OnInit {
   }
 
   isInventoryItemLowStock(item: InventoryItemRow): boolean {
-    return item.low_quantity_threshold != null && item.quantity_remaining < item.low_quantity_threshold;
+    return isRowLowStock(item);
   }
 
   isInventoryItemOutOfStock(item: InventoryItemRow): boolean {
-    return item.quantity_remaining <= 0;
+    return isRowOutOfStock(item);
   }
 
   retirementRequesterLabel(item: InventoryItemRow): string {
