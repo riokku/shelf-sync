@@ -20,7 +20,9 @@ export class NotificationService {
     this.snackBar.openFromComponent<SuccessToastComponent, SuccessToastData>(SuccessToastComponent, {
       data: { message },
       duration: 3000,
-      panelClass: 'app-success-snackbar'
+      panelClass: 'app-success-snackbar',
+      horizontalPosition: 'end',
+      verticalPosition: 'bottom'
     });
   }
 }
