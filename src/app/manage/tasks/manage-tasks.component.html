@@ -61,7 +61,7 @@
             <mat-icon matPrefix>person</mat-icon>
             <mat-select formControlName="assignedTo">
               <mat-option [value]="null">Unassigned</mat-option>
-              @for (profile of assignableProfiles; track profile.id) {
+              @for (profile of approvedAssignableProfiles; track profile.id) {
                 <mat-option [value]="profile.id">{{ profileLabel(profile) }}</mat-option>
               }
             </mat-select>

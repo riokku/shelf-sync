@@ -86,8 +86,14 @@ export class TaskDetailModalComponent implements OnInit {
     return this.canManageTransfer && (!!this.task.pending_transfer_to || this.task.status !== 'done');
   }
 
+  // Excludes pending join requests as well as the current assignee —
+  // request_task_transfer() rejects an unapproved target server-side
+  // (see require_approved_task_transfer_target migration), so this keeps
+  // the dropdown from offering someone who can't yet accept it anyway.
   get transferablePeople(): Profile[] {
-    return this.orgProfiles.filter(profile => profile.id !== this.task.assigned_to);
+    return this.orgProfiles.filter(
+      profile => profile.id !== this.task.assigned_to && profile.membership_status === 'approved'
+    );
   }
 
   async ngOnInit() {

@@ -70,6 +70,17 @@ export class ManageTasksComponent implements OnInit {
   taskFilterStatus: TaskStatus | null = null;
   taskFilterDueBefore: Date | null = null;
 
+  // Excludes pending join requests — the insert policy rejects an
+  // unapproved assignee server-side (see require_approved_task_assignee
+  // migration), so this just keeps the "Assign to" dropdown from offering
+  // someone who can't act on the task yet. assignableProfiles itself stays
+  // unfiltered since it also backs the "Team member" filter dropdown
+  // (browsing existing tasks, not assigning a new one) and the
+  // assignee/pending-transfer label lookups above.
+  get approvedAssignableProfiles(): Profile[] {
+    return this.assignableProfiles.filter(profile => profile.membership_status === 'approved');
+  }
+
   get hasActiveTaskFilters(): boolean {
     return !!this.taskFilterSearch || !!this.taskFilterAssignee || !!this.taskFilterStatus || !!this.taskFilterDueBefore;
   }
