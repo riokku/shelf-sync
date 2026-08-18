@@ -91,6 +91,22 @@
   }
 }
 
+// Keeps the Scan button beside the (otherwise full-width) barcode field
+// instead of both stretching to their own row like every other
+// .edit-field-row pairing does. Comes after .edit-field-row so its
+// .full-width override actually wins (same specificity, source order).
+.barcode-edit-row{
+  align-items: flex-start;
+
+  .full-width{
+    flex: 1 1 auto;
+  }
+
+  button{
+    margin-top: 0.5rem;
+  }
+}
+
 .save-error{
   padding: 0 1.75rem;
 }

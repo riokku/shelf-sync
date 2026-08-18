@@ -25,6 +25,7 @@ export type InventoryItemStatus = 'active' | 'retirement_pending' | 'retired';
 export class InventoryItem {
   id: string;
   name: string;
+  barcode: string;
   description: string;
   image: string;
   images: string[];
@@ -59,6 +60,7 @@ export class InventoryItem {
   constructor(
     id: string,
     name: string,
+    barcode: string,
     description: string,
     image: string,
     images: string[],
@@ -95,6 +97,7 @@ export class InventoryItem {
 
     //Item information
     this.name = name;
+    this.barcode = barcode;
     this.description = description;
     this.image = image;
     this.images = images;

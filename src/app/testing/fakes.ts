@@ -125,6 +125,7 @@ export function createFakeMatDialogRef() {
 export function createTestInventoryItem(overrides: Partial<{
   id: string;
   name: string;
+  barcode: string;
   category: string;
   physicalLocation: string;
   quantityRemaining: number;
@@ -139,6 +140,7 @@ export function createTestInventoryItem(overrides: Partial<{
   return new InventoryItem(
     overrides.id ?? 'item-1',
     overrides.name ?? 'Test Item',
+    overrides.barcode ?? '',
     'A test item',
     '',
     [],
@@ -178,6 +180,7 @@ export function createTestInventoryItemRow(overrides: Partial<InventoryItemRow> 
   return {
     id: 'item-1',
     name: 'Test Item',
+    barcode: null,
     description: null,
     image: null,
     category: null,

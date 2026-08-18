@@ -197,6 +197,7 @@ export type Database = {
         Row: {
           activity_log: string | null
           applicable_year: string | null
+          barcode: string | null
           category: string | null
           checked_out_to: string | null
           created_at: string
@@ -230,6 +231,7 @@ export type Database = {
         Insert: {
           activity_log?: string | null
           applicable_year?: string | null
+          barcode?: string | null
           category?: string | null
           checked_out_to?: string | null
           created_at?: string
@@ -263,6 +265,7 @@ export type Database = {
         Update: {
           activity_log?: string | null
           applicable_year?: string | null
+          barcode?: string | null
           category?: string | null
           checked_out_to?: string | null
           created_at?: string

@@ -34,6 +34,7 @@ import {
 
 const FIELD_LABELS: Record<string, string> = {
   name: 'Name',
+  barcode: 'Barcode',
   category: 'Category',
   description: 'Description',
   physicalLocation: 'Physical location',
@@ -143,6 +144,7 @@ export class ModalTableComponent {
 
   editForm = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    barcode: new FormControl('', { nonNullable: true }),
     category: new FormControl('', { nonNullable: true }),
     description: new FormControl('', { nonNullable: true }),
     physicalLocation: new FormControl('', { nonNullable: true }),
@@ -170,6 +172,42 @@ export class ModalTableComponent {
     this.dialog.open(CreateTaskModalComponent, {
       data: { relatedItemName: this.data.name },
       width: 'clamp(30rem, 60vw, 40rem)',
+      maxWidth: '90vw'
+    });
+  }
+
+  /** Only offered from inside the edit form (barcode is a plain field like
+   *  any other, only ever changed through Save) — decodes straight into
+   *  editForm.barcode rather than writing this.data directly.
+   *
+   *  BarcodeScannerModalComponent/QrLabelModalComponent below are both
+   *  dynamically imported rather than top-level imports — the
+   *  @zxing/browser + @zxing/library decoding stack and the qrcode
+   *  generator are each only needed by whoever actually clicks Scan or
+   *  the label icon, so splitting them into their own lazy chunks keeps
+   *  that weight out of every item-detail-popup open's bundle. */
+  async scanBarcode(){
+    const { BarcodeScannerModalComponent } = await import('../barcode-scanner-modal/barcode-scanner-modal.component');
+    const dialogRef = this.dialog.open(BarcodeScannerModalComponent, {
+      width: 'clamp(24rem, 45vw, 30rem)',
+      maxWidth: '90vw'
+    });
+
+    dialogRef.afterClosed().subscribe((code: string | undefined) => {
+      if (code) {
+        this.editForm.controls.barcode.setValue(code);
+      }
+    });
+  }
+
+  /** Read-only regardless of edit mode — generating a label doesn't change
+   *  the item, it's just a printable rendering of its id (see
+   *  shared/utils/barcode.ts), so there's no reason to gate it on Edit. */
+  async openQrLabel(){
+    const { QrLabelModalComponent } = await import('../qr-label-modal/qr-label-modal.component');
+    this.dialog.open(QrLabelModalComponent, {
+      data: { itemId: this.data.id, itemName: this.data.name },
+      width: 'clamp(20rem, 40vw, 26rem)',
       maxWidth: '90vw'
     });
   }
@@ -422,6 +460,7 @@ export class ModalTableComponent {
     this.saveError = null;
     this.editForm.setValue({
       name: this.data.name,
+      barcode: this.data.barcode,
       category: this.data.category,
       description: this.data.description,
       physicalLocation: this.data.physicalLocation,
@@ -524,6 +563,7 @@ export class ModalTableComponent {
 
     const { error } = await this.supabase.from('inventory_items').update({
       name: value.name,
+      barcode: value.barcode || null,
       category: value.category || null,
       description: value.description || null,
       physical_location: value.physicalLocation || null,
@@ -552,6 +592,7 @@ export class ModalTableComponent {
 
     Object.assign(this.data, {
       name: value.name,
+      barcode: value.barcode,
       category: value.category,
       description: value.description,
       physicalLocation: value.physicalLocation,
@@ -649,6 +690,7 @@ export class ModalTableComponent {
   private describeChanges(value: ReturnType<ModalTableComponent['editForm']['getRawValue']>): string[] {
     const before: Record<string, unknown> = {
       name: this.data.name,
+      barcode: this.data.barcode,
       category: this.data.category,
       description: this.data.description,
       physicalLocation: this.data.physicalLocation,

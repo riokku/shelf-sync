@@ -46,6 +46,20 @@
                 }
               </mat-select>
             </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Barcode</mat-label>
+              <mat-icon matPrefix>barcode_reader</mat-icon>
+              <input matInput formControlName="barcode" placeholder="Scan or type" />
+              <button
+                  mat-icon-button
+                  matSuffix
+                  type="button"
+                  matTooltip="Scan a barcode or QR code"
+                  (click)="scanBarcodeForNewItem()"
+                >
+                <mat-icon>qr_code_scanner</mat-icon>
+              </button>
+            </mat-form-field>
           </div>
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Description</mat-label>

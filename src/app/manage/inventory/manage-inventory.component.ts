@@ -9,6 +9,7 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
 import { SupabaseService } from '../../core/supabase.service';
 import { NotificationService } from '../../core/notification.service';
@@ -25,6 +26,7 @@ import { toInventoryItem } from '../../shared/utils/inventory-item.mapper';
 import { resolveProfileAvatarKey, resolveProfileName } from '../../shared/utils/profile-label';
 import { loadInventoryImagesByItemId, uploadInventoryItemImages } from '../../shared/utils/inventory-item-images';
 import { loadInventoryActivityByItemId } from '../../shared/utils/inventory-item-activity';
+import { parseItemQrValue } from '../../shared/utils/barcode';
 
 type InventoryItemRow = Database['public']['Tables']['inventory_items']['Row'];
 type StatusFilter = 'active' | 'include_retired' | 'retired_only';
@@ -44,6 +46,7 @@ type StatusFilter = 'active' | 'include_retired' | 'retired_only';
     MatIconModule,
     MatProgressSpinnerModule,
     MatDatepickerModule,
+    MatTooltipModule,
     BreadcrumbsComponent,
     EmptyStateComponent
   ],
@@ -99,6 +102,7 @@ export class ManageInventoryComponent implements OnInit {
 
   inventoryForm = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    barcode: new FormControl('', { nonNullable: true }),
     category: new FormControl('', { nonNullable: true }),
     description: new FormControl('', { nonNullable: true }),
     physicalLocation: new FormControl('', { nonNullable: true }),
@@ -238,6 +242,49 @@ export class ManageInventoryComponent implements OnInit {
     dialogRef.afterClosed().subscribe(() => this.loadInventoryItems());
   }
 
+  /** Scans either a manufacturer barcode (matched against
+   *  inventory_items.barcode) or a ShelfSync-generated QR label (matched
+   *  by item id — see shared/utils/barcode.ts). A match opens that item's
+   *  detail instead of prefilling the create form, so scanning something
+   *  you already have in inventory can't create an accidental duplicate;
+   *  no match prefills the new item's barcode field and lets the person
+   *  keep filling in the rest. Checked against allInventoryItems (already
+   *  loaded for the "All Inventory" tab) rather than a fresh query.
+   *
+   *  BarcodeScannerModalComponent is dynamically imported rather than a
+   *  top-level import — it (and the @zxing/browser + @zxing/library
+   *  decoding stack behind it) is only needed by whoever actually clicks
+   *  Scan, so splitting it into its own lazy chunk keeps that ~500kb+ out
+   *  of every visit's initial bundle. */
+  async scanBarcodeForNewItem() {
+    const { BarcodeScannerModalComponent } = await import(
+      '../../shared/components/barcode-scanner-modal/barcode-scanner-modal.component'
+    );
+    const dialogRef = this.dialog.open(BarcodeScannerModalComponent, {
+      width: 'clamp(24rem, 45vw, 30rem)',
+      maxWidth: '90vw'
+    });
+
+    dialogRef.afterClosed().subscribe((code: string | undefined) => {
+      if (!code) {
+        return;
+      }
+
+      const scannedItemId = parseItemQrValue(code);
+      const existing = scannedItemId
+        ? this.allInventoryItems.find(item => item.id === scannedItemId)
+        : this.allInventoryItems.find(item => item.barcode === code);
+
+      if (existing) {
+        this.notification.success(`"${existing.name}" is already in inventory — opening it.`);
+        this.openInventoryDetail(existing);
+        return;
+      }
+
+      this.inventoryForm.controls.barcode.setValue(code);
+    });
+  }
+
   onImagesSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     const files = Array.from(input.files ?? []);
@@ -286,6 +333,7 @@ export class ManageInventoryComponent implements OnInit {
     const value = this.inventoryForm.getRawValue();
     const { data: inserted, error } = await this.supabase.from('inventory_items').insert({
       name: value.name,
+      barcode: value.barcode || null,
       category: value.category || null,
       description: value.description || null,
       physical_location: value.physicalLocation || null,

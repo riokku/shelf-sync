@@ -1,0 +1,32 @@
+<h2 mat-dialog-title>
+  <mat-icon class="scanner-title-icon">qr_code_scanner</mat-icon>
+  Scan a barcode or QR code
+</h2>
+<mat-dialog-content>
+  @if (cameraError) {
+    <p class="camera-error">
+      <mat-icon>videocam_off</mat-icon>
+      {{ cameraError }} You can still type the code in below.
+    </p>
+  } @else {
+    <div class="scanner-video-wrapper">
+      <video [id]="videoElementId" class="scanner-video"></video>
+      <div class="scanner-frame" aria-hidden="true"></div>
+    </div>
+    <p class="scanner-hint">Point the camera at a barcode or QR code.</p>
+  }
+
+  <form [formGroup]="manualForm" (ngSubmit)="submitManualCode()" class="manual-entry-form">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Or type the code</mat-label>
+      <mat-icon matPrefix>keyboard</mat-icon>
+      <input matInput formControlName="code" />
+    </mat-form-field>
+    <button mat-stroked-button type="submit" [disabled]="!manualForm.controls.code.value.trim()">
+      Use this code
+    </button>
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="cancel()">Cancel</button>
+</mat-dialog-actions>

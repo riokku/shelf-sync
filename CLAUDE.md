@@ -43,6 +43,24 @@ for the load/preview/persist logic. `AppComponent` loads settings once on startu
 `anon` too, so branding applies pre-login) and `HeaderComponent` swaps in the custom logo when set,
 falling back to the default SS mark.
 
+Password recovery (`/forgot-password`, `/reset-password`), Supabase-native client error logging
+(`GlobalErrorHandler`), and requiring approved org membership before a task can be transferred or
+assigned to someone (both `TaskDetailModalComponent` and task-creation) are all covered in detail
+in the Supabase Schema section below, next to the migrations that back them.
+
+Inventory items can carry a `barcode` (manufacturer UPC/EAN scanned off a retail product, or a
+ShelfSync-generated QR label for an internal asset that never had one — see
+`shared/utils/barcode.ts`'s `buildItemQrValue()`/`parseItemQrValue()` for the encoding). The shared
+`BarcodeScannerModalComponent` (camera scan via `@zxing/browser`, with an always-available
+manual-entry fallback for devices/situations where the camera isn't an option) is used from two
+places: `ManageInventoryComponent`'s create form scans first and checks the result against the
+already-loaded inventory list — a match opens that item's existing detail instead of prefilling a
+new one, so scanning something already in inventory can't create an accidental duplicate; a
+non-match prefills the new item's barcode field. `ModalTableComponent`'s edit flow can (re)scan an
+existing item's barcode the same way. The shared `QrLabelModalComponent` (QR rendered client-side
+via the `qrcode` package) generates a printable/downloadable label encoding an item's id for
+assets with no manufacturer barcode — scanning that label later resolves straight back to the item.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -131,6 +149,7 @@ shared/
   utils/inventory-item-images.ts   # loadInventoryImagesByItemId() / uploadInventoryItemImages() / deleteInventoryItemImage()
   utils/inventory-item-activity.ts # loadInventoryActivityByItemId() / logInventoryItemActivity() — inventory_item_activity
   utils/profile-label.ts     # profileDisplayName()/resolveProfileName() — shared profiles-array lookup
+  utils/barcode.ts           # buildItemQrValue()/parseItemQrValue() — ShelfSync's own QR-label encoding
   styles/_auth-shell.scss   # shared full-page video-background shell; login/register `@use` it
                              # rather than duplicating — add new shared auth-page styles here
 ```
@@ -237,6 +256,41 @@ yet on a hard refresh of `/inventory`.
   touching this (`TaskDetailModalComponent.saveStatus()`) ever sends `status`. Drops that policy
   and adds `update_task_status()`, a SECURITY DEFINER RPC mirroring `request_task_transfer()`'s
   shape, as the only way a plain assignee can change a task now.
+- `require_approved_task_transfer_target` / `require_approved_task_assignee` — close a pair of
+  matching gaps: `request_task_transfer()` and the "Admins and managers can create tasks for
+  anyone" INSERT policy both checked that a target/assignee profile belonged to the caller's
+  organization, but never that they were an *approved* member of it — a pending join request is a
+  real `profiles` row with `organization_id` set, so it passed. Both are now enforced (RPC check /
+  RLS `exists` subquery, respectively), with matching client-side dropdown filters
+  (`transferablePeople` in `TaskDetailModalComponent`, `approvedAssignableProfiles` in
+  `ManageTasksComponent`, the filtered list in `CreateTaskModalComponent`) so the UI doesn't offer
+  someone who'd just get rejected server-side anyway.
+- `fix_task_transfer_org_null_check` — a same-day follow-up: adding the target-approval check
+  above required a full `create or replace function` on `request_task_transfer()`, which silently
+  dropped the `current_user_org_id() is null or` null-safety guard `fix_org_isolation_bugs` had
+  added to this exact function days earlier (see that entry above for why the guard exists).
+  Caught by a follow-up `/security-review` pass; restored to match the still-correct
+  `cancel`/`accept`/`decline_task_transfer` siblings, which the regressing migration never
+  touched. Worth remembering as a pattern: any migration that does `create or replace function` on
+  an existing SECURITY DEFINER RPC needs to be diffed against the *previous* version of that
+  function, not just reviewed for the change being added — it's easy to silently drop an
+  unrelated safety check that was already there.
+- `add_client_error_log` — Supabase-native error tracking (no third-party service): adds
+  `client_error_log` (readable only by an approved admin/manager for their own org) and
+  `log_client_error()`, a SECURITY DEFINER RPC granted to `anon` and `authenticated` alike (a
+  crash can happen before sign-in) that derives `user_id`/`organization_id` server-side from
+  `auth.uid()` rather than trusting them from the client. `GlobalErrorHandler`
+  (`core/global-error-handler.ts`, registered as the app's `ErrorHandler` in `AppModule`)
+  fire-and-forgets every uncaught client exception here. Errors logged pre-auth land with
+  `organization_id` null and aren't exposed in-app — there's no cross-org "platform admin" role in
+  this schema — so those are Studio-only for now, same as the rest of this table in v1.
+- `add_inventory_item_barcode` — adds `inventory_items.barcode` (nullable, unique per organization
+  via a partial index on `(organization_id, barcode) where barcode is not null`), plus an
+  additive `grant update (barcode)` since `add_inventory_item_retirement` gave `inventory_items` a
+  column-scoped UPDATE grant rather than a flat one — any new writable column needs its own grant
+  or it silently fails to save despite passing RLS. Backs the barcode/QR scanning feature (see
+  Project Overview above): a manufacturer barcode scanned off a retail product, or a
+  ShelfSync-generated QR label for an item that never had one, both resolve to this one column.
 
 `supabase/seed.sql` ports the inventory page's hardcoded dummy items into `inventory_items` inserts
 for local dev (`checked_out_to` is left `null` since it's a real FK to `profiles` now and the
