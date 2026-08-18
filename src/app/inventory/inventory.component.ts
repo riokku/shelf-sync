@@ -140,6 +140,31 @@ export class InventoryComponent implements OnInit{
     return [...new Set(values.filter(value => !!value))].sort();
   }
 
+  /** A search-within-the-filter-panel box only earns its keep once there's
+   *  actually enough options to make scanning them by eye annoying — below
+   *  this, the checkbox list alone is faster than typing. */
+  readonly filterOptionSearchThreshold = 8;
+
+  categoryOptionSearch = '';
+  physicalLocationOptionSearch = '';
+
+  get filteredCategoryFilterOptions(): string[] {
+    return this.searchWithin(this.categoryFilterOptions, this.categoryOptionSearch);
+  }
+
+  get filteredPhysicalLocationFilterOptions(): string[] {
+    return this.searchWithin(this.physicalLocationFilterOptions, this.physicalLocationOptionSearch);
+  }
+
+  /** Narrows an *already-loaded* options list by a locally-typed search
+   *  term — this never touches selectedCategories/selectedPhysicalLocations
+   *  or filteredInventoryList, it only changes which checkboxes are shown
+   *  to pick from, same as scrolling would. */
+  private searchWithin(options: string[], term: string): string[] {
+    const search = term.trim().toLowerCase();
+    return search ? options.filter(option => option.toLowerCase().includes(search)) : options;
+  }
+
   private stockLevelOf(item: InventoryItem): StockLevel {
     if (item.quantityRemaining <= 0) {
       return 'out_of_stock';
@@ -162,6 +187,8 @@ export class InventoryComponent implements OnInit{
     this.selectedStockLevels = [];
     this.selectedCategories = [];
     this.selectedPhysicalLocations = [];
+    this.categoryOptionSearch = '';
+    this.physicalLocationOptionSearch = '';
     this.searchTerm = '';
     this.statusFilter = 'active';
     this.pageIndex = 0;

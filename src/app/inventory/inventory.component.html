@@ -21,9 +21,27 @@
   <div class="row">
     <div class="col-12 col-md-4 col-lg-3">
       <div class="filter-wrapper">
-        <h3>
-          Filter
-        </h3>
+        <div class="filter-heading-row">
+          <h3>Filter</h3>
+          <!-- Always rendered (never @if) rather than only when
+               hasActiveFilters — this row's height is set by whichever
+               child is taller, and toggling the button's whole DOM
+               presence made the "Filter" heading visibly shift up/down as
+               filters were applied/cleared. visibility (not @if) keeps its
+               box reserved either way; it's already unclickable/unfocusable
+               and hidden from screen readers while hasActiveFilters is
+               false, so no extra [disabled]/aria work is needed on top. -->
+          <button
+              mat-button
+              type="button"
+              class="clear-filters-button"
+              [style.visibility]="hasActiveFilters ? 'visible' : 'hidden'"
+              (click)="clearFilters()"
+            >
+            <mat-icon>clear</mat-icon>
+            Clear filters
+          </button>
+        </div>
         <mat-accordion multi>
           <mat-expansion-panel>
             <mat-expansion-panel-header>
@@ -59,13 +77,23 @@
             @if (categoryFilterOptions.length === 0) {
               <p class="empty-filter-hint">No categories set on any items yet.</p>
             } @else {
-              @for (option of categoryFilterOptions; track option) {
-                <div>
-                  <mat-checkbox
-                      [checked]="selectedCategories.includes(option)"
-                      (change)="toggleCategory(option, $event.checked)"
-                    >{{ option }}</mat-checkbox>
-                </div>
+              @if (categoryFilterOptions.length > filterOptionSearchThreshold) {
+                <mat-form-field appearance="outline" class="option-search-field">
+                  <mat-icon matPrefix>search</mat-icon>
+                  <input matInput placeholder="Search categories" [(ngModel)]="categoryOptionSearch" />
+                </mat-form-field>
+              }
+              @if (filteredCategoryFilterOptions.length === 0) {
+                <p class="empty-filter-hint">No categories match "{{ categoryOptionSearch }}".</p>
+              } @else {
+                @for (option of filteredCategoryFilterOptions; track option) {
+                  <div>
+                    <mat-checkbox
+                        [checked]="selectedCategories.includes(option)"
+                        (change)="toggleCategory(option, $event.checked)"
+                      >{{ option }}</mat-checkbox>
+                  </div>
+                }
               }
             }
           </mat-expansion-panel>
@@ -76,23 +104,27 @@
             @if (physicalLocationFilterOptions.length === 0) {
               <p class="empty-filter-hint">No physical locations set on any items yet.</p>
             } @else {
-              @for (option of physicalLocationFilterOptions; track option) {
-                <div>
-                  <mat-checkbox
-                      [checked]="selectedPhysicalLocations.includes(option)"
-                      (change)="togglePhysicalLocation(option, $event.checked)"
-                    >{{ option }}</mat-checkbox>
-                </div>
+              @if (physicalLocationFilterOptions.length > filterOptionSearchThreshold) {
+                <mat-form-field appearance="outline" class="option-search-field">
+                  <mat-icon matPrefix>search</mat-icon>
+                  <input matInput placeholder="Search physical locations" [(ngModel)]="physicalLocationOptionSearch" />
+                </mat-form-field>
+              }
+              @if (filteredPhysicalLocationFilterOptions.length === 0) {
+                <p class="empty-filter-hint">No physical locations match "{{ physicalLocationOptionSearch }}".</p>
+              } @else {
+                @for (option of filteredPhysicalLocationFilterOptions; track option) {
+                  <div>
+                    <mat-checkbox
+                        [checked]="selectedPhysicalLocations.includes(option)"
+                        (change)="togglePhysicalLocation(option, $event.checked)"
+                      >{{ option }}</mat-checkbox>
+                  </div>
+                }
               }
             }
           </mat-expansion-panel>
         </mat-accordion>
-        @if (hasActiveFilters) {
-          <button mat-button type="button" class="clear-filters-button" (click)="clearFilters()">
-            <mat-icon>clear</mat-icon>
-            Clear filters
-          </button>
-        }
       </div>
     </div>
     <div class="col-12 col-md-8 col-lg-9">

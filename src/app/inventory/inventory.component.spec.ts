@@ -165,6 +165,43 @@ describe('InventoryComponent', () => {
     });
   });
 
+  describe('filteredCategoryFilterOptions / filteredPhysicalLocationFilterOptions', () => {
+    beforeEach(() => {
+      component.inventoryList = [
+        createTestInventoryItem({ id: '1', category: 'Tools', physicalLocation: 'Warehouse B' }),
+        createTestInventoryItem({ id: '2', category: 'Electronics', physicalLocation: 'Warehouse A' })
+      ];
+    });
+
+    it('returns every option when no search term is set', () => {
+      expect(component.filteredCategoryFilterOptions).toEqual(['Electronics', 'Tools']);
+    });
+
+    it('narrows options by a case-insensitive, partial search term', () => {
+      component.categoryOptionSearch = 'tool';
+      expect(component.filteredCategoryFilterOptions).toEqual(['Tools']);
+
+      component.physicalLocationOptionSearch = 'WAREHOUSE B';
+      expect(component.filteredPhysicalLocationFilterOptions).toEqual(['Warehouse B']);
+    });
+
+    it('returns an empty list when nothing matches, without touching the underlying options', () => {
+      component.categoryOptionSearch = 'nonexistent';
+      expect(component.filteredCategoryFilterOptions).toEqual([]);
+      expect(component.categoryFilterOptions).toEqual(['Electronics', 'Tools']);
+    });
+
+    it('clearFilters resets both search terms', () => {
+      component.categoryOptionSearch = 'tool';
+      component.physicalLocationOptionSearch = 'warehouse';
+
+      component.clearFilters();
+
+      expect(component.categoryOptionSearch).toBe('');
+      expect(component.physicalLocationOptionSearch).toBe('');
+    });
+  });
+
   describe('toggleStockLevel / toggleCategory / togglePhysicalLocation', () => {
     it('adds a value when checked and removes it when unchecked', () => {
       component.toggleStockLevel('low_stock', true);
