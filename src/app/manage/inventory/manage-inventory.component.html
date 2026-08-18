@@ -53,11 +53,12 @@
             <textarea matInput formControlName="description" rows="2"></textarea>
           </mat-form-field>
           <div class="image-upload-field">
-            <label class="image-upload-label">
+            <label class="image-upload-label" for="inventory-item-photos-input">
               <mat-icon>image</mat-icon>
               Photos (up to {{ maxInventoryItemImages }})
             </label>
             <input
+                id="inventory-item-photos-input"
                 type="file"
                 accept="image/*"
                 multiple
@@ -243,7 +244,7 @@
                   {{ item.quantity_remaining }} / {{ item.quantity_total }} remaining
                 </span>
                 <span class="task-row-due">
-                  @if (item.price_per_unit != null) {
+                  @if (item.price_per_unit !== null) {
                     <mat-icon>attach_money</mat-icon>
                     {{ item.price_per_unit | currency }} / unit
                   } @else {

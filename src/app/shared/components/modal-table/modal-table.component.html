@@ -37,11 +37,12 @@
         <div class="tab-panel">
           @if (isEditing) {
             <section class="info-section">
-              <label class="image-upload-label">
+              <label class="image-upload-label" for="item-detail-photos-input">
                 <mat-icon>image</mat-icon>
                 Photos (up to {{ maxInventoryItemImages }})
               </label>
               <input
+                  id="item-detail-photos-input"
                   type="file"
                   accept="image/*"
                   multiple

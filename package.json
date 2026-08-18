@@ -14,7 +14,8 @@
     "supabase:migration:new": "supabase migration new",
     "supabase:link": "supabase link",
     "supabase:push": "supabase db push --linked",
-    "supabase:gen:types": "supabase gen types typescript --linked > src/app/shared/models/database.types.ts"
+    "supabase:gen:types": "supabase gen types typescript --linked > src/app/shared/models/database.types.ts",
+    "lint": "ng lint"
   },
   "private": true,
   "dependencies": {
@@ -38,8 +39,11 @@
     "@angular-devkit/build-angular": "^21.2.18",
     "@angular/cli": "~21.2.18",
     "@angular/compiler-cli": "^21.2.17",
+    "@eslint/js": "^10.0.1",
     "@types/jasmine": "~4.3.0",
     "@types/node": "^26.1.1",
+    "angular-eslint": "21.4.0",
+    "eslint": "^10.3.0",
     "jasmine-core": "~4.5.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.1.0",
@@ -47,6 +51,7 @@
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.0.0",
     "supabase": "^2.109.1",
-    "typescript": "~5.9.3"
+    "typescript": "~5.9.3",
+    "typescript-eslint": "8.59.2"
   }
 }

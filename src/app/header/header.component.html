@@ -87,6 +87,11 @@
      so the transform transition below can animate both the open *and*
      close direction — [attr.inert] disables it (focus, clicks, everything)
      while closed instead, rather than removing it outright. -->
+<!-- Click-to-dismiss convenience only, same as a CDK overlay/native dialog
+     backdrop — the drawer's own nav links and a dedicated close control
+     (both real, focusable, keyboard-operable elements) are the accessible
+     way to close it, so this doesn't need its own keyboard handler. -->
+<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
 <div class="mobile-nav-backdrop" [class.open]="isMobileMenuOpen()" (click)="closeMobileMenu()"></div>
 <div
     class="mobile-nav-drawer"
