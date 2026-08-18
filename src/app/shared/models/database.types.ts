@@ -39,6 +39,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      client_error_log: {
+        Row: {
+          app_env: string | null
+          created_at: string
+          id: string
+          message: string
+          organization_id: string | null
+          stack: string | null
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          app_env?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          organization_id?: string | null
+          stack?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          app_env?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          organization_id?: string | null
+          stack?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_error_log_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_error_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_field_options: {
         Row: {
           created_at: string
@@ -487,6 +538,16 @@ export type Database = {
       }
       decline_item_retirement: { Args: { item_id: string }; Returns: undefined }
       decline_task_transfer: { Args: { task_id: string }; Returns: undefined }
+      log_client_error: {
+        Args: {
+          p_app_env?: string
+          p_message: string
+          p_stack?: string
+          p_url?: string
+          p_user_agent?: string
+        }
+        Returns: undefined
+      }
       purge_expired_organizations: { Args: never; Returns: undefined }
       request_item_retirement: {
         Args: { item_id: string; note?: string }
