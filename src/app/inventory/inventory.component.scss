@@ -124,6 +124,103 @@
   padding: 3rem 0;
 }
 
+.inventory-header-wrapper{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+
+  p{
+    margin: 0;
+  }
+}
+
+.view-mode-toggle{
+  flex-shrink: 0;
+  margin-bottom: 1rem;
+
+  mat-icon{
+    margin-right: 0.25rem;
+    font-size: 1.125rem;
+    width: 1.125rem;
+    height: 1.125rem;
+    vertical-align: text-bottom;
+  }
+}
+
+// Wide tables must scroll inside their own container rather than the page
+// — this is the one thing standing between "table view is fine on a wide
+// monitor" and "table view breaks the whole page's layout on a narrower
+// one", since Physical location + Category + Status all add up fast.
+.table-wrapper{
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+}
+
+table[mat-table]{
+  width: 100%;
+  background: transparent;
+
+  th.mat-mdc-header-cell{
+    background: var(--mat-sys-surface-container);
+    color: var(--mat-sys-on-surface-variant);
+    font-weight: 600;
+  }
+
+  tr.mat-mdc-row:hover{
+    background: var(--mat-sys-surface-container-low);
+  }
+}
+
+// Same visual weight card view gives a retired item's image (dimmed) —
+// the table's own equivalent, on the one cell most likely to be scanned
+// first when skimming a dense list.
+.retired-row-cell{
+  color: var(--mat-sys-on-surface-variant);
+  font-style: italic;
+}
+
+// Same pill shape (padding/radius/size) modal-table.component.scss's own
+// .status-pill already uses — same convention, different component, so
+// duplicated here rather than sharing a class across two otherwise-
+// unrelated components' stylesheets.
+.table-status-pill{
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.table-status-available{
+  background: var(--app-success-bg);
+  color: var(--app-success-on-bg);
+}
+
+.table-status-checked-out{
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+}
+
+.table-status-low-stock,
+.table-status-pending-retirement{
+  background: var(--app-warning-bg);
+  color: var(--app-warning-on-bg);
+}
+
+.table-status-out-of-stock{
+  background: var(--app-danger-bg);
+  color: var(--app-danger-on-bg);
+}
+
+.table-status-retired{
+  background: var(--mat-sys-surface-variant);
+  color: var(--mat-sys-on-surface-variant);
+}
+
 .inventory-gallery-wrapper{
   row-gap: 1.5rem;
   .inventory-card{

@@ -9,8 +9,11 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatTableModule } from '@angular/material/table';
+import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute } from '@angular/router';
 import { InventoryItem, isLowStock, isOutOfStock } from '../shared/models/inventory-item.model';
@@ -18,6 +21,8 @@ import { ModalTableComponent } from '../shared/components/modal-table/modal-tabl
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 import { EmptyStateComponent } from '../shared/components/empty-state/empty-state.component';
 import { SupabaseService } from '../core/supabase.service';
+import { SiteSettingsService } from '../core/site-settings.service';
+import { INVENTORY_TABLE_COLUMN_OPTIONS } from '../shared/models/inventory-table-column';
 import { toInventoryItem } from '../shared/utils/inventory-item.mapper';
 import { resolveProfileAvatarKey, resolveProfileName } from '../shared/utils/profile-label';
 import { loadInventoryImagesByItemId } from '../shared/utils/inventory-item-images';
@@ -39,8 +44,11 @@ type StatusFilter = 'active' | 'include_retired' | 'retired_only';
         MatRadioModule,
         MatCardModule,
         MatButtonModule,
+        MatButtonToggleModule,
         MatProgressSpinnerModule,
         MatPaginatorModule,
+        MatTableModule,
+        MatSortModule,
         BreadcrumbsComponent,
         EmptyStateComponent
     ],
@@ -52,6 +60,7 @@ export class InventoryComponent implements OnInit{
   private supabase = inject(SupabaseService).client;
   private dialog = inject(MatDialog);
   private route = inject(ActivatedRoute);
+  private siteSettings = inject(SiteSettingsService);
 
   inventoryList: InventoryItem[] = [];
   isLoading = true;
@@ -72,6 +81,37 @@ export class InventoryComponent implements OnInit{
 
   readonly pageSize = 12;
   pageIndex = 0;
+
+  viewMode: 'card' | 'table' = 'card';
+
+  /** Table-view-only column definitions for mat-table. Name and actions are
+   *  always shown; the rest come from the admin's Customize > Data setting
+   *  (SiteSettingsService.inventoryTableColumns). Filters
+   *  INVENTORY_TABLE_COLUMN_OPTIONS's own fixed order down to whatever's
+   *  enabled, rather than reading the enabled list's order directly, so the
+   *  column order stays stable regardless of the order columns were toggled
+   *  on/off in. A getter (not a field) so it re-evaluates as that signal
+   *  changes, same reasoning as the other derived getters below. */
+  get tableColumns(): string[] {
+    const enabled = new Set(this.siteSettings.inventoryTableColumns());
+    const optionalColumns = INVENTORY_TABLE_COLUMN_OPTIONS
+      .map(option => option.key)
+      .filter(key => enabled.has(key));
+    return ['name', ...optionalColumns, 'actions'];
+  }
+
+  sortActive = '';
+  sortDirection: '' | 'asc' | 'desc' = '';
+
+  setViewMode(mode: 'card' | 'table') {
+    this.viewMode = mode;
+  }
+
+  onSortChange(sort: Sort) {
+    this.sortActive = sort.active;
+    this.sortDirection = sort.direction;
+    this.pageIndex = 0;
+  }
 
   get filteredInventoryList(): InventoryItem[] {
     let list = this.inventoryList;
@@ -108,12 +148,79 @@ export class InventoryComponent implements OnInit{
     return list;
   }
 
-  /** The current page's slice of filteredInventoryList — pageSize is fixed
-   *  at 12 rather than user-adjustable, so the paginator only ever needs to
-   *  drive pageIndex. */
+  /** Table view only — card view has no sortable columns, so this sits
+   *  between the filter and paging steps rather than folded into
+   *  filteredInventoryList itself, which the paginator's own [length]
+   *  still reads directly (sorting reorders, it never changes the count). */
+  get sortedInventoryList(): InventoryItem[] {
+    const list = this.filteredInventoryList;
+    if (!this.sortActive || !this.sortDirection) {
+      return list;
+    }
+
+    const direction = this.sortDirection === 'asc' ? 1 : -1;
+    return [...list].sort((a, b) => this.compareForSort(a, b, this.sortActive) * direction);
+  }
+
+  private compareForSort(a: InventoryItem, b: InventoryItem, column: string): number {
+    switch (column) {
+      case 'name':
+        return a.name.localeCompare(b.name);
+      case 'category':
+        return a.category.localeCompare(b.category);
+      case 'physicalLocation':
+        return a.physicalLocation.localeCompare(b.physicalLocation);
+      case 'quantityRemaining':
+        return a.quantityRemaining - b.quantityRemaining;
+      case 'status':
+        return this.statusLabel(a).localeCompare(this.statusLabel(b));
+      default:
+        return 0;
+    }
+  }
+
+  /** Table view's single-status-per-row simplification of card view's
+   *  simultaneous badges (retired, checked-out, low/out-of-stock, pending
+   *  retirement can all show at once there) — a dense table row doesn't
+   *  have room for that, so this picks the one most relevant to surface,
+   *  in the same priority order the badges already imply visually. Reused
+   *  for the sort comparison too, so "sort by status" matches what's
+   *  actually displayed. */
+  statusLabel(item: InventoryItem): string {
+    if (item.status === 'retired') {
+      return 'Retired';
+    }
+    if (item.status === 'retirement_pending') {
+      return 'Pending retirement';
+    }
+    if (isOutOfStock(item)) {
+      return 'Out of stock';
+    }
+    if (isLowStock(item)) {
+      return 'Low stock';
+    }
+    if (item.isCheckedOut) {
+      return 'Checked out';
+    }
+    return 'Available';
+  }
+
+  /** CSS class suffix for statusLabel()'s value — a plain (non-global)
+   *  string replace would only swap the *first* space, silently mangling
+   *  "Out of stock" (two spaces) into two separate class tokens instead of
+   *  one, so this needs the regex/global form. */
+  statusSlug(item: InventoryItem): string {
+    return this.statusLabel(item).toLowerCase().replace(/ /g, '-');
+  }
+
+  /** The current page's slice — pageSize is fixed at 12 rather than
+   *  user-adjustable, so the paginator only ever needs to drive pageIndex.
+   *  Reads from sortedInventoryList rather than filteredInventoryList
+   *  directly so table-view sorting (a no-op in card view, since nothing
+   *  sets sortActive there) is reflected in what actually gets paged. */
   get pagedInventoryList(): InventoryItem[] {
     const start = this.pageIndex * this.pageSize;
-    return this.filteredInventoryList.slice(start, start + this.pageSize);
+    return this.sortedInventoryList.slice(start, start + this.pageSize);
   }
 
   onPageChange(event: PageEvent) {

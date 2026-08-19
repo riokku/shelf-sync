@@ -2,21 +2,30 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { InventoryComponent } from './inventory.component';
+import { SiteSettingsService } from '../core/site-settings.service';
 import { SupabaseService } from '../core/supabase.service';
-import { createFakeSupabaseService, createTestInventoryItem } from '../testing/fakes';
+import { InventoryTableColumnKey } from '../shared/models/inventory-table-column';
+import { createFakeSiteSettingsService, createFakeSupabaseService, createTestInventoryItem } from '../testing/fakes';
 
 describe('InventoryComponent', () => {
   let component: InventoryComponent;
   let fixture: ComponentFixture<InventoryComponent>;
+  let fakeSiteSettings: SiteSettingsService;
 
   beforeEach(async () => {
+    fakeSiteSettings = createFakeSiteSettingsService();
+
     await TestBed.configureTestingModule({
       imports: [InventoryComponent],
       providers: [
         provideRouter([]),
         // ngOnInit loads inventory on construction — faked so this hits
         // nothing real, same reasoning as every other spec that does this.
-        { provide: SupabaseService, useValue: createFakeSupabaseService() }
+        { provide: SupabaseService, useValue: createFakeSupabaseService() },
+        // Real SiteSettingsService constructs the real AuthService, whose
+        // constructor calls supabase.auth.getSession() — the fake
+        // SupabaseService above has no .auth, so that would throw.
+        { provide: SiteSettingsService, useValue: fakeSiteSettings }
       ]
     })
     .compileComponents();
@@ -218,6 +227,119 @@ describe('InventoryComponent', () => {
       component.pageIndex = 3;
       component.toggleCategory('Tools', true);
       expect(component.pageIndex).toBe(0);
+    });
+  });
+
+  describe('sortedInventoryList (table view)', () => {
+    beforeEach(() => {
+      component.inventoryList = [
+        createTestInventoryItem({ id: '1', name: 'Widget', category: 'Tools', quantityRemaining: 20 }),
+        createTestInventoryItem({ id: '2', name: 'Anvil', category: 'Hardware', quantityRemaining: 5 }),
+        createTestInventoryItem({ id: '3', name: 'Crate', category: 'Storage', quantityRemaining: 12 })
+      ];
+    });
+
+    it('returns filteredInventoryList unchanged when no sort is active', () => {
+      expect(component.sortedInventoryList.map(i => i.id)).toEqual(['1', '2', '3']);
+    });
+
+    it('sorts by a string column ascending/descending', () => {
+      component.onSortChange({ active: 'name', direction: 'asc' });
+      expect(component.sortedInventoryList.map(i => i.name)).toEqual(['Anvil', 'Crate', 'Widget']);
+
+      component.onSortChange({ active: 'name', direction: 'desc' });
+      expect(component.sortedInventoryList.map(i => i.name)).toEqual(['Widget', 'Crate', 'Anvil']);
+    });
+
+    it('sorts by a numeric column', () => {
+      component.onSortChange({ active: 'quantityRemaining', direction: 'asc' });
+      expect(component.sortedInventoryList.map(i => i.id)).toEqual(['2', '3', '1']);
+    });
+
+    it('falls back to the unsorted list once sorting is cleared (MatSort\'s third click state)', () => {
+      component.onSortChange({ active: 'name', direction: 'asc' });
+      component.onSortChange({ active: 'name', direction: '' });
+      expect(component.sortedInventoryList.map(i => i.id)).toEqual(['1', '2', '3']);
+    });
+
+    it('resets the page index on every sort change', () => {
+      component.pageIndex = 2;
+      component.onSortChange({ active: 'name', direction: 'asc' });
+      expect(component.pageIndex).toBe(0);
+    });
+  });
+
+  describe('tableColumns', () => {
+    /** Rebuilds the component against a fresh SiteSettingsService fake —
+     *  TestBed.overrideProvider can't retarget a provider after the module's
+     *  already been instantiated (done once in the outer beforeEach), so
+     *  these tests reset and reconfigure the whole testing module instead. */
+    async function createComponentWithColumns(columns: InventoryTableColumnKey[]): Promise<InventoryComponent> {
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [InventoryComponent],
+        providers: [
+          provideRouter([]),
+          { provide: SupabaseService, useValue: createFakeSupabaseService() },
+          { provide: SiteSettingsService, useValue: createFakeSiteSettingsService({ inventoryTableColumns: columns }) }
+        ]
+      }).compileComponents();
+
+      const localFixture = TestBed.createComponent(InventoryComponent);
+      localFixture.detectChanges();
+      return localFixture.componentInstance;
+    }
+
+    it('always includes name first and actions last', () => {
+      expect(component.tableColumns[0]).toBe('name');
+      expect(component.tableColumns[component.tableColumns.length - 1]).toBe('actions');
+    });
+
+    it('includes every optional column when all are enabled (the default)', () => {
+      expect(component.tableColumns).toEqual(['name', 'category', 'physicalLocation', 'quantityRemaining', 'status', 'actions']);
+    });
+
+    it('only includes the admin-enabled optional columns, in canonical order regardless of the enabled order', async () => {
+      const localComponent = await createComponentWithColumns(['status', 'category']);
+      expect(localComponent.tableColumns).toEqual(['name', 'category', 'status', 'actions']);
+    });
+
+    it('drops down to just name/actions when no optional columns are enabled', async () => {
+      const localComponent = await createComponentWithColumns([]);
+      expect(localComponent.tableColumns).toEqual(['name', 'actions']);
+    });
+  });
+
+  describe('statusLabel / statusSlug', () => {
+    it('prioritizes retired over every other state', () => {
+      const item = createTestInventoryItem({ status: 'retired', quantityRemaining: 0, isCheckedOut: true });
+      expect(component.statusLabel(item)).toBe('Retired');
+      expect(component.statusSlug(item)).toBe('retired');
+    });
+
+    it('labels an out-of-stock item correctly, including the slug for its multi-word label', () => {
+      const item = createTestInventoryItem({ quantityRemaining: 0, lowQuantityThreshold: 5 });
+      expect(component.statusLabel(item)).toBe('Out of stock');
+      // Regression coverage: a naive non-global string replace only swaps
+      // the *first* space, mangling this into two class tokens instead of
+      // one ("out-of stock") — see statusSlug()'s own doc comment.
+      expect(component.statusSlug(item)).toBe('out-of-stock');
+    });
+
+    it('labels a low-stock item', () => {
+      const item = createTestInventoryItem({ quantityRemaining: 3, lowQuantityThreshold: 5 });
+      expect(component.statusLabel(item)).toBe('Low stock');
+    });
+
+    it('labels a checked-out item with sufficient stock', () => {
+      const item = createTestInventoryItem({ quantityRemaining: 20, lowQuantityThreshold: 5, isCheckedOut: true });
+      expect(component.statusLabel(item)).toBe('Checked out');
+    });
+
+    it('falls back to Available', () => {
+      const item = createTestInventoryItem({ quantityRemaining: 20, lowQuantityThreshold: 5 });
+      expect(component.statusLabel(item)).toBe('Available');
+      expect(component.statusSlug(item)).toBe('available');
     });
   });
 });

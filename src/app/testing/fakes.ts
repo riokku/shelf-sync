@@ -2,8 +2,10 @@ import { computed, signal } from '@angular/core';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { of } from 'rxjs';
 import { AuthService, Profile } from '../core/auth.service';
+import { SiteSettingsService } from '../core/site-settings.service';
 import { SupabaseService } from '../core/supabase.service';
 import { InventoryItem, InventoryItemStatus } from '../shared/models/inventory-item.model';
+import { DEFAULT_INVENTORY_TABLE_COLUMNS, InventoryTableColumnKey } from '../shared/models/inventory-table-column';
 import { Database } from '../shared/models/database.types';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
@@ -66,6 +68,31 @@ export function createFakeAuthService(
     updatePassword: async () => null,
   };
   return fake as unknown as AuthService;
+}
+
+/** SiteSettingsService.load() (and its underlying real AuthService, which
+ *  the real service also depends on) query Supabase — same reasoning as
+ *  createFakeAuthService above, so any component that just reads a signal
+ *  off this service (e.g. InventoryComponent's tableColumns) can use this
+ *  instead of constructing the real thing. */
+export function createFakeSiteSettingsService(overrides: Partial<{
+  theme: string;
+  logoUrl: string | null;
+  inventoryTableColumns: InventoryTableColumnKey[];
+}> = {}): SiteSettingsService {
+  const fake = {
+    theme: signal(overrides.theme ?? 'default').asReadonly(),
+    logoUrl: signal(overrides.logoUrl ?? null).asReadonly(),
+    inventoryTableColumns: signal(overrides.inventoryTableColumns ?? DEFAULT_INVENTORY_TABLE_COLUMNS).asReadonly(),
+    load: async () => {},
+    applyTheme: () => {},
+    updateTheme: async () => null,
+    uploadLogo: async () => null,
+    removeLogo: async () => null,
+    updateInventoryTableColumns: async () => null,
+    loadLogoUrlForOrganization: async () => null,
+  };
+  return fake as unknown as SiteSettingsService;
 }
 
 export function createFakeActivatedRoute(queryParams: Record<string, string> = {}): ActivatedRoute {

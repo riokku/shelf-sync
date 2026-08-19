@@ -147,6 +147,21 @@
               <p>
                 Displaying {{filteredInventoryList.length}} of {{inventoryList.length}} items
               </p>
+              <mat-button-toggle-group
+                  class="view-mode-toggle"
+                  [value]="viewMode"
+                  (change)="setViewMode($event.value)"
+                  aria-label="Inventory view"
+                >
+                <mat-button-toggle value="card" aria-label="Card view">
+                  <mat-icon>grid_view</mat-icon>
+                  Card
+                </mat-button-toggle>
+                <mat-button-toggle value="table" aria-label="Table view">
+                  <mat-icon>table_rows</mat-icon>
+                  Table
+                </mat-button-toggle>
+              </mat-button-toggle-group>
             </div>
           </div>
         </div>
@@ -164,71 +179,132 @@
         } @else {
         <div class="row">
           <div class="col-12">
-            <div class="row inventory-gallery-wrapper">
-              @for (item of pagedInventoryList; track item.id) {
-                <div class="col-12 col-md-6 col-lg-4 inventory-card">
-                  <mat-card>
-                    @if (item.image) {
-                      <img mat-card-image [alt]="item.name" [src]="item.image" [class.retired-image]="item.status === 'retired'" />
-                    } @else {
-                      <div mat-card-image class="image-placeholder" [class.retired-image]="item.status === 'retired'">
-                        <mat-icon>inventory_2</mat-icon>
-                      </div>
-                    }
-                    <div class="image-badges">
-                      @if (item.status === 'retired') {
-                        <span class="retired-badge">
-                          <mat-icon>inventory_2</mat-icon>
-                          Retired
-                        </span>
+            @if (viewMode === 'card') {
+              <div class="row inventory-gallery-wrapper">
+                @for (item of pagedInventoryList; track item.id) {
+                  <div class="col-12 col-md-6 col-lg-4 inventory-card">
+                    <mat-card>
+                      @if (item.image) {
+                        <img mat-card-image [alt]="item.name" [src]="item.image" [class.retired-image]="item.status === 'retired'" />
                       } @else {
-                        @if (item.isCheckedOut) {
-                          <span class="checked-out-badge">
-                            <mat-icon>person</mat-icon>
-                            Checked out
-                          </span>
-                        }
-                        @if (isOutOfStock(item)) {
-                          <span class="out-of-stock-badge">
-                            <mat-icon>remove_shopping_cart</mat-icon>
-                            Out of stock
-                          </span>
-                        } @else if (isLowStock(item)) {
-                          <span class="low-stock-badge">
-                            <mat-icon>warning</mat-icon>
-                            Low stock
-                          </span>
-                        }
-                        @if (item.status === 'retirement_pending') {
-                          <span class="pending-retirement-badge">
-                            <mat-icon>hourglass_top</mat-icon>
-                            Pending retirement
-                          </span>
-                        }
-                        <span class="quantity-badge">
+                        <div mat-card-image class="image-placeholder" [class.retired-image]="item.status === 'retired'">
                           <mat-icon>inventory_2</mat-icon>
-                          {{ item.quantityRemaining }}
-                        </span>
+                        </div>
                       }
-                    </div>
-                    <mat-card-header>
-                      <mat-card-title [title]="item.name">{{item.name}}</mat-card-title>
-                      <mat-card-subtitle [title]="item.category">{{item.category}}</mat-card-subtitle>
-                    </mat-card-header>
-                    <mat-card-content>
-                      <p class="mb-0">
-                        {{item.description}}
-                      </p>
-                    </mat-card-content>
-                    <mat-card-actions>
-                      <div class="d-flex gap-3">
-                        <button mat-flat-button (click)="showDetails(item)">Details</button>
+                      <div class="image-badges">
+                        @if (item.status === 'retired') {
+                          <span class="retired-badge">
+                            <mat-icon>inventory_2</mat-icon>
+                            Retired
+                          </span>
+                        } @else {
+                          @if (item.isCheckedOut) {
+                            <span class="checked-out-badge">
+                              <mat-icon>person</mat-icon>
+                              Checked out
+                            </span>
+                          }
+                          @if (isOutOfStock(item)) {
+                            <span class="out-of-stock-badge">
+                              <mat-icon>remove_shopping_cart</mat-icon>
+                              Out of stock
+                            </span>
+                          } @else if (isLowStock(item)) {
+                            <span class="low-stock-badge">
+                              <mat-icon>warning</mat-icon>
+                              Low stock
+                            </span>
+                          }
+                          @if (item.status === 'retirement_pending') {
+                            <span class="pending-retirement-badge">
+                              <mat-icon>hourglass_top</mat-icon>
+                              Pending retirement
+                            </span>
+                          }
+                          <span class="quantity-badge">
+                            <mat-icon>inventory_2</mat-icon>
+                            {{ item.quantityRemaining }}
+                          </span>
+                        }
                       </div>
-                    </mat-card-actions>
-                  </mat-card>
-                </div>
-              }
-            </div>
+                      <mat-card-header>
+                        <mat-card-title [title]="item.name">{{item.name}}</mat-card-title>
+                        <mat-card-subtitle [title]="item.category">{{item.category}}</mat-card-subtitle>
+                      </mat-card-header>
+                      <mat-card-content>
+                        <p class="mb-0">
+                          {{item.description}}
+                        </p>
+                      </mat-card-content>
+                      <mat-card-actions>
+                        <div class="d-flex gap-3">
+                          <button mat-flat-button (click)="showDetails(item)">Details</button>
+                        </div>
+                      </mat-card-actions>
+                    </mat-card>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="table-wrapper">
+                <table
+                    mat-table
+                    [dataSource]="pagedInventoryList"
+                    matSort
+                    [matSortActive]="sortActive"
+                    [matSortDirection]="sortDirection"
+                    (matSortChange)="onSortChange($event)"
+                  >
+                  <ng-container matColumnDef="name">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Name</th>
+                    <td mat-cell *matCellDef="let item" [class.retired-row-cell]="item.status === 'retired'">
+                      {{ item.name }}
+                    </td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="category">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Category</th>
+                    <td mat-cell *matCellDef="let item">{{ item.category || '—' }}</td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="physicalLocation">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Physical location</th>
+                    <td mat-cell *matCellDef="let item">{{ item.physicalLocation || '—' }}</td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="quantityRemaining">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Remaining</th>
+                    <td mat-cell *matCellDef="let item">{{ item.quantityRemaining }}</td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="status">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+                    <td mat-cell *matCellDef="let item">
+                      <span class="table-status-pill" [class]="'table-status-' + statusSlug(item)">
+                        {{ statusLabel(item) }}
+                      </span>
+                    </td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="actions">
+                    <th mat-header-cell *matHeaderCellDef>{{ '' }}</th>
+                    <td mat-cell *matCellDef="let item">
+                      <button
+                          mat-icon-button
+                          type="button"
+                          (click)="showDetails(item)"
+                          [attr.aria-label]="'View details for ' + item.name"
+                        >
+                        <mat-icon>arrow_forward</mat-icon>
+                      </button>
+                    </td>
+                  </ng-container>
+
+                  <tr mat-header-row *matHeaderRowDef="tableColumns"></tr>
+                  <tr mat-row *matRowDef="let row; columns: tableColumns;"></tr>
+                </table>
+              </div>
+            }
             <mat-paginator
                 class="inventory-paginator"
                 [length]="filteredInventoryList.length"

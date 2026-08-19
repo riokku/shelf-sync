@@ -41,12 +41,30 @@ as `[data-theme='x']` blocks in `styles.scss` and toggling that attribute on `<h
 `THEME_PRESETS` in `shared/models/theme-preset.ts` for the option list and `core/site-settings.service.ts`
 for the load/preview/persist logic. `AppComponent` loads settings once on startup (readable by
 `anon` too, so branding applies pre-login) and `HeaderComponent` swaps in the custom logo when set,
-falling back to the default SS mark.
+falling back to the default SS mark. The same `customize` route's Data tab also lets an admin choose
+which optional columns (Category, Physical location, Quantity remaining, Stock status) appear in the
+Inventory page's table view — Name and the actions column are always shown, everything else is
+`site_settings.inventory_table_columns`, a plain text array with no column-scoped grant needed (the
+existing admin-only, flat-row UPDATE policy already covers it). `shared/models/inventory-table-column.ts`
+defines the option list/labels and canonical display order, shared by `CustomizeComponent` (checkboxes)
+and `InventoryComponent` (the `tableColumns` getter that filters that canonical order down to whatever's
+enabled, so the table's column order stays stable regardless of the order columns were toggled in).
 
 Password recovery (`/forgot-password`, `/reset-password`), Supabase-native client error logging
 (`GlobalErrorHandler`), and requiring approved org membership before a task can be transferred or
 assigned to someone (both `TaskDetailModalComponent` and task-creation) are all covered in detail
 in the Supabase Schema section below, next to the migrations that back them.
+
+The Inventory page has a card/table view toggle (`InventoryComponent.viewMode`, a
+`mat-button-toggle-group` above the item list) — card view is the original gallery layout; table
+view is a `mat-table`/`matSort` grid, sortable by clicking any column header (`sortedInventoryList`
+sits between the existing `filteredInventoryList` and `pagedInventoryList` getters, so sorting
+composes with the existing filter/search/paging pipeline rather than replacing any of it). Table
+rows collapse card view's simultaneous badges (retired, checked-out, low/out-of-stock, pending
+retirement can all show at once there) into a single higher-priority status pill per row
+(`statusLabel()`/`statusSlug()`, also what "sort by status" sorts on) since a dense row has no room
+for more than one. Which optional columns the table shows (Category, Physical location, Quantity
+remaining, Stock status) is admin-configurable from `customize`'s Data tab, per the paragraph above.
 
 Low/out-of-stock items were previously only a per-item badge you'd notice while already browsing
 Inventory — `HeaderComponent`'s Inventory nav link and `HomeComponent`'s Inventory card now also
@@ -179,6 +197,7 @@ shared/
   components/modal-table/    # standalone Material dialog showing InventoryItem details
   models/inventory-item.model.ts   # InventoryItem class (constructor-based, no defaults)
   models/theme-preset.ts     # THEME_PRESETS — key must match a [data-theme] block in styles.scss
+  models/inventory-table-column.ts # optional Inventory table-view columns admin can show/hide (Customize > Data)
   models/database.types.ts   # generated via `npm run supabase:gen:types` — regenerate, don't hand-edit
   utils/inventory-item.mapper.ts   # toInventoryItem(row, images, checkedOutToLabel, activityLog?) — DB row -> InventoryItem
   utils/inventory-item-images.ts   # loadInventoryImagesByItemId() / uploadInventoryItemImages() / deleteInventoryItemImage()
@@ -326,6 +345,12 @@ yet on a hard refresh of `/inventory`.
   or it silently fails to save despite passing RLS. Backs the barcode/QR scanning feature (see
   Project Overview above): a manufacturer barcode scanned off a retail product, or a
   ShelfSync-generated QR label for an item that never had one, both resolve to this one column.
+- `add_site_settings_inventory_table_columns` — adds `site_settings.inventory_table_columns` (`text[]`,
+  `not null default` all four options), backing the admin-configurable Inventory table-view columns
+  described in Project Overview above. No RLS/grant changes needed: unlike `inventory_items`/`tasks`,
+  `site_settings`' UPDATE policy (from `scope_site_settings_by_organization`) is already a flat,
+  non-column-scoped "admin of own org" check covering the whole row, and its SELECT policy already
+  lets any org member read it — a new plain column rides along under both existing policies.
 
 `supabase/seed.sql` ports the inventory page's hardcoded dummy items into `inventory_items` inserts
 for local dev (`checked_out_to` is left `null` since it's a real FK to `profiles` now and the

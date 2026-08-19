@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
+import { DEFAULT_INVENTORY_TABLE_COLUMNS, InventoryTableColumnKey } from '../shared/models/inventory-table-column';
 
 const LOGO_BUCKET = 'site-assets';
 
@@ -21,6 +22,9 @@ export class SiteSettingsService {
     return this.supabase.storage.from(LOGO_BUCKET).getPublicUrl(path).data.publicUrl;
   });
 
+  private readonly _inventoryTableColumns = signal<InventoryTableColumnKey[]>(DEFAULT_INVENTORY_TABLE_COLUMNS);
+  readonly inventoryTableColumns = this._inventoryTableColumns.asReadonly();
+
   /** Loads the caller's own organization's settings row and applies the theme
    *  attribute. `site_settings` is per-organization and no longer readable by
    *  anon, so pre-login (and any signed-out state) just falls back to the
@@ -31,6 +35,7 @@ export class SiteSettingsService {
     if (!profile) {
       this._theme.set('default');
       this._logoStoragePath.set(null);
+      this._inventoryTableColumns.set(DEFAULT_INVENTORY_TABLE_COLUMNS);
       this.applyTheme('default');
       return;
     }
@@ -43,6 +48,9 @@ export class SiteSettingsService {
 
     this._theme.set(data?.theme ?? 'default');
     this._logoStoragePath.set(data?.logo_storage_path ?? null);
+    this._inventoryTableColumns.set(
+      (data?.inventory_table_columns as InventoryTableColumnKey[] | undefined) ?? DEFAULT_INVENTORY_TABLE_COLUMNS
+    );
     this.applyTheme(this._theme());
   }
 
@@ -93,6 +101,28 @@ export class SiteSettingsService {
 
     this._theme.set(theme);
     this.applyTheme(theme);
+    return null;
+  }
+
+  async updateInventoryTableColumns(columns: InventoryTableColumnKey[]): Promise<string | null> {
+    const session = await this.authService.getSession();
+    const organizationId = this.authService.organizationId();
+    if (!session || !organizationId) {
+      return 'You must be signed in to update the inventory table columns.';
+    }
+
+    const { error } = await this.supabase
+      .from('site_settings')
+      .upsert(
+        { organization_id: organizationId, inventory_table_columns: columns, updated_by: session.user.id },
+        { onConflict: 'organization_id' }
+      );
+
+    if (error) {
+      return error.message;
+    }
+
+    this._inventoryTableColumns.set(columns);
     return null;
   }
 

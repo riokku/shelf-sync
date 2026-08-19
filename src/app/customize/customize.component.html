@@ -112,6 +112,43 @@
             <app-field-options-editor fieldName="category" label="Category" />
             <app-field-options-editor fieldName="physical_location" label="Physical location" />
           </section>
+
+          <section class="customize-section">
+            <h3>Inventory table columns</h3>
+            <p class="section-hint">
+              Choose which columns show in the Inventory page's table view. Name is always shown.
+            </p>
+            @for (option of tableColumnOptions; track option.key) {
+              <div>
+                <mat-checkbox
+                    [checked]="selectedTableColumns.includes(option.key)"
+                    (change)="toggleTableColumn(option.key, $event.checked)"
+                  >{{ option.label }}</mat-checkbox>
+              </div>
+            }
+            @if (tableColumnsError) {
+              <p class="error-message">{{ tableColumnsError }}</p>
+            }
+            @if (tableColumnsSaved) {
+              <p class="success-message">Table columns saved for everyone.</p>
+            }
+            <button
+                mat-flat-button
+                color="primary"
+                type="button"
+                (click)="saveTableColumns()"
+                [disabled]="isSavingTableColumns || !tableColumnsChanged"
+              >
+              @if (isSavingTableColumns) {
+                <mat-spinner diameter="20"></mat-spinner>
+              } @else {
+                <ng-container>
+                  <mat-icon>check</mat-icon>
+                  Save table columns
+                </ng-container>
+              }
+            </button>
+          </section>
         </div>
       </div>
     }
