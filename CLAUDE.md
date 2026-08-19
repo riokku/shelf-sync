@@ -91,6 +91,7 @@ assets with no manufacturer barcode — scanning that label later resolves strai
 - Watch build: `npm run watch`
 - Unit tests: `npm test` (or `ng test`) — runs Karma/Jasmine in Chrome
 - Run a single test file: `ng test --include='**/inventory.component.spec.ts'`
+- Lint: `npm run lint` (or `ng lint`) — ESLint via `@angular-eslint`, config in `eslint.config.js`
 - Generate a component: `ng generate component <name>` (project schematic defaults to `scss`
   styles; components are standalone by default in this Angular version except where noted below)
 - Supabase, hosted project workflow (no Docker — this is the primary workflow for this repo):
@@ -104,7 +105,22 @@ assets with no manufacturer barcode — scanning that label later resolves strai
   - `npm run supabase:start` / `npm run supabase:stop` — start/stop local Postgres, Studio, Auth
   - `npm run supabase:reset` — reapply all migrations + `supabase/seed.sql` from scratch locally
 
-There is no configured lint script (`ng lint` is not wired up in `package.json`/`angular.json`).
+## CI/CD
+
+`.github/workflows/ci.yml` runs on every push/PR against `main`: `npm ci`, `npm run lint`,
+`npm run build`, then the full Karma/Jasmine suite headless. Node version comes from
+`.node-version` (currently `22`) via `actions/setup-node`'s `node-version-file`, rather than a
+hardcoded version in the workflow — one source of truth shared with whatever else reads it (e.g.
+a deploy host's own Node-version detection).
+
+Production hosting is Cloudflare Pages, connected directly to this GitHub repo (build command
+`npm run build`, output directory `dist/inventory-app`) — pushes to `main` auto-deploy, no
+GitHub Actions deploy step involved. Since this is a client-side SPA with `PathLocationStrategy`
+routing (no hash-based URLs), `src/_redirects` (`/* /index.html 200`, copied into the build
+output via `angular.json`'s `assets` array) is what makes a hard refresh on e.g. `/inventory`
+resolve correctly instead of 404ing at the host. `environment.prod.ts`'s Supabase URL/anon key
+stay build-time constants (see Architecture below) — no host-side environment variable
+injection needed for the current single-production-project setup.
 
 ## Architecture
 
