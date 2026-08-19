@@ -1,0 +1,22 @@
+{
+  // Pure static-assets deployment — no Worker script/entry point needed,
+  // Cloudflare serves dist/inventory-app directly. This is what the "Deploy
+  // command: npx wrangler deploy" / "Version command: npx wrangler versions
+  // upload" in the dashboard's Build configuration actually run against —
+  // without this file there's nothing telling Wrangler what to deploy.
+  //
+  // "name" must match this project's name as already registered in the
+  // Cloudflare dashboard (Workers & Pages) — check there if the first
+  // deploy after adding this still fails with a name-mismatch error.
+  "name": "shelf-sync",
+  "compatibility_date": "2026-08-19",
+  "assets": {
+    "directory": "dist/inventory-app",
+    // Client-side SPA with PathLocationStrategy routing (no hash URLs) —
+    // this is the Workers-static-assets equivalent of src/_redirects
+    // (which is the classic-Pages convention; left in place too since
+    // Workers' assets layer honors it as well, but this is the officially
+    // documented mechanism for this specific product).
+    "not_found_handling": "single-page-application"
+  }
+}
