@@ -115,6 +115,10 @@ export class TasksComponent implements OnInit {
     return resolveProfileName(task.assigned_to, this.orgProfiles) || 'Unknown user';
   }
 
+  createdByLabel(task: Task): string {
+    return resolveProfileName(task.created_by, this.orgProfiles) || 'Unknown user';
+  }
+
   pendingTransferToLabel(task: Task): string | null {
     return task.pending_transfer_to
       ? (resolveProfileName(task.pending_transfer_to, this.orgProfiles) || 'someone')

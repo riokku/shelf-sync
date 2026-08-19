@@ -36,6 +36,8 @@
     }
     <dt>Created</dt>
     <dd>{{ task.created_at | date: 'M/d/yy' }}</dd>
+    <dt>Created by</dt>
+    <dd>{{ createdByLabel() }}</dd>
     <dt>Task ID</dt>
     <dd class="task-id-row">
       <code>{{ task.id }}</code>

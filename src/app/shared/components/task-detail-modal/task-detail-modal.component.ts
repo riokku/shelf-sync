@@ -130,6 +130,10 @@ export class TaskDetailModalComponent implements OnInit {
     return resolveProfileName(this.task.assigned_to, this.orgProfiles) || 'Unassigned';
   }
 
+  createdByLabel(): string {
+    return resolveProfileName(this.task.created_by, this.orgProfiles) || 'Unknown user';
+  }
+
   pendingTransferLabel(): string {
     return resolveProfileName(this.task.pending_transfer_to, this.orgProfiles) || 'Unknown user';
   }

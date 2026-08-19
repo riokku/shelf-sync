@@ -166,6 +166,10 @@
                       {{ task.related_item_name }}
                     </span>
                   }
+                  <span class="task-row-created-by">
+                    <mat-icon>person_outline</mat-icon>
+                    Created by {{ createdByLabel(task) }}
+                  </span>
                 </div>
                 <span class="task-row-assignee">
                   <span class="task-row-assignee-name">

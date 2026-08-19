@@ -16,6 +16,12 @@
         {{ task.related_item_name }}
       </span>
     }
+    @if (createdByLabel) {
+      <span class="task-row-created-by">
+        <mat-icon>person_outline</mat-icon>
+        Created by {{ createdByLabel }}
+      </span>
+    }
     @if (pendingTransferToLabel) {
       <span class="transfer-pending-badge">
         <mat-icon>swap_horiz</mat-icon>

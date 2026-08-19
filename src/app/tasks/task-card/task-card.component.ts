@@ -23,6 +23,10 @@ export class TaskCardComponent {
   /** Set instead of the above for cards in the "Incoming transfer requests"
    *  section — the current assignee's name, so the row reads "Offered by X". */
   @Input() transferFromLabel: string | null = null;
+  /** Resolved by TasksComponent from task.created_by — passed in rather than
+   *  read directly off `task` since the raw column is just a profile id,
+   *  same reasoning as the transfer labels above. */
+  @Input() createdByLabel: string | null = null;
   @Output() open = new EventEmitter<Task>();
 
   readonly statusLabels = TASK_STATUS_LABELS;

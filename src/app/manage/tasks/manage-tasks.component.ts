@@ -208,6 +208,10 @@ export class ManageTasksComponent implements OnInit {
       : null;
   }
 
+  createdByLabel(task: Task): string {
+    return resolveProfileName(task.created_by, this.assignableProfiles) || 'Unknown user';
+  }
+
   isTaskOverdue(task: Task): boolean {
     return !!task.due_date && task.status !== 'done' && task.due_date < getTodayIsoDate();
   }

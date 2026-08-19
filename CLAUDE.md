@@ -66,6 +66,14 @@ Password recovery (`/forgot-password`, `/reset-password`), Supabase-native clien
 assigned to someone (both `TaskDetailModalComponent` and task-creation) are all covered in detail
 in the Supabase Schema section below, next to the migrations that back them.
 
+`tasks.created_by` has been set on every task since creation (see `add_organization_deletion`'s FK
+note above) but was never actually surfaced anywhere — every task list/detail view now shows who
+created it (`createdByLabel()`, resolved from the same already-loaded org profiles list each of
+these already had on hand for assignee/transfer labels): `TaskCardComponent` (an optional
+`@Input()`, same pattern as its transfer labels, wired from both `TasksComponent`'s "My Tasks" and
+`ManageTeamComponent`'s per-member task lists), `ManageTasksComponent`'s "All tasks" table, and
+`TaskDetailModalComponent`'s own `dl.task-meta` block.
+
 `/privacy` and `/terms` (`PrivacyComponent`/`TermsComponent`) are static Privacy Policy/Terms of
 Service pages — reachable without a session and excluded from the normal header/footer chrome (see
 `AppComponent.showChrome()`'s allowlist), same as landing/login/register, since a signed-out

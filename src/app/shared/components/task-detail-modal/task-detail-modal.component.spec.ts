@@ -3,7 +3,7 @@ import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 
 import { TaskDetailModalComponent } from './task-detail-modal.component';
 import { AuthService } from '../../../core/auth.service';
-import { createFakeAuthService, createFakeMatDialogRef, createTestTask } from '../../../testing/fakes';
+import { createFakeAuthService, createFakeMatDialogRef, createFakeProfile, createTestTask } from '../../../testing/fakes';
 
 describe('TaskDetailModalComponent', () => {
   let component: TaskDetailModalComponent;
@@ -36,6 +36,40 @@ describe('TaskDetailModalComponent', () => {
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(`${window.location.origin}/tasks?task=task-1`);
     expect(component.linkCopied).toBeTrue();
+  });
+});
+
+describe('TaskDetailModalComponent createdByLabel', () => {
+  async function createComponentWithTask(overrides: Parameters<typeof createTestTask>[0]) {
+    await TestBed.configureTestingModule({
+      imports: [TaskDetailModalComponent],
+      providers: [
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: MatDialogRef, useValue: createFakeMatDialogRef() },
+        { provide: MAT_DIALOG_DATA, useValue: createTestTask(overrides) }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(TaskDetailModalComponent);
+    fixture.detectChanges();
+    return fixture.componentInstance;
+  }
+
+  it('resolves the creator\'s name from the loaded org profiles', async () => {
+    const component = await createComponentWithTask({ created_by: 'user-2' });
+    // ngOnInit's own profiles fetch isn't faked in this suite (see the
+    // "should create" describe block above) — set directly so this test
+    // isn't at the mercy of whatever that real network call resolves to.
+    component.orgProfiles = [createFakeProfile({ id: 'user-2', full_name: 'Jamie Rivera', nickname: null })];
+
+    expect(component.createdByLabel()).toBe('Jamie Rivera');
+  });
+
+  it('falls back to "Unknown user" when the creator no longer resolves to a profile', async () => {
+    const component = await createComponentWithTask({ created_by: 'user-2' });
+    component.orgProfiles = [];
+
+    expect(component.createdByLabel()).toBe('Unknown user');
   });
 });
 
