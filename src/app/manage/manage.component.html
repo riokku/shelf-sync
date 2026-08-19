@@ -7,7 +7,13 @@
     <p class="manage-subtitle">What do you want to manage?</p>
 
     <div class="manage-grid">
-      <a class="manage-card" routerLink="/manage/inventory">
+      <a
+          class="manage-card"
+          routerLink="/manage/inventory"
+          [matBadge]="pendingRetirementCount"
+          [matBadgeHidden]="pendingRetirementCount === 0"
+          matBadgeColor="warn"
+        >
         <mat-icon>inventory_2</mat-icon>
         <h3>Inventory</h3>
         <p>Create new items and browse everything in stock.</p>

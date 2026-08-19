@@ -33,3 +33,27 @@ describe('ManageComponent', () => {
     expect(component).toBeTruthy();
   });
 });
+
+/** Regression coverage for a real bug: this hub's Inventory card had no
+ *  badge at all for pending retirement requests, even though
+ *  HeaderComponent's combined nav badge (pendingManageCount) already
+ *  summed retirement + transfer + join-request counts — so the nav could
+ *  show a higher total than anything visibly added up to on this page. */
+describe('ManageComponent pendingRetirementCount', () => {
+  it('is populated from inventory_items alongside the other two counts', async () => {
+    await TestBed.configureTestingModule({
+      imports: [ManageComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: 'admin' })) },
+        { provide: SupabaseService, useValue: createFakeSupabaseService({ data: [], count: 3, error: null }) }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ManageComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance.pendingRetirementCount).toBe(3);
+  });
+});
