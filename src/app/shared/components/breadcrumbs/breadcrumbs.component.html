@@ -3,6 +3,10 @@
     <mat-icon>home</mat-icon>
     <span>Home</span>
   </a>
+  @if (parent) {
+    <span class="breadcrumb-separator">/</span>
+    <a [routerLink]="parent.link" class="breadcrumb-link">{{ parent.label }}</a>
+  }
   @if (label) {
     <span class="breadcrumb-separator">/</span>
     <span class="breadcrumb-current">{{ label }}</span>

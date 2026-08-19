@@ -21,6 +21,12 @@ import { authGuard } from './core/guards/auth.guard';
 import { approvedGuard } from './core/guards/approved.guard';
 import { manageGuard } from './core/guards/manage.guard';
 import { adminGuard } from './core/guards/admin.guard';
+import { BreadcrumbParent } from './shared/components/breadcrumbs/breadcrumbs.component';
+
+// Shared by every route nested under /manage below, so their breadcrumbs
+// read Home / Manage / {page} — the Manage hub itself doesn't need this,
+// it only ever sits one level under Home.
+const MANAGE_BREADCRUMB_PARENT: BreadcrumbParent = { label: 'Manage', link: '/manage' };
 
 // Every route gets an explicit `title` — Angular's default TitleStrategy
 // only ever writes document.title when the *active* route defines one and
@@ -100,28 +106,28 @@ const routes: Routes = [
     path: 'manage/inventory',
     component: ManageInventoryComponent,
     canActivate: [approvedGuard, manageGuard],
-    data: { breadcrumb: 'Manage Inventory' },
+    data: { breadcrumb: 'Inventory', breadcrumbParent: MANAGE_BREADCRUMB_PARENT },
     title: 'ShelfSync | Manage Inventory'
   },
   {
     path: 'manage/tasks',
     component: ManageTasksComponent,
     canActivate: [approvedGuard, manageGuard],
-    data: { breadcrumb: 'Manage Tasks' },
+    data: { breadcrumb: 'Tasks', breadcrumbParent: MANAGE_BREADCRUMB_PARENT },
     title: 'ShelfSync | Manage Tasks'
   },
   {
     path: 'manage/team',
     component: ManageTeamComponent,
     canActivate: [approvedGuard, manageGuard],
-    data: { breadcrumb: 'Manage Team' },
+    data: { breadcrumb: 'Team', breadcrumbParent: MANAGE_BREADCRUMB_PARENT },
     title: 'ShelfSync | Manage Team'
   },
   {
     path: 'manage/danger-zone',
     component: ManageDangerZoneComponent,
     canActivate: [approvedGuard, adminGuard],
-    data: { breadcrumb: 'Danger Zone' },
+    data: { breadcrumb: 'Danger Zone', breadcrumbParent: MANAGE_BREADCRUMB_PARENT },
     title: 'ShelfSync | Danger Zone'
   },
   {
