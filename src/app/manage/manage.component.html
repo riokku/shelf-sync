@@ -40,6 +40,11 @@
         <h3>Team</h3>
         <p>Invite teammates, edit roles, and remove members.</p>
       </a>
+      <a class="manage-card" routerLink="/manage/error-log">
+        <mat-icon>bug_report</mat-icon>
+        <h3>Error Log</h3>
+        <p>Review errors your team has run into recently.</p>
+      </a>
       @if (authService.role() === 'admin') {
         <a class="manage-card manage-card-danger" routerLink="/manage/danger-zone">
           <span class="permission-badge">

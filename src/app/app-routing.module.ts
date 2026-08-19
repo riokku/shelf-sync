@@ -127,6 +127,15 @@ const routes: Routes = [
     title: 'ShelfSync | Manage Team'
   },
   {
+    path: 'manage/error-log',
+    loadComponent: () => import('./manage/error-log/manage-error-log.component').then(m => m.ManageErrorLogComponent),
+    // manageGuard (admin OR manager), not adminGuard — matches
+    // client_error_log's own SELECT policy exactly (see add_client_error_log).
+    canActivate: [approvedGuard, manageGuard],
+    data: { breadcrumb: 'Error Log', breadcrumbParent: MANAGE_BREADCRUMB_PARENT },
+    title: 'ShelfSync | Error Log'
+  },
+  {
     path: 'manage/danger-zone',
     loadComponent: () => import('./manage/danger-zone/manage-danger-zone.component').then(m => m.ManageDangerZoneComponent),
     canActivate: [approvedGuard, adminGuard],

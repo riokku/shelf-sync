@@ -218,6 +218,7 @@ inventory/                                                  # standalone invento
 tasks/                                                      # standalone personal "My Tasks" list (row-styled task-card)
 manage/                                                     # card hub (ManageComponent) linking to the four below
   inventory/, tasks/, team/                                 # admin/manager only: inventory, tasks, and team administration
+  error-log/                                                # admin/manager only: client_error_log viewer, see Supabase Schema section
   danger-zone/                                              # admin only: org data export + soft-delete (organizations.deleted_at)
 customize/                                                  # admin-only: theme picker + logo upload (site_settings)
 account/                                                    # profile info, avatar picker, light/dark mode toggle
@@ -363,9 +364,12 @@ yet on a hard refresh of `/inventory`.
   crash can happen before sign-in) that derives `user_id`/`organization_id` server-side from
   `auth.uid()` rather than trusting them from the client. `GlobalErrorHandler`
   (`core/global-error-handler.ts`, registered as the app's `ErrorHandler` in `AppModule`)
-  fire-and-forgets every uncaught client exception here. Errors logged pre-auth land with
-  `organization_id` null and aren't exposed in-app — there's no cross-org "platform admin" role in
-  this schema — so those are Studio-only for now, same as the rest of this table in v1.
+  fire-and-forgets every uncaught client exception here. `manage/error-log`
+  (`ManageErrorLogComponent`) is the in-app viewer — `manageGuard`-gated (admin OR manager),
+  matching the table's own SELECT policy exactly, so no new RPC/migration was needed for reads;
+  it just queries `client_error_log` directly and lets RLS do the scoping. Errors logged pre-auth
+  land with `organization_id` null and still aren't exposed in-app — there's no cross-org "platform
+  admin" role in this schema — so those remain Studio-only.
 - `add_inventory_item_barcode` — adds `inventory_items.barcode` (nullable, unique per organization
   via a partial index on `(organization_id, barcode) where barcode is not null`), plus an
   additive `grant update (barcode)` since `add_inventory_item_retirement` gave `inventory_items` a
