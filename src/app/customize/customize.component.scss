@@ -65,8 +65,24 @@
   }
 }
 
+// Newspaper-style columns rather than a manual 2-up grid — groups vary in
+// length (Item information has 7 options, Price information has 2), so
+// letting them flow and balance themselves avoids the ragged look a fixed
+// pairing would produce, and keeps working if a group is added/resized
+// later. Collapses to one column once there's no longer room for two
+// readable ones.
+.table-column-groups{
+  columns: 2;
+  column-gap: 2rem;
+
+  @media (max-width: 30rem){
+    columns: 1;
+  }
+}
+
 .table-column-group{
   margin-bottom: 1.25rem;
+  break-inside: avoid;
 
   h4{
     color: var(--mat-sys-on-surface-variant);

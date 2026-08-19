@@ -121,19 +121,21 @@
               <p class="section-hint">
                 Choose which columns show in the Inventory page's table view. Name is always shown.
               </p>
-              @for (group of tableColumnGroups; track group.label) {
-                <div class="table-column-group">
-                  <h4>{{ group.label }}</h4>
-                  @for (option of group.options; track option.key) {
-                    <div>
-                      <mat-checkbox
-                          [checked]="selectedTableColumns.includes(option.key)"
-                          (change)="toggleTableColumn(option.key, $event.checked)"
-                        >{{ option.label }}</mat-checkbox>
-                    </div>
-                  }
-                </div>
-              }
+              <div class="table-column-groups">
+                @for (group of tableColumnGroups; track group.label) {
+                  <div class="table-column-group">
+                    <h4>{{ group.label }}</h4>
+                    @for (option of group.options; track option.key) {
+                      <div>
+                        <mat-checkbox
+                            [checked]="selectedTableColumns.includes(option.key)"
+                            (change)="toggleTableColumn(option.key, $event.checked)"
+                          >{{ option.label }}</mat-checkbox>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
               @if (tableColumnsError) {
                 <p class="error-message">{{ tableColumnsError }}</p>
               }
