@@ -394,6 +394,13 @@ yet on a hard refresh of `/inventory`.
   `site_settings`' UPDATE policy (from `scope_site_settings_by_organization`) is already a flat,
   non-column-scoped "admin of own org" check covering the whole row, and its SELECT policy already
   lets any org member read it — a new plain column rides along under both existing policies.
+- `add_more_avatar_presets` — widens `profiles.avatar_key`'s check constraint (originally 8 "shape"
+  presets from `add_avatar_to_profiles`) with 4 "people" and 3 "animal" options — same
+  purely-cosmetic, self-service column, no RLS/grant changes. A check constraint can't be altered
+  in place, so this drops and recreates it with the expanded key list; `shared/models/avatar-preset.ts`'s
+  `AVATAR_PRESETS` array is the client-side counterpart that must stay in sync with it — the Account
+  page's avatar picker (and everywhere else `UserAvatarComponent` resolves an `avatar_key`) just
+  iterates that array, so a new preset needs no other code changes once both are updated together.
 
 `supabase/seed.sql` ports the inventory page's hardcoded dummy items into `inventory_items` inserts
 for local dev (`checked_out_to` is left `null` since it's a real FK to `profiles` now and the
