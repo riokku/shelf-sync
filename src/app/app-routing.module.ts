@@ -154,7 +154,19 @@ const routes: Routes = [
 ];
 
 @NgModule({
-  imports: [RouterModule.forRoot(routes)],
+  imports: [
+    RouterModule.forRoot(routes, {
+      // Angular's default ('disabled') leaves the window at whatever scroll
+      // offset the previous page happened to be at — e.g. clicking "Privacy
+      // Policy" in the footer partway down the landing page would land on
+      // /privacy already scrolled down, since routing swaps the component
+      // in place without touching document scroll. 'enabled' resets to the
+      // top on every forward navigation, and still restores the previous
+      // position on browser back/forward (unlike 'top', which would do that
+      // unconditionally too).
+      scrollPositionRestoration: 'enabled'
+    })
+  ],
   exports: [RouterModule]
 })
 export class AppRoutingModule { }
