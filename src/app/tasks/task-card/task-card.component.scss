@@ -21,13 +21,20 @@
     background: var(--mat-sys-surface-container);
   }
 
-  // No border accent for overdue rows — the red icon/text below is enough
-  // of a signal on its own.
+  // Same solid pill (--app-danger-bg/-on-bg, not plain colored text)
+  // TaskDetailModalComponent's own overdue flag uses — justify-self: start
+  // keeps it hugging its content instead of the grid stretching it to
+  // fill the whole due-date column the way .task-row-due normally would.
   &.overdue .task-row-due{
-    color: var(--app-overdue-text);
+    justify-self: start;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    background: var(--app-danger-bg);
+    color: var(--app-danger-on-bg);
+    font-weight: 600;
 
     mat-icon{
-      color: var(--app-overdue-text);
+      color: var(--app-danger-on-bg);
     }
   }
 }
