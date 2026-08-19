@@ -16,6 +16,7 @@ import { toInventoryItem } from '../../utils/inventory-item.mapper';
 import { profileDisplayName, resolveProfileName } from '../../utils/profile-label';
 import { loadInventoryImagesByItemId } from '../../utils/inventory-item-images';
 import { loadInventoryActivityByItemId } from '../../utils/inventory-item-activity';
+import { getTodayIsoDate } from '../../utils/date';
 import { ModalTableComponent } from '../modal-table/modal-table.component';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
@@ -62,6 +63,22 @@ export class TaskDetailModalComponent implements OnInit {
   isRequestingTransfer = false;
   isRespondingToTransfer = false;
   transferError: string | null = null;
+
+  /** Starts false so the not-yet-requested case is just a plain "Transfer"
+   *  button rather than the recipient picker sitting permanently open
+   *  next to the status field — the picker (and its boxed .transfer-panel
+   *  styling, same treatment the pending/incoming states already use) only
+   *  appears once someone actually means to start one. */
+  isPickingTransferTarget = false;
+
+  // Same rule TaskCardComponent/ManageTasksComponent already badge list
+  // rows with — flags it here too now that opening the dialog is the other
+  // place someone finds out a task needs attention, not just the list.
+  get isOverdue(): boolean {
+    return !!this.task.due_date
+      && this.task.status !== 'done'
+      && this.task.due_date < getTodayIsoDate();
+  }
 
   /** True once the recipient of an incoming transfer, rather than the
    *  task's current owner, has this open — they get Accept/Decline instead
@@ -114,6 +131,18 @@ export class TaskDetailModalComponent implements OnInit {
 
   pendingTransferLabel(): string {
     return resolveProfileName(this.task.pending_transfer_to, this.orgProfiles) || 'Unknown user';
+  }
+
+  startTransfer() {
+    this.isPickingTransferTarget = true;
+  }
+
+  /** Backs out of the picker without touching the server — distinct from
+   *  cancelTransfer() below, which cancels a transfer already requested. */
+  cancelPickingTransferTarget() {
+    this.isPickingTransferTarget = false;
+    this.transferTarget = null;
+    this.transferError = null;
   }
 
   async requestTransfer() {

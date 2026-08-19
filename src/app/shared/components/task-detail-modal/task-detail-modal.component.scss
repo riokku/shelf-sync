@@ -59,6 +59,22 @@ dd{
   margin: 0;
 }
 
+// Same treatment TaskCardComponent/ManageTasksComponent already flag
+// overdue rows with in their own list views.
+dd.overdue{
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--app-overdue-text);
+
+  mat-icon{
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+    color: var(--app-overdue-text);
+  }
+}
+
 .task-id-row{
   display: flex;
   align-items: center;
@@ -145,4 +161,21 @@ dd{
   .full-width{
     width: 100%;
   }
+}
+
+.transfer-request-actions{
+  display: flex;
+  gap: 0.5rem;
+}
+
+// Sits in mat-dialog-actions alongside Cancel/Save rather than the content
+// area — deliberately not wrapped in .transfer-panel's own box/background,
+// so the not-yet-requested case stays a plain, low-key button instead of
+// competing with the status field above it (the boxed treatment only
+// kicks in once a transfer is actually pending or being picked — see the
+// two sibling states in the template). margin-right: auto pushes it to
+// the opposite end of the row from Cancel/Save, which mat-dialog-actions'
+// own align="end" would otherwise cluster it against.
+.start-transfer-button{
+  margin-right: auto;
 }
