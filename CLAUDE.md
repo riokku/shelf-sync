@@ -129,7 +129,19 @@ assets with no manufacturer barcode — scanning that label later resolves strai
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
-- **UI:** Angular Material + Angular CDK (migrated from PrimeNG — see git history)
+- **UI:** Angular Material + Angular CDK (migrated from PrimeNG — see git history) for every actual
+  component; Bootstrap is scoped to just its grid system (`container`/`row`/`col-*`) plus a handful
+  of hand-written utility classes (`d-flex`, `gap-3`, `mb-0`/`mb-4`/`mb-5`, `me-2`, `pe-2`) in
+  `styles.scss` — `@import 'bootstrap/scss/bootstrap'` (the whole framework: every component's CSS)
+  was ~240KB of production `styles.css` for CSS nothing on the page ever selected, since Material
+  already covers every real component. Adding a new Bootstrap utility class to a template means
+  hand-writing its rule in `styles.scss` (matching Bootstrap's own definition) rather than
+  reintroducing `bootstrap/scss/utilities/api`. This dropped the initial bundle from ~1.25MB to
+  ~1.05MB raw; `angular.json`'s `initial` budget (`maximumWarning`) was right-sized to `1.1mb` to
+  match — `@angular/core`/Material/CDK/Router plus `@supabase/supabase-js` (not very
+  tree-shakeable; `createClient()` eagerly wires up auth/storage/realtime/postgrest regardless of
+  what's used) make up effectively all of what's left, and aren't safely reducible further without
+  a much riskier SDK-level refactor.
 - **Backend:** Supabase (Postgres, Auth, RLS), hosted project (ref `ailqjqjrzhzspofoslpa`),
   linked via the Supabase CLI. Auth, `inventory_items`, and `tasks` are all live and queried
   directly from the inventory/tasks/manage UI — no hardcoded local data remains.
