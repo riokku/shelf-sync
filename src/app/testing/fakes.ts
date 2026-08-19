@@ -2,6 +2,7 @@ import { computed, signal } from '@angular/core';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { of } from 'rxjs';
 import { AuthService, Profile } from '../core/auth.service';
+import { InventoryFieldName, InventoryFieldOptionsService } from '../core/inventory-field-options.service';
 import { SiteSettingsService } from '../core/site-settings.service';
 import { SupabaseService } from '../core/supabase.service';
 import { InventoryItem, InventoryItemStatus } from '../shared/models/inventory-item.model';
@@ -93,6 +94,27 @@ export function createFakeSiteSettingsService(overrides: Partial<{
     loadLogoUrlForOrganization: async () => null,
   };
   return fake as unknown as SiteSettingsService;
+}
+
+/** Covers both InventoryFieldOptionsService's own consumers and
+ *  FieldOptionsEditorComponent (a CustomizeComponent child that injects the
+ *  same service directly) — Angular DI satisfies both from this one
+ *  provider, so a component test doesn't need to fake each separately. */
+export function createFakeInventoryFieldOptionsService(
+  options: Partial<Record<InventoryFieldName, string[]>> = {}
+): InventoryFieldOptionsService {
+  const resolved: Record<InventoryFieldName, string[]> = {
+    category: options.category ?? [],
+    physical_location: options.physical_location ?? []
+  };
+  const fake = {
+    optionsFor: (field: InventoryFieldName) => resolved[field],
+    load: async () => {},
+    addOption: async () => null,
+    loadUsedValues: async () => [],
+    removeOption: async () => null,
+  };
+  return fake as unknown as InventoryFieldOptionsService;
 }
 
 export function createFakeActivatedRoute(queryParams: Record<string, string> = {}): ActivatedRoute {
