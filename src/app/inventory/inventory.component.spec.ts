@@ -256,6 +256,16 @@ describe('InventoryComponent', () => {
       expect(component.sortedInventoryList.map(i => i.id)).toEqual(['2', '3', '1']);
     });
 
+    it('sorts by any other InventoryItem field generically, e.g. a plain string column like barcode', () => {
+      component.inventoryList = [
+        createTestInventoryItem({ id: '1', barcode: 'ccc' }),
+        createTestInventoryItem({ id: '2', barcode: 'aaa' }),
+        createTestInventoryItem({ id: '3', barcode: 'bbb' })
+      ];
+      component.onSortChange({ active: 'barcode', direction: 'asc' });
+      expect(component.sortedInventoryList.map(i => i.id)).toEqual(['2', '3', '1']);
+    });
+
     it('falls back to the unsorted list once sorting is cleared (MatSort\'s third click state)', () => {
       component.onSortChange({ active: 'name', direction: 'asc' });
       component.onSortChange({ active: 'name', direction: '' });

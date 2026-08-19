@@ -41,14 +41,25 @@ as `[data-theme='x']` blocks in `styles.scss` and toggling that attribute on `<h
 `THEME_PRESETS` in `shared/models/theme-preset.ts` for the option list and `core/site-settings.service.ts`
 for the load/preview/persist logic. `AppComponent` loads settings once on startup (readable by
 `anon` too, so branding applies pre-login) and `HeaderComponent` swaps in the custom logo when set,
-falling back to the default SS mark. The same `customize` route's Data tab also lets an admin choose
-which optional columns (Category, Physical location, Quantity remaining, Stock status) appear in the
-Inventory page's table view — Name and the actions column are always shown, everything else is
-`site_settings.inventory_table_columns`, a plain text array with no column-scoped grant needed (the
-existing admin-only, flat-row UPDATE policy already covers it). `shared/models/inventory-table-column.ts`
-defines the option list/labels and canonical display order, shared by `CustomizeComponent` (checkboxes)
-and `InventoryComponent` (the `tableColumns` getter that filters that canonical order down to whatever's
-enabled, so the table's column order stays stable regardless of the order columns were toggled in).
+falling back to the default SS mark. The same `customize` route's Data tab is a two-column layout —
+"Inventory data" (the field-options editors below) on the left, "Table presentation" on the right —
+and the latter lets an admin choose which columns appear in the Inventory page's table view. Every
+practical `InventoryItem` field is selectable (Barcode, Description, Category, Physical location,
+Digital location, Applicable year, Expiration date, Supplier name/lead time, Order link, all five
+quantity fields, both price fields, Checked out to, and Stock status), grouped into checkbox
+sections that mirror `InventoryItem`'s own constructor comment groupings (Item/Supplier/Quantity/
+Price/Other information) — deliberately excluding `id`, `image(s)`, `activityLog`, the
+`checkedOutTo*` internal keys, and the retirement audit trail (`retirementRequestedByLabel`/etc.,
+already summarized by the Stock status pill). Name and the actions column are always shown
+regardless. Selections are `site_settings.inventory_table_columns`, a plain text array with no
+column-scoped grant needed (the existing admin-only, flat-row UPDATE policy already covers it) —
+new orgs default to the original four (Category, Physical location, Quantity remaining, Stock
+status) rather than every column at once. `shared/models/inventory-table-column.ts` defines the
+grouped option list/labels and canonical display order, shared by `CustomizeComponent` (grouped
+checkboxes) and `InventoryComponent` (the `tableColumns` getter that filters that canonical order
+down to whatever's enabled, so the table's column order stays stable regardless of the order
+columns were toggled in; sorting reads whichever `InventoryItem` field matches the clicked column
+key generically, rather than a per-column switch statement).
 
 Password recovery (`/forgot-password`, `/reset-password`), Supabase-native client error logging
 (`GlobalErrorHandler`), and requiring approved org membership before a task can be transferred or

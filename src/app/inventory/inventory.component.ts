@@ -162,21 +162,35 @@ export class InventoryComponent implements OnInit{
     return [...list].sort((a, b) => this.compareForSort(a, b, this.sortActive) * direction);
   }
 
+  /** Numeric columns compare directly; everything else (including dates —
+   *  expirationDate is stored as plain text, not a real date type — and
+   *  short strings like applicableYear) compares fine as text. */
+  private static readonly NUMERIC_SORT_COLUMNS = new Set([
+    'quantityTotal',
+    'quantityPerContainer',
+    'quantityAllocated',
+    'quantityRemaining',
+    'lowQuantityThreshold',
+    'pricePerUnit',
+    'pricePerContainer'
+  ]);
+
   private compareForSort(a: InventoryItem, b: InventoryItem, column: string): number {
-    switch (column) {
-      case 'name':
-        return a.name.localeCompare(b.name);
-      case 'category':
-        return a.category.localeCompare(b.category);
-      case 'physicalLocation':
-        return a.physicalLocation.localeCompare(b.physicalLocation);
-      case 'quantityRemaining':
-        return a.quantityRemaining - b.quantityRemaining;
-      case 'status':
-        return this.statusLabel(a).localeCompare(this.statusLabel(b));
-      default:
-        return 0;
+    if (column === 'name') {
+      return a.name.localeCompare(b.name);
     }
+    if (column === 'status') {
+      return this.statusLabel(a).localeCompare(this.statusLabel(b));
+    }
+
+    const key = column as keyof InventoryItem;
+    const aValue = a[key];
+    const bValue = b[key];
+
+    if (InventoryComponent.NUMERIC_SORT_COLUMNS.has(column)) {
+      return (Number(aValue) || 0) - (Number(bValue) || 0);
+    }
+    return String(aValue ?? '').localeCompare(String(bValue ?? ''));
   }
 
   /** Table view's single-status-per-row simplification of card view's

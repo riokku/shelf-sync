@@ -10,7 +10,7 @@ import { SiteSettingsService } from '../core/site-settings.service';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 import { FieldOptionsEditorComponent } from '../shared/components/field-options-editor/field-options-editor.component';
 import { THEME_PRESETS } from '../shared/models/theme-preset';
-import { INVENTORY_TABLE_COLUMN_OPTIONS, InventoryTableColumnKey } from '../shared/models/inventory-table-column';
+import { INVENTORY_TABLE_COLUMN_GROUPS, InventoryTableColumnKey } from '../shared/models/inventory-table-column';
 
 @Component({
   selector: 'app-customize',
@@ -45,7 +45,7 @@ export class CustomizeComponent implements OnInit, OnDestroy {
   isSavingLogo = false;
   logoError: string | null = null;
 
-  readonly tableColumnOptions = INVENTORY_TABLE_COLUMN_OPTIONS;
+  readonly tableColumnGroups = INVENTORY_TABLE_COLUMN_GROUPS;
   // Local editable copy, same pattern as selectedTheme — starts from the
   // persisted setting, only pushed back to SiteSettingsService on save.
   selectedTableColumns: InventoryTableColumnKey[] = [...this.siteSettings.inventoryTableColumns()];

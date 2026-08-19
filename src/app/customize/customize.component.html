@@ -102,53 +102,62 @@
       </div>
     } @else {
       <div class="customize-tab-content">
-        <div class="customize-card">
-          <section class="customize-section">
-            <h3>Inventory field options</h3>
-            <p class="section-hint">
-              Approved values for these fields — only these options appear when creating or editing an
-              inventory item.
-            </p>
-            <app-field-options-editor fieldName="category" label="Category" />
-            <app-field-options-editor fieldName="physical_location" label="Physical location" />
-          </section>
+        <div class="customize-data-columns">
+          <div class="customize-card">
+            <section class="customize-section">
+              <h3>Inventory data</h3>
+              <p class="section-hint">
+                Approved values for these fields — only these options appear when creating or editing an
+                inventory item.
+              </p>
+              <app-field-options-editor fieldName="category" label="Category" />
+              <app-field-options-editor fieldName="physical_location" label="Physical location" />
+            </section>
+          </div>
 
-          <section class="customize-section">
-            <h3>Inventory table columns</h3>
-            <p class="section-hint">
-              Choose which columns show in the Inventory page's table view. Name is always shown.
-            </p>
-            @for (option of tableColumnOptions; track option.key) {
-              <div>
-                <mat-checkbox
-                    [checked]="selectedTableColumns.includes(option.key)"
-                    (change)="toggleTableColumn(option.key, $event.checked)"
-                  >{{ option.label }}</mat-checkbox>
-              </div>
-            }
-            @if (tableColumnsError) {
-              <p class="error-message">{{ tableColumnsError }}</p>
-            }
-            @if (tableColumnsSaved) {
-              <p class="success-message">Table columns saved for everyone.</p>
-            }
-            <button
-                mat-flat-button
-                color="primary"
-                type="button"
-                (click)="saveTableColumns()"
-                [disabled]="isSavingTableColumns || !tableColumnsChanged"
-              >
-              @if (isSavingTableColumns) {
-                <mat-spinner diameter="20"></mat-spinner>
-              } @else {
-                <ng-container>
-                  <mat-icon>check</mat-icon>
-                  Save table columns
-                </ng-container>
+          <div class="customize-card">
+            <section class="customize-section">
+              <h3>Table presentation</h3>
+              <p class="section-hint">
+                Choose which columns show in the Inventory page's table view. Name is always shown.
+              </p>
+              @for (group of tableColumnGroups; track group.label) {
+                <div class="table-column-group">
+                  <h4>{{ group.label }}</h4>
+                  @for (option of group.options; track option.key) {
+                    <div>
+                      <mat-checkbox
+                          [checked]="selectedTableColumns.includes(option.key)"
+                          (change)="toggleTableColumn(option.key, $event.checked)"
+                        >{{ option.label }}</mat-checkbox>
+                    </div>
+                  }
+                </div>
               }
-            </button>
-          </section>
+              @if (tableColumnsError) {
+                <p class="error-message">{{ tableColumnsError }}</p>
+              }
+              @if (tableColumnsSaved) {
+                <p class="success-message">Table columns saved for everyone.</p>
+              }
+              <button
+                  mat-flat-button
+                  color="primary"
+                  type="button"
+                  (click)="saveTableColumns()"
+                  [disabled]="isSavingTableColumns || !tableColumnsChanged"
+                >
+                @if (isSavingTableColumns) {
+                  <mat-spinner diameter="20"></mat-spinner>
+                } @else {
+                  <ng-container>
+                    <mat-icon>check</mat-icon>
+                    Save table columns
+                  </ng-container>
+                }
+              </button>
+            </section>
+          </div>
         </div>
       </div>
     }
