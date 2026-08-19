@@ -42,6 +42,9 @@
       <button mat-icon-button type="button" (click)="copyTaskId()" [attr.aria-label]="'Copy task ID'">
         <mat-icon>{{ taskIdCopied ? 'check' : 'content_copy' }}</mat-icon>
       </button>
+      <button mat-icon-button type="button" (click)="copyLink()" [attr.aria-label]="'Copy link'">
+        <mat-icon>{{ linkCopied ? 'check' : 'link' }}</mat-icon>
+      </button>
     </dd>
   </dl>
 

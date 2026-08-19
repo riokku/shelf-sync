@@ -1,11 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, provideRouter } from '@angular/router';
 import { provideNativeDateAdapter } from '@angular/material/core';
 
 import { ManageTasksComponent } from './manage-tasks.component';
 import { AuthService } from '../../core/auth.service';
 import { SupabaseService } from '../../core/supabase.service';
-import { createFakeAuthService, createFakeSupabaseService, createTestTask } from '../../testing/fakes';
+import { createFakeActivatedRoute, createFakeAuthService, createFakeSupabaseService, createTestTask } from '../../testing/fakes';
 
 describe('ManageTasksComponent', () => {
   let component: ManageTasksComponent;
@@ -126,5 +126,54 @@ describe('ManageTasksComponent', () => {
       component.relatedItemSearchControl.setValue('item-2');
       expect(component.filteredInventoryItemsForTask.map(item => item.id)).toEqual(['item-2']);
     });
+  });
+});
+
+/** Covers the ?task=<id> deep link — either landed on directly or arrived
+ *  via TasksComponent's own fallback for a task outside that viewer's
+ *  personal list. */
+describe('ManageTasksComponent ?task= deep link', () => {
+  it('opens the matching task and switches off the create-form default view', async () => {
+    const task = createTestTask({ id: 'task-1' });
+
+    await TestBed.configureTestingModule({
+      imports: [ManageTasksComponent],
+      providers: [
+        provideRouter([]),
+        provideNativeDateAdapter(),
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: SupabaseService, useValue: createFakeSupabaseService({ data: [task], error: null }) },
+        { provide: ActivatedRoute, useValue: createFakeActivatedRoute({ task: 'task-1' }) }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ManageTasksComponent);
+    const openTaskDetailSpy = spyOn(fixture.componentInstance, 'openTaskDetail');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(openTaskDetailSpy).toHaveBeenCalledWith(jasmine.objectContaining({ id: 'task-1' }));
+    expect(fixture.componentInstance.viewMode).toBe('all');
+  });
+
+  it('does nothing when no task matches the id', async () => {
+    await TestBed.configureTestingModule({
+      imports: [ManageTasksComponent],
+      providers: [
+        provideRouter([]),
+        provideNativeDateAdapter(),
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: SupabaseService, useValue: createFakeSupabaseService({ data: [], error: null }) },
+        { provide: ActivatedRoute, useValue: createFakeActivatedRoute({ task: 'nonexistent' }) }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ManageTasksComponent);
+    const openTaskDetailSpy = spyOn(fixture.componentInstance, 'openTaskDetail');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(openTaskDetailSpy).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.viewMode).toBe('create');
   });
 });

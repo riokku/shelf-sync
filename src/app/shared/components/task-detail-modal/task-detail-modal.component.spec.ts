@@ -28,6 +28,15 @@ describe('TaskDetailModalComponent', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('copyLink() copies a /tasks?task=<id> URL, never /manage/tasks — see its own doc comment for why', async () => {
+    spyOn(navigator.clipboard, 'writeText').and.resolveTo();
+
+    await component.copyLink();
+
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(`${window.location.origin}/tasks?task=task-1`);
+    expect(component.linkCopied).toBeTrue();
+  });
 });
 
 /** Covers the collapsed-by-default transfer picker — a plain "Transfer"

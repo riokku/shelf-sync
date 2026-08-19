@@ -11,6 +11,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialog } from '@angular/material/dialog';
+import { ActivatedRoute } from '@angular/router';
 import { SupabaseService } from '../../core/supabase.service';
 import { NotificationService } from '../../core/notification.service';
 import { AuthService, Profile } from '../../core/auth.service';
@@ -54,6 +55,7 @@ export class ManageTasksComponent implements OnInit {
   private authService = inject(AuthService);
   private dialog = inject(MatDialog);
   private notification = inject(NotificationService);
+  private route = inject(ActivatedRoute);
 
   private currentUserId: string | null = null;
   assignableProfiles: Profile[] = [];
@@ -148,6 +150,22 @@ export class ManageTasksComponent implements OnInit {
       this.loadTasks(),
       this.loadRelatedItemOptions()
     ]);
+
+    // Supports deep links (?task=<id>) — either landed on directly (a
+    // manager+ user's own copied link) or arrived via TasksComponent's own
+    // ?task= fallback for a task that wasn't in *that* viewer's personal
+    // list. Read once from the snapshot, same as InventoryComponent's own
+    // ?item= handling. Switches off the create-form default view so
+    // closing the dialog doesn't leave the deep-linked task's context
+    // behind a blank "create task" form.
+    const taskId = this.route.snapshot.queryParamMap.get('task');
+    if (taskId) {
+      const task = this.allTasks.find(candidate => candidate.id === taskId);
+      if (task) {
+        this.viewMode = 'all';
+        this.openTaskDetail(task);
+      }
+    }
   }
 
   private async loadProfiles() {

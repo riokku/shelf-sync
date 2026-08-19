@@ -55,6 +55,7 @@ export class TaskDetailModalComponent implements OnInit {
   relatedItemError: string | null = null;
 
   taskIdCopied = false;
+  linkCopied = false;
 
   currentUserId: string | null = null;
   orgProfiles: Profile[] = [];
@@ -236,6 +237,19 @@ export class TaskDetailModalComponent implements OnInit {
     await navigator.clipboard.writeText(this.task.id);
     this.taskIdCopied = true;
     setTimeout(() => (this.taskIdCopied = false), 2000);
+  }
+
+  /** Always /tasks?task=<id> — never /manage/tasks — since /tasks is
+   *  reachable by any approved org member (just approvedGuard) where
+   *  /manage/tasks would flatly deny a plain staff member via manageGuard.
+   *  TasksComponent falls back to /manage/tasks itself, but only for a
+   *  viewer who can actually manage — see its own ?task= handling. Mirrors
+   *  ModalTableComponent.copyLink()'s /inventory?item=<id>. */
+  async copyLink() {
+    const url = `${window.location.origin}/tasks?task=${this.task.id}`;
+    await navigator.clipboard.writeText(url);
+    this.linkCopied = true;
+    setTimeout(() => (this.linkCopied = false), 2000);
   }
 
   /** related_item_name is plain text (not a foreign key), so the linked item
