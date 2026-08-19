@@ -53,6 +53,16 @@ const routes: Routes = [
     title: 'ShelfSync | Choose a new password'
   },
   {
+    path: 'privacy',
+    loadComponent: () => import('./privacy/privacy.component').then(m => m.PrivacyComponent),
+    title: 'ShelfSync | Privacy Policy'
+  },
+  {
+    path: 'terms',
+    loadComponent: () => import('./terms/terms.component').then(m => m.TermsComponent),
+    title: 'ShelfSync | Terms of Service'
+  },
+  {
     path: 'home',
     loadComponent: () => import('./home/home.component').then(m => m.HomeComponent),
     canActivate: [approvedGuard],

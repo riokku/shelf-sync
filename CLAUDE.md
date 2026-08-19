@@ -66,6 +66,22 @@ Password recovery (`/forgot-password`, `/reset-password`), Supabase-native clien
 assigned to someone (both `TaskDetailModalComponent` and task-creation) are all covered in detail
 in the Supabase Schema section below, next to the migrations that back them.
 
+`/privacy` and `/terms` (`PrivacyComponent`/`TermsComponent`) are static Privacy Policy/Terms of
+Service pages — reachable without a session and excluded from the normal header/footer chrome (see
+`AppComponent.showChrome()`'s allowlist), same as landing/login/register, since a signed-out
+visitor following a link to either from the landing page or the register form shouldn't land on a
+header full of nav links that just bounce them via guards. Both provide their own minimal top bar
+(shared layout in `shared/styles/_legal-page.scss`) with a theme-aware logo (same
+`assets/logo-light.svg`/`logo-dark.svg` swap `HeaderComponent` uses) rather than reusing
+`BrandLogoComponent`, which hardcodes white/always-dark styling meant for login/register's video
+backdrop and would be unreadable in light mode here. `FooterComponent` links to both (so they're
+reachable from every authenticated page too, not just pre-login ones), and the register form's
+submit button carries a "you agree to our Terms/Privacy" notice linking the same routes. The policy
+text itself is a starting draft (attributed to Studio Rio, contact
+`chris@studiorioconsulting.com`) — **not reviewed by an attorney**, and the Terms' governing-law
+section still has a literal `[Insert governing state/country]` placeholder — have both reviewed
+before relying on them for real signups.
+
 The Inventory page has a card/table view toggle (`InventoryComponent.viewMode`, a
 `mat-button-toggle-group` above the item list) — card view is the original gallery layout; table
 view is a `mat-table`/`matSort` grid, sortable by clicking any column header (`sortedInventoryList`
@@ -196,6 +212,7 @@ core/
 header/, footer/                                           # standalone layout components; header has the logout button
 login/                                                      # standalone login screen, real Supabase auth
 register/                                                   # standalone signup screen, real Supabase auth
+privacy/, terms/                                            # standalone legal pages, no session required (see Project Overview above)
 home/                                                        # post-login landing hub: cards linking to the pages below
 inventory/                                                  # standalone inventory page: filters, item table, opens modal
 tasks/                                                      # standalone personal "My Tasks" list (row-styled task-card)
@@ -215,8 +232,8 @@ shared/
   utils/inventory-item-activity.ts # loadInventoryActivityByItemId() / logInventoryItemActivity() — inventory_item_activity
   utils/profile-label.ts     # profileDisplayName()/resolveProfileName() — shared profiles-array lookup
   utils/barcode.ts           # buildItemQrValue()/parseItemQrValue() — ShelfSync's own QR-label encoding
-  styles/_auth-shell.scss   # shared full-page video-background shell; login/register `@use` it
-                             # rather than duplicating — add new shared auth-page styles here
+  styles/_legal-page.scss   # shared top-bar + prose layout for privacy/ and terms/ (see Project Overview above);
+                             # login/register no longer share a partial like this — each owns its own layout now
 ```
 `src/environments/environment.ts` and `environment.prod.ts` hold `supabaseUrl` and
 `supabaseAnonKey` (the publishable key — safe to commit, it's constrained by RLS).

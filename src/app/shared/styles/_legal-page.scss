@@ -1,0 +1,90 @@
+// Shared layout for the standalone legal pages (Privacy Policy, Terms of
+// Service). Unlike login/register's always-dark video shell, these are
+// plain reading pages, so they respect the visitor's light/dark preference
+// via the ordinary --mat-sys-* tokens (body already sets a theme-aware
+// background/color globally in styles.scss — no override needed here)
+// rather than forcing a fixed dark backdrop. Both are reachable without a
+// session (see app-routing.module.ts) and excluded from the normal
+// header/footer chrome (see app.component.ts's showChrome() allowlist),
+// so each provides its own minimal top bar instead.
+
+.legal-page-wrapper{
+  min-height: 100vh;
+  padding: 1.5rem;
+}
+
+.legal-page-topbar{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 42rem;
+  margin: 0 auto 2.5rem;
+
+  .brand-link{
+    display: flex;
+    align-items: center;
+
+    img{
+      height: 2rem;
+      width: auto;
+    }
+  }
+
+  .back-link{
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--mat-sys-on-surface-variant);
+    text-decoration: none;
+    font-size: 0.9rem;
+
+    mat-icon{
+      font-size: 1.125rem;
+      width: 1.125rem;
+      height: 1.125rem;
+    }
+
+    &:hover{
+      color: var(--mat-sys-on-surface);
+    }
+  }
+}
+
+.legal-page-content{
+  max-width: 42rem;
+  margin: 0 auto 4rem;
+
+  h1{
+    margin-bottom: 0.25rem;
+  }
+
+  .legal-updated{
+    color: var(--mat-sys-on-surface-variant);
+    font-size: 0.875rem;
+    margin-bottom: 2rem;
+  }
+
+  h2{
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+    color: var(--mat-sys-primary);
+    font-size: 1.125rem;
+  }
+
+  p, li{
+    line-height: 1.6;
+  }
+
+  p{
+    margin-bottom: 1rem;
+  }
+
+  ul{
+    margin: 0 0 1rem;
+    padding-left: 1.5rem;
+  }
+
+  a{
+    color: var(--mat-sys-primary);
+  }
+}
