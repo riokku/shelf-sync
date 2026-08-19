@@ -113,14 +113,21 @@ assets with no manufacturer barcode — scanning that label later resolves strai
 hardcoded version in the workflow — one source of truth shared with whatever else reads it (e.g.
 a deploy host's own Node-version detection).
 
-Production hosting is Cloudflare Pages, connected directly to this GitHub repo (build command
-`npm run build`, output directory `dist/inventory-app`) — pushes to `main` auto-deploy, no
-GitHub Actions deploy step involved. Since this is a client-side SPA with `PathLocationStrategy`
-routing (no hash-based URLs), `src/_redirects` (`/* /index.html 200`, copied into the build
-output via `angular.json`'s `assets` array) is what makes a hard refresh on e.g. `/inventory`
-resolve correctly instead of 404ing at the host. `environment.prod.ts`'s Supabase URL/anon key
-stay build-time constants (see Architecture below) — no host-side environment variable
-injection needed for the current single-production-project setup.
+Production hosting is Cloudflare Workers' static-assets product (not classic Cloudflare Pages,
+despite how similar the two look/sound — the dashboard's Build configuration runs `npx wrangler
+deploy`, the Workers deploy command, not a Pages one), connected directly to this GitHub repo —
+pushes to `main` auto-deploy, no GitHub Actions deploy step involved. `wrangler.jsonc` at the repo
+root is what makes this work: no Worker script/entry point, just `assets.directory:
+"dist/inventory-app"` plus `assets.not_found_handling: "single-page-application"`, the latter
+being what makes a hard refresh on e.g. `/inventory` resolve correctly instead of 404ing at the
+host (this is a client-side SPA with `PathLocationStrategy` routing, no hash-based URLs). A
+`src/_redirects` file (the classic-Pages convention: `/* /index.html 200`) was tried here first
+and rejected outright at deploy time — "Invalid _redirects configuration: Infinite loop detected
+in this rule" — this product's loop-detection validator treats a catch-all redirect as suspect in
+a way classic Pages never did, so `not_found_handling` is the only SPA-fallback mechanism to use
+here; don't reintroduce a `_redirects` file. `environment.prod.ts`'s Supabase URL/anon key stay
+build-time constants (see Architecture below) — no host-side environment variable injection
+needed for the current single-production-project setup.
 
 ## Architecture
 

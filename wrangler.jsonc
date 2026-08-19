@@ -13,10 +13,14 @@
   "assets": {
     "directory": "dist/inventory-app",
     // Client-side SPA with PathLocationStrategy routing (no hash URLs) —
-    // this is the Workers-static-assets equivalent of src/_redirects
-    // (which is the classic-Pages convention; left in place too since
-    // Workers' assets layer honors it as well, but this is the officially
-    // documented mechanism for this specific product).
+    // this is the ONLY SPA-fallback mechanism to use on this product. A
+    // src/_redirects file (the classic-Pages convention: /* /index.html
+    // 200) was tried here first and rejected outright at deploy time —
+    // "Invalid _redirects configuration: Infinite loop detected in this
+    // rule" — Workers' loop-detection validator treats a catch-all
+    // redirect as suspect in a way classic Pages never did. Don't add one
+    // back; this config option is the real, supported answer for this
+    // product.
     "not_found_handling": "single-page-application"
   }
 }
