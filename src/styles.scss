@@ -13,6 +13,15 @@ $container-max-widths: (
   xxl: 1400px
 );
 
+// Bootstrap defaults this to true, which sets `html { scroll-behavior:
+// smooth }` — that makes *every* programmatic scroll animate instead of
+// jump instantly, including Angular Router's own scrollPositionRestoration
+// resetting to the top on navigation (see app-routing.module.ts). That's
+// what was producing a visible "scroll up" on landing on a new page rather
+// than just starting there. This app has no in-page anchor links that
+// would actually want the smooth animation, so it's off globally.
+$enable-smooth-scroll: false;
+
 @import 'bootstrap/scss/bootstrap';
 
 // Preset color themes, picked from Customize (admin-only). mat.theme() is a
