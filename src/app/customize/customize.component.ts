@@ -31,7 +31,7 @@ export class CustomizeComponent implements OnInit, OnDestroy {
   // ever had the two tabs, and this matches the rest of the app's "Manage"
   // section instead of being the one place still using Material's own tab
   // strip.
-  viewMode: 'style' | 'data' = 'style';
+  viewMode: 'style' | 'data' = 'data';
 
   readonly presets = THEME_PRESETS;
   selectedTheme = this.siteSettings.theme();
