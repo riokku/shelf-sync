@@ -9,7 +9,7 @@
 // task list scoped to the current user.
 .task-row{
   display: grid;
-  grid-template-columns: minmax(10rem, 2fr) minmax(8rem, 1fr) 7.5rem;
+  grid-template-columns: minmax(10rem, 2fr) minmax(8rem, 1fr) minmax(8rem, 1fr) 7.5rem;
   align-items: center;
   column-gap: 1.5rem;
   padding: 0.85rem 1.25rem;
@@ -67,20 +67,6 @@
   }
 }
 
-.task-row-created-by{
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  color: var(--mat-sys-on-surface-variant);
-  font-size: 0.8125rem;
-
-  mat-icon{
-    font-size: 1rem;
-    width: 1rem;
-    height: 1rem;
-  }
-}
-
 .transfer-pending-badge{
   display: flex;
   align-items: center;
@@ -95,18 +81,27 @@
   }
 }
 
+.task-row-created-by,
 .task-row-due{
   display: flex;
   align-items: center;
   gap: 0.25rem;
+  min-width: 0;
   font-size: 0.875rem;
   color: var(--mat-sys-on-surface-variant);
 
   mat-icon{
+    flex-shrink: 0;
     font-size: 1rem;
     width: 1rem;
     height: 1rem;
   }
+}
+
+.task-row-created-by{
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .status-badge{
@@ -134,4 +129,24 @@
 .status-done{
   background: var(--app-success-bg);
   color: var(--app-success-on-bg);
+}
+
+// Same fix, same reasoning, as ManageTasksComponent's own .task-row at this
+// breakpoint (see its own comment): a 4th grid column (added for
+// createdByLabel) pushed this row's real combined minimum width close
+// enough to typical narrow-viewport widths to risk the same overflow —
+// title stays full-width on its own line, everything else flows and wraps
+// together on a second line instead of escaping the row.
+@media (max-width: 900px){
+  .task-row{
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 0.75rem;
+    row-gap: 0.5rem;
+  }
+
+  .task-row-main{
+    flex: 1 1 100%;
+  }
 }

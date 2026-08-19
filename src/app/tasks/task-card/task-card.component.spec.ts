@@ -37,18 +37,18 @@ describe('TaskCardComponent createdByLabel', () => {
     fixture.componentRef.setInput('task', createTestTask());
   });
 
-  it('renders "Created by <name>" when set', () => {
+  it('renders the name in its own column when set', () => {
     fixture.componentRef.setInput('createdByLabel', 'Jamie Rivera');
     fixture.detectChanges();
 
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
-    expect(text).toContain('Created by Jamie Rivera');
+    expect(text).toContain('Jamie Rivera');
   });
 
-  it('renders nothing when unset (the default)', () => {
+  it('renders an empty column when unset (the default)', () => {
     fixture.detectChanges();
 
-    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
-    expect(text).not.toContain('Created by');
+    const column = fixture.nativeElement.querySelector('.task-row-created-by') as HTMLElement;
+    expect(column.textContent?.trim()).toBe('');
   });
 });
