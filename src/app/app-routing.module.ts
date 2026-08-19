@@ -1,22 +1,5 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { LandingComponent } from './landing/landing.component';
-import { LoginComponent } from './login/login.component';
-import { RegisterComponent } from './register/register.component';
-import { ForgotPasswordComponent } from './forgot-password/forgot-password.component';
-import { ResetPasswordComponent } from './reset-password/reset-password.component';
-import { HomeComponent } from './home/home.component';
-import { InventoryComponent } from './inventory/inventory.component';
-import { AccountComponent } from './account/account.component';
-import { TasksComponent } from './tasks/tasks.component';
-import { ManageComponent } from './manage/manage.component';
-import { ManageInventoryComponent } from './manage/inventory/manage-inventory.component';
-import { ManageTasksComponent } from './manage/tasks/manage-tasks.component';
-import { ManageTeamComponent } from './manage/team/manage-team.component';
-import { ManageDangerZoneComponent } from './manage/danger-zone/manage-danger-zone.component';
-import { CustomizeComponent } from './customize/customize.component';
-import { PendingApprovalComponent } from './pending-approval/pending-approval.component';
-import { NotFoundComponent } from './not-found/not-found.component';
 import { authGuard } from './core/guards/auth.guard';
 import { approvedGuard } from './core/guards/approved.guard';
 import { manageGuard } from './core/guards/manage.guard';
@@ -33,41 +16,51 @@ const MANAGE_BREADCRUMB_PARENT: BreadcrumbParent = { label: 'Manage', link: '/ma
 // silently leaves the previous title in place otherwise, so leaving any
 // route without one risks it inheriting whatever the last-visited route set
 // (see LandingComponent, the first route to actually set a title).
+//
+// Every route below is lazy (loadComponent, not component) rather than a
+// top-level import — previously every routed component (and everything it
+// eagerly imported in turn) shipped in the one initial bundle regardless
+// of whether a given visit ever touched it, which is most of why that
+// bundle had grown past its own budget (see angular.json's initial budget,
+// raised more than once purely to accommodate this). Each route now only
+// loads once actually navigated to; only the always-on shell
+// (HeaderComponent/FooterComponent, imported directly into AppModule) and
+// route-independent singletons (services, guards) stay eager.
 const routes: Routes = [
   {
     path: '',
-    component: LandingComponent,
+    loadComponent: () => import('./landing/landing.component').then(m => m.LandingComponent),
     title: 'ShelfSync | Inventory management, simplified'
   },
   {
     path: 'login',
-    component: LoginComponent,
+    loadComponent: () => import('./login/login.component').then(m => m.LoginComponent),
     title: 'ShelfSync | Log in'
   },
   {
     path: 'register',
-    component: RegisterComponent,
+    loadComponent: () => import('./register/register.component').then(m => m.RegisterComponent),
     title: 'ShelfSync | Sign up'
   },
   {
     path: 'forgot-password',
-    component: ForgotPasswordComponent,
+    loadComponent: () => import('./forgot-password/forgot-password.component').then(m => m.ForgotPasswordComponent),
     title: 'ShelfSync | Reset your password'
   },
   {
     path: 'reset-password',
-    component: ResetPasswordComponent,
+    loadComponent: () => import('./reset-password/reset-password.component').then(m => m.ResetPasswordComponent),
     title: 'ShelfSync | Choose a new password'
   },
   {
     path: 'home',
-    component: HomeComponent,
+    loadComponent: () => import('./home/home.component').then(m => m.HomeComponent),
     canActivate: [approvedGuard],
     title: 'ShelfSync | Home'
   },
   {
     path: 'pending-approval',
-    component: PendingApprovalComponent,
+    loadComponent: () => import('./pending-approval/pending-approval.component').then(m => m.PendingApprovalComponent),
     // Plain authGuard, not approvedGuard — that would just bounce this
     // route back to itself. This is the one place a signed-in-but-not-yet-
     // approved (or denied) session is actually allowed to land.
@@ -76,63 +69,63 @@ const routes: Routes = [
   },
   {
     path: 'inventory',
-    component: InventoryComponent,
+    loadComponent: () => import('./inventory/inventory.component').then(m => m.InventoryComponent),
     canActivate: [approvedGuard],
     data: { breadcrumb: 'Inventory' },
     title: 'ShelfSync | Inventory'
   },
   {
     path: 'account',
-    component: AccountComponent,
+    loadComponent: () => import('./account/account.component').then(m => m.AccountComponent),
     canActivate: [approvedGuard],
     data: { breadcrumb: 'Account' },
     title: 'ShelfSync | Account'
   },
   {
     path: 'tasks',
-    component: TasksComponent,
+    loadComponent: () => import('./tasks/tasks.component').then(m => m.TasksComponent),
     canActivate: [approvedGuard],
     data: { breadcrumb: 'Tasks' },
     title: 'ShelfSync | Tasks'
   },
   {
     path: 'manage',
-    component: ManageComponent,
+    loadComponent: () => import('./manage/manage.component').then(m => m.ManageComponent),
     canActivate: [approvedGuard, manageGuard],
     data: { breadcrumb: 'Manage' },
     title: 'ShelfSync | Manage'
   },
   {
     path: 'manage/inventory',
-    component: ManageInventoryComponent,
+    loadComponent: () => import('./manage/inventory/manage-inventory.component').then(m => m.ManageInventoryComponent),
     canActivate: [approvedGuard, manageGuard],
     data: { breadcrumb: 'Inventory', breadcrumbParent: MANAGE_BREADCRUMB_PARENT },
     title: 'ShelfSync | Manage Inventory'
   },
   {
     path: 'manage/tasks',
-    component: ManageTasksComponent,
+    loadComponent: () => import('./manage/tasks/manage-tasks.component').then(m => m.ManageTasksComponent),
     canActivate: [approvedGuard, manageGuard],
     data: { breadcrumb: 'Tasks', breadcrumbParent: MANAGE_BREADCRUMB_PARENT },
     title: 'ShelfSync | Manage Tasks'
   },
   {
     path: 'manage/team',
-    component: ManageTeamComponent,
+    loadComponent: () => import('./manage/team/manage-team.component').then(m => m.ManageTeamComponent),
     canActivate: [approvedGuard, manageGuard],
     data: { breadcrumb: 'Team', breadcrumbParent: MANAGE_BREADCRUMB_PARENT },
     title: 'ShelfSync | Manage Team'
   },
   {
     path: 'manage/danger-zone',
-    component: ManageDangerZoneComponent,
+    loadComponent: () => import('./manage/danger-zone/manage-danger-zone.component').then(m => m.ManageDangerZoneComponent),
     canActivate: [approvedGuard, adminGuard],
     data: { breadcrumb: 'Danger Zone', breadcrumbParent: MANAGE_BREADCRUMB_PARENT },
     title: 'ShelfSync | Danger Zone'
   },
   {
     path: 'customize',
-    component: CustomizeComponent,
+    loadComponent: () => import('./customize/customize.component').then(m => m.CustomizeComponent),
     canActivate: [approvedGuard, adminGuard],
     data: { breadcrumb: 'Customize' },
     title: 'ShelfSync | Customize'
@@ -145,7 +138,7 @@ const routes: Routes = [
   // confusing paired with a "page not found" body.
   {
     path: '**',
-    component: NotFoundComponent,
+    loadComponent: () => import('./not-found/not-found.component').then(m => m.NotFoundComponent),
     title: 'ShelfSync | Page not found'
   }
 ];

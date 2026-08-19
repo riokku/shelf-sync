@@ -116,16 +116,19 @@ The app mixes two Angular module styles, which is important to know before addin
 - **Everything else is a standalone component** (`LoginComponent`, `InventoryComponent`,
   `ModalTableComponent`, etc.), each declaring its own Material module imports in the
   `@Component({ imports: [...] })` array rather than through a shared `NgModule`.
-- Routing (`app-routing.module.ts`) is flat — `''` → `LoginComponent`, `'register'` →
-  `RegisterComponent`, `'inventory'` → `InventoryComponent` guarded by `authGuard` (plus `home`,
-  `tasks`, `customize`, `account` — all authGuard-protected, `customize` also gated by
-  `adminGuard`). `manage` is a card hub (`ManageComponent`) linking to four flat sibling routes —
-  `manage/inventory`, `manage/tasks`, `manage/team` (all `manageGuard`: admin OR manager) and
-  `manage/danger-zone` (`adminGuard`, stricter — org export/delete) — rather than nested child
-  routes, matching the rest of the app's flat routing. No lazy loading or resolvers exist yet.
-- `app.component.html` hides the shared `<app-header>`/`<app-footer>` chrome on an explicit
-  route allowlist (`router.url !== '/' && router.url !== '/register'`), not on a guard/data flag.
-  **Any new unauthenticated/full-bleed page must be added to that condition too**, or it'll
+- Routing (`app-routing.module.ts`) is flat — `''` → `LandingComponent`, `'login'` →
+  `LoginComponent`, `'register'` → `RegisterComponent`, `'inventory'` → `InventoryComponent`
+  guarded by `approvedGuard` (plus `home`, `tasks`, `customize`, `account` — all similarly guarded,
+  `customize` also gated by `adminGuard`). `manage` is a card hub (`ManageComponent`) linking to
+  four flat sibling routes — `manage/inventory`, `manage/tasks`, `manage/team` (all `manageGuard`:
+  admin OR manager) and `manage/danger-zone` (`adminGuard`, stricter — org export/delete) — rather
+  than nested child routes, matching the rest of the app's flat routing. Every route uses
+  `loadComponent` rather than a top-level `component` import, so each page (and whatever it
+  imports) only ships once actually navigated to instead of all bundling into one initial chunk;
+  no resolvers exist yet.
+- `AppComponent.showChrome()` hides the shared `<app-header>`/`<app-footer>` chrome on an explicit
+  path allowlist (landing, login, register, forgot-password, reset-password), not on a guard/data
+  flag. **Any new unauthenticated/full-bleed page must be added to that allowlist too**, or it'll
   render with the main app header (including the Logout button) around it.
 
 Directory layout under `src/app/`:
