@@ -54,6 +54,13 @@
   }
 }
 
+// align-items: center alone wasn't enough to actually line up
+// .team-search-field and .mat-slide-toggle — a mat-form-field reserves
+// space below the input for hints/errors by default even when it never
+// shows either (this one doesn't), making its true box taller than what's
+// visually there and throwing off centering against it. Fixed at the
+// source instead of compensated for here: subscriptSizing="dynamic" on the
+// field itself (see the template) collapses that reserved space.
 .team-filters-row{
   display: flex;
   flex-wrap: wrap;
