@@ -149,6 +149,16 @@ button{
   }
 }
 
+.legal-notice{
+  margin-top: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8125rem;
+
+  a{
+    color: var(--mat-sys-primary);
+  }
+}
+
 .joining-organization{
   display: flex;
   align-items: center;

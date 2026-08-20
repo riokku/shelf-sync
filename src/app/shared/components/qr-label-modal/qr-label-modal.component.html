@@ -1,0 +1,36 @@
+<h2 mat-dialog-title>
+  <mat-icon class="label-title-icon">qr_code_2</mat-icon>
+  Item label
+</h2>
+<mat-dialog-content>
+  @if (generateError) {
+    <p class="label-error">
+      <mat-icon>error_outline</mat-icon>
+      {{ generateError }}
+    </p>
+  } @else if (qrDataUrl) {
+    <div class="label-preview">
+      <img [src]="qrDataUrl" alt="QR code for {{ data.itemName }}" />
+      <p class="label-caption">{{ data.itemName }}</p>
+    </div>
+    <p class="label-hint">
+      Print this and attach it to the item — scanning it later opens this item directly, no
+      typing required.
+    </p>
+  } @else {
+    <p class="label-hint">Generating…</p>
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="close()">Close</button>
+  @if (qrDataUrl) {
+    <button mat-stroked-button type="button" (click)="download()">
+      <mat-icon>download</mat-icon>
+      Download
+    </button>
+    <button mat-flat-button color="primary" type="button" (click)="print()">
+      <mat-icon>print</mat-icon>
+      Print
+    </button>
+  }
+</mat-dialog-actions>

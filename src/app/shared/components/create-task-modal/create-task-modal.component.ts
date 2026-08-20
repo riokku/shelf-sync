@@ -62,7 +62,11 @@ export class CreateTaskModalComponent implements OnInit {
     this.currentUserId = session?.user.id ?? null;
 
     const { data } = await this.supabase.from('profiles').select('*').order('full_name');
-    this.assignableProfiles = data ?? [];
+    // Excludes pending join requests — the insert policy rejects an
+    // unapproved assignee server-side (see require_approved_task_assignee
+    // migration), so this just keeps the dropdown from offering someone
+    // who can't act on the task yet.
+    this.assignableProfiles = (data ?? []).filter(profile => profile.membership_status === 'approved');
   }
 
   profileLabel(profile: Profile): string {

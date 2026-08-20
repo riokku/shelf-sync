@@ -1,0 +1,69 @@
+<div class="manage-error-log-wrapper">
+  <div class="container">
+    <div class="page-toolbar">
+      <app-breadcrumbs />
+    </div>
+    <h2>Error Log</h2>
+    <p class="page-subtitle">Uncaught errors your team has run into recently, most recent first.</p>
+
+    @if (isLoading) {
+      <div class="loading-row">
+        <mat-spinner diameter="32"></mat-spinner>
+      </div>
+    } @else {
+      <div class="error-log-controls">
+        <mat-checkbox [(ngModel)]="includeDevErrors" (change)="onFilterChange()">
+          Include development errors
+        </mat-checkbox>
+      </div>
+
+      @if (filteredErrorLog.length === 0) {
+        <app-empty-state icon="check_circle" message="No errors logged — nice." />
+      } @else {
+        <mat-accordion multi class="error-log-list">
+          @for (row of pagedErrorLog; track row.id) {
+            <mat-expansion-panel>
+              <mat-expansion-panel-header>
+                <mat-panel-title>
+                  <span class="error-message-preview">{{ row.message }}</span>
+                </mat-panel-title>
+                <mat-panel-description>
+                  <span class="env-badge" [class.env-badge-dev]="row.app_env === 'development'">
+                    {{ row.app_env || 'unknown' }}
+                  </span>
+                  {{ row.created_at | date: 'M/d/yy, h:mm a' }}
+                </mat-panel-description>
+              </mat-expansion-panel-header>
+
+              <div class="error-detail">
+                <p><span class="semibold">Reported by:</span> {{ reportedBy(row) }}</p>
+                @if (row.url) {
+                  <p>
+                    <span class="semibold">Page:</span>
+                    <a [href]="row.url" target="_blank" rel="noopener">{{ row.url }}</a>
+                  </p>
+                }
+                @if (row.user_agent) {
+                  <p class="user-agent"><span class="semibold">Browser:</span> {{ row.user_agent }}</p>
+                }
+                @if (row.stack) {
+                  <pre class="stack-trace">{{ row.stack }}</pre>
+                }
+              </div>
+            </mat-expansion-panel>
+          }
+        </mat-accordion>
+
+        <mat-paginator
+            class="error-log-paginator"
+            [length]="filteredErrorLog.length"
+            [pageSize]="pageSize"
+            [pageIndex]="pageIndex"
+            [hidePageSize]="true"
+            [showFirstLastButtons]="true"
+            (page)="onPageChange($event)"
+          ></mat-paginator>
+      }
+    }
+  </div>
+</div>

@@ -7,7 +7,6 @@
 -- profiles.id with no organization check at all, to a profile in a
 -- different organization entirely.
 drop policy "Admins and managers can create tasks for anyone" on public.tasks;
-
 create policy "Admins and managers can create tasks for anyone"
   on public.tasks for insert
   to authenticated

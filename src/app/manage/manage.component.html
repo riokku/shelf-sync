@@ -7,7 +7,13 @@
     <p class="manage-subtitle">What do you want to manage?</p>
 
     <div class="manage-grid">
-      <a class="manage-card" routerLink="/manage/inventory">
+      <a
+          class="manage-card"
+          routerLink="/manage/inventory"
+          [matBadge]="pendingRetirementCount"
+          [matBadgeHidden]="pendingRetirementCount === 0"
+          matBadgeColor="warn"
+        >
         <mat-icon>inventory_2</mat-icon>
         <h3>Inventory</h3>
         <p>Create new items and browse everything in stock.</p>
@@ -38,6 +44,11 @@
         <mat-icon>history</mat-icon>
         <h3>Activity Log</h3>
         <p>See everything that's changed across inventory, tasks, and your team.</p>
+      </a>
+      <a class="manage-card" routerLink="/manage/error-log">
+        <mat-icon>bug_report</mat-icon>
+        <h3>Error Log</h3>
+        <p>Review errors your team has run into recently.</p>
       </a>
       @if (authService.role() === 'admin') {
         <a class="manage-card manage-card-danger" routerLink="/manage/danger-zone">

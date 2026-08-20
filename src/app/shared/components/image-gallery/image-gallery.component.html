@@ -1,5 +1,8 @@
 <div class="gallery">
   <div class="gallery-main">
+    <!-- Click-to-expand convenience only — the "Expand image" button just
+         below is the real, focusable, keyboard-operable equivalent. -->
+    <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
     <img
         [src]="images[currentIndex]"
         [alt]="itemName + ' photo ' + (currentIndex + 1)"

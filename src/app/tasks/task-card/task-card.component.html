@@ -29,6 +29,12 @@
       </span>
     }
   </div>
+  <span class="task-row-created-by">
+    @if (createdByLabel) {
+      <mat-icon>person_outline</mat-icon>
+      {{ createdByLabel }}
+    }
+  </span>
   <span class="task-row-due">
     @if (task.due_date) {
       @if (isOverdue) {

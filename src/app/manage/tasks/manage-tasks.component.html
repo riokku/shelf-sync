@@ -61,7 +61,7 @@
             <mat-icon matPrefix>person</mat-icon>
             <mat-select formControlName="assignedTo">
               <mat-option [value]="null">Unassigned</mat-option>
-              @for (profile of assignableProfiles; track profile.id) {
+              @for (profile of approvedAssignableProfiles; track profile.id) {
                 <mat-option [value]="profile.id">{{ profileLabel(profile) }}</mat-option>
               }
             </mat-select>
@@ -166,6 +166,10 @@
                       {{ task.related_item_name }}
                     </span>
                   }
+                  <span class="task-row-created-by">
+                    <mat-icon>person_outline</mat-icon>
+                    Created by {{ createdByLabel(task) }}
+                  </span>
                 </div>
                 <span class="task-row-assignee">
                   <span class="task-row-assignee-name">

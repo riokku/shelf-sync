@@ -17,6 +17,7 @@ export function toInventoryItem(
   return new InventoryItem(
     row.id,
     row.name,
+    row.barcode ?? '',
     row.description ?? '',
     gallery[0] ?? '',
     gallery,

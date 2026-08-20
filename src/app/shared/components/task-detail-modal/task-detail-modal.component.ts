@@ -16,6 +16,7 @@ import { toInventoryItem } from '../../utils/inventory-item.mapper';
 import { profileDisplayName, resolveProfileName } from '../../utils/profile-label';
 import { loadInventoryImagesByItemId } from '../../utils/inventory-item-images';
 import { loadInventoryActivityByItemId } from '../../utils/inventory-item-activity';
+import { getTodayIsoDate } from '../../utils/date';
 import { ModalTableComponent } from '../modal-table/modal-table.component';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
@@ -54,6 +55,7 @@ export class TaskDetailModalComponent implements OnInit {
   relatedItemError: string | null = null;
 
   taskIdCopied = false;
+  linkCopied = false;
 
   currentUserId: string | null = null;
   orgProfiles: Profile[] = [];
@@ -62,6 +64,22 @@ export class TaskDetailModalComponent implements OnInit {
   isRequestingTransfer = false;
   isRespondingToTransfer = false;
   transferError: string | null = null;
+
+  /** Starts false so the not-yet-requested case is just a plain "Transfer"
+   *  button rather than the recipient picker sitting permanently open
+   *  next to the status field — the picker (and its boxed .transfer-panel
+   *  styling, same treatment the pending/incoming states already use) only
+   *  appears once someone actually means to start one. */
+  isPickingTransferTarget = false;
+
+  // Same rule TaskCardComponent/ManageTasksComponent already badge list
+  // rows with — flags it here too now that opening the dialog is the other
+  // place someone finds out a task needs attention, not just the list.
+  get isOverdue(): boolean {
+    return !!this.task.due_date
+      && this.task.status !== 'done'
+      && this.task.due_date < getTodayIsoDate();
+  }
 
   /** True once the recipient of an incoming transfer, rather than the
    *  task's current owner, has this open — they get Accept/Decline instead
@@ -86,8 +104,14 @@ export class TaskDetailModalComponent implements OnInit {
     return this.canManageTransfer && (!!this.task.pending_transfer_to || this.task.status !== 'done');
   }
 
+  // Excludes pending join requests as well as the current assignee —
+  // request_task_transfer() rejects an unapproved target server-side
+  // (see require_approved_task_transfer_target migration), so this keeps
+  // the dropdown from offering someone who can't yet accept it anyway.
   get transferablePeople(): Profile[] {
-    return this.orgProfiles.filter(profile => profile.id !== this.task.assigned_to);
+    return this.orgProfiles.filter(
+      profile => profile.id !== this.task.assigned_to && profile.membership_status === 'approved'
+    );
   }
 
   async ngOnInit() {
@@ -106,8 +130,24 @@ export class TaskDetailModalComponent implements OnInit {
     return resolveProfileName(this.task.assigned_to, this.orgProfiles) || 'Unassigned';
   }
 
+  createdByLabel(): string {
+    return resolveProfileName(this.task.created_by, this.orgProfiles) || 'Unknown user';
+  }
+
   pendingTransferLabel(): string {
     return resolveProfileName(this.task.pending_transfer_to, this.orgProfiles) || 'Unknown user';
+  }
+
+  startTransfer() {
+    this.isPickingTransferTarget = true;
+  }
+
+  /** Backs out of the picker without touching the server — distinct from
+   *  cancelTransfer() below, which cancels a transfer already requested. */
+  cancelPickingTransferTarget() {
+    this.isPickingTransferTarget = false;
+    this.transferTarget = null;
+    this.transferError = null;
   }
 
   async requestTransfer() {
@@ -201,6 +241,19 @@ export class TaskDetailModalComponent implements OnInit {
     await navigator.clipboard.writeText(this.task.id);
     this.taskIdCopied = true;
     setTimeout(() => (this.taskIdCopied = false), 2000);
+  }
+
+  /** Always /tasks?task=<id> — never /manage/tasks — since /tasks is
+   *  reachable by any approved org member (just approvedGuard) where
+   *  /manage/tasks would flatly deny a plain staff member via manageGuard.
+   *  TasksComponent falls back to /manage/tasks itself, but only for a
+   *  viewer who can actually manage — see its own ?task= handling. Mirrors
+   *  ModalTableComponent.copyLink()'s /inventory?item=<id>. */
+  async copyLink() {
+    const url = `${window.location.origin}/tasks?task=${this.task.id}`;
+    await navigator.clipboard.writeText(url);
+    this.linkCopied = true;
+    setTimeout(() => (this.linkCopied = false), 2000);
   }
 
   /** related_item_name is plain text (not a foreign key), so the linked item

@@ -44,6 +44,56 @@
   }
 }
 
+// The Data tab's two side-by-side cards (Inventory data / Table
+// presentation) — .customize-card's own 40rem max-width is meant for a
+// single stacked card elsewhere on this page, so it's overridden here to
+// let each card fill its grid column instead. Collapses to one column
+// before there's room for both at a readable width.
+.customize-data-columns{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 1.5rem;
+
+  .customize-card{
+    max-width: none;
+    margin-bottom: 0;
+  }
+
+  @media (max-width: 64rem){
+    grid-template-columns: 1fr;
+  }
+}
+
+// Newspaper-style columns rather than a manual 2-up grid — groups vary in
+// length (Item information has 7 options, Price information has 2), so
+// letting them flow and balance themselves avoids the ragged look a fixed
+// pairing would produce, and keeps working if a group is added/resized
+// later. Collapses to one column once there's no longer room for two
+// readable ones.
+.table-column-groups{
+  columns: 2;
+  column-gap: 2rem;
+
+  @media (max-width: 30rem){
+    columns: 1;
+  }
+}
+
+.table-column-group{
+  margin-bottom: 1.25rem;
+  break-inside: avoid;
+
+  h4{
+    color: var(--mat-sys-on-surface-variant);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    margin: 0 0 0.375rem;
+  }
+}
+
 .customize-section{
   max-width: 40rem;
   margin-bottom: 2.5rem;

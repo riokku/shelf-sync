@@ -18,7 +18,16 @@
     >
     <mat-icon>{{ linkCopied ? 'check' : 'link' }}</mat-icon>
   </button>
+  <button mat-icon-button type="button" matTooltip="View/print item label" (click)="openQrLabel()">
+    <mat-icon>qr_code_2</mat-icon>
+  </button>
 </div>
+@if (data.barcode) {
+  <div class="asset-id-row barcode-row">
+    <mat-icon>barcode_reader</mat-icon>
+    <span class="asset-id">{{ data.barcode }}</span>
+  </div>
+}
 @if (data.status === 'retired') {
   <p class="retired-notice">
     <mat-icon>inventory_2</mat-icon>
@@ -37,11 +46,12 @@
         <div class="tab-panel">
           @if (isEditing) {
             <section class="info-section">
-              <label class="image-upload-label">
+              <label class="image-upload-label" for="item-detail-photos-input">
                 <mat-icon>image</mat-icon>
                 Photos (up to {{ maxInventoryItemImages }})
               </label>
               <input
+                  id="item-detail-photos-input"
                   type="file"
                   accept="image/*"
                   multiple
@@ -105,6 +115,17 @@
                     <mat-error>Name is required.</mat-error>
                   }
                 </mat-form-field>
+              </div>
+              <div class="edit-field-row barcode-edit-row">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Barcode</mat-label>
+                  <mat-icon matPrefix>barcode_reader</mat-icon>
+                  <input matInput formControlName="barcode" />
+                </mat-form-field>
+                <button mat-stroked-button type="button" (click)="scanBarcode()">
+                  <mat-icon>qr_code_scanner</mat-icon>
+                  Scan
+                </button>
               </div>
               <div class="edit-field-row">
                 <mat-form-field appearance="outline" class="full-width">

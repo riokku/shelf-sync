@@ -27,15 +27,25 @@
   <dl class="task-meta">
     @if (task.due_date) {
       <dt>Due date</dt>
-      <dd>{{ task.due_date | date: 'M/d/yy' }}</dd>
+      <dd [class.overdue]="isOverdue">
+        @if (isOverdue) {
+          <mat-icon>error</mat-icon>
+        }
+        {{ task.due_date | date: 'M/d/yy' }}
+      </dd>
     }
     <dt>Created</dt>
     <dd>{{ task.created_at | date: 'M/d/yy' }}</dd>
+    <dt>Created by</dt>
+    <dd>{{ createdByLabel() }}</dd>
     <dt>Task ID</dt>
     <dd class="task-id-row">
       <code>{{ task.id }}</code>
       <button mat-icon-button type="button" (click)="copyTaskId()" [attr.aria-label]="'Copy task ID'">
         <mat-icon>{{ taskIdCopied ? 'check' : 'content_copy' }}</mat-icon>
+      </button>
+      <button mat-icon-button type="button" (click)="copyLink()" [attr.aria-label]="'Copy link'">
+        <mat-icon>{{ linkCopied ? 'check' : 'link' }}</mat-icon>
       </button>
     </dd>
   </dl>
@@ -75,8 +85,8 @@
       </div>
     </div>
   } @else if (canShowTransferPanel) {
-    <div class="transfer-panel">
-      @if (task.pending_transfer_to) {
+    @if (task.pending_transfer_to) {
+      <div class="transfer-panel">
         <p>
           <mat-icon>hourglass_top</mat-icon>
           Transfer pending — waiting on <span class="semibold">{{ pendingTransferLabel() }}</span> to accept.
@@ -88,7 +98,9 @@
             Cancel transfer
           }
         </button>
-      } @else {
+      </div>
+    } @else if (isPickingTransferTarget) {
+      <div class="transfer-panel">
         <div class="transfer-request-row">
           <mat-form-field appearance="outline" class="full-width">
             <mat-icon matPrefix>swap_horiz</mat-icon>
@@ -98,21 +110,26 @@
               }
             </mat-select>
           </mat-form-field>
-          <button
-              mat-stroked-button
-              type="button"
-              (click)="requestTransfer()"
-              [disabled]="!transferTarget || isRequestingTransfer"
-            >
-            @if (isRequestingTransfer) {
-              <mat-spinner diameter="20"></mat-spinner>
-            } @else {
-              Request transfer
-            }
-          </button>
+          <div class="transfer-request-actions">
+            <button mat-button type="button" (click)="cancelPickingTransferTarget()" [disabled]="isRequestingTransfer">
+              Cancel
+            </button>
+            <button
+                mat-stroked-button
+                type="button"
+                (click)="requestTransfer()"
+                [disabled]="!transferTarget || isRequestingTransfer"
+              >
+              @if (isRequestingTransfer) {
+                <mat-spinner diameter="20"></mat-spinner>
+              } @else {
+                Request transfer
+              }
+            </button>
+          </div>
         </div>
-      }
-    </div>
+      </div>
+    }
   }
 
   @if (transferError) {
@@ -120,6 +137,12 @@
   }
 </mat-dialog-content>
 <mat-dialog-actions align="end">
+  @if (!isPendingRecipient && canShowTransferPanel && !task.pending_transfer_to && !isPickingTransferTarget) {
+    <button mat-stroked-button type="button" class="start-transfer-button" (click)="startTransfer()">
+      <mat-icon>swap_horiz</mat-icon>
+      Transfer
+    </button>
+  }
   <button mat-button type="button" (click)="closeModal()">{{ isPendingRecipient ? 'Close' : 'Cancel' }}</button>
   @if (!isPendingRecipient) {
     <button mat-flat-button color="primary" type="button" (click)="saveStatus()" [disabled]="isSaving">

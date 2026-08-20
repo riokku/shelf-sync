@@ -1,6 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog } from '@angular/material/dialog';
+import { ActivatedRoute, Router } from '@angular/router';
 import { SupabaseService } from '../core/supabase.service';
 import { AuthService, Profile } from '../core/auth.service';
 import { Database } from '../shared/models/database.types';
@@ -22,6 +23,8 @@ export class TasksComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
   private authService = inject(AuthService);
   private dialog = inject(MatDialog);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
 
   private currentUserId: string | null = null;
   private orgProfiles: Profile[] = [];
@@ -53,6 +56,34 @@ export class TasksComponent implements OnInit {
     this.orgProfiles = profiles ?? [];
 
     await this.loadTasks();
+
+    // Supports deep links (?task=<id>), e.g. from TaskDetailModalComponent's
+    // "Copy link" button — always points here first (this route only needs
+    // approvedGuard, unlike /manage/tasks' manageGuard, so it never 403s a
+    // plain staff member) rather than at ModalTableComponent's own item
+    // directly. A match in this user's own tasks/incoming-transfers opens
+    // it directly; no match falls back to /manage/tasks for a manager+
+    // viewer, who can see any task in the org — the two-page equivalent of
+    // InventoryComponent's single-page ?item= handling, which this
+    // otherwise mirrors (read once from the snapshot, not subscribed).
+    const taskId = this.route.snapshot.queryParamMap.get('task');
+    if (taskId) {
+      const task = [...this.tasks, ...this.incomingTransfers].find(candidate => candidate.id === taskId);
+      if (task) {
+        this.openTask(task);
+      } else {
+        // getProfile() rather than authService.canManage() — the profile
+        // signal populates asynchronously (see AuthService's own note on
+        // this) and nothing on this route is guaranteed to have already
+        // forced a fresh fetch the way manageGuard does for /manage/tasks,
+        // so it could still read stale/empty here on a first hard load.
+        const profile = await this.authService.getProfile();
+        const isManager = profile?.role === 'admin' || profile?.role === 'manager';
+        if (isManager) {
+          this.router.navigate(['/manage/tasks'], { queryParams: { task: taskId } });
+        }
+      }
+    }
   }
 
   private async loadTasks() {
@@ -82,6 +113,10 @@ export class TasksComponent implements OnInit {
 
   transferSenderLabel(task: Task): string {
     return resolveProfileName(task.assigned_to, this.orgProfiles) || 'Unknown user';
+  }
+
+  createdByLabel(task: Task): string {
+    return resolveProfileName(task.created_by, this.orgProfiles) || 'Unknown user';
   }
 
   pendingTransferToLabel(task: Task): string | null {

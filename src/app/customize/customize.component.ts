@@ -2,6 +2,7 @@ import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { InventoryFieldOptionsService } from '../core/inventory-field-options.service';
@@ -9,10 +10,11 @@ import { SiteSettingsService } from '../core/site-settings.service';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 import { FieldOptionsEditorComponent } from '../shared/components/field-options-editor/field-options-editor.component';
 import { THEME_PRESETS } from '../shared/models/theme-preset';
+import { INVENTORY_TABLE_COLUMN_GROUPS, InventoryTableColumnKey } from '../shared/models/inventory-table-column';
 
 @Component({
   selector: 'app-customize',
-  imports: [FormsModule, MatButtonModule, MatButtonToggleModule, MatIconModule, MatProgressSpinnerModule, BreadcrumbsComponent, FieldOptionsEditorComponent],
+  imports: [FormsModule, MatButtonModule, MatButtonToggleModule, MatCheckboxModule, MatIconModule, MatProgressSpinnerModule, BreadcrumbsComponent, FieldOptionsEditorComponent],
   templateUrl: './customize.component.html',
   styleUrl: './customize.component.scss'
 })
@@ -29,7 +31,7 @@ export class CustomizeComponent implements OnInit, OnDestroy {
   // ever had the two tabs, and this matches the rest of the app's "Manage"
   // section instead of being the one place still using Material's own tab
   // strip.
-  viewMode: 'style' | 'data' = 'style';
+  viewMode: 'style' | 'data' = 'data';
 
   readonly presets = THEME_PRESETS;
   selectedTheme = this.siteSettings.theme();
@@ -43,8 +45,28 @@ export class CustomizeComponent implements OnInit, OnDestroy {
   isSavingLogo = false;
   logoError: string | null = null;
 
+  readonly tableColumnGroups = INVENTORY_TABLE_COLUMN_GROUPS;
+  // Local editable copy, same pattern as selectedTheme — starts from the
+  // persisted setting, only pushed back to SiteSettingsService on save.
+  selectedTableColumns: InventoryTableColumnKey[] = [...this.siteSettings.inventoryTableColumns()];
+  isSavingTableColumns = false;
+  tableColumnsError: string | null = null;
+  tableColumnsSaved = false;
+
   get currentLogoUrl(): string | null {
     return this.logoPreviewUrl ?? this.siteSettings.logoUrl();
+  }
+
+  /** Order-independent comparison against the persisted setting — toggling
+   *  checkboxes off then back on shouldn't leave Save enabled just because
+   *  the array happens to be built back up in a different order. */
+  get tableColumnsChanged(): boolean {
+    const saved = this.siteSettings.inventoryTableColumns();
+    if (saved.length !== this.selectedTableColumns.length) {
+      return true;
+    }
+    const savedSet = new Set(saved);
+    return this.selectedTableColumns.some(key => !savedSet.has(key));
   }
 
   ngOnDestroy() {
@@ -79,6 +101,32 @@ export class CustomizeComponent implements OnInit, OnDestroy {
       return;
     }
     this.themeSaved = true;
+  }
+
+  toggleTableColumn(key: InventoryTableColumnKey, checked: boolean) {
+    this.selectedTableColumns = checked
+      ? [...this.selectedTableColumns, key]
+      : this.selectedTableColumns.filter(column => column !== key);
+    this.tableColumnsSaved = false;
+  }
+
+  async saveTableColumns() {
+    if (this.isSavingTableColumns) {
+      return;
+    }
+
+    this.isSavingTableColumns = true;
+    this.tableColumnsError = null;
+    this.tableColumnsSaved = false;
+
+    const error = await this.siteSettings.updateInventoryTableColumns(this.selectedTableColumns);
+    this.isSavingTableColumns = false;
+
+    if (error) {
+      this.tableColumnsError = error;
+      return;
+    }
+    this.tableColumnsSaved = true;
   }
 
   onLogoSelected(event: Event) {

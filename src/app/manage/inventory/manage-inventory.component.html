@@ -46,6 +46,20 @@
                 }
               </mat-select>
             </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Barcode</mat-label>
+              <mat-icon matPrefix>barcode_reader</mat-icon>
+              <input matInput formControlName="barcode" placeholder="Scan or type" />
+              <button
+                  mat-icon-button
+                  matSuffix
+                  type="button"
+                  matTooltip="Scan a barcode or QR code"
+                  (click)="scanBarcodeForNewItem()"
+                >
+                <mat-icon>qr_code_scanner</mat-icon>
+              </button>
+            </mat-form-field>
           </div>
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Description</mat-label>
@@ -53,11 +67,12 @@
             <textarea matInput formControlName="description" rows="2"></textarea>
           </mat-form-field>
           <div class="image-upload-field">
-            <label class="image-upload-label">
+            <label class="image-upload-label" for="inventory-item-photos-input">
               <mat-icon>image</mat-icon>
               Photos (up to {{ maxInventoryItemImages }})
             </label>
             <input
+                id="inventory-item-photos-input"
                 type="file"
                 accept="image/*"
                 multiple
@@ -243,7 +258,7 @@
                   {{ item.quantity_remaining }} / {{ item.quantity_total }} remaining
                 </span>
                 <span class="task-row-due">
-                  @if (item.price_per_unit != null) {
+                  @if (item.price_per_unit !== null) {
                     <mat-icon>attach_money</mat-icon>
                     {{ item.price_per_unit | currency }} / unit
                   } @else {

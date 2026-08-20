@@ -133,6 +133,20 @@
   }
 }
 
+.task-row-created-by{
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8125rem;
+
+  mat-icon{
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
 .task-row-assignee{
   display: flex;
   flex-direction: column;

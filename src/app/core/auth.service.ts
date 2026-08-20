@@ -114,4 +114,27 @@ export class AuthService {
   async signOut() {
     await this.supabase.auth.signOut();
   }
+
+  /** Sends a password-recovery email whose link lands on `/reset-password`
+   *  with a Supabase-issued recovery token in the URL — supabase-js's
+   *  `detectSessionInUrl` (on by default) picks that up into a real, if
+   *  short-lived, session before `ResetPasswordComponent` ever calls
+   *  `getSession()`. Deliberately reports success even when the email isn't
+   *  registered (the caller can't distinguish either way — see
+   *  ForgotPasswordComponent) so this can't be used to enumerate accounts. */
+  async requestPasswordReset(email: string) {
+    const { error } = await this.supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`
+    });
+    return error;
+  }
+
+  /** Only succeeds with the short-lived recovery session a password-reset
+   *  link establishes (or any other currently-signed-in session) —
+   *  ResetPasswordComponent is responsible for checking `getSession()`
+   *  first and not offering this form at all otherwise. */
+  async updatePassword(password: string) {
+    const { error } = await this.supabase.auth.updateUser({ password });
+    return error;
+  }
 }

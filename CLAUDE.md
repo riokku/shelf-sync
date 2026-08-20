@@ -52,12 +52,107 @@ as `[data-theme='x']` blocks in `styles.scss` and toggling that attribute on `<h
 `THEME_PRESETS` in `shared/models/theme-preset.ts` for the option list and `core/site-settings.service.ts`
 for the load/preview/persist logic. `AppComponent` loads settings once on startup (readable by
 `anon` too, so branding applies pre-login) and `HeaderComponent` swaps in the custom logo when set,
-falling back to the default SS mark.
+falling back to the default SS mark. The same `customize` route's Data tab is a two-column layout —
+"Inventory data" (the field-options editors below) on the left, "Table presentation" on the right —
+and the latter lets an admin choose which columns appear in the Inventory page's table view. Every
+practical `InventoryItem` field is selectable (Barcode, Description, Category, Physical location,
+Digital location, Applicable year, Expiration date, Supplier name/lead time, Order link, all five
+quantity fields, both price fields, Checked out to, and Stock status), grouped into checkbox
+sections that mirror `InventoryItem`'s own constructor comment groupings (Item/Supplier/Quantity/
+Price/Other information) — deliberately excluding `id`, `image(s)`, `activityLog`, the
+`checkedOutTo*` internal keys, and the retirement audit trail (`retirementRequestedByLabel`/etc.,
+already summarized by the Stock status pill). Name and the actions column are always shown
+regardless. Selections are `site_settings.inventory_table_columns`, a plain text array with no
+column-scoped grant needed (the existing admin-only, flat-row UPDATE policy already covers it) —
+new orgs default to the original four (Category, Physical location, Quantity remaining, Stock
+status) rather than every column at once. `shared/models/inventory-table-column.ts` defines the
+grouped option list/labels and canonical display order, shared by `CustomizeComponent` (grouped
+checkboxes) and `InventoryComponent` (the `tableColumns` getter that filters that canonical order
+down to whatever's enabled, so the table's column order stays stable regardless of the order
+columns were toggled in; sorting reads whichever `InventoryItem` field matches the clicked column
+key generically, rather than a per-column switch statement).
+
+Password recovery (`/forgot-password`, `/reset-password`), Supabase-native client error logging
+(`GlobalErrorHandler`), and requiring approved org membership before a task can be transferred or
+assigned to someone (both `TaskDetailModalComponent` and task-creation) are all covered in detail
+in the Supabase Schema section below, next to the migrations that back them.
+
+`tasks.created_by` has been set on every task since creation (see `add_organization_deletion`'s FK
+note above) but was never actually surfaced anywhere — every task list/detail view now shows who
+created it (`createdByLabel()`, resolved from the same already-loaded org profiles list each of
+these already had on hand for assignee/transfer labels): `TaskCardComponent`'s own `.task-row` grid
+gets a 4th column for it (an optional `@Input()`, same pattern as its transfer labels, wired from
+both `TasksComponent`'s "My Tasks" and `ManageTeamComponent`'s per-member task lists — a 4th column
+pushed the row's real minimum width close enough to typical narrow-viewport widths to need the same
+flex-wrap breakpoint fallback `ManageTasksComponent`'s row already had), `ManageTasksComponent`'s
+"All tasks" table, and
+`TaskDetailModalComponent`'s own `dl.task-meta` block.
+
+`/privacy` and `/terms` (`PrivacyComponent`/`TermsComponent`) are static Privacy Policy/Terms of
+Service pages — reachable without a session and excluded from the normal header/footer chrome (see
+`AppComponent.showChrome()`'s allowlist), same as landing/login/register, since a signed-out
+visitor following a link to either from the landing page or the register form shouldn't land on a
+header full of nav links that just bounce them via guards. Both provide their own minimal top bar
+(shared layout in `shared/styles/_legal-page.scss`) with a theme-aware logo (same
+`assets/logo-light.svg`/`logo-dark.svg` swap `HeaderComponent` uses) rather than reusing
+`BrandLogoComponent`, which hardcodes white/always-dark styling meant for login/register's video
+backdrop and would be unreadable in light mode here. `FooterComponent` links to both (so they're
+reachable from every authenticated page too, not just pre-login ones), and the register form's
+submit button carries a "you agree to our Terms/Privacy" notice linking the same routes. The policy
+text itself is a starting draft (attributed to Studio Rio, contact
+`chris@studiorioconsulting.com`) — **not reviewed by an attorney**, and the Terms' governing-law
+section still has a literal `[Insert governing state/country]` placeholder — have both reviewed
+before relying on them for real signups.
+
+The Inventory page has a card/table view toggle (`InventoryComponent.viewMode`, a
+`mat-button-toggle-group` above the item list) — card view is the original gallery layout; table
+view is a `mat-table`/`matSort` grid, sortable by clicking any column header (`sortedInventoryList`
+sits between the existing `filteredInventoryList` and `pagedInventoryList` getters, so sorting
+composes with the existing filter/search/paging pipeline rather than replacing any of it). Table
+rows collapse card view's simultaneous badges (retired, checked-out, low/out-of-stock, pending
+retirement can all show at once there) into a single higher-priority status pill per row
+(`statusLabel()`/`statusSlug()`, also what "sort by status" sorts on) since a dense row has no room
+for more than one. Which optional columns the table shows (Category, Physical location, Quantity
+remaining, Stock status) is admin-configurable from `customize`'s Data tab, per the paragraph above.
+
+Low/out-of-stock items were previously only a per-item badge you'd notice while already browsing
+Inventory — `HeaderComponent`'s Inventory nav link and `HomeComponent`'s Inventory card now also
+carry an aggregate "needs restocking" count (`shared/utils/inventory-stock.ts`'s
+`needsRestockAttention()`, combining low-stock and out-of-stock since the latter isn't strictly a
+subset of the former when no threshold is configured), visible to any authenticated user rather
+than gated to Manager+ the way the nearby pending-approvals badge is — restocking is everyone's
+concern, not an approval queue. Each loads its own count independently rather than sharing one
+service, matching how this app's other small badges already do the same.
+
+Inventory items can carry a `barcode` (manufacturer UPC/EAN scanned off a retail product, or a
+ShelfSync-generated QR label for an internal asset that never had one — see
+`shared/utils/barcode.ts`'s `buildItemQrValue()`/`parseItemQrValue()` for the encoding). The shared
+`BarcodeScannerModalComponent` (camera scan via `@zxing/browser`, with an always-available
+manual-entry fallback for devices/situations where the camera isn't an option) is used from two
+places: `ManageInventoryComponent`'s create form scans first and checks the result against the
+already-loaded inventory list — a match opens that item's existing detail instead of prefilling a
+new one, so scanning something already in inventory can't create an accidental duplicate; a
+non-match prefills the new item's barcode field. `ModalTableComponent`'s edit flow can (re)scan an
+existing item's barcode the same way. The shared `QrLabelModalComponent` (QR rendered client-side
+via the `qrcode` package) generates a printable/downloadable label encoding an item's id for
+assets with no manufacturer barcode — scanning that label later resolves straight back to the item.
 
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
-- **UI:** Angular Material + Angular CDK (migrated from PrimeNG — see git history)
+- **UI:** Angular Material + Angular CDK (migrated from PrimeNG — see git history) for every actual
+  component; Bootstrap is scoped to just its grid system (`container`/`row`/`col-*`) plus a handful
+  of hand-written utility classes (`d-flex`, `gap-3`, `mb-0`/`mb-4`/`mb-5`, `me-2`, `pe-2`) in
+  `styles.scss` — `@import 'bootstrap/scss/bootstrap'` (the whole framework: every component's CSS)
+  was ~240KB of production `styles.css` for CSS nothing on the page ever selected, since Material
+  already covers every real component. Adding a new Bootstrap utility class to a template means
+  hand-writing its rule in `styles.scss` (matching Bootstrap's own definition) rather than
+  reintroducing `bootstrap/scss/utilities/api`. This dropped the initial bundle from ~1.25MB to
+  ~1.05MB raw; `angular.json`'s `initial` budget (`maximumWarning`) was right-sized to `1.1mb` to
+  match — `@angular/core`/Material/CDK/Router plus `@supabase/supabase-js` (not very
+  tree-shakeable; `createClient()` eagerly wires up auth/storage/realtime/postgrest regardless of
+  what's used) make up effectively all of what's left, and aren't safely reducible further without
+  a much riskier SDK-level refactor.
 - **Backend:** Supabase (Postgres, Auth, RLS), hosted project (ref `ailqjqjrzhzspofoslpa`),
   linked via the Supabase CLI. Auth, `inventory_items`, and `tasks` are all live and queried
   directly from the inventory/tasks/manage UI — no hardcoded local data remains.
@@ -75,6 +170,7 @@ falling back to the default SS mark.
 - Watch build: `npm run watch`
 - Unit tests: `npm test` (or `ng test`) — runs Karma/Jasmine in Chrome
 - Run a single test file: `ng test --include='**/inventory.component.spec.ts'`
+- Lint: `npm run lint` (or `ng lint`) — ESLint via `@angular-eslint`, config in `eslint.config.js`
 - Generate a component: `ng generate component <name>` (project schematic defaults to `scss`
   styles; components are standalone by default in this Angular version except where noted below)
 - Supabase, hosted project workflow (no Docker — this is the primary workflow for this repo):
@@ -88,7 +184,29 @@ falling back to the default SS mark.
   - `npm run supabase:start` / `npm run supabase:stop` — start/stop local Postgres, Studio, Auth
   - `npm run supabase:reset` — reapply all migrations + `supabase/seed.sql` from scratch locally
 
-There is no configured lint script (`ng lint` is not wired up in `package.json`/`angular.json`).
+## CI/CD
+
+`.github/workflows/ci.yml` runs on every push/PR against `main`: `npm ci`, `npm run lint`,
+`npm run build`, then the full Karma/Jasmine suite headless. Node version comes from
+`.node-version` (currently `22`) via `actions/setup-node`'s `node-version-file`, rather than a
+hardcoded version in the workflow — one source of truth shared with whatever else reads it (e.g.
+a deploy host's own Node-version detection).
+
+Production hosting is Cloudflare Workers' static-assets product (not classic Cloudflare Pages,
+despite how similar the two look/sound — the dashboard's Build configuration runs `npx wrangler
+deploy`, the Workers deploy command, not a Pages one), connected directly to this GitHub repo —
+pushes to `main` auto-deploy, no GitHub Actions deploy step involved. `wrangler.jsonc` at the repo
+root is what makes this work: no Worker script/entry point, just `assets.directory:
+"dist/inventory-app"` plus `assets.not_found_handling: "single-page-application"`, the latter
+being what makes a hard refresh on e.g. `/inventory` resolve correctly instead of 404ing at the
+host (this is a client-side SPA with `PathLocationStrategy` routing, no hash-based URLs). A
+`src/_redirects` file (the classic-Pages convention: `/* /index.html 200`) was tried here first
+and rejected outright at deploy time — "Invalid _redirects configuration: Infinite loop detected
+in this rule" — this product's loop-detection validator treats a catch-all redirect as suspect in
+a way classic Pages never did, so `not_found_handling` is the only SPA-fallback mechanism to use
+here; don't reintroduce a `_redirects` file. `environment.prod.ts`'s Supabase URL/anon key stay
+build-time constants (see Architecture below) — no host-side environment variable injection
+needed for the current single-production-project setup.
 
 ## Architecture
 
@@ -100,17 +218,19 @@ The app mixes two Angular module styles, which is important to know before addin
 - **Everything else is a standalone component** (`LoginComponent`, `InventoryComponent`,
   `ModalTableComponent`, etc.), each declaring its own Material module imports in the
   `@Component({ imports: [...] })` array rather than through a shared `NgModule`.
-- Routing (`app-routing.module.ts`) is flat — `''` → `LoginComponent`, `'register'` →
-  `RegisterComponent`, `'inventory'` → `InventoryComponent` guarded by `authGuard` (plus `home`,
-  `tasks`, `customize`, `account` — all authGuard-protected, `customize` also gated by
-  `adminGuard`). `manage` is a card hub (`ManageComponent`) linking to five flat sibling routes —
-  `manage/inventory`, `manage/tasks`, `manage/team`, `manage/activity` (all `manageGuard`: admin OR
-  manager) and `manage/danger-zone` (`adminGuard`, stricter — org export/delete) — rather than
-  nested child routes, matching the rest of the app's flat routing. No lazy loading or resolvers
-  exist yet.
-- `app.component.html` hides the shared `<app-header>`/`<app-footer>` chrome on an explicit
-  route allowlist (`router.url !== '/' && router.url !== '/register'`), not on a guard/data flag.
-  **Any new unauthenticated/full-bleed page must be added to that condition too**, or it'll
+- Routing (`app-routing.module.ts`) is flat — `''` → `LandingComponent`, `'login'` →
+  `LoginComponent`, `'register'` → `RegisterComponent`, `'inventory'` → `InventoryComponent`
+  guarded by `approvedGuard` (plus `home`, `tasks`, `customize`, `account` — all similarly guarded,
+  `customize` also gated by `adminGuard`). `manage` is a card hub (`ManageComponent`) linking to
+  six flat sibling routes — `manage/inventory`, `manage/tasks`, `manage/team`, `manage/activity`,
+  `manage/error-log` (all `manageGuard`: admin OR manager) and `manage/danger-zone` (`adminGuard`,
+  stricter — org export/delete) — rather than nested child routes, matching the rest of the app's
+  flat routing. Every route uses `loadComponent` rather than a top-level `component` import, so
+  each page (and whatever it imports) only ships once actually navigated to instead of all
+  bundling into one initial chunk; no resolvers exist yet.
+- `AppComponent.showChrome()` hides the shared `<app-header>`/`<app-footer>` chrome on an explicit
+  path allowlist (landing, login, register, forgot-password, reset-password), not on a guard/data
+  flag. **Any new unauthenticated/full-bleed page must be added to that allowlist too**, or it'll
   render with the main app header (including the Logout button) around it.
 
 Directory layout under `src/app/`:
@@ -126,11 +246,13 @@ core/
 header/, footer/                                           # standalone layout components; header has the logout button
 login/                                                      # standalone login screen, real Supabase auth
 register/                                                   # standalone signup screen, real Supabase auth
+privacy/, terms/                                            # standalone legal pages, no session required (see Project Overview above)
 home/                                                        # post-login landing hub: cards linking to the pages below
 inventory/                                                  # standalone inventory page: filters, item table, opens modal
 tasks/                                                      # standalone personal "My Tasks" list (row-styled task-card)
 manage/                                                     # card hub (ManageComponent) linking to the five below
   inventory/, tasks/, team/, activity/                      # admin/manager only: inventory, tasks, team administration, and the cross-entity activity feed
+  error-log/                                                # admin/manager only: client_error_log viewer, see Supabase Schema section
   danger-zone/                                              # admin only: org data export + soft-delete (organizations.deleted_at)
 customize/                                                  # admin-only: theme picker + logo upload (site_settings)
 account/                                                    # profile info, avatar picker, light/dark mode toggle
@@ -138,14 +260,16 @@ shared/
   components/modal-table/    # standalone Material dialog showing InventoryItem details
   models/inventory-item.model.ts   # InventoryItem class (constructor-based, no defaults)
   models/theme-preset.ts     # THEME_PRESETS — key must match a [data-theme] block in styles.scss
+  models/inventory-table-column.ts # optional Inventory table-view columns admin can show/hide (Customize > Data)
   models/database.types.ts   # generated via `npm run supabase:gen:types` — regenerate, don't hand-edit
   utils/inventory-item.mapper.ts   # toInventoryItem(row, images, checkedOutToLabel, activityLog?) — DB row -> InventoryItem
   utils/inventory-item-images.ts   # loadInventoryImagesByItemId() / uploadInventoryItemImages() / deleteInventoryItemImage()
   utils/inventory-item-activity.ts # loadInventoryActivityByItemId() / logInventoryItemActivity() — inventory_item_activity
   utils/activity-log.ts      # loadActivityLog() / logActivity() — org-wide activity_log, backs Manage > Activity Log
   utils/profile-label.ts     # profileDisplayName()/resolveProfileName() — shared profiles-array lookup
-  styles/_auth-shell.scss   # shared full-page video-background shell; login/register `@use` it
-                             # rather than duplicating — add new shared auth-page styles here
+  utils/barcode.ts           # buildItemQrValue()/parseItemQrValue() — ShelfSync's own QR-label encoding
+  styles/_legal-page.scss   # shared top-bar + prose layout for privacy/ and terms/ (see Project Overview above);
+                             # login/register no longer share a partial like this — each owns its own layout now
 ```
 `src/environments/environment.ts` and `environment.prod.ts` hold `supabaseUrl` and
 `supabaseAnonKey` (the publishable key — safe to commit, it's constrained by RLS).
@@ -250,29 +374,57 @@ yet on a hard refresh of `/inventory`.
   touching this (`TaskDetailModalComponent.saveStatus()`) ever sends `status`. Drops that policy
   and adds `update_task_status()`, a SECURITY DEFINER RPC mirroring `request_task_transfer()`'s
   shape, as the only way a plain assignee can change a task now.
-- `require_approved_task_transfer_target` / `fix_task_transfer_org_null_check` — `request_task_transfer()`
-  gained a check that the target profile is `membership_status = 'approved'`, not just in the
-  caller's org (a pending join request could otherwise be handed a task it couldn't yet see or
-  act on). The first pass's full `create or replace` accidentally dropped the null-safety guard
-  `fix_org_isolation_bugs` had added to this same function; the second migration restores it.
-- `require_approved_task_assignee` — same gap one layer earlier: the "Admins and managers can
-  create tasks for anyone" INSERT policy checked role/org on the new row but never validated
-  `assigned_to` itself, so a task could be created pre-assigned to a pending join request or to a
-  profile in a different organization entirely. Now requires an approved, same-org profile.
-- `add_client_error_log` — `client_error_log` (`user_id`, `organization_id`, `message`, `stack`,
-  `url`, `user_agent`, `app_env`, `created_at`), written via the SECURITY DEFINER
-  `log_client_error()` RPC (granted to `anon` + `authenticated` — a crash can happen pre-login) and
-  read only by an admin/manager of their own org. Backs a `GlobalErrorHandler` that fire-and-forgets
-  every uncaught client error here.
-- `add_inventory_item_barcode` — `inventory_items.barcode` (nullable, unique per org via a partial
-  index), plus the additive `grant update (barcode)` that `add_inventory_item_retirement`'s
-  column-scoped grant means every new `inventory_items` column now needs.
-- `add_more_avatar_presets` — widens `profiles.avatar_key`'s check constraint with 7 more preset
-  keys (see `shared/models/avatar-preset.ts` for the matching client-side list).
-- `add_site_settings_inventory_table_columns` — `site_settings.inventory_table_columns` (a
-  `text[]`, defaulting to a starter set), letting an admin choose which optional columns the
-  Inventory page's table view shows (Customize > Data). Rides along under `site_settings`'
-  existing whole-row admin-only UPDATE policy — no RLS changes needed.
+- `require_approved_task_transfer_target` / `require_approved_task_assignee` — close a pair of
+  matching gaps: `request_task_transfer()` and the "Admins and managers can create tasks for
+  anyone" INSERT policy both checked that a target/assignee profile belonged to the caller's
+  organization, but never that they were an *approved* member of it — a pending join request is a
+  real `profiles` row with `organization_id` set, so it passed. Both are now enforced (RPC check /
+  RLS `exists` subquery, respectively), with matching client-side dropdown filters
+  (`transferablePeople` in `TaskDetailModalComponent`, `approvedAssignableProfiles` in
+  `ManageTasksComponent`, the filtered list in `CreateTaskModalComponent`) so the UI doesn't offer
+  someone who'd just get rejected server-side anyway.
+- `fix_task_transfer_org_null_check` — a same-day follow-up: adding the target-approval check
+  above required a full `create or replace function` on `request_task_transfer()`, which silently
+  dropped the `current_user_org_id() is null or` null-safety guard `fix_org_isolation_bugs` had
+  added to this exact function days earlier (see that entry above for why the guard exists).
+  Caught by a follow-up `/security-review` pass; restored to match the still-correct
+  `cancel`/`accept`/`decline_task_transfer` siblings, which the regressing migration never
+  touched. Worth remembering as a pattern: any migration that does `create or replace function` on
+  an existing SECURITY DEFINER RPC needs to be diffed against the *previous* version of that
+  function, not just reviewed for the change being added — it's easy to silently drop an
+  unrelated safety check that was already there.
+- `add_client_error_log` — Supabase-native error tracking (no third-party service): adds
+  `client_error_log` (readable only by an approved admin/manager for their own org) and
+  `log_client_error()`, a SECURITY DEFINER RPC granted to `anon` and `authenticated` alike (a
+  crash can happen before sign-in) that derives `user_id`/`organization_id` server-side from
+  `auth.uid()` rather than trusting them from the client. `GlobalErrorHandler`
+  (`core/global-error-handler.ts`, registered as the app's `ErrorHandler` in `AppModule`)
+  fire-and-forgets every uncaught client exception here. `manage/error-log`
+  (`ManageErrorLogComponent`) is the in-app viewer — `manageGuard`-gated (admin OR manager),
+  matching the table's own SELECT policy exactly, so no new RPC/migration was needed for reads;
+  it just queries `client_error_log` directly and lets RLS do the scoping. Errors logged pre-auth
+  land with `organization_id` null and still aren't exposed in-app — there's no cross-org "platform
+  admin" role in this schema — so those remain Studio-only.
+- `add_inventory_item_barcode` — adds `inventory_items.barcode` (nullable, unique per organization
+  via a partial index on `(organization_id, barcode) where barcode is not null`), plus an
+  additive `grant update (barcode)` since `add_inventory_item_retirement` gave `inventory_items` a
+  column-scoped UPDATE grant rather than a flat one — any new writable column needs its own grant
+  or it silently fails to save despite passing RLS. Backs the barcode/QR scanning feature (see
+  Project Overview above): a manufacturer barcode scanned off a retail product, or a
+  ShelfSync-generated QR label for an item that never had one, both resolve to this one column.
+- `add_site_settings_inventory_table_columns` — adds `site_settings.inventory_table_columns` (`text[]`,
+  `not null default` all four options), backing the admin-configurable Inventory table-view columns
+  described in Project Overview above. No RLS/grant changes needed: unlike `inventory_items`/`tasks`,
+  `site_settings`' UPDATE policy (from `scope_site_settings_by_organization`) is already a flat,
+  non-column-scoped "admin of own org" check covering the whole row, and its SELECT policy already
+  lets any org member read it — a new plain column rides along under both existing policies.
+- `add_more_avatar_presets` — widens `profiles.avatar_key`'s check constraint (originally 8 "shape"
+  presets from `add_avatar_to_profiles`) with 4 "people" and 3 "animal" options — same
+  purely-cosmetic, self-service column, no RLS/grant changes. A check constraint can't be altered
+  in place, so this drops and recreates it with the expanded key list; `shared/models/avatar-preset.ts`'s
+  `AVATAR_PRESETS` array is the client-side counterpart that must stay in sync with it — the Account
+  page's avatar picker (and everywhere else `UserAvatarComponent` resolves an `avatar_key`) just
+  iterates that array, so a new preset needs no other code changes once both are updated together.
 - `add_activity_log` / `fix_activity_log_status_label_casing` — `activity_log`
   (`organization_id` defaulting to `current_user_org_id()`, `actor_id`, `entity_type` — one of
   `inventory_item`/`task`/`member` —, `entity_id`, `message`, `created_at`), backing
@@ -286,6 +438,10 @@ yet on a hard refresh of `/inventory`.
   adds `profile_display_name()`, a small SECURITY DEFINER helper mirroring
   `profileDisplayName()`'s nickname → full_name → email fallback, reused by every RPC that needs to
   name a *different* profile than the caller (e.g. a task transfer's target) in its log message.
+  `request_task_transfer()`'s `create or replace` here was diffed against
+  `fix_task_transfer_org_null_check` (its immediately-preceding version, including the
+  target-approval check and null-safety guard) before adding the log insert, per that entry's own
+  "diff against the previous version" warning.
 
 `supabase/seed.sql` ports the inventory page's hardcoded dummy items into `inventory_items` inserts
 for local dev (`checked_out_to` is left `null` since it's a real FK to `profiles` now and the

@@ -19,7 +19,7 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/c
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { Database } from '../../shared/models/database.types';
 import { TASK_STATUSES, TASK_STATUS_LABELS, TaskStatus } from '../../shared/models/task-status';
-import { profileDisplayName } from '../../shared/utils/profile-label';
+import { profileDisplayName, resolveProfileName } from '../../shared/utils/profile-label';
 import { logActivity } from '../../shared/utils/activity-log';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
@@ -171,6 +171,10 @@ export class ManageTeamComponent implements OnInit {
 
   profileLabel(profile: Profile): string {
     return profileDisplayName(profile);
+  }
+
+  createdByLabel(task: Task): string {
+    return resolveProfileName(task.created_by, this.assignableProfiles) || 'Unknown user';
   }
 
   openEditProfile(profile: Profile) {

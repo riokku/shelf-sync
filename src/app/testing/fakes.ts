@@ -2,8 +2,11 @@ import { computed, signal } from '@angular/core';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { of } from 'rxjs';
 import { AuthService, Profile } from '../core/auth.service';
+import { InventoryFieldName, InventoryFieldOptionsService } from '../core/inventory-field-options.service';
+import { SiteSettingsService } from '../core/site-settings.service';
 import { SupabaseService } from '../core/supabase.service';
 import { InventoryItem, InventoryItemStatus } from '../shared/models/inventory-item.model';
+import { DEFAULT_INVENTORY_TABLE_COLUMNS, InventoryTableColumnKey } from '../shared/models/inventory-table-column';
 import { Database } from '../shared/models/database.types';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
@@ -62,8 +65,56 @@ export function createFakeAuthService(
     signUp: async () => ({ error: null, needsEmailConfirmation: false }),
     resolveOrganizationBySlug: async () => null,
     signOut: async () => {},
+    requestPasswordReset: async () => null,
+    updatePassword: async () => null,
   };
   return fake as unknown as AuthService;
+}
+
+/** SiteSettingsService.load() (and its underlying real AuthService, which
+ *  the real service also depends on) query Supabase — same reasoning as
+ *  createFakeAuthService above, so any component that just reads a signal
+ *  off this service (e.g. InventoryComponent's tableColumns) can use this
+ *  instead of constructing the real thing. */
+export function createFakeSiteSettingsService(overrides: Partial<{
+  theme: string;
+  logoUrl: string | null;
+  inventoryTableColumns: InventoryTableColumnKey[];
+}> = {}): SiteSettingsService {
+  const fake = {
+    theme: signal(overrides.theme ?? 'default').asReadonly(),
+    logoUrl: signal(overrides.logoUrl ?? null).asReadonly(),
+    inventoryTableColumns: signal(overrides.inventoryTableColumns ?? DEFAULT_INVENTORY_TABLE_COLUMNS).asReadonly(),
+    load: async () => {},
+    applyTheme: () => {},
+    updateTheme: async () => null,
+    uploadLogo: async () => null,
+    removeLogo: async () => null,
+    updateInventoryTableColumns: async () => null,
+    loadLogoUrlForOrganization: async () => null,
+  };
+  return fake as unknown as SiteSettingsService;
+}
+
+/** Covers both InventoryFieldOptionsService's own consumers and
+ *  FieldOptionsEditorComponent (a CustomizeComponent child that injects the
+ *  same service directly) — Angular DI satisfies both from this one
+ *  provider, so a component test doesn't need to fake each separately. */
+export function createFakeInventoryFieldOptionsService(
+  options: Partial<Record<InventoryFieldName, string[]>> = {}
+): InventoryFieldOptionsService {
+  const resolved: Record<InventoryFieldName, string[]> = {
+    category: options.category ?? [],
+    physical_location: options.physical_location ?? []
+  };
+  const fake = {
+    optionsFor: (field: InventoryFieldName) => resolved[field],
+    load: async () => {},
+    addOption: async () => null,
+    loadUsedValues: async () => [],
+    removeOption: async () => null,
+  };
+  return fake as unknown as InventoryFieldOptionsService;
 }
 
 export function createFakeActivatedRoute(queryParams: Record<string, string> = {}): ActivatedRoute {
@@ -123,6 +174,7 @@ export function createFakeMatDialogRef() {
 export function createTestInventoryItem(overrides: Partial<{
   id: string;
   name: string;
+  barcode: string;
   category: string;
   physicalLocation: string;
   quantityRemaining: number;
@@ -137,6 +189,7 @@ export function createTestInventoryItem(overrides: Partial<{
   return new InventoryItem(
     overrides.id ?? 'item-1',
     overrides.name ?? 'Test Item',
+    overrides.barcode ?? '',
     'A test item',
     '',
     [],
@@ -176,9 +229,9 @@ export function createTestInventoryItemRow(overrides: Partial<InventoryItemRow> 
   return {
     id: 'item-1',
     name: 'Test Item',
+    barcode: null,
     description: null,
     image: null,
-    barcode: null,
     category: null,
     physical_location: null,
     digital_location: null,

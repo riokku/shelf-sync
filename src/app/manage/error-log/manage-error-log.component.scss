@@ -1,0 +1,100 @@
+@use '../../shared/styles/page-toolbar';
+
+.manage-error-log-wrapper{
+  color: var(--mat-sys-on-surface);
+  padding: 3rem 1.5rem;
+  max-width: 100%;
+
+  h2{
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+  }
+
+  .container{
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+.page-subtitle{
+  color: var(--mat-sys-on-surface-variant);
+  margin-bottom: 1.5rem;
+}
+
+.loading-row{
+  display: flex;
+  justify-content: center;
+  padding: 3rem 0;
+}
+
+.error-log-controls{
+  margin-bottom: 1rem;
+}
+
+.error-log-list{
+  display: block;
+}
+
+.error-message-preview{
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+mat-panel-description{
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8125rem;
+}
+
+.env-badge{
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  background: var(--app-danger-bg);
+  color: var(--app-danger-on-bg);
+
+  &.env-badge-dev{
+    background: var(--mat-sys-surface-container-highest);
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.error-detail{
+  p{
+    margin: 0 0 0.5rem;
+  }
+
+  .user-agent{
+    color: var(--mat-sys-on-surface-variant);
+    font-size: 0.8125rem;
+  }
+
+  a{
+    color: var(--mat-sys-primary);
+    word-break: break-all;
+  }
+}
+
+.stack-trace{
+  max-height: 20rem;
+  overflow: auto;
+  margin: 0.5rem 0 0;
+  padding: 0.75rem 1rem;
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 0.5rem;
+  font-family: monospace;
+  font-size: 0.8125rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.error-log-paginator{
+  margin-top: 1rem;
+  background: transparent;
+}
