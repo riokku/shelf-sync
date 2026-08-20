@@ -20,11 +20,18 @@
         <span class="brand-name">ShelfSync</span>
       </a>
       <nav class="landing-nav-actions">
-        <a mat-button routerLink="/pricing">Pricing</a>
-        <a mat-button routerLink="/login">Log in</a>
-        <a mat-flat-button color="primary" routerLink="/register">
-          Get started free
-        </a>
+        @if (authService.isAuthenticated()) {
+          <a mat-button routerLink="/home">Dashboard</a>
+          <button mat-flat-button color="primary" type="button" (click)="logout()">
+            Logout
+          </button>
+        } @else {
+          <a mat-button routerLink="/pricing">Pricing</a>
+          <a mat-button routerLink="/login">Log in</a>
+          <a mat-flat-button color="primary" routerLink="/register">
+            Get started free
+          </a>
+        }
       </nav>
     </header>
 

@@ -164,6 +164,16 @@ text itself is a starting draft (attributed to Studio Rio, contact
 section still has a literal `[Insert governing state/country]` placeholder — have both reviewed
 before relying on them for real signups.
 
+The landing page's own nav (`LandingComponent`, distinct from the app shell's `HeaderComponent` —
+see `AppComponent.showChrome()`) is session-aware: a visitor with no session sees the normal
+Pricing/Log in/Sign up links, but one who already has a session (landed on `/` directly, e.g. via
+the brand link) sees just Dashboard (→ `/home`) and Logout instead — none of Pricing/Log in/Sign up
+make sense once already signed in, and nothing previously redirected an already-authenticated
+visitor away from this page. Scoped to the nav only, via `authService.isAuthenticated()`; the
+hero/bottom CTAs further down the page still always point at `/register` regardless of session —
+this page's job for a signed-in visitor is just getting them out to their dashboard, not becoming a
+second one itself.
+
 `/pricing` (`PricingComponent`) is a public three-tier pricing page (Free/Basic/Pro, Basic marked
 "Most popular"), same unguarded/chrome-hidden/own-nav-and-footer treatment as landing — linked from
 both the landing page's nav and `FooterComponent`. **No billing is wired up yet** — every tier's

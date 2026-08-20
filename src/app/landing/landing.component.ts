@@ -1,14 +1,22 @@
 import { AfterViewInit, Component, DestroyRef, ElementRef, WritableSignal, inject, signal } from '@angular/core';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { FooterComponent } from '../footer/footer.component';
+import { AuthService } from '../core/auth.service';
 
 /** Public marketing page at `/` — the value-prop pitch for signed-out
  *  visitors. Distinct from HomeComponent (`/home`), which is the
  *  post-login hub of cards linking into the app. Not gated by any guard;
  *  hidden from the app shell's header/footer chrome (see
- *  AppComponent.showChrome()) so it can lay out its own nav and footer. */
+ *  AppComponent.showChrome()) so it can lay out its own nav and footer.
+ *
+ *  A visitor who already has a session (landed here directly, or via the
+ *  brand link/logo from elsewhere) sees a trimmed nav — just Dashboard and
+ *  Logout instead of Pricing/Log in/Sign up, none of which make sense once
+ *  already signed in. Scoped to the nav only; the hero/bottom CTAs below
+ *  still always point at /register — this page's job for a signed-in
+ *  visitor is just "get them out of here", not a second dashboard. */
 @Component({
   selector: 'app-landing',
   imports: [RouterModule, MatButtonModule, MatIconModule, FooterComponent],
@@ -18,6 +26,13 @@ import { FooterComponent } from '../footer/footer.component';
 export class LandingComponent implements AfterViewInit {
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
   private readonly destroyRef = inject(DestroyRef);
+  protected readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+
+  async logout() {
+    await this.authService.signOut();
+    this.router.navigate(['/']);
+  }
 
   // Data-driven rather than repeated markup, mainly so the template can
   // stagger each card/step's scroll-reveal delay off its index (see
