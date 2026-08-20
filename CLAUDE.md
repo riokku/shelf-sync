@@ -25,6 +25,16 @@ user (not just admin/manager) can edit an inventory item's fields directly from 
 (the item detail popup opened from both the Inventory page and Manage's inventory list) via an
 Edit/Save/Cancel flow; saving writes the changes to `inventory_items` and logs a diffed,
 human-readable summary ("Updated Quantity remaining (80 → 25), ...") to `inventory_item_activity`.
+The two callers refresh differently once the popup closes, because of what they hand it as
+`data`: `InventoryComponent.showDetails()` passes the exact `InventoryItem` instance still sitting
+in its own list (filtering/sorting/paging that list never clones its elements), so every
+`ModalTableComponent` write path already mutates that shared object in place — no refetch needed
+at all, the list is already current. `ManageInventoryComponent.openInventoryDetail()` instead
+builds `ModalTableComponent` a fresh, disconnected `InventoryItem` via `toInventoryItem()` (its own
+list holds raw DB rows, not `InventoryItem`s), so closing there re-fetches just that one row (plus
+its images/activity) and patches it into `allInventoryItems`/the image/activity maps —
+`refreshInventoryItem()` — rather than reloading the whole inventory list on every close the way
+both used to.
 Editing also covers photos (add/remove against `inventory_item_images`, same 10-photo cap as
 creation) via shared helpers in `shared/utils/inventory-item-images.ts`, and checkout state
 (`is_checked_out`/`checked_out_to`, editable via a "Checked out to" selector in the same

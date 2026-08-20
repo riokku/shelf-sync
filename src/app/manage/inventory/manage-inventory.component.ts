@@ -277,7 +277,39 @@ export class ManageInventoryComponent implements OnInit {
       panelClass: 'item-details-dialog'
     });
 
-    dialogRef.afterClosed().subscribe(() => this.loadInventoryItems());
+    // Just this one row, not the whole list — unlike InventoryComponent
+    // (whose showDetails() passes the same InventoryItem instance that's
+    // still sitting in its list, so edits already show up live with no
+    // reload at all), toInventoryItem() above builds ModalTableComponent a
+    // disconnected InventoryItem; allInventoryItems here holds the raw DB
+    // rows that fed it, so nothing keeps them in sync automatically and a
+    // refetch is genuinely needed — just not of every other row too.
+    dialogRef.afterClosed().subscribe(() => this.refreshInventoryItem(row.id));
+  }
+
+  private async refreshInventoryItem(itemId: string) {
+    const { data: row } = await this.supabase.from('inventory_items').select('*').eq('id', itemId).maybeSingle();
+
+    const index = this.allInventoryItems.findIndex(item => item.id === itemId);
+    if (!row) {
+      // Not expected from this dialog (it never deletes items), but handle
+      // it gracefully rather than leaving a stale row behind.
+      if (index !== -1) {
+        this.allInventoryItems = this.allInventoryItems.filter(item => item.id !== itemId);
+      }
+      return;
+    }
+
+    this.allInventoryItems = index === -1
+      ? [...this.allInventoryItems, row]
+      : this.allInventoryItems.map((item, i) => (i === index ? row : item));
+
+    const [imagesByItemId, activityByItemId] = await Promise.all([
+      loadInventoryImagesByItemId(this.supabase, [itemId]),
+      loadInventoryActivityByItemId(this.supabase, [itemId], this.assignableProfiles)
+    ]);
+    this.inventoryImagesByItemId.set(itemId, imagesByItemId.get(itemId) ?? []);
+    this.inventoryActivityByItemId.set(itemId, activityByItemId.get(itemId) ?? []);
   }
 
   /** Scans either a manufacturer barcode (matched against

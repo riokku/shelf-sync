@@ -367,16 +367,24 @@ export class InventoryComponent implements OnInit{
     this.isLoading = false;
   }
 
+  /** No afterClosed() reload needed — `item` here is the exact same
+   *  InventoryItem instance living in `inventoryList` (filteredInventoryList/
+   *  sortedInventoryList/pagedInventoryList all filter/sort/slice that same
+   *  array without ever cloning its elements), and every write path in
+   *  ModalTableComponent (saveEdit, the retirement actions, container/photo
+   *  saves) mutates `this.data` in place rather than replacing it. So a save
+   *  in the modal already updates this list live, through that shared
+   *  reference, the moment it happens — reloading the whole inventory again
+   *  on close was pure waste (a full items+images+activity refetch on every
+   *  close, even just opening an item to look at it and clicking away). */
   showDetails(item:InventoryItem){
-    const dialogRef = this.dialog.open(ModalTableComponent, {
+    this.dialog.open(ModalTableComponent, {
       data: item,
       width: 'clamp(45rem, 78vw, 70rem)',
       maxWidth: '90vw',
       maxHeight: '95vh',
       panelClass: 'item-details-dialog'
     });
-
-    dialogRef.afterClosed().subscribe(() => this.loadInventory());
   }
 
   toggleStockLevel(value: StockLevel, checked: boolean){
