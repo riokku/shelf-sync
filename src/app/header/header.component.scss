@@ -56,6 +56,12 @@
 
 .online-dot{
   flex-shrink: 0;
+  // .brand-online-count's own overflow: hidden (needed for its text
+  // ellipsis) was clipping the left edge of the pulse ring below, since the
+  // dot sat flush against that edge with nothing to its left — the ring's
+  // own max spread (0.4375rem) needs at least that much breathing room to
+  // clear it.
+  margin-left: 0.4375rem;
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 50%;
