@@ -21,10 +21,10 @@
       </a>
       <nav class="landing-nav-actions">
         @if (authService.isAuthenticated()) {
-          <a mat-button routerLink="/home">Dashboard</a>
-          <button mat-flat-button color="primary" type="button" (click)="logout()">
+          <button mat-button type="button" (click)="logout()">
             Logout
           </button>
+          <a mat-flat-button color="primary" routerLink="/home">Dashboard</a>
         } @else {
           <a mat-button routerLink="/pricing">Pricing</a>
           <a mat-button routerLink="/login">Log in</a>
