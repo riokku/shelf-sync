@@ -40,9 +40,7 @@
                   {{ profileLabel(profile) }}
                 </span>
                 <span class="pending-member-email">{{ profile.email }}</span>
-                @if (!isOnline(profile)) {
-                  <span class="pending-member-last-seen">{{ lastSeenLabel(profile) }}</span>
-                }
+                <span class="pending-member-last-seen" [class.is-online]="isOnline(profile)">{{ presenceLabel(profile) }}</span>
                 <div class="pending-member-actions">
                   <button
                       mat-stroked-button
@@ -115,9 +113,7 @@
                 </mat-panel-title>
                 <mat-panel-description>
                   <span class="team-member-info">
-                    @if (!isOnline(member.profile)) {
-                      <span class="team-member-last-seen">{{ lastSeenLabel(member.profile) }}</span>
-                    }
+                    <span class="team-member-last-seen" [class.is-online]="isOnline(member.profile)">{{ presenceLabel(member.profile) }}</span>
                     <span class="team-member-role" [class]="'role-' + member.profile.role">{{ member.profile.role }}</span>
                   </span>
                   @if (authService.role() === 'admin') {

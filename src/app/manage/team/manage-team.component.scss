@@ -113,6 +113,14 @@
   flex-shrink: 0;
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.8125rem;
+
+  // Matches .online-dot's own color — reinforces the dot rather than just
+  // sitting there as more muted text once there's actually good news to
+  // state plainly instead of a relative time.
+  &.is-online{
+    color: var(--app-success-text);
+    font-weight: 600;
+  }
 }
 
 .pending-member-actions{
@@ -169,11 +177,13 @@ mat-panel-description{
   display: inline-flex;
 }
 
-// A small pulsing green dot overlaid on the avatar's bottom-right corner —
-// shown instead of .team-member-last-seen/.pending-member-last-seen
-// (mutually exclusive: see isOnline() in the component) when a member's
-// last_active_at is recent enough to count as "online now" rather than
-// needing a "last seen" time.
+// A small pulsing green dot overlaid on the avatar's bottom-right corner,
+// shown alongside .team-member-last-seen/.pending-member-last-seen (which
+// read "Online" rather than disappearing — see presenceLabel() in the
+// component) when a member's last_active_at is recent enough to count as
+// "online now" — rather than the text vanishing and leaving nothing there,
+// which let the role badge/actions next to it land at a different spot
+// per row depending on whether that member happened to be online.
 .online-dot{
   position: absolute;
   right: -0.0625rem;
@@ -220,6 +230,13 @@ mat-panel-description{
 .team-member-last-seen{
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.8125rem;
+
+  // Matches .online-dot's own color — see .pending-member-last-seen's own
+  // identical rule for why.
+  &.is-online{
+    color: var(--app-success-text);
+    font-weight: 600;
+  }
 }
 
 // Same pill shape as ModalTableComponent's .status-pill/InventoryComponent's

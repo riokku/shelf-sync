@@ -145,6 +145,14 @@ export class ManageTeamComponent implements OnInit {
     return formatLastSeen(profile.last_active_at);
   }
 
+  /** "Online" or a "Last seen …" string — always some text, unlike the
+   *  online dot (shown only when online), so a row's role badge lines up
+   *  at the same spot whether the member next to it is online or not,
+   *  rather than that text just disappearing for online members. */
+  presenceLabel(profile: Profile): string {
+    return this.isOnline(profile) ? 'Online' : this.lastSeenLabel(profile);
+  }
+
   private async loadProfiles() {
     const { data } = await this.supabase.from('profiles').select('*').order('full_name');
     const profiles = data ?? [];

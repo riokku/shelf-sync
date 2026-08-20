@@ -88,6 +88,22 @@ describe('ManageTeamComponent', () => {
       expect(component.lastSeenLabel(offlineProfile)).toBe('Never signed in');
     });
   });
+
+  describe('presenceLabel', () => {
+    // Always some text — the online dot alone (shown only when online)
+    // otherwise left a row with nothing there once a member came online,
+    // which shifted the role badge/actions next to it out of line with
+    // every other (offline, "Last seen …") row.
+    it('reads "Online" for an online profile instead of a last-seen time', () => {
+      const onlineProfile = createFakeProfile({ last_active_at: new Date().toISOString() });
+      expect(component.presenceLabel(onlineProfile)).toBe('Online');
+    });
+
+    it('falls back to the last-seen time for an offline profile', () => {
+      const offlineProfile = createFakeProfile({ last_active_at: null });
+      expect(component.presenceLabel(offlineProfile)).toBe('Never signed in');
+    });
+  });
 });
 
 function memberOf(profile: Partial<Profile>) {
