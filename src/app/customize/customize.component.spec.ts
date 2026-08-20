@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 import { CustomizeComponent } from './customize.component';
 import { SiteSettingsService } from '../core/site-settings.service';
 import { InventoryFieldOptionsService } from '../core/inventory-field-options.service';
+import { NotificationService } from '../core/notification.service';
 import { createFakeInventoryFieldOptionsService, createFakeSiteSettingsService } from '../testing/fakes';
 import { DEFAULT_INVENTORY_TABLE_COLUMNS } from '../shared/models/inventory-table-column';
 import { DEFAULT_INVENTORY_FORM_FIELDS } from '../shared/models/inventory-form-field';
@@ -14,6 +15,7 @@ describe('CustomizeComponent', () => {
   let siteSettings: SiteSettingsService;
   let fieldOptionsService: InventoryFieldOptionsService;
   let fieldOptionsLoadSpy: jasmine.Spy;
+  let notificationSuccessSpy: jasmine.Spy;
 
   beforeEach(async () => {
     siteSettings = createFakeSiteSettingsService({
@@ -38,6 +40,11 @@ describe('CustomizeComponent', () => {
 
     fixture = TestBed.createComponent(CustomizeComponent);
     component = fixture.componentInstance;
+    // NotificationService isn't overridden in providers above (same as every
+    // other spec in this app — the real service, backed by MatSnackBar,
+    // works fine under TestBed) — spied here so save methods can assert a
+    // toast fired instead of the removed inline "saved" text/flags.
+    notificationSuccessSpy = spyOn((component as unknown as { notification: NotificationService }).notification, 'success');
     fixture.detectChanges();
   });
 
@@ -60,36 +67,34 @@ describe('CustomizeComponent', () => {
   });
 
   describe('theme', () => {
-    it('selectTheme() previews the theme immediately and clears any prior saved flag', () => {
+    it('selectTheme() previews the theme immediately', () => {
       const applyThemeSpy = spyOn(siteSettings, 'applyTheme');
-      component.themeSaved = true;
 
       component.selectTheme('ocean');
 
       expect(component.selectedTheme).toBe('ocean');
-      expect(component.themeSaved).toBe(false);
       expect(applyThemeSpy).toHaveBeenCalledWith('ocean');
     });
 
-    it('saveTheme() persists the selection and flags it saved on success', async () => {
+    it('saveTheme() persists the selection and shows a success toast', async () => {
       const updateSpy = spyOn(siteSettings, 'updateTheme').and.returnValue(Promise.resolve(null));
       component.selectedTheme = 'ocean';
 
       await component.saveTheme();
 
       expect(updateSpy).toHaveBeenCalledWith('ocean');
-      expect(component.themeSaved).toBe(true);
+      expect(notificationSuccessSpy).toHaveBeenCalledWith('Theme saved for everyone');
       expect(component.themeError).toBeNull();
       expect(component.isSavingTheme).toBe(false);
     });
 
-    it('saveTheme() surfaces the error and leaves themeSaved false on failure', async () => {
+    it('saveTheme() surfaces the error and shows no toast on failure', async () => {
       spyOn(siteSettings, 'updateTheme').and.returnValue(Promise.resolve('db is down'));
 
       await component.saveTheme();
 
       expect(component.themeError).toBe('db is down');
-      expect(component.themeSaved).toBe(false);
+      expect(notificationSuccessSpy).not.toHaveBeenCalled();
     });
 
     it('saveTheme() is a no-op while already saving', async () => {
@@ -109,12 +114,6 @@ describe('CustomizeComponent', () => {
 
       component.toggleTableColumn('barcode', false);
       expect(component.selectedTableColumns).not.toContain('barcode');
-    });
-
-    it('toggleTableColumn() clears any prior saved flag', () => {
-      component.tableColumnsSaved = true;
-      component.toggleTableColumn('barcode', true);
-      expect(component.tableColumnsSaved).toBe(false);
     });
 
     describe('tableColumnsChanged', () => {
@@ -138,24 +137,24 @@ describe('CustomizeComponent', () => {
       });
     });
 
-    it('saveTableColumns() persists the selection and flags it saved on success', async () => {
+    it('saveTableColumns() persists the selection and shows a success toast', async () => {
       const updateSpy = spyOn(siteSettings, 'updateInventoryTableColumns').and.returnValue(Promise.resolve(null));
       component.selectedTableColumns = ['barcode', 'status'];
 
       await component.saveTableColumns();
 
       expect(updateSpy).toHaveBeenCalledWith(['barcode', 'status']);
-      expect(component.tableColumnsSaved).toBe(true);
+      expect(notificationSuccessSpy).toHaveBeenCalledWith('Table columns saved for everyone');
       expect(component.tableColumnsError).toBeNull();
     });
 
-    it('saveTableColumns() surfaces the error on failure', async () => {
+    it('saveTableColumns() surfaces the error and shows no toast on failure', async () => {
       spyOn(siteSettings, 'updateInventoryTableColumns').and.returnValue(Promise.resolve('nope'));
 
       await component.saveTableColumns();
 
       expect(component.tableColumnsError).toBe('nope');
-      expect(component.tableColumnsSaved).toBe(false);
+      expect(notificationSuccessSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -166,12 +165,6 @@ describe('CustomizeComponent', () => {
 
       component.toggleFormField('barcode', true);
       expect(component.selectedFormFields).toContain('barcode');
-    });
-
-    it('toggleFormField() clears any prior saved flag', () => {
-      component.formFieldsSaved = true;
-      component.toggleFormField('barcode', false);
-      expect(component.formFieldsSaved).toBe(false);
     });
 
     describe('formFieldsChanged', () => {
@@ -190,24 +183,24 @@ describe('CustomizeComponent', () => {
       });
     });
 
-    it('saveFormFields() persists the selection and flags it saved on success', async () => {
+    it('saveFormFields() persists the selection and shows a success toast', async () => {
       const updateSpy = spyOn(siteSettings, 'updateInventoryFormFields').and.returnValue(Promise.resolve(null));
       component.selectedFormFields = ['barcode', 'photos'];
 
       await component.saveFormFields();
 
       expect(updateSpy).toHaveBeenCalledWith(['barcode', 'photos']);
-      expect(component.formFieldsSaved).toBe(true);
+      expect(notificationSuccessSpy).toHaveBeenCalledWith('Inventory data fields saved for everyone');
       expect(component.formFieldsError).toBeNull();
     });
 
-    it('saveFormFields() surfaces the error on failure', async () => {
+    it('saveFormFields() surfaces the error and shows no toast on failure', async () => {
       spyOn(siteSettings, 'updateInventoryFormFields').and.returnValue(Promise.resolve('nope'));
 
       await component.saveFormFields();
 
       expect(component.formFieldsError).toBe('nope');
-      expect(component.formFieldsSaved).toBe(false);
+      expect(notificationSuccessSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -216,13 +209,10 @@ describe('CustomizeComponent', () => {
       expect(component.selectedRequireRetirementApproval).toBe(true);
     });
 
-    it('toggleRequireRetirementApproval() updates the local selection and clears any prior saved flag', () => {
-      component.requireRetirementApprovalSaved = true;
-
+    it('toggleRequireRetirementApproval() updates the local selection', () => {
       component.toggleRequireRetirementApproval(false);
 
       expect(component.selectedRequireRetirementApproval).toBe(false);
-      expect(component.requireRetirementApprovalSaved).toBe(false);
     });
 
     describe('requireRetirementApprovalChanged', () => {
@@ -236,24 +226,24 @@ describe('CustomizeComponent', () => {
       });
     });
 
-    it('saveRequireRetirementApproval() persists the selection and flags it saved on success', async () => {
+    it('saveRequireRetirementApproval() persists the selection and shows a success toast', async () => {
       const updateSpy = spyOn(siteSettings, 'updateRequireRetirementApproval').and.returnValue(Promise.resolve(null));
       component.selectedRequireRetirementApproval = false;
 
       await component.saveRequireRetirementApproval();
 
       expect(updateSpy).toHaveBeenCalledWith(false);
-      expect(component.requireRetirementApprovalSaved).toBe(true);
+      expect(notificationSuccessSpy).toHaveBeenCalledWith('Saved for everyone');
       expect(component.requireRetirementApprovalError).toBeNull();
     });
 
-    it('saveRequireRetirementApproval() surfaces the error on failure', async () => {
+    it('saveRequireRetirementApproval() surfaces the error and shows no toast on failure', async () => {
       spyOn(siteSettings, 'updateRequireRetirementApproval').and.returnValue(Promise.resolve('nope'));
 
       await component.saveRequireRetirementApproval();
 
       expect(component.requireRetirementApprovalError).toBe('nope');
-      expect(component.requireRetirementApprovalSaved).toBe(false);
+      expect(notificationSuccessSpy).not.toHaveBeenCalled();
     });
 
     it('saveRequireRetirementApproval() is a no-op while already saving', async () => {

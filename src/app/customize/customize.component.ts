@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { InventoryFieldOptionsService } from '../core/inventory-field-options.service';
+import { NotificationService } from '../core/notification.service';
 import { SiteSettingsService } from '../core/site-settings.service';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 import { FieldOptionsEditorComponent } from '../shared/components/field-options-editor/field-options-editor.component';
@@ -23,6 +24,7 @@ import { INVENTORY_FORM_FIELD_GROUPS, InventoryFormFieldKey } from '../shared/mo
 export class CustomizeComponent implements OnInit, OnDestroy {
   protected siteSettings = inject(SiteSettingsService);
   protected inventoryFieldOptions = inject(InventoryFieldOptionsService);
+  private notification = inject(NotificationService);
 
   async ngOnInit() {
     await this.inventoryFieldOptions.load();
@@ -43,7 +45,6 @@ export class CustomizeComponent implements OnInit, OnDestroy {
 
   isSavingTheme = false;
   themeError: string | null = null;
-  themeSaved = false;
 
   logoPreviewUrl: string | null = null;
   selectedLogoFile: File | null = null;
@@ -56,18 +57,15 @@ export class CustomizeComponent implements OnInit, OnDestroy {
   selectedTableColumns: InventoryTableColumnKey[] = [...this.siteSettings.inventoryTableColumns()];
   isSavingTableColumns = false;
   tableColumnsError: string | null = null;
-  tableColumnsSaved = false;
 
   readonly formFieldGroups = INVENTORY_FORM_FIELD_GROUPS;
   selectedFormFields: InventoryFormFieldKey[] = [...this.siteSettings.inventoryFormFields()];
   isSavingFormFields = false;
   formFieldsError: string | null = null;
-  formFieldsSaved = false;
 
   selectedRequireRetirementApproval = this.siteSettings.requireRetirementApproval();
   isSavingRequireRetirementApproval = false;
   requireRetirementApprovalError: string | null = null;
-  requireRetirementApprovalSaved = false;
 
   get currentLogoUrl(): string | null {
     return this.logoPreviewUrl ?? this.siteSettings.logoUrl();
@@ -110,7 +108,6 @@ export class CustomizeComponent implements OnInit, OnDestroy {
 
   selectTheme(key: string) {
     this.selectedTheme = key;
-    this.themeSaved = false;
     this.siteSettings.applyTheme(key);
   }
 
@@ -121,7 +118,6 @@ export class CustomizeComponent implements OnInit, OnDestroy {
 
     this.isSavingTheme = true;
     this.themeError = null;
-    this.themeSaved = false;
 
     const error = await this.siteSettings.updateTheme(this.selectedTheme);
     this.isSavingTheme = false;
@@ -130,14 +126,13 @@ export class CustomizeComponent implements OnInit, OnDestroy {
       this.themeError = error;
       return;
     }
-    this.themeSaved = true;
+    this.notification.success('Theme saved for everyone');
   }
 
   toggleTableColumn(key: InventoryTableColumnKey, checked: boolean) {
     this.selectedTableColumns = checked
       ? [...this.selectedTableColumns, key]
       : this.selectedTableColumns.filter(column => column !== key);
-    this.tableColumnsSaved = false;
   }
 
   async saveTableColumns() {
@@ -147,7 +142,6 @@ export class CustomizeComponent implements OnInit, OnDestroy {
 
     this.isSavingTableColumns = true;
     this.tableColumnsError = null;
-    this.tableColumnsSaved = false;
 
     const error = await this.siteSettings.updateInventoryTableColumns(this.selectedTableColumns);
     this.isSavingTableColumns = false;
@@ -156,14 +150,13 @@ export class CustomizeComponent implements OnInit, OnDestroy {
       this.tableColumnsError = error;
       return;
     }
-    this.tableColumnsSaved = true;
+    this.notification.success('Table columns saved for everyone');
   }
 
   toggleFormField(key: InventoryFormFieldKey, checked: boolean) {
     this.selectedFormFields = checked
       ? [...this.selectedFormFields, key]
       : this.selectedFormFields.filter(field => field !== key);
-    this.formFieldsSaved = false;
   }
 
   async saveFormFields() {
@@ -173,7 +166,6 @@ export class CustomizeComponent implements OnInit, OnDestroy {
 
     this.isSavingFormFields = true;
     this.formFieldsError = null;
-    this.formFieldsSaved = false;
 
     const error = await this.siteSettings.updateInventoryFormFields(this.selectedFormFields);
     this.isSavingFormFields = false;
@@ -182,12 +174,11 @@ export class CustomizeComponent implements OnInit, OnDestroy {
       this.formFieldsError = error;
       return;
     }
-    this.formFieldsSaved = true;
+    this.notification.success('Inventory data fields saved for everyone');
   }
 
   toggleRequireRetirementApproval(required: boolean) {
     this.selectedRequireRetirementApproval = required;
-    this.requireRetirementApprovalSaved = false;
   }
 
   async saveRequireRetirementApproval() {
@@ -197,7 +188,6 @@ export class CustomizeComponent implements OnInit, OnDestroy {
 
     this.isSavingRequireRetirementApproval = true;
     this.requireRetirementApprovalError = null;
-    this.requireRetirementApprovalSaved = false;
 
     const error = await this.siteSettings.updateRequireRetirementApproval(this.selectedRequireRetirementApproval);
     this.isSavingRequireRetirementApproval = false;
@@ -206,7 +196,7 @@ export class CustomizeComponent implements OnInit, OnDestroy {
       this.requireRetirementApprovalError = error;
       return;
     }
-    this.requireRetirementApprovalSaved = true;
+    this.notification.success('Saved for everyone');
   }
 
   onLogoSelected(event: Event) {

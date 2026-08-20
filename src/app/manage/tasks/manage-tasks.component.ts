@@ -150,7 +150,6 @@ export class ManageTasksComponent implements OnInit {
 
   isSavingTask = false;
   taskError: string | null = null;
-  taskSaved = false;
 
   async ngOnInit() {
     const session = await this.authService.getSession();
@@ -292,7 +291,6 @@ export class ManageTasksComponent implements OnInit {
 
     this.isSavingTask = true;
     this.taskError = null;
-    this.taskSaved = false;
 
     const value = this.taskForm.getRawValue();
     const { error } = await this.supabase.from('tasks').insert({
@@ -323,7 +321,7 @@ export class ManageTasksComponent implements OnInit {
       assigneeLabel ? `Created task "${value.title}" (assigned to ${assigneeLabel})` : `Created task "${value.title}"`
     );
 
-    this.taskSaved = true;
+    this.notification.success('Task created');
     this.taskFormDirective.resetForm();
     this.relatedItemSearchControl.setValue('');
     await this.loadTasks();

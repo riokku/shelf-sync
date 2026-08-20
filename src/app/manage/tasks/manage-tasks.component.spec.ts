@@ -6,6 +6,7 @@ import { provideNativeDateAdapter } from '@angular/material/core';
 import { ManageTasksComponent } from './manage-tasks.component';
 import { AuthService } from '../../core/auth.service';
 import { SupabaseService } from '../../core/supabase.service';
+import { NotificationService } from '../../core/notification.service';
 import { createFakeActivatedRoute, createFakeAuthService, createFakeProfile, createFakeSupabaseService, createTestTask } from '../../testing/fakes';
 
 describe('ManageTasksComponent', () => {
@@ -157,6 +158,11 @@ describe('ManageTasksComponent submitTask() success', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
+    // Success is surfaced as a toast rather than inline text under the
+    // form (see NotificationService) — spied here to confirm it still
+    // fires now that submitTask() routes the reset through resetForm().
+    const notificationSuccessSpy = spyOn((component as unknown as { notification: NotificationService }).notification, 'success');
+
     component.taskForm.controls.title.setValue('Restock shelves');
     fixture.detectChanges();
 
@@ -167,6 +173,7 @@ describe('ManageTasksComponent submitTask() success', () => {
     expect(component.taskForm.controls.title.touched).toBeFalse();
     expect(component.taskForm.controls.title.value).toBe('');
     expect(component.taskForm.controls.title.hasError('required')).toBeTrue();
+    expect(notificationSuccessSpy).toHaveBeenCalledWith('Task created');
   });
 });
 

@@ -291,9 +291,6 @@
         @if (itemError) {
           <p class="error-message">{{ itemError }}</p>
         }
-        @if (itemSaved) {
-          <p class="success-message">Item created.</p>
-        }
 
         <button mat-flat-button color="primary" type="submit" [disabled]="isSavingItem">
           @if (isSavingItem) {

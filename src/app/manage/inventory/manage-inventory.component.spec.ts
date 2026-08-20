@@ -7,6 +7,7 @@ import { ManageInventoryComponent } from './manage-inventory.component';
 import { AuthService } from '../../core/auth.service';
 import { SupabaseService } from '../../core/supabase.service';
 import { SiteSettingsService } from '../../core/site-settings.service';
+import { NotificationService } from '../../core/notification.service';
 import { createFakeAuthService, createFakeProfile, createFakeSiteSettingsService, createFakeSupabaseService, createTestInventoryItemRow } from '../../testing/fakes';
 
 describe('ManageInventoryComponent', () => {
@@ -221,6 +222,12 @@ describe('ManageInventoryComponent submitInventoryItem() success', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
+    // Success is surfaced as a toast rather than inline text under the
+    // form (see NotificationService) — spied here to confirm it still
+    // fires now that submitInventoryItem() routes the reset through
+    // resetForm().
+    const notificationSuccessSpy = spyOn((component as unknown as { notification: NotificationService }).notification, 'success');
+
     component.inventoryForm.controls.name.setValue('Folding Chair');
     component.inventoryForm.controls.quantityTotal.setValue(10);
     fixture.detectChanges();
@@ -232,5 +239,6 @@ describe('ManageInventoryComponent submitInventoryItem() success', () => {
     expect(component.inventoryForm.controls.name.touched).toBeFalse();
     expect(component.inventoryForm.controls.name.value).toBe('');
     expect(component.inventoryForm.controls.name.hasError('required')).toBeTrue();
+    expect(notificationSuccessSpy).toHaveBeenCalledWith('Item created');
   });
 });

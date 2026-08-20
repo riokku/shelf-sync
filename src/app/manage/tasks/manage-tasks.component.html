@@ -78,9 +78,6 @@
         @if (taskError) {
           <p class="error-message">{{ taskError }}</p>
         }
-        @if (taskSaved) {
-          <p class="success-message">Task created.</p>
-        }
 
         <button mat-flat-button color="primary" type="submit" [disabled]="isSavingTask">
           @if (isSavingTask) {

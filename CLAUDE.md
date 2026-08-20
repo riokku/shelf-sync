@@ -289,6 +289,22 @@ back to the parent item at all — a real lock-bypass vector, since a locked ite
 `inventory_item_images`' policies already join through to the parent item for their own checks
 (which, on inspection, turned out to already be admin/manager-only and needed no change here).
 
+Every brief "it worked" confirmation across the app (task/item created, a Customize setting
+saved) is a toast via `NotificationService.success()` (`core/notification.service.ts`, thin
+wrapper around `MatSnackBar` rendering `SuccessToastComponent`) rather than a `<p>` left sitting
+under the form — a handful of "Create task"/"Create item"/Customize save flows still used inline
+`@if (xSaved) { <p class="success-message">...</p> }` text (each gated by its own now-removed
+`xSaved` boolean, reset on every edit and every save attempt) until this was swept and converted
+for consistency with how every other success feedback in the app already worked (delete/approve/
+lock/transfer, etc. — see `ModalTableComponent`/`ManageTeamComponent`/`TaskDetailModalComponent`).
+**Errors are deliberately exempt** — `NotificationService`'s own doc comment explains why: a
+failure needs to stay visible/persistent (still an inline `<p class="error-message">`), where a
+toast's few-second lifetime would risk it disappearing before it's read. Pre-login/full-page
+confirmations that replace the form outright rather than sitting alongside it (register's "check
+your email", forgot-password, reset-password's post-submit state) are a different case and were
+deliberately left alone — those aren't brief feedback next to a form still in use, they're the
+entire remaining page content, which a toast is the wrong shape for.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)

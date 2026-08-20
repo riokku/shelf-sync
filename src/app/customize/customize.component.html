@@ -58,9 +58,6 @@
               @if (formFieldsError) {
                 <p class="error-message">{{ formFieldsError }}</p>
               }
-              @if (formFieldsSaved) {
-                <p class="success-message">Inventory data fields saved for everyone.</p>
-              }
               <button
                   mat-flat-button
                   color="primary"
@@ -103,9 +100,6 @@
               </div>
               @if (tableColumnsError) {
                 <p class="error-message">{{ tableColumnsError }}</p>
-              }
-              @if (tableColumnsSaved) {
-                <p class="success-message">Table columns saved for everyone.</p>
               }
               <button
                   mat-flat-button
@@ -151,9 +145,6 @@
             </div>
             @if (themeError) {
               <p class="error-message">{{ themeError }}</p>
-            }
-            @if (themeSaved) {
-              <p class="success-message">Theme saved for everyone.</p>
             }
             <button
                 mat-flat-button
@@ -230,9 +221,6 @@
             </mat-slide-toggle>
             @if (requireRetirementApprovalError) {
               <p class="error-message">{{ requireRetirementApprovalError }}</p>
-            }
-            @if (requireRetirementApprovalSaved) {
-              <p class="success-message">Saved for everyone.</p>
             }
             <button
                 mat-flat-button

@@ -169,7 +169,6 @@ export class ManageInventoryComponent implements OnInit {
 
   isSavingItem = false;
   itemError: string | null = null;
-  itemSaved = false;
 
   async ngOnInit() {
     await Promise.all([
@@ -413,7 +412,6 @@ export class ManageInventoryComponent implements OnInit {
 
     this.isSavingItem = true;
     this.itemError = null;
-    this.itemSaved = false;
 
     const value = this.inventoryForm.getRawValue();
     // In container mode, quantityTotal isn't user-entered (see the template
@@ -477,7 +475,7 @@ export class ManageInventoryComponent implements OnInit {
     }
 
     this.isSavingItem = false;
-    this.itemSaved = true;
+    this.notification.success('Item created');
     this.inventoryFormDirective.resetForm();
     this.trackingMode = 'single';
     this.newContainers = [];
