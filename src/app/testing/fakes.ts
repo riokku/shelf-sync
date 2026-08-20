@@ -28,6 +28,7 @@ export function createFakeProfile(overrides: Partial<Profile> = {}): Profile {
     membership_status: 'approved',
     organization_id: 'org-1',
     avatar_key: null,
+    last_active_at: null,
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
     ...overrides,

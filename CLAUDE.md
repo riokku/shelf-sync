@@ -325,6 +325,28 @@ your email", forgot-password, reset-password's post-submit state) are a differen
 deliberately left alone — those aren't brief feedback next to a form still in use, they're the
 entire remaining page content, which a toast is the wrong shape for.
 
+Manage > Team shows each member as either online now (a small pulsing green dot on their avatar)
+or, when they aren't, "Last seen \<relative time\>" text in the same spot — both driven by
+`profiles.last_active_at`, touched by a client-side heartbeat rather than anything live/socket-based
+(no Realtime channel in this app yet, and a heartbeat also gets "last seen" for the offline case for
+free, which presence alone wouldn't). `AuthService` starts a 60s `setInterval` heartbeat
+(`touchLastActive()`, a plain self-service column update — same non-privileged reasoning `full_name`/
+`nickname`/`avatar_key` already have, no RPC needed) whenever a session exists — on load if one's
+already there, or from `onAuthStateChange` when one starts — touching immediately on start rather
+than waiting a full interval, and stops it the same way when the session ends; `signOut()` also does
+one last touch before actually signing out, so "last seen" reads as fresh as possible rather than up
+to 60s stale. `shared/utils/presence.ts` owns the read side: `isProfileOnline()` (within
+`ONLINE_THRESHOLD_MS`, 3 minutes — comfortably wider than the 60s heartbeat to absorb a missed tick
+without a false-negative flicker) and `formatLastSeen()` (`Intl.RelativeTimeFormat`-based). This is
+inherently an approximation, same as any heartbeat-inferred presence (Slack, GitHub, etc.) — "online"
+means "was active recently," not "has a connection open right now," and a backgrounded/throttled
+browser tab can slow its own timers enough to under-report. `ManageTeamComponent` polls a narrow
+`profiles.select('id, last_active_at')` every 30s while the page is open and patches it onto the
+already-loaded `teamMembers`/`pendingMembers` profile objects in place, rather than re-running the
+full `loadProfiles()`/`loadTeamTasks()` pair (which together toggle `isLoadingTeam`, swapping the
+whole accordion for a spinner) — keeps the indicator current without any visible flicker or losing
+the search term/expanded panels/in-flight edits a full reload would disturb.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -459,6 +481,7 @@ shared/
   utils/activity-log.ts      # loadActivityLog() / logActivity() — org-wide activity_log, backs Manage > Activity Log
   utils/profile-label.ts     # profileDisplayName()/resolveProfileName() — shared profiles-array lookup
   utils/barcode.ts           # buildItemQrValue()/parseItemQrValue() — ShelfSync's own QR-label encoding
+  utils/presence.ts          # isProfileOnline()/formatLastSeen() — reads profiles.last_active_at, backs Manage > Team's presence indicator
   styles/_legal-page.scss   # shared top-bar + prose layout for privacy/ and terms/ (see Project Overview above);
                              # login/register no longer share a partial like this — each owns its own layout now
 ```
@@ -657,6 +680,12 @@ yet on a hard refresh of `/inventory`.
   policy and matching `is_locked`-aware rewrites of all three `inventory_item_containers` policies —
   see Project Overview above for the full mechanism and why `is_locked` has to stay out of the
   column grant for the RLS check to be safe.
+- `add_last_active_at_to_profiles` — adds `profiles.last_active_at`, backing Manage > Team's
+  "online now"/"last seen" indicator (see Project Overview above). Purely cosmetic/self-service,
+  same reasoning `full_name`/`nickname`/`avatar_key` already have — no RLS/RPC changes needed
+  beyond widening the existing column grant, since "Users can update their own profile" already
+  scopes it to `auth.uid() = id` and there's no privilege distinction to protect the way
+  `role`/`membership_status` need.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

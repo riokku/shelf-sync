@@ -25,11 +25,58 @@ export class AuthService {
     this.supabase.auth.getSession().then(({ data }) => {
       this._session.set(data.session);
       this.loadProfile(data.session);
+      this.syncHeartbeat(data.session);
     });
     this.supabase.auth.onAuthStateChange((_event, session) => {
       this._session.set(session);
       this.loadProfile(session);
+      this.syncHeartbeat(session);
     });
+  }
+
+  // How often the heartbeat below touches last_active_at while a session is
+  // open — see shared/utils/presence.ts's ONLINE_THRESHOLD_MS for the
+  // (comfortably wider) staleness window the read side tolerates before
+  // considering a user offline.
+  private static readonly HEARTBEAT_INTERVAL_MS = 60_000;
+  private heartbeatIntervalId: ReturnType<typeof setInterval> | null = null;
+
+  /** Starts/stops the heartbeat to match whether a session now exists —
+   *  called from both getSession() and onAuthStateChange above so this
+   *  covers a session already active on load as well as one starting or
+   *  ending afterward, without duplicating the start/stop logic at each
+   *  call site. */
+  private syncHeartbeat(session: Session | null) {
+    if (session) {
+      this.startHeartbeat(session.user.id);
+    } else {
+      this.stopHeartbeat();
+    }
+  }
+
+  private startHeartbeat(userId: string) {
+    // Clears any previous interval first rather than checking "already
+    // running" — onAuthStateChange fires on more than just sign-in (e.g. a
+    // token refresh), and if the user changed (switching accounts in the
+    // same tab) the old interval would otherwise keep touching the wrong
+    // profile alongside the new one.
+    this.stopHeartbeat();
+    void this.touchLastActive(userId);
+    this.heartbeatIntervalId = setInterval(() => void this.touchLastActive(userId), AuthService.HEARTBEAT_INTERVAL_MS);
+  }
+
+  private stopHeartbeat() {
+    if (this.heartbeatIntervalId !== null) {
+      clearInterval(this.heartbeatIntervalId);
+      this.heartbeatIntervalId = null;
+    }
+  }
+
+  /** Best-effort — a missed heartbeat just means this user's last_active_at
+   *  reads slightly stale until the next tick; nothing worth surfacing or
+   *  retrying for what's ultimately a cosmetic presence indicator. */
+  private async touchLastActive(userId: string): Promise<void> {
+    await this.supabase.from('profiles').update({ last_active_at: new Date().toISOString() }).eq('id', userId);
   }
 
   private async loadProfile(session: Session | null) {
@@ -112,6 +159,15 @@ export class AuthService {
   }
 
   async signOut() {
+    // One last touch before the session actually ends, so "last seen"
+    // reads as fresh as possible right away rather than up to
+    // HEARTBEAT_INTERVAL_MS stale until whatever the last tick happened to
+    // catch.
+    const session = await this.getSession();
+    if (session) {
+      await this.touchLastActive(session.user.id);
+    }
+    this.stopHeartbeat();
     await this.supabase.auth.signOut();
   }
 

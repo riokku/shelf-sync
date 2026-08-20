@@ -77,4 +77,89 @@ describe('ManageTeamComponent', () => {
       expect(component.filteredTeamMembers.map(m => m.profile.id)).toEqual(['user-1']);
     });
   });
+
+  describe('isOnline / lastSeenLabel', () => {
+    it('delegates to the shared presence helpers (see presence.spec.ts for their own coverage)', () => {
+      const onlineProfile = createFakeProfile({ last_active_at: new Date().toISOString() });
+      const offlineProfile = createFakeProfile({ last_active_at: null });
+
+      expect(component.isOnline(onlineProfile)).toBeTrue();
+      expect(component.isOnline(offlineProfile)).toBeFalse();
+      expect(component.lastSeenLabel(offlineProfile)).toBe('Never signed in');
+    });
+  });
+});
+
+function memberOf(profile: Partial<Profile>) {
+  return { profile: createFakeProfile(profile), tasks: [] };
+}
+
+describe('ManageTeamComponent refreshPresence()', () => {
+  // Private — accessed the same way other specs in this app reach a
+  // private method/field (see e.g. modal-table.component.spec.ts's
+  // toggleLock() tests), rather than making it public just for testing.
+  function callRefreshPresence(component: ManageTeamComponent): Promise<void> {
+    return (component as unknown as { refreshPresence: () => Promise<void> }).refreshPresence();
+  }
+
+  it('patches last_active_at onto already-loaded team/pending member profiles in place', async () => {
+    await TestBed.configureTestingModule({
+      imports: [ManageTeamComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: 'admin' })) },
+        {
+          provide: SupabaseService,
+          useValue: createFakeSupabaseService({
+            data: [
+              { id: 'user-1', last_active_at: '2026-01-01T00:05:00.000Z' },
+              { id: 'user-2', last_active_at: '2026-01-01T00:06:00.000Z' }
+            ],
+            error: null
+          })
+        }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ManageTeamComponent);
+    const component = fixture.componentInstance;
+    // Deliberately no fixture.detectChanges() here — that would run
+    // ngOnInit(), which (a) registers a setInterval that Zone.js counts as
+    // a permanently-outstanding macrotask (whenStable() would then never
+    // resolve), and (b) races the teamMembers/pendingMembers assignments
+    // right below with ngOnInit's own async loadProfiles()/loadTeamTasks(),
+    // which would otherwise clobber them once it resolves. Testing
+    // refreshPresence() in isolation needs neither — it's a plain method on
+    // an already-constructed component instance.
+
+    component.teamMembers = [memberOf({ id: 'user-1', last_active_at: null })];
+    component.pendingMembers = [createFakeProfile({ id: 'user-2', last_active_at: null })];
+
+    await callRefreshPresence(component);
+
+    expect(component.teamMembers[0].profile.last_active_at).toBe('2026-01-01T00:05:00.000Z');
+    expect(component.pendingMembers[0].last_active_at).toBe('2026-01-01T00:06:00.000Z');
+  });
+
+  it('leaves a profile untouched if its id is not present in the fetched rows', async () => {
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [ManageTeamComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: 'admin' })) },
+        { provide: SupabaseService, useValue: createFakeSupabaseService({ data: [], error: null }) }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ManageTeamComponent);
+    const component = fixture.componentInstance;
+    // See the previous test's note on deliberately skipping detectChanges().
+
+    component.teamMembers = [memberOf({ id: 'user-1', last_active_at: '2026-01-01T00:00:00.000Z' })];
+
+    await callRefreshPresence(component);
+
+    expect(component.teamMembers[0].profile.last_active_at).toBe('2026-01-01T00:00:00.000Z');
+  });
 });

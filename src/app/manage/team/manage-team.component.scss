@@ -109,6 +109,12 @@
   white-space: nowrap;
 }
 
+.pending-member-last-seen{
+  flex-shrink: 0;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8125rem;
+}
+
 .pending-member-actions{
   display: flex;
   gap: 0.5rem;
@@ -154,6 +160,61 @@ mat-panel-title{
 mat-panel-description{
   align-items: center;
   justify-content: space-between;
+}
+
+// Wraps an app-user-avatar so .online-dot (below) can be positioned
+// relative to it rather than the panel row as a whole.
+.avatar-status-wrapper{
+  position: relative;
+  display: inline-flex;
+}
+
+// A small pulsing green dot overlaid on the avatar's bottom-right corner —
+// shown instead of .team-member-last-seen/.pending-member-last-seen
+// (mutually exclusive: see isOnline() in the component) when a member's
+// last_active_at is recent enough to count as "online now" rather than
+// needing a "last seen" time.
+.online-dot{
+  position: absolute;
+  right: -0.0625rem;
+  bottom: -0.0625rem;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+  background: var(--app-success-bg);
+  // The ring separates the dot from the avatar behind it — var(--mat-sys-
+  // surface-container-low) rather than plain --mat-sys-surface since that's
+  // what both this panel's header and .pending-member-row already sit on,
+  // so the ring blends into its actual surroundings instead of leaving a
+  // visible edge of its own.
+  border: 0.125rem solid var(--mat-sys-surface-container-low);
+  animation: online-dot-pulse 2s ease-in-out infinite;
+}
+
+@keyframes online-dot-pulse{
+  0%, 100%{
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--app-success-bg) 55%, transparent);
+  }
+  50%{
+    box-shadow: 0 0 0 0.25rem transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .online-dot{
+    animation: none;
+  }
+}
+
+.team-member-info{
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.team-member-last-seen{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8125rem;
 }
 
 // A single flex item (not each button separately) so mat-panel-description's

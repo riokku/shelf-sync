@@ -31,10 +31,18 @@
             @for (profile of pendingMembers; track profile.id) {
               <div class="pending-member-row">
                 <span class="pending-member-name">
-                  <app-user-avatar [avatarKey]="profile.avatar_key" size="sm" />
+                  <span class="avatar-status-wrapper">
+                    <app-user-avatar [avatarKey]="profile.avatar_key" size="sm" />
+                    @if (isOnline(profile)) {
+                      <span class="online-dot" title="Online now" aria-label="Online now"></span>
+                    }
+                  </span>
                   {{ profileLabel(profile) }}
                 </span>
                 <span class="pending-member-email">{{ profile.email }}</span>
+                @if (!isOnline(profile)) {
+                  <span class="pending-member-last-seen">{{ lastSeenLabel(profile) }}</span>
+                }
                 <div class="pending-member-actions">
                   <button
                       mat-stroked-button
@@ -97,11 +105,21 @@
             <mat-expansion-panel>
               <mat-expansion-panel-header>
                 <mat-panel-title>
-                  <app-user-avatar [avatarKey]="member.profile.avatar_key" class="me-2" />
+                  <span class="avatar-status-wrapper me-2">
+                    <app-user-avatar [avatarKey]="member.profile.avatar_key" />
+                    @if (isOnline(member.profile)) {
+                      <span class="online-dot" title="Online now" aria-label="Online now"></span>
+                    }
+                  </span>
                   {{ profileLabel(member.profile) }}
                 </mat-panel-title>
                 <mat-panel-description>
-                  <span class="team-member-role">{{ member.profile.role }}</span>
+                  <span class="team-member-info">
+                    @if (!isOnline(member.profile)) {
+                      <span class="team-member-last-seen">{{ lastSeenLabel(member.profile) }}</span>
+                    }
+                    <span class="team-member-role">{{ member.profile.role }}</span>
+                  </span>
                   @if (authService.role() === 'admin') {
                     <span class="team-member-actions">
                       <button

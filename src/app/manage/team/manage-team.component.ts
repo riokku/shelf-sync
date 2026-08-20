@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -20,6 +20,7 @@ import { EmptyStateComponent } from '../../shared/components/empty-state/empty-s
 import { Database } from '../../shared/models/database.types';
 import { profileDisplayName, resolveProfileName } from '../../shared/utils/profile-label';
 import { logActivity } from '../../shared/utils/activity-log';
+import { formatLastSeen, isProfileOnline } from '../../shared/utils/presence';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
 
@@ -55,6 +56,7 @@ export class ManageTeamComponent implements OnInit {
   protected authService = inject(AuthService);
   private dialog = inject(MatDialog);
   private notification = inject(NotificationService);
+  private destroyRef = inject(DestroyRef);
 
   protected currentUserId: string | null = null;
   /** Approved members only — pendingMembers (below) holds the rest, kept
@@ -101,6 +103,46 @@ export class ManageTeamComponent implements OnInit {
       this.loadTeamTasks(),
       this.loadInviteLink()
     ]);
+
+    // Keeps "online now"/"last seen" current while this page stays open —
+    // a narrower poll than re-running loadProfiles()/loadTeamTasks() (which
+    // together toggle isLoadingTeam, swapping the whole accordion for a
+    // spinner) so it can run in the background without any visible flicker.
+    const presenceIntervalId = window.setInterval(() => void this.refreshPresence(), 30_000);
+    this.destroyRef.onDestroy(() => window.clearInterval(presenceIntervalId));
+  }
+
+  /** Patches last_active_at onto the already-loaded profile objects in
+   *  place rather than reassigning teamMembers/pendingMembers — cheap
+   *  (one narrow query, just id + last_active_at) and doesn't disturb
+   *  anything else on the page (search term, expanded accordion panels,
+   *  in-flight edits) the way a full reload would. */
+  private async refreshPresence() {
+    const { data } = await this.supabase.from('profiles').select('id, last_active_at');
+    if (!data) {
+      return;
+    }
+    const lastActiveById = new Map(data.map(row => [row.id, row.last_active_at]));
+    for (const member of this.teamMembers) {
+      const lastActiveAt = lastActiveById.get(member.profile.id);
+      if (lastActiveAt !== undefined) {
+        member.profile.last_active_at = lastActiveAt;
+      }
+    }
+    for (const profile of this.pendingMembers) {
+      const lastActiveAt = lastActiveById.get(profile.id);
+      if (lastActiveAt !== undefined) {
+        profile.last_active_at = lastActiveAt;
+      }
+    }
+  }
+
+  isOnline(profile: Profile): boolean {
+    return isProfileOnline(profile.last_active_at);
+  }
+
+  lastSeenLabel(profile: Profile): string {
+    return formatLastSeen(profile.last_active_at);
   }
 
   private async loadProfiles() {

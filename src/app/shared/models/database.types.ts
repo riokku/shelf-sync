@@ -454,6 +454,7 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          last_active_at: string | null
           membership_status: Database["public"]["Enums"]["membership_status"]
           nickname: string | null
           organization_id: string
@@ -466,6 +467,7 @@ export type Database = {
           email: string
           full_name?: string | null
           id: string
+          last_active_at?: string | null
           membership_status?: Database["public"]["Enums"]["membership_status"]
           nickname?: string | null
           organization_id: string
@@ -478,6 +480,7 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          last_active_at?: string | null
           membership_status?: Database["public"]["Enums"]["membership_status"]
           nickname?: string | null
           organization_id?: string
