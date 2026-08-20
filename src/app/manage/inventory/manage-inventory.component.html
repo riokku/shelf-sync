@@ -36,118 +36,148 @@
                 <mat-error>Name is required.</mat-error>
               }
             </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>Category</mat-label>
-              <mat-icon matPrefix>category</mat-icon>
-              <mat-select formControlName="category">
-                <mat-option [value]="''">None</mat-option>
-                @for (option of inventoryFieldOptions.optionsFor('category'); track option) {
-                  <mat-option [value]="option">{{ option }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>Barcode</mat-label>
-              <mat-icon matPrefix>barcode_reader</mat-icon>
-              <input matInput formControlName="barcode" placeholder="Scan or type" />
-              <button
-                  mat-icon-button
-                  matSuffix
-                  type="button"
-                  matTooltip="Scan a barcode or QR code"
-                  (click)="scanBarcodeForNewItem()"
-                >
-                <mat-icon>qr_code_scanner</mat-icon>
-              </button>
-            </mat-form-field>
-          </div>
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Description</mat-label>
-            <mat-icon matPrefix>description</mat-icon>
-            <textarea matInput formControlName="description" rows="2"></textarea>
-          </mat-form-field>
-          <div class="image-upload-field">
-            <label class="image-upload-label" for="inventory-item-photos-input">
-              <mat-icon>image</mat-icon>
-              Photos (up to {{ maxInventoryItemImages }})
-            </label>
-            <input
-                id="inventory-item-photos-input"
-                type="file"
-                accept="image/*"
-                multiple
-                [disabled]="selectedImageFiles.length >= maxInventoryItemImages"
-                (change)="onImagesSelected($event)"
-              />
-            @if (imageLimitError) {
-              <p class="error-message">{{ imageLimitError }}</p>
+            @if (fieldEnabled('category')) {
+              <mat-form-field appearance="outline">
+                <mat-label>Category</mat-label>
+                <mat-icon matPrefix>category</mat-icon>
+                <mat-select formControlName="category">
+                  <mat-option [value]="''">None</mat-option>
+                  @for (option of inventoryFieldOptions.optionsFor('category'); track option) {
+                    <mat-option [value]="option">{{ option }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
             }
-            @if (imagePreviews.length > 0) {
-              <div class="image-preview-row">
-                @for (preview of imagePreviews; track $index) {
-                  <div class="image-preview-thumb">
-                    <img [src]="preview" alt="Selected item photo preview" />
-                    <button mat-icon-button type="button" (click)="removeSelectedImage($index)" aria-label="Remove photo">
-                      <mat-icon>close</mat-icon>
-                    </button>
-                  </div>
+            @if (fieldEnabled('barcode')) {
+              <mat-form-field appearance="outline">
+                <mat-label>Barcode</mat-label>
+                <mat-icon matPrefix>barcode_reader</mat-icon>
+                <input matInput formControlName="barcode" placeholder="Scan or type" />
+                <button
+                    mat-icon-button
+                    matSuffix
+                    type="button"
+                    matTooltip="Scan a barcode or QR code"
+                    (click)="scanBarcodeForNewItem()"
+                  >
+                  <mat-icon>qr_code_scanner</mat-icon>
+                </button>
+              </mat-form-field>
+            }
+          </div>
+          @if (fieldEnabled('description')) {
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Description</mat-label>
+              <mat-icon matPrefix>description</mat-icon>
+              <textarea matInput formControlName="description" rows="2"></textarea>
+            </mat-form-field>
+          }
+          @if (fieldEnabled('photos')) {
+            <div class="image-upload-field">
+              <label class="image-upload-label" for="inventory-item-photos-input">
+                <mat-icon>image</mat-icon>
+                Photos (up to {{ maxInventoryItemImages }})
+              </label>
+              <input
+                  id="inventory-item-photos-input"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  [disabled]="selectedImageFiles.length >= maxInventoryItemImages"
+                  (change)="onImagesSelected($event)"
+                />
+              @if (imageLimitError) {
+                <p class="error-message">{{ imageLimitError }}</p>
+              }
+              @if (imagePreviews.length > 0) {
+                <div class="image-preview-row">
+                  @for (preview of imagePreviews; track $index) {
+                    <div class="image-preview-thumb">
+                      <img [src]="preview" alt="Selected item photo preview" />
+                      <button mat-icon-button type="button" (click)="removeSelectedImage($index)" aria-label="Remove photo">
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+          @if (fieldEnabled('physicalLocation') || fieldEnabled('digitalLocation')) {
+            <div class="field-row">
+              @if (fieldEnabled('physicalLocation')) {
+                <mat-form-field appearance="outline">
+                  <mat-label>Physical location</mat-label>
+                  <mat-icon matPrefix>place</mat-icon>
+                  <mat-select formControlName="physicalLocation">
+                    <mat-option [value]="''">None</mat-option>
+                    @for (option of inventoryFieldOptions.optionsFor('physical_location'); track option) {
+                      <mat-option [value]="option">{{ option }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              }
+              @if (fieldEnabled('digitalLocation')) {
+                <mat-form-field appearance="outline">
+                  <mat-label>Digital location</mat-label>
+                  <mat-icon matPrefix>link</mat-icon>
+                  <input matInput formControlName="digitalLocation" />
+                </mat-form-field>
+              }
+            </div>
+          }
+          @if (fieldEnabled('applicableYear') || fieldEnabled('expirationDate')) {
+            <div class="field-row">
+              @if (fieldEnabled('applicableYear')) {
+                <mat-form-field appearance="outline">
+                  <mat-label>Applicable year</mat-label>
+                  <mat-icon matPrefix>event</mat-icon>
+                  <input matInput formControlName="applicableYear" />
+                </mat-form-field>
+              }
+              @if (fieldEnabled('expirationDate')) {
+                <mat-form-field appearance="outline">
+                  <mat-label>Expiration date</mat-label>
+                  <mat-icon matPrefix>event_busy</mat-icon>
+                  <input matInput [matDatepicker]="expirationDatePicker" formControlName="expirationDate" />
+                  <mat-datepicker-toggle matSuffix [for]="expirationDatePicker"></mat-datepicker-toggle>
+                  <mat-datepicker #expirationDatePicker></mat-datepicker>
+                </mat-form-field>
+              }
+            </div>
+          }
+        </div>
+
+        @if (fieldEnabled('supplierName') || fieldEnabled('supplierLeadTime') || fieldEnabled('orderLink')) {
+          <div class="form-section">
+            <h3>Supplier information</h3>
+            @if (fieldEnabled('supplierName') || fieldEnabled('supplierLeadTime')) {
+              <div class="field-row">
+                @if (fieldEnabled('supplierName')) {
+                  <mat-form-field appearance="outline">
+                    <mat-label>Supplier name</mat-label>
+                    <mat-icon matPrefix>storefront</mat-icon>
+                    <input matInput formControlName="supplierName" />
+                  </mat-form-field>
+                }
+                @if (fieldEnabled('supplierLeadTime')) {
+                  <mat-form-field appearance="outline">
+                    <mat-label>Supplier lead time</mat-label>
+                    <mat-icon matPrefix>schedule</mat-icon>
+                    <input matInput formControlName="supplierLeadTime" />
+                  </mat-form-field>
                 }
               </div>
             }
+            @if (fieldEnabled('orderLink')) {
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Order link</mat-label>
+                <mat-icon matPrefix>shopping_cart</mat-icon>
+                <input matInput formControlName="orderLink" />
+              </mat-form-field>
+            }
           </div>
-          <div class="field-row">
-            <mat-form-field appearance="outline">
-              <mat-label>Physical location</mat-label>
-              <mat-icon matPrefix>place</mat-icon>
-              <mat-select formControlName="physicalLocation">
-                <mat-option [value]="''">None</mat-option>
-                @for (option of inventoryFieldOptions.optionsFor('physical_location'); track option) {
-                  <mat-option [value]="option">{{ option }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>Digital location</mat-label>
-              <mat-icon matPrefix>link</mat-icon>
-              <input matInput formControlName="digitalLocation" />
-            </mat-form-field>
-          </div>
-          <div class="field-row">
-            <mat-form-field appearance="outline">
-              <mat-label>Applicable year</mat-label>
-              <mat-icon matPrefix>event</mat-icon>
-              <input matInput formControlName="applicableYear" />
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>Expiration date</mat-label>
-              <mat-icon matPrefix>event_busy</mat-icon>
-              <input matInput [matDatepicker]="expirationDatePicker" formControlName="expirationDate" />
-              <mat-datepicker-toggle matSuffix [for]="expirationDatePicker"></mat-datepicker-toggle>
-              <mat-datepicker #expirationDatePicker></mat-datepicker>
-            </mat-form-field>
-          </div>
-        </div>
-
-        <div class="form-section">
-          <h3>Supplier information</h3>
-          <div class="field-row">
-            <mat-form-field appearance="outline">
-              <mat-label>Supplier name</mat-label>
-              <mat-icon matPrefix>storefront</mat-icon>
-              <input matInput formControlName="supplierName" />
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>Supplier lead time</mat-label>
-              <mat-icon matPrefix>schedule</mat-icon>
-              <input matInput formControlName="supplierLeadTime" />
-            </mat-form-field>
-          </div>
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Order link</mat-label>
-            <mat-icon matPrefix>shopping_cart</mat-icon>
-            <input matInput formControlName="orderLink" />
-          </mat-form-field>
-        </div>
+        }
 
         <div class="form-section">
           <h3>Quantity &amp; price</h3>
@@ -174,16 +204,20 @@
                 }
               </mat-form-field>
             }
-            <mat-form-field appearance="outline">
-              <mat-label>Quantity per container</mat-label>
-              <mat-icon matPrefix>inventory</mat-icon>
-              <input matInput type="number" formControlName="quantityPerContainer" />
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>Low quantity threshold</mat-label>
-              <mat-icon matPrefix>warning</mat-icon>
-              <input matInput type="number" formControlName="lowQuantityThreshold" />
-            </mat-form-field>
+            @if (fieldEnabled('quantityPerContainer')) {
+              <mat-form-field appearance="outline">
+                <mat-label>Quantity per container</mat-label>
+                <mat-icon matPrefix>inventory</mat-icon>
+                <input matInput type="number" formControlName="quantityPerContainer" />
+              </mat-form-field>
+            }
+            @if (fieldEnabled('lowQuantityThreshold')) {
+              <mat-form-field appearance="outline">
+                <mat-label>Low quantity threshold</mat-label>
+                <mat-icon matPrefix>warning</mat-icon>
+                <input matInput type="number" formControlName="lowQuantityThreshold" />
+              </mat-form-field>
+            }
           </div>
           @if (trackingMode === 'containers') {
             <div class="container-breakdown">
@@ -234,18 +268,24 @@
               </button>
             </div>
           }
-          <div class="field-row">
-            <mat-form-field appearance="outline">
-              <mat-label>Price per unit</mat-label>
-              <mat-icon matPrefix>attach_money</mat-icon>
-              <input matInput type="number" formControlName="pricePerUnit" />
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>Price per container</mat-label>
-              <mat-icon matPrefix>attach_money</mat-icon>
-              <input matInput type="number" formControlName="pricePerContainer" />
-            </mat-form-field>
-          </div>
+          @if (fieldEnabled('pricePerUnit') || fieldEnabled('pricePerContainer')) {
+            <div class="field-row">
+              @if (fieldEnabled('pricePerUnit')) {
+                <mat-form-field appearance="outline">
+                  <mat-label>Price per unit</mat-label>
+                  <mat-icon matPrefix>attach_money</mat-icon>
+                  <input matInput type="number" formControlName="pricePerUnit" />
+                </mat-form-field>
+              }
+              @if (fieldEnabled('pricePerContainer')) {
+                <mat-form-field appearance="outline">
+                  <mat-label>Price per container</mat-label>
+                  <mat-icon matPrefix>attach_money</mat-icon>
+                  <input matInput type="number" formControlName="pricePerContainer" />
+                </mat-form-field>
+              }
+            </div>
+          }
         </div>
 
         @if (itemError) {

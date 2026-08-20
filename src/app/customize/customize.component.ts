@@ -11,6 +11,7 @@ import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrum
 import { FieldOptionsEditorComponent } from '../shared/components/field-options-editor/field-options-editor.component';
 import { THEME_PRESETS } from '../shared/models/theme-preset';
 import { INVENTORY_TABLE_COLUMN_GROUPS, InventoryTableColumnKey } from '../shared/models/inventory-table-column';
+import { INVENTORY_FORM_FIELD_GROUPS, InventoryFormFieldKey } from '../shared/models/inventory-form-field';
 
 @Component({
   selector: 'app-customize',
@@ -53,6 +54,12 @@ export class CustomizeComponent implements OnInit, OnDestroy {
   tableColumnsError: string | null = null;
   tableColumnsSaved = false;
 
+  readonly formFieldGroups = INVENTORY_FORM_FIELD_GROUPS;
+  selectedFormFields: InventoryFormFieldKey[] = [...this.siteSettings.inventoryFormFields()];
+  isSavingFormFields = false;
+  formFieldsError: string | null = null;
+  formFieldsSaved = false;
+
   get currentLogoUrl(): string | null {
     return this.logoPreviewUrl ?? this.siteSettings.logoUrl();
   }
@@ -67,6 +74,16 @@ export class CustomizeComponent implements OnInit, OnDestroy {
     }
     const savedSet = new Set(saved);
     return this.selectedTableColumns.some(key => !savedSet.has(key));
+  }
+
+  /** Same order-independent comparison as tableColumnsChanged above. */
+  get formFieldsChanged(): boolean {
+    const saved = this.siteSettings.inventoryFormFields();
+    if (saved.length !== this.selectedFormFields.length) {
+      return true;
+    }
+    const savedSet = new Set(saved);
+    return this.selectedFormFields.some(key => !savedSet.has(key));
   }
 
   ngOnDestroy() {
@@ -127,6 +144,32 @@ export class CustomizeComponent implements OnInit, OnDestroy {
       return;
     }
     this.tableColumnsSaved = true;
+  }
+
+  toggleFormField(key: InventoryFormFieldKey, checked: boolean) {
+    this.selectedFormFields = checked
+      ? [...this.selectedFormFields, key]
+      : this.selectedFormFields.filter(field => field !== key);
+    this.formFieldsSaved = false;
+  }
+
+  async saveFormFields() {
+    if (this.isSavingFormFields) {
+      return;
+    }
+
+    this.isSavingFormFields = true;
+    this.formFieldsError = null;
+    this.formFieldsSaved = false;
+
+    const error = await this.siteSettings.updateInventoryFormFields(this.selectedFormFields);
+    this.isSavingFormFields = false;
+
+    if (error) {
+      this.formFieldsError = error;
+      return;
+    }
+    this.formFieldsSaved = true;
   }
 
   onLogoSelected(event: Event) {

@@ -83,14 +83,20 @@ as `[data-theme='x']` blocks in `styles.scss` and toggling that attribute on `<h
 `THEME_PRESETS` in `shared/models/theme-preset.ts` for the option list and `core/site-settings.service.ts`
 for the load/preview/persist logic. `AppComponent` loads settings once on startup (readable by
 `anon` too, so branding applies pre-login) and `HeaderComponent` swaps in the custom logo when set,
-falling back to the default SS mark. The same `customize` route's Data tab is a two-column layout —
-"Inventory data" (the field-options editors below) on the left, "Table presentation" on the right —
-and the latter lets an admin choose which columns appear in the Inventory page's table view. Every
-practical `InventoryItem` field is selectable (Barcode, Description, Category, Physical location,
-Digital location, Applicable year, Expiration date, Supplier name/lead time, Order link, all five
-quantity fields, both price fields, Checked out to, and Stock status), grouped into checkbox
-sections that mirror `InventoryItem`'s own constructor comment groupings (Item/Supplier/Quantity/
-Price/Other information) — deliberately excluding `id`, `image(s)`, `activityLog`, the
+falling back to the default SS mark. The same `customize` route's Data tab holds three sections
+across a two-column layout: the left column stacks "Filter data" (the field-options editors —
+approved category/physical-location *values*) above "Inventory data" (which optional fields appear
+on the "Create item" form), and the right column holds "Table presentation" (which optional columns
+appear in the Inventory page's table view) — the left column's two sections share one
+`.customize-card` (a divider between them, same pattern `.customize-section + .customize-section`
+uses on the Style tab), keeping the two-column grid itself unchanged.
+
+"Table presentation" lets an admin choose which columns appear in the Inventory page's table view.
+Every practical `InventoryItem` field is selectable (Barcode, Description, Category, Physical
+location, Digital location, Applicable year, Expiration date, Supplier name/lead time, Order link,
+all five quantity fields, both price fields, Checked out to, and Stock status), grouped into
+checkbox sections that mirror `InventoryItem`'s own constructor comment groupings (Item/Supplier/
+Quantity/Price/Other information) — deliberately excluding `id`, `image(s)`, `activityLog`, the
 `checkedOutTo*` internal keys, and the retirement audit trail (`retirementRequestedByLabel`/etc.,
 already summarized by the Stock status pill). Name and the actions column are always shown
 regardless. Selections are `site_settings.inventory_table_columns`, a plain text array with no
@@ -102,6 +108,23 @@ checkboxes) and `InventoryComponent` (the `tableColumns` getter that filters tha
 down to whatever's enabled, so the table's column order stays stable regardless of the order
 columns were toggled in; sorting reads whichever `InventoryItem` field matches the clicked column
 key generically, rather than a per-column switch statement).
+
+"Inventory data" is the same idea applied to item *creation* rather than the table view: which
+optional fields `ManageInventoryComponent`'s "Create item" form shows, so an org only captures the
+data it actually cares about. Name and the item's core quantity tracking (Quantity total / the
+single-vs-container `trackingMode` toggle) are never optional — same "always shown" reasoning
+Table presentation's Name/actions columns get — but everything else (Barcode, Description,
+Category, both location fields, Applicable year, Expiration date, Photos, all three supplier
+fields, Quantity per container, Low quantity threshold, both price fields) can be turned off, hiding
+that field (and, for Supplier information, the whole section header if all three of its fields are
+off) from the create form entirely. `shared/models/inventory-form-field.ts` defines the grouped
+option list (same Item/Supplier/Quantity/Price/Other grouping style as the table-column model, plus
+a "Photos" entry with no `InventoryItem` field of its own — it gates the image-upload section) and
+`DEFAULT_INVENTORY_FORM_FIELDS`, which — unlike the table columns' intentionally-narrow default —
+is *every* field, matching `site_settings.inventory_form_fields`'s own DB default, so this is
+non-breaking: an org that never visits this new section keeps seeing the exact same create form the
+app always had. `ManageInventoryComponent.fieldEnabled()` is what the create form's template
+actually checks.
 
 Password recovery (`/forgot-password`, `/reset-password`), Supabase-native client error logging
 (`GlobalErrorHandler`), and requiring approved org membership before a task can be transferred or
@@ -512,6 +535,12 @@ yet on a hard refresh of `/inventory`.
   org isolation coming from `item_id`. Unlike images (admin/manager-only insert/delete), all four
   policies here are any-authenticated-user — matching the widened `inventory_items` UPDATE grant
   this same item-detail-popup edit flow already rides on.
+- `add_site_settings_inventory_form_fields` — adds `site_settings.inventory_form_fields` (`text[]`,
+  `not null default` every field), backing Customize > Data's "Inventory data" section (see Project
+  Overview above) — which optional fields show on the "Create item" form. Same reasoning as
+  `add_site_settings_inventory_table_columns` for needing no RLS/grant changes; unlike that
+  migration's intentionally-narrow four-column default, this one defaults to *every* field so an
+  org that's never visited the new section sees no change to their create form.
 
 `supabase/seed.sql` ports the inventory page's hardcoded dummy items into `inventory_items` inserts
 for local dev (`checked_out_to` is left `null` since it's a real FK to `profiles` now and the

@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
 import { DEFAULT_INVENTORY_TABLE_COLUMNS, InventoryTableColumnKey } from '../shared/models/inventory-table-column';
+import { DEFAULT_INVENTORY_FORM_FIELDS, InventoryFormFieldKey } from '../shared/models/inventory-form-field';
 
 const LOGO_BUCKET = 'site-assets';
 
@@ -25,6 +26,9 @@ export class SiteSettingsService {
   private readonly _inventoryTableColumns = signal<InventoryTableColumnKey[]>(DEFAULT_INVENTORY_TABLE_COLUMNS);
   readonly inventoryTableColumns = this._inventoryTableColumns.asReadonly();
 
+  private readonly _inventoryFormFields = signal<InventoryFormFieldKey[]>(DEFAULT_INVENTORY_FORM_FIELDS);
+  readonly inventoryFormFields = this._inventoryFormFields.asReadonly();
+
   /** Loads the caller's own organization's settings row and applies the theme
    *  attribute. `site_settings` is per-organization and no longer readable by
    *  anon, so pre-login (and any signed-out state) just falls back to the
@@ -36,6 +40,7 @@ export class SiteSettingsService {
       this._theme.set('default');
       this._logoStoragePath.set(null);
       this._inventoryTableColumns.set(DEFAULT_INVENTORY_TABLE_COLUMNS);
+      this._inventoryFormFields.set(DEFAULT_INVENTORY_FORM_FIELDS);
       this.applyTheme('default');
       return;
     }
@@ -50,6 +55,9 @@ export class SiteSettingsService {
     this._logoStoragePath.set(data?.logo_storage_path ?? null);
     this._inventoryTableColumns.set(
       (data?.inventory_table_columns as InventoryTableColumnKey[] | undefined) ?? DEFAULT_INVENTORY_TABLE_COLUMNS
+    );
+    this._inventoryFormFields.set(
+      (data?.inventory_form_fields as InventoryFormFieldKey[] | undefined) ?? DEFAULT_INVENTORY_FORM_FIELDS
     );
     this.applyTheme(this._theme());
   }
@@ -123,6 +131,28 @@ export class SiteSettingsService {
     }
 
     this._inventoryTableColumns.set(columns);
+    return null;
+  }
+
+  async updateInventoryFormFields(fields: InventoryFormFieldKey[]): Promise<string | null> {
+    const session = await this.authService.getSession();
+    const organizationId = this.authService.organizationId();
+    if (!session || !organizationId) {
+      return 'You must be signed in to update the inventory form fields.';
+    }
+
+    const { error } = await this.supabase
+      .from('site_settings')
+      .upsert(
+        { organization_id: organizationId, inventory_form_fields: fields, updated_by: session.user.id },
+        { onConflict: 'organization_id' }
+      );
+
+    if (error) {
+      return error.message;
+    }
+
+    this._inventoryFormFields.set(fields);
     return null;
   }
 

@@ -15,6 +15,8 @@ import { SupabaseService } from '../../core/supabase.service';
 import { NotificationService } from '../../core/notification.service';
 import { AuthService, Profile } from '../../core/auth.service';
 import { InventoryFieldOptionsService } from '../../core/inventory-field-options.service';
+import { SiteSettingsService } from '../../core/site-settings.service';
+import { InventoryFormFieldKey } from '../../shared/models/inventory-form-field';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { ModalTableComponent } from '../../shared/components/modal-table/modal-table.component';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
@@ -60,8 +62,17 @@ export class ManageInventoryComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
   private authService = inject(AuthService);
   protected inventoryFieldOptions = inject(InventoryFieldOptionsService);
+  protected siteSettings = inject(SiteSettingsService);
   private dialog = inject(MatDialog);
   private notification = inject(NotificationService);
+
+  /** Whether an admin-optional field is shown on the "Create item" form
+   *  below (Customize > Data's "Inventory data" section) — name and
+   *  quantity tracking aren't gated by this since they're never optional,
+   *  see shared/models/inventory-form-field.ts's own doc comment. */
+  fieldEnabled(key: InventoryFormFieldKey): boolean {
+    return this.siteSettings.inventoryFormFields().includes(key);
+  }
 
   private assignableProfiles: Profile[] = [];
 

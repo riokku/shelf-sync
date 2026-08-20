@@ -481,6 +481,7 @@ export type Database = {
       site_settings: {
         Row: {
           id: string
+          inventory_form_fields: string[]
           inventory_table_columns: string[]
           logo_storage_path: string | null
           organization_id: string
@@ -490,6 +491,7 @@ export type Database = {
         }
         Insert: {
           id?: string
+          inventory_form_fields?: string[]
           inventory_table_columns?: string[]
           logo_storage_path?: string | null
           organization_id: string
@@ -499,6 +501,7 @@ export type Database = {
         }
         Update: {
           id?: string
+          inventory_form_fields?: string[]
           inventory_table_columns?: string[]
           logo_storage_path?: string | null
           organization_id?: string

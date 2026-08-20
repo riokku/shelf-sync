@@ -7,6 +7,7 @@ import { SiteSettingsService } from '../core/site-settings.service';
 import { SupabaseService } from '../core/supabase.service';
 import { InventoryItem, InventoryItemStatus } from '../shared/models/inventory-item.model';
 import { DEFAULT_INVENTORY_TABLE_COLUMNS, InventoryTableColumnKey } from '../shared/models/inventory-table-column';
+import { DEFAULT_INVENTORY_FORM_FIELDS, InventoryFormFieldKey } from '../shared/models/inventory-form-field';
 import { Database } from '../shared/models/database.types';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
@@ -80,17 +81,20 @@ export function createFakeSiteSettingsService(overrides: Partial<{
   theme: string;
   logoUrl: string | null;
   inventoryTableColumns: InventoryTableColumnKey[];
+  inventoryFormFields: InventoryFormFieldKey[];
 }> = {}): SiteSettingsService {
   const fake = {
     theme: signal(overrides.theme ?? 'default').asReadonly(),
     logoUrl: signal(overrides.logoUrl ?? null).asReadonly(),
     inventoryTableColumns: signal(overrides.inventoryTableColumns ?? DEFAULT_INVENTORY_TABLE_COLUMNS).asReadonly(),
+    inventoryFormFields: signal(overrides.inventoryFormFields ?? DEFAULT_INVENTORY_FORM_FIELDS).asReadonly(),
     load: async () => {},
     applyTheme: () => {},
     updateTheme: async () => null,
     uploadLogo: async () => null,
     removeLogo: async () => null,
     updateInventoryTableColumns: async () => null,
+    updateInventoryFormFields: async () => null,
     loadLogoUrlForOrganization: async () => null,
   };
   return fake as unknown as SiteSettingsService;

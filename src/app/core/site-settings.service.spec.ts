@@ -4,6 +4,7 @@ import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
 import { createFakeAuthService, createFakeProfile } from '../testing/fakes';
 import { DEFAULT_INVENTORY_TABLE_COLUMNS } from '../shared/models/inventory-table-column';
+import { DEFAULT_INVENTORY_FORM_FIELDS } from '../shared/models/inventory-form-field';
 
 const LOGO_BUCKET = 'site-assets';
 
@@ -85,6 +86,7 @@ describe('SiteSettingsService', () => {
       expect(service.theme()).toBe('default');
       expect(service.logoUrl()).toBeNull();
       expect(service.inventoryTableColumns()).toEqual(DEFAULT_INVENTORY_TABLE_COLUMNS);
+      expect(service.inventoryFormFields()).toEqual(DEFAULT_INVENTORY_FORM_FIELDS);
       expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
     });
 
@@ -97,12 +99,18 @@ describe('SiteSettingsService', () => {
       expect(service.theme()).toBe('default');
       expect(service.logoUrl()).toBeNull();
       expect(service.inventoryTableColumns()).toEqual(DEFAULT_INVENTORY_TABLE_COLUMNS);
+      expect(service.inventoryFormFields()).toEqual(DEFAULT_INVENTORY_FORM_FIELDS);
     });
 
-    it('applies a persisted theme/logo/table-columns row and sets the data-theme attribute', async () => {
+    it('applies a persisted theme/logo/table-columns/form-fields row and sets the data-theme attribute', async () => {
       const profile = createFakeProfile();
       const { service } = setup({
-        siteSettingsRow: { theme: 'ocean', logo_storage_path: 'org-1/logo.png', inventory_table_columns: ['category', 'status'] }
+        siteSettingsRow: {
+          theme: 'ocean',
+          logo_storage_path: 'org-1/logo.png',
+          inventory_table_columns: ['category', 'status'],
+          inventory_form_fields: ['category', 'photos']
+        }
       }, { profile });
 
       await service.load();
@@ -110,6 +118,7 @@ describe('SiteSettingsService', () => {
       expect(service.theme()).toBe('ocean');
       expect(service.logoUrl()).toBe('https://fake.storage/site-assets/org-1/logo.png');
       expect(service.inventoryTableColumns()).toEqual(['category', 'status'] as never);
+      expect(service.inventoryFormFields()).toEqual(['category', 'photos'] as never);
       expect(document.documentElement.getAttribute('data-theme')).toBe('ocean');
     });
   });
@@ -201,6 +210,41 @@ describe('SiteSettingsService', () => {
 
       expect(error).toBe('nope');
       expect(service.inventoryTableColumns()).toEqual(DEFAULT_INVENTORY_TABLE_COLUMNS);
+    });
+  });
+
+  describe('updateInventoryFormFields()', () => {
+    it('refuses when signed out', async () => {
+      const { service, upsertSpy } = setup({}, { profile: null });
+
+      const error = await service.updateInventoryFormFields(['category']);
+
+      expect(error).toContain('signed in');
+      expect(upsertSpy).not.toHaveBeenCalled();
+    });
+
+    it('upserts the new fields and updates the signal', async () => {
+      const profile = createFakeProfile({ organization_id: 'org-1' });
+      const { service, upsertSpy } = setup({}, { profile });
+
+      const error = await service.updateInventoryFormFields(['barcode', 'photos']);
+
+      expect(error).toBeNull();
+      expect(service.inventoryFormFields()).toEqual(['barcode', 'photos'] as never);
+      expect(upsertSpy).toHaveBeenCalledWith(
+        jasmine.objectContaining({ organization_id: 'org-1', inventory_form_fields: ['barcode', 'photos'] }),
+        { onConflict: 'organization_id' }
+      );
+    });
+
+    it('returns the error message and leaves the signal untouched on failure', async () => {
+      const profile = createFakeProfile();
+      const { service } = setup({ upsertError: { message: 'nope' } }, { profile });
+
+      const error = await service.updateInventoryFormFields(['barcode']);
+
+      expect(error).toBe('nope');
+      expect(service.inventoryFormFields()).toEqual(DEFAULT_INVENTORY_FORM_FIELDS);
     });
   });
 

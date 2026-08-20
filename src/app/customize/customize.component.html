@@ -21,13 +21,58 @@
         <div class="customize-data-columns">
           <div class="customize-card">
             <section class="customize-section">
-              <h3>Inventory data</h3>
+              <h3>Filter data</h3>
               <p class="section-hint">
                 Approved values for these fields — only these options appear when creating or editing an
                 inventory item.
               </p>
               <app-field-options-editor fieldName="category" label="Category" />
               <app-field-options-editor fieldName="physical_location" label="Physical location" />
+            </section>
+
+            <section class="customize-section">
+              <h3>Inventory data</h3>
+              <p class="section-hint">
+                Choose which fields show up on the "Create item" form, so your team only captures the
+                data you actually want. Name and quantity are always shown.
+              </p>
+              <div class="table-column-groups">
+                @for (group of formFieldGroups; track group.label) {
+                  <div class="table-column-group">
+                    <h4>{{ group.label }}</h4>
+                    @for (option of group.options; track option.key) {
+                      <div>
+                        <mat-checkbox
+                            [checked]="selectedFormFields.includes(option.key)"
+                            (change)="toggleFormField(option.key, $event.checked)"
+                          >{{ option.label }}</mat-checkbox>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+              @if (formFieldsError) {
+                <p class="error-message">{{ formFieldsError }}</p>
+              }
+              @if (formFieldsSaved) {
+                <p class="success-message">Inventory data fields saved for everyone.</p>
+              }
+              <button
+                  mat-flat-button
+                  color="primary"
+                  type="button"
+                  (click)="saveFormFields()"
+                  [disabled]="isSavingFormFields || !formFieldsChanged"
+                >
+                @if (isSavingFormFields) {
+                  <mat-spinner diameter="20"></mat-spinner>
+                } @else {
+                  <ng-container>
+                    <mat-icon>check</mat-icon>
+                    Save inventory data
+                  </ng-container>
+                }
+              </button>
             </section>
           </div>
 

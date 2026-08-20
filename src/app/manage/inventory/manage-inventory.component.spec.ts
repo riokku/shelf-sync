@@ -5,7 +5,8 @@ import { provideNativeDateAdapter } from '@angular/material/core';
 import { ManageInventoryComponent } from './manage-inventory.component';
 import { AuthService } from '../../core/auth.service';
 import { SupabaseService } from '../../core/supabase.service';
-import { createFakeAuthService, createFakeSupabaseService, createTestInventoryItemRow } from '../../testing/fakes';
+import { SiteSettingsService } from '../../core/site-settings.service';
+import { createFakeAuthService, createFakeSiteSettingsService, createFakeSupabaseService, createTestInventoryItemRow } from '../../testing/fakes';
 
 describe('ManageInventoryComponent', () => {
   let component: ManageInventoryComponent;
@@ -103,6 +104,35 @@ describe('ManageInventoryComponent', () => {
 
     it('is false when any quantity remains', () => {
       expect(component.isInventoryItemOutOfStock(createTestInventoryItemRow({ quantity_remaining: 1 }))).toBe(false);
+    });
+  });
+
+  describe('fieldEnabled()', () => {
+    it('is true for every field by default (no site_settings row yet)', () => {
+      expect(component.fieldEnabled('barcode')).toBe(true);
+      expect(component.fieldEnabled('photos')).toBe(true);
+      expect(component.fieldEnabled('pricePerContainer')).toBe(true);
+    });
+
+    it('reflects an admin-narrowed inventory_form_fields setting', async () => {
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [ManageInventoryComponent],
+        providers: [
+          provideRouter([]),
+          provideNativeDateAdapter(),
+          { provide: AuthService, useValue: createFakeAuthService() },
+          { provide: SupabaseService, useValue: createFakeSupabaseService() },
+          { provide: SiteSettingsService, useValue: createFakeSiteSettingsService({ inventoryFormFields: ['category'] }) }
+        ]
+      }).compileComponents();
+
+      const narrowedFixture = TestBed.createComponent(ManageInventoryComponent);
+      narrowedFixture.detectChanges();
+      const narrowedComponent = narrowedFixture.componentInstance;
+
+      expect(narrowedComponent.fieldEnabled('category')).toBe(true);
+      expect(narrowedComponent.fieldEnabled('barcode')).toBe(false);
     });
   });
 

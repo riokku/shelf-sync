@@ -6,6 +6,7 @@ import { SiteSettingsService } from '../core/site-settings.service';
 import { InventoryFieldOptionsService } from '../core/inventory-field-options.service';
 import { createFakeInventoryFieldOptionsService, createFakeSiteSettingsService } from '../testing/fakes';
 import { DEFAULT_INVENTORY_TABLE_COLUMNS } from '../shared/models/inventory-table-column';
+import { DEFAULT_INVENTORY_FORM_FIELDS } from '../shared/models/inventory-form-field';
 
 describe('CustomizeComponent', () => {
   let component: CustomizeComponent;
@@ -15,7 +16,11 @@ describe('CustomizeComponent', () => {
   let fieldOptionsLoadSpy: jasmine.Spy;
 
   beforeEach(async () => {
-    siteSettings = createFakeSiteSettingsService({ theme: 'default', inventoryTableColumns: [...DEFAULT_INVENTORY_TABLE_COLUMNS] });
+    siteSettings = createFakeSiteSettingsService({
+      theme: 'default',
+      inventoryTableColumns: [...DEFAULT_INVENTORY_TABLE_COLUMNS],
+      inventoryFormFields: [...DEFAULT_INVENTORY_FORM_FIELDS]
+    });
     fieldOptionsService = createFakeInventoryFieldOptionsService();
     // Spied before the component is constructed (below, via detectChanges)
     // so this catches ngOnInit's own call to it.
@@ -44,9 +49,10 @@ describe('CustomizeComponent', () => {
     expect(component.viewMode).toBe('data');
   });
 
-  it('initializes selectedTheme and selectedTableColumns from the persisted settings', () => {
+  it('initializes selectedTheme, selectedTableColumns, and selectedFormFields from the persisted settings', () => {
     expect(component.selectedTheme).toBe('default');
     expect(component.selectedTableColumns).toEqual(DEFAULT_INVENTORY_TABLE_COLUMNS);
+    expect(component.selectedFormFields).toEqual(DEFAULT_INVENTORY_FORM_FIELDS);
   });
 
   it('ngOnInit loads inventory field options', () => {
@@ -150,6 +156,58 @@ describe('CustomizeComponent', () => {
 
       expect(component.tableColumnsError).toBe('nope');
       expect(component.tableColumnsSaved).toBe(false);
+    });
+  });
+
+  describe('inventory data (form fields)', () => {
+    it('toggleFormField() adds a field when checked and removes it when unchecked', () => {
+      component.toggleFormField('barcode', false);
+      expect(component.selectedFormFields).not.toContain('barcode');
+
+      component.toggleFormField('barcode', true);
+      expect(component.selectedFormFields).toContain('barcode');
+    });
+
+    it('toggleFormField() clears any prior saved flag', () => {
+      component.formFieldsSaved = true;
+      component.toggleFormField('barcode', false);
+      expect(component.formFieldsSaved).toBe(false);
+    });
+
+    describe('formFieldsChanged', () => {
+      it('is false when the selection exactly matches the persisted setting', () => {
+        expect(component.formFieldsChanged).toBe(false);
+      });
+
+      it('is true when the selection is a different length', () => {
+        component.selectedFormFields = ['barcode'];
+        expect(component.formFieldsChanged).toBe(true);
+      });
+
+      it('is false regardless of order', () => {
+        component.selectedFormFields = [...DEFAULT_INVENTORY_FORM_FIELDS].reverse();
+        expect(component.formFieldsChanged).toBe(false);
+      });
+    });
+
+    it('saveFormFields() persists the selection and flags it saved on success', async () => {
+      const updateSpy = spyOn(siteSettings, 'updateInventoryFormFields').and.returnValue(Promise.resolve(null));
+      component.selectedFormFields = ['barcode', 'photos'];
+
+      await component.saveFormFields();
+
+      expect(updateSpy).toHaveBeenCalledWith(['barcode', 'photos']);
+      expect(component.formFieldsSaved).toBe(true);
+      expect(component.formFieldsError).toBeNull();
+    });
+
+    it('saveFormFields() surfaces the error on failure', async () => {
+      spyOn(siteSettings, 'updateInventoryFormFields').and.returnValue(Promise.resolve('nope'));
+
+      await component.saveFormFields();
+
+      expect(component.formFieldsError).toBe('nope');
+      expect(component.formFieldsSaved).toBe(false);
     });
   });
 
