@@ -360,6 +360,15 @@ mat-icon{
     gap: 0.625rem;
     background-color: var(--mat-sys-error-container);
     color: var(--mat-sys-on-error-container);
+    // .confirm-dialog's own title padding above is 1.5rem 2rem 0 — bottom
+    // deliberately zeroed so the (uncolored, banner-less) plain title sits
+    // close to .mat-mdc-dialog-content's own top padding rather than
+    // doubling that gap. That zeroed bottom reads fine with no background
+    // to bound, but here the padding box *is* the visible red banner, so
+    // the same zero left the icon/title row sitting noticeably closer to
+    // the banner's bottom edge than its top. Restoring equal top/bottom
+    // padding centers the row in the banner instead.
+    padding: 1.5rem 2rem !important;
   }
 }
 
