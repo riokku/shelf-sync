@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { FormGroupDirective } from '@angular/forms';
 import { provideRouter } from '@angular/router';
 import { provideNativeDateAdapter } from '@angular/material/core';
 
@@ -6,7 +7,7 @@ import { ManageInventoryComponent } from './manage-inventory.component';
 import { AuthService } from '../../core/auth.service';
 import { SupabaseService } from '../../core/supabase.service';
 import { SiteSettingsService } from '../../core/site-settings.service';
-import { createFakeAuthService, createFakeSiteSettingsService, createFakeSupabaseService, createTestInventoryItemRow } from '../../testing/fakes';
+import { createFakeAuthService, createFakeProfile, createFakeSiteSettingsService, createFakeSupabaseService, createTestInventoryItemRow } from '../../testing/fakes';
 
 describe('ManageInventoryComponent', () => {
   let component: ManageInventoryComponent;
@@ -166,5 +167,70 @@ describe('ManageInventoryComponent', () => {
       component.newContainers = [{ quantity: 20, location: '' }, { quantity: 15, location: '' }];
       expect(component.newContainerQuantitySum).toBe(35);
     });
+  });
+});
+
+/** A from()/rpc() fake whose builder resolves to `singleResult` once `.single()`
+ *  has been called anywhere in the chain, and to `listResult` otherwise —
+ *  needed because submitInventoryItem()'s success path exercises both shapes
+ *  against the same 'inventory_items' table (the initial `.select('*').order(...)`
+ *  list load in ngOnInit, and the create form's `.insert(...).select().single()`),
+ *  which the plain createFakeSupabaseService() (one static result for every call)
+ *  can't represent. */
+function createInsertAwareFakeSupabaseService(singleResult: { data: unknown; error: null }): SupabaseService {
+  const listResult = { data: [], error: null };
+  function builder() {
+    let wantsSingle = false;
+    const b: Record<string, unknown> = {
+      then: (resolve: (value: unknown) => void) => resolve(wantsSingle ? singleResult : listResult),
+    };
+    for (const method of ['select', 'eq', 'neq', 'not', 'in', 'gte', 'lt', 'order', 'limit', 'insert', 'update', 'delete', 'upsert']) {
+      b[method] = () => b;
+    }
+    b['single'] = () => { wantsSingle = true; return b; };
+    b['maybeSingle'] = () => { wantsSingle = true; return b; };
+    return b;
+  }
+  return { client: { from: () => builder(), rpc: () => builder() } } as unknown as SupabaseService;
+}
+
+describe('ManageInventoryComponent submitInventoryItem() success', () => {
+  // Regression test for the same class of bug covered in
+  // manage-tasks.component.spec.ts's submitTask() success test: after a
+  // successful "Create item" submit, the freshly-reset form immediately
+  // showed "Name is required" because FormGroup.reset() (what
+  // submitInventoryItem() used to call directly) doesn't clear the
+  // FormGroupDirective's own `submitted` flag, which Material's default
+  // ErrorStateMatcher also treats as "show errors" regardless of touched.
+  it('clears the FormGroupDirective\'s submitted flag, not just the FormGroup', async () => {
+    await TestBed.configureTestingModule({
+      imports: [ManageInventoryComponent],
+      providers: [
+        provideRouter([]),
+        provideNativeDateAdapter(),
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile()) },
+        {
+          provide: SupabaseService,
+          useValue: createInsertAwareFakeSupabaseService({ data: { id: 'item-1', name: 'Folding Chair' }, error: null })
+        }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ManageInventoryComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    component.inventoryForm.controls.name.setValue('Folding Chair');
+    component.inventoryForm.controls.quantityTotal.setValue(10);
+    fixture.detectChanges();
+
+    await component.submitInventoryItem();
+
+    const directive = (component as unknown as { inventoryFormDirective: FormGroupDirective }).inventoryFormDirective;
+    expect(directive.submitted).toBeFalse();
+    expect(component.inventoryForm.controls.name.touched).toBeFalse();
+    expect(component.inventoryForm.controls.name.value).toBe('');
+    expect(component.inventoryForm.controls.name.hasError('required')).toBeTrue();
   });
 });

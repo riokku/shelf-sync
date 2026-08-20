@@ -1,6 +1,6 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, ViewChild, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { FormsModule, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormsModule, FormControl, FormGroup, FormGroupDirective, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -110,6 +110,16 @@ export class ManageTasksComponent implements OnInit {
   }
 
   private relatedItemOptions: RelatedItemOption[] = [];
+
+  // Bound to the <form>'s #taskFormDirective template ref (FormGroupDirective's
+  // exportAs is 'ngForm', same as template-driven forms). Needed because
+  // FormGroup.reset() only clears each control's value/dirty/touched state —
+  // it doesn't know about the *directive's* own `submitted` flag, which the
+  // default ErrorStateMatcher also treats as "show errors" regardless of
+  // touched. Without resetting via the directive, a freshly-reset form would
+  // still show "required" errors for empty fields because `submitted` stuck
+  // true from the prior successful submit.
+  @ViewChild('taskFormDirective') private taskFormDirective!: FormGroupDirective;
 
   taskForm = new FormGroup({
     title: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
@@ -314,7 +324,7 @@ export class ManageTasksComponent implements OnInit {
     );
 
     this.taskSaved = true;
-    this.taskForm.reset();
+    this.taskFormDirective.resetForm();
     this.relatedItemSearchControl.setValue('');
     await this.loadTasks();
   }

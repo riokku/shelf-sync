@@ -17,7 +17,7 @@
     </mat-button-toggle-group>
 
     @if (viewMode === 'create') {
-      <form [formGroup]="taskForm" (ngSubmit)="submitTask()" class="manage-form">
+      <form [formGroup]="taskForm" #taskFormDirective="ngForm" (ngSubmit)="submitTask()" class="manage-form">
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Title</mat-label>
           <mat-icon matPrefix>title</mat-icon>

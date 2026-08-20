@@ -1,11 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { FormGroupDirective } from '@angular/forms';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { provideNativeDateAdapter } from '@angular/material/core';
 
 import { ManageTasksComponent } from './manage-tasks.component';
 import { AuthService } from '../../core/auth.service';
 import { SupabaseService } from '../../core/supabase.service';
-import { createFakeActivatedRoute, createFakeAuthService, createFakeSupabaseService, createTestTask } from '../../testing/fakes';
+import { createFakeActivatedRoute, createFakeAuthService, createFakeProfile, createFakeSupabaseService, createTestTask } from '../../testing/fakes';
 
 describe('ManageTasksComponent', () => {
   let component: ManageTasksComponent;
@@ -126,6 +127,46 @@ describe('ManageTasksComponent', () => {
       component.relatedItemSearchControl.setValue('item-2');
       expect(component.filteredInventoryItemsForTask.map(item => item.id)).toEqual(['item-2']);
     });
+  });
+
+});
+
+describe('ManageTasksComponent submitTask() success', () => {
+  // Regression test for a bug where, after a successful submit, the
+  // freshly-reset create-task form immediately showed "Title is required"
+  // even though every field was blank and untouched. FormGroup.reset()
+  // (what submitTask() used to call directly) only clears each control's
+  // value/dirty/touched state — it doesn't know about the *directive's*
+  // own `submitted` flag, which Material's default ErrorStateMatcher also
+  // treats as "show errors" regardless of touched. The fix routes the
+  // reset through the FormGroupDirective (#taskFormDirective="ngForm" in
+  // the template) via resetForm(), which clears `submitted` too.
+  it('clears the FormGroupDirective\'s submitted flag, not just the FormGroup', async () => {
+    await TestBed.configureTestingModule({
+      imports: [ManageTasksComponent],
+      providers: [
+        provideRouter([]),
+        provideNativeDateAdapter(),
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile()) },
+        { provide: SupabaseService, useValue: createFakeSupabaseService({ data: [], error: null }) }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ManageTasksComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    component.taskForm.controls.title.setValue('Restock shelves');
+    fixture.detectChanges();
+
+    await component.submitTask();
+
+    const directive = (component as unknown as { taskFormDirective: FormGroupDirective }).taskFormDirective;
+    expect(directive.submitted).toBeFalse();
+    expect(component.taskForm.controls.title.touched).toBeFalse();
+    expect(component.taskForm.controls.title.value).toBe('');
+    expect(component.taskForm.controls.title.hasError('required')).toBeTrue();
   });
 });
 

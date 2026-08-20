@@ -1,6 +1,6 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, ViewChild, inject } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { FormsModule, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormsModule, FormControl, FormGroup, FormGroupDirective, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -114,6 +114,16 @@ export class ManageInventoryComponent implements OnInit {
   selectedImageFiles: File[] = [];
   imagePreviews: string[] = [];
   imageLimitError: string | null = null;
+
+  // Bound to the <form>'s #inventoryFormDirective template ref (FormGroupDirective's
+  // exportAs is 'ngForm', same as template-driven forms). Needed because
+  // FormGroup.reset() only clears each control's value/dirty/touched state —
+  // it doesn't know about the *directive's* own `submitted` flag, which the
+  // default ErrorStateMatcher also treats as "show errors" regardless of
+  // touched. Without resetting via the directive, a freshly-reset form would
+  // still show "required" errors for empty fields because `submitted` stuck
+  // true from the prior successful submit.
+  @ViewChild('inventoryFormDirective') private inventoryFormDirective!: FormGroupDirective;
 
   inventoryForm = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
@@ -468,7 +478,7 @@ export class ManageInventoryComponent implements OnInit {
 
     this.isSavingItem = false;
     this.itemSaved = true;
-    this.inventoryForm.reset();
+    this.inventoryFormDirective.resetForm();
     this.trackingMode = 'single';
     this.newContainers = [];
     this.clearSelectedImages();

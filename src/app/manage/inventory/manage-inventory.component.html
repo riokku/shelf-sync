@@ -24,7 +24,7 @@
     </mat-button-toggle-group>
 
     @if (viewMode === 'create') {
-      <form [formGroup]="inventoryForm" (ngSubmit)="submitInventoryItem()" class="manage-form">
+      <form [formGroup]="inventoryForm" #inventoryFormDirective="ngForm" (ngSubmit)="submitInventoryItem()" class="manage-form">
         <div class="form-section">
           <h3>Item information</h3>
           <div class="field-row">
