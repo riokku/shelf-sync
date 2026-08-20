@@ -34,7 +34,15 @@ builds `ModalTableComponent` a fresh, disconnected `InventoryItem` via `toInvent
 list holds raw DB rows, not `InventoryItem`s), so closing there re-fetches just that one row (plus
 its images/activity) and patches it into `allInventoryItems`/the image/activity maps —
 `refreshInventoryItem()` — rather than reloading the whole inventory list on every close the way
-both used to.
+both used to. `ManageInventoryComponent.viewMode` is `'create' | 'retirements'` — it previously also
+had a third `'all'` tab browsing every inventory item as a row list (mirroring Manage Tasks' own
+"All tasks" tab), removed as low-value once the Inventory page itself already covers browsing/
+filtering/searching every item, card or table view, with far more depth (this tab was a plain,
+unfiltered-beyond-status-toggle name/category/quantity/price row list). `allInventoryItems` itself
+is unaffected — still the full org inventory list, still loaded on `ngOnInit()`, since
+`pendingRetirementItems`/`pendingRetirementCount` (the "Requests" tab), `refreshInventoryItem()`,
+and the create form's barcode-scan duplicate check all still need every item, not just the ones
+with a pending retirement request.
 Editing also covers photos (add/remove against `inventory_item_images`, same 10-photo cap as
 creation) via shared helpers in `shared/utils/inventory-item-images.ts`, and checkout state
 (`is_checked_out`/`checked_out_to`, editable via a "Checked out to" selector in the same

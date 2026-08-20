@@ -112,32 +112,21 @@
   margin: -0.5rem 0 1rem;
 }
 
-.all-items-view{
-  max-width: none;
-}
-
 .task-rows{
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
 }
 
-// Grid, not flex: .status-badge is content-sized (flex: 0 0 auto) and its
-// text length varies per row, which was pushing the flexible columns before
-// it to different widths on every row. Grid's column tracks are fixed
-// regardless of what a given row's cells contain, so everything lines up.
+// Just the shared row chrome now (background/padding/hover) — the grid
+// layout this used to need was for the since-removed "All inventory" list's
+// name/assignee/due/status columns; .retirement-request-row (the only
+// remaining user of this class) supplies its own flex layout instead.
 .task-row{
-  display: grid;
-  grid-template-columns: minmax(10rem, 2fr) minmax(8rem, 1fr) minmax(8rem, 1fr) 7.5rem;
   align-items: center;
-  column-gap: 1.5rem;
   padding: 0.85rem 1.25rem;
   border-radius: 0.5rem;
   background: var(--mat-sys-surface-container-low);
-
-  &.overdue{
-    border-left: 4px solid var(--app-overdue-text);
-  }
 
   &.clickable{
     cursor: pointer;
@@ -174,83 +163,6 @@
     width: 1rem;
     height: 1rem;
   }
-}
-
-.task-row-checked-out{
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  color: var(--mat-sys-tertiary);
-  font-size: 0.8125rem;
-  font-weight: 600;
-
-  mat-icon{
-    font-size: 1rem;
-    width: 1rem;
-    height: 1rem;
-  }
-}
-
-.task-row-assignee,
-.task-row-due{
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.875rem;
-  color: var(--mat-sys-on-surface-variant);
-
-  mat-icon{
-    font-size: 1rem;
-    width: 1rem;
-    height: 1rem;
-  }
-}
-
-.status-badge{
-  justify-self: start;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem 0.75rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-
-  mat-icon{
-    font-size: 1rem;
-    width: 1rem;
-    height: 1rem;
-  }
-}
-
-.status-low-stock{
-  background: var(--app-warning-bg);
-  color: var(--app-warning-on-bg);
-}
-
-.status-out-of-stock{
-  background: var(--app-danger-bg);
-  color: var(--app-danger-on-bg);
-}
-
-.status-ok{
-  background: var(--mat-sys-surface-variant);
-  color: var(--mat-sys-on-surface-variant);
-}
-
-.status-pending-retirement{
-  background: var(--app-warning-bg);
-  color: var(--app-warning-on-bg);
-}
-
-.status-retired{
-  background: var(--mat-sys-surface-variant);
-  color: var(--mat-sys-on-surface-variant);
-}
-
-.status-filter-toggle{
-  margin-bottom: 1rem;
 }
 
 .tracking-mode-toggle{
@@ -310,9 +222,9 @@
   margin: 0 0 0.75rem;
 }
 
-// Overrides .task-row's own 4-column grid (shaped for the All inventory
-// list's name/assignee/due/status columns, which don't apply here) with a
-// simpler flexible-content-plus-fixed-actions layout.
+// Supplies .task-row's layout now that its own grid (shaped for the
+// since-removed "All inventory" list's columns) is gone — a simple
+// flexible-content-plus-fixed-actions row instead.
 .retirement-request-row{
   display: flex;
   align-items: center;
@@ -335,22 +247,9 @@
 }
 
 // 900px, matching the header's own breakpoint, rather than the site's
-// narrower 600px "phone" line — .task-row's 4 grid columns have a real
-// combined minimum width (each column's own minmax() floor, plus 3 column
-// gaps, plus the row's own padding) of just over 650px, so anything below
-// ~700-750px was already forcing the desktop grid narrower than its own
-// minimum and pushing the status badge past the row's right edge, well
-// before 600px ever kicked in to fix it (same root cause manage-tasks.
-// component.scss's own row had — see that file's own note). Same
-// threshold applied to .retirement-request-row alongside it for
-// consistency, even though its flex layout (no fixed minmax columns) isn't
-// at the same hard-overflow risk.
+// narrower 600px "phone" line — matches manage-tasks.component.scss's own
+// row breakpoint for the same reasoning (see that file's own note).
 @media (max-width: 900px){
-  .task-row{
-    grid-template-columns: 1fr;
-    row-gap: 0.5rem;
-  }
-
   .retirement-request-row{
     flex-direction: column;
     align-items: stretch;

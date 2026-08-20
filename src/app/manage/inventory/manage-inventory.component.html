@@ -10,10 +10,6 @@
         <mat-icon>add</mat-icon>
         Create item
       </mat-button-toggle>
-      <mat-button-toggle value="all">
-        <mat-icon>checklist</mat-icon>
-        All inventory
-      </mat-button-toggle>
       <mat-button-toggle value="retirements">
         <mat-icon>inventory_2</mat-icon>
         Requests
@@ -303,95 +299,6 @@
           }
         </button>
       </form>
-    } @else if (viewMode === 'all') {
-      <div class="all-items-view">
-        @if (isLoadingInventoryList) {
-          <mat-spinner diameter="32"></mat-spinner>
-        } @else if (allInventoryItems.length === 0) {
-          <app-empty-state icon="inventory_2" message="No inventory items yet." />
-        } @else {
-          <mat-button-toggle-group class="status-filter-toggle" [(ngModel)]="statusFilter">
-            <mat-button-toggle value="active">Active only</mat-button-toggle>
-            <mat-button-toggle value="include_retired">Include retired</mat-button-toggle>
-            <mat-button-toggle value="retired_only">Retired only</mat-button-toggle>
-          </mat-button-toggle-group>
-          @if (visibleInventoryItems.length === 0) {
-            <app-empty-state icon="filter_alt_off" message="No items match this filter.">
-              @if (statusFilter !== 'active') {
-                <button mat-stroked-button type="button" (click)="statusFilter = 'active'">
-                  <mat-icon>clear</mat-icon>
-                  Show active items
-                </button>
-              }
-            </app-empty-state>
-          } @else {
-          <div class="task-rows">
-            @for (item of visibleInventoryItems; track item.id) {
-              <div
-                  class="task-row clickable"
-                  [class.overdue]="isInventoryItemLowStock(item)"
-                  role="button"
-                  tabindex="0"
-                  [attr.aria-label]="'View details for ' + item.name"
-                  (click)="openInventoryDetail(item)"
-                  (keydown.enter)="openInventoryDetail(item)"
-                >
-                <div class="task-row-main">
-                  <span class="task-row-title" [title]="item.name">{{ item.name }}</span>
-                  @if (item.is_checked_out) {
-                    <span class="task-row-checked-out">
-                      <mat-icon>person</mat-icon>
-                      Checked out
-                    </span>
-                  }
-                  @if (item.category) {
-                    <span class="task-row-item">
-                      <mat-icon>category</mat-icon>
-                      {{ item.category }}
-                    </span>
-                  }
-                </div>
-                <span class="task-row-assignee">
-                  <mat-icon>inventory</mat-icon>
-                  {{ item.quantity_remaining }} / {{ item.quantity_total }} remaining
-                </span>
-                <span class="task-row-due">
-                  @if (item.price_per_unit !== null) {
-                    <mat-icon>attach_money</mat-icon>
-                    {{ item.price_per_unit | currency }} / unit
-                  } @else {
-                    No price set
-                  }
-                </span>
-                @if (item.status === 'retirement_pending') {
-                  <span class="status-badge status-pending-retirement">
-                    <mat-icon>hourglass_top</mat-icon>
-                    Pending retirement
-                  </span>
-                } @else if (item.status === 'retired') {
-                  <span class="status-badge status-retired">
-                    <mat-icon>inventory_2</mat-icon>
-                    Retired
-                  </span>
-                } @else if (isInventoryItemOutOfStock(item)) {
-                  <span class="status-badge status-out-of-stock">
-                    <mat-icon>remove_shopping_cart</mat-icon>
-                    Out of stock
-                  </span>
-                } @else if (isInventoryItemLowStock(item)) {
-                  <span class="status-badge status-low-stock">
-                    <mat-icon>warning</mat-icon>
-                    Low stock
-                  </span>
-                } @else {
-                  <span class="status-badge status-ok">In stock</span>
-                }
-              </div>
-            }
-          </div>
-          }
-        }
-      </div>
     } @else {
       <div class="retirements-view">
         @if (retirementError) {

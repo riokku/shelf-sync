@@ -1,5 +1,5 @@
 import { Component, OnInit, ViewChild, inject } from '@angular/core';
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { FormsModule, FormControl, FormGroup, FormGroupDirective, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -31,15 +31,12 @@ import { loadInventoryActivityByItemId } from '../../shared/utils/inventory-item
 import { sumContainerQuantity } from '../../shared/utils/inventory-item-containers';
 import { logActivity } from '../../shared/utils/activity-log';
 import { parseItemQrValue } from '../../shared/utils/barcode';
-import { isRowLowStock, isRowOutOfStock } from '../../shared/utils/inventory-stock';
 
 type InventoryItemRow = Database['public']['Tables']['inventory_items']['Row'];
-type StatusFilter = 'active' | 'include_retired' | 'retired_only';
 
 @Component({
   selector: 'app-manage-inventory',
   imports: [
-    CurrencyPipe,
     DatePipe,
     FormsModule,
     ReactiveFormsModule,
@@ -76,26 +73,16 @@ export class ManageInventoryComponent implements OnInit {
 
   private assignableProfiles: Profile[] = [];
 
-  viewMode: 'create' | 'all' | 'retirements' = 'create';
+  viewMode: 'create' | 'retirements' = 'create';
+  // Still the full list, not just pending-retirement items — beyond
+  // pendingRetirementItems below, this also backs refreshInventoryItem()'s
+  // patch-in-place after the detail popup closes and the barcode-scan
+  // duplicate check in submitInventoryItem() (see their own comments), both
+  // of which need every item, not just the ones with a pending request.
   allInventoryItems: InventoryItemRow[] = [];
   isLoadingInventoryList = true;
-  statusFilter: StatusFilter = 'active';
   private inventoryImagesByItemId = new Map<string, string[]>();
   private inventoryActivityByItemId = new Map<string, ActivityLogEntry[]>();
-
-  /** Derived from the same allInventoryItems load rather than a second
-   *  query — "all inventory" already fetches every item regardless of
-   *  status, so filtering it down (or the pending-retirement queue below)
-   *  is just a client-side filter of data that's already there. */
-  get visibleInventoryItems(): InventoryItemRow[] {
-    if (this.statusFilter === 'retired_only') {
-      return this.allInventoryItems.filter(item => item.status === 'retired');
-    }
-    if (this.statusFilter === 'include_retired') {
-      return this.allInventoryItems;
-    }
-    return this.allInventoryItems.filter(item => item.status !== 'retired');
-  }
 
   get pendingRetirementItems(): InventoryItemRow[] {
     return this.allInventoryItems
@@ -149,8 +136,8 @@ export class ManageInventoryComponent implements OnInit {
    *  containers/boxes from the start (mirrors ModalTableComponent's edit-mode
    *  "Container breakdown" — see shared/utils/inventory-item-containers.ts).
    *  Plain field rather than part of inventoryForm, same pattern as
-   *  viewMode/statusFilter below, since it only ever toggles which section
-   *  of the form is shown/used, not a value that's itself submitted. */
+   *  viewMode above, since it only ever toggles which section of the form
+   *  is shown/used, not a value that's itself submitted. */
   trackingMode: 'single' | 'containers' = 'single';
   newContainers: { quantity: number; location: string }[] = [];
 
@@ -200,14 +187,6 @@ export class ManageInventoryComponent implements OnInit {
     this.inventoryImagesByItemId = imagesByItemId;
     this.inventoryActivityByItemId = activityByItemId;
     this.isLoadingInventoryList = false;
-  }
-
-  isInventoryItemLowStock(item: InventoryItemRow): boolean {
-    return isRowLowStock(item);
-  }
-
-  isInventoryItemOutOfStock(item: InventoryItemRow): boolean {
-    return isRowOutOfStock(item);
   }
 
   retirementRequesterLabel(item: InventoryItemRow): string {
