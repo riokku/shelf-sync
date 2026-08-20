@@ -516,6 +516,14 @@ $wave-mask-hero-reveal-below: url("data:image/svg+xml,%3Csvg xmlns='http://www.w
   z-index: -1;
   overflow: hidden;
 
+  // Same bridging tone .hero-backdrop's gradient ends on (100% stop) and
+  // .bottom-backdrop's starts on (0% stop) — shows through behind the
+  // video (see its own opacity note below) so the loading window reads as
+  // a continuation of those two gradients instead of the browser's own
+  // flat black "no frame decoded yet" rendering, which was a visibly
+  // different dark tone right up against both.
+  background-color: color-mix(in srgb, var(--mat-sys-tertiary) 40%, #14141a);
+
   -webkit-mask-image: $wave-mask-hero-reveal-below, linear-gradient(#000, #000);
   mask-image: $wave-mask-hero-reveal-below, linear-gradient(#000, #000);
   -webkit-mask-size: 100% 5rem, 100% calc(100% - 5rem);
@@ -531,6 +539,18 @@ $wave-mask-hero-reveal-below: url("data:image/svg+xml,%3Csvg xmlns='http://www.w
     width: 100%;
     height: 100%;
     object-fit: cover;
+    // Invisible until the (canplay) handler (landing.component.ts) flips
+    // videoReady true — a <video> with no frame decoded yet renders as
+    // flat black in every major browser regardless of this element's own
+    // background-color, so hiding it entirely is the only way to let the
+    // backdrop's own background-color (above) show through in the
+    // meantime. Fades in rather than popping in once ready.
+    opacity: 0;
+    transition: opacity 0.4s ease;
+
+    &.is-ready{
+      opacity: 1;
+    }
   }
 
   // inset:0 — covers the full video, the wave zone at the top included.

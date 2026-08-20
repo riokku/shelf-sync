@@ -128,7 +128,15 @@
        .bottom-region use. -->
   <div class="features-region">
     <div class="features-backdrop" aria-hidden="true">
-      <video src="assets/login-video.mp4" autoplay loop [muted]="true" playsinline></video>
+      <video
+          src="assets/login-video.mp4"
+          autoplay
+          loop
+          [muted]="true"
+          playsinline
+          [class.is-ready]="videoReady()"
+          (canplay)="videoReady.set(true)"
+        ></video>
       <!-- Wave transitioning in from the hero, painted here rather than
            as a solid-fill overlay sitting *in* .hero-backdrop (the
            previous approach) — that always left a visible flat-colored

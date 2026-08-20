@@ -68,6 +68,15 @@ export class LandingComponent implements AfterViewInit {
   protected readonly restocked = signal(false);
   protected readonly restockFlash = signal(false);
 
+  // .features-backdrop's video starts invisible (see its own .scss note)
+  // so the backdrop's plain background-color — the same bridging dark tone
+  // .hero-backdrop's gradient ends on and .bottom-backdrop's starts on —
+  // shows through until there's an actual frame to reveal, rather than the
+  // browser's own default black "no frame yet" rendering flashing in first.
+  // (canplay) rather than (loadeddata) — fires once playback can actually
+  // begin, so this can't flip true a frame before there's real footage.
+  protected readonly videoReady = signal(false);
+
   protected readonly steps = [
     { title: 'Create your organization', description: 'Sign up and set up your workspace in a couple of minutes — no setup call required.' },
     { title: 'Add your inventory', description: 'Bring in what you already track, with photos and details, and invite your team to join you.' },

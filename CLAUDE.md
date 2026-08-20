@@ -184,6 +184,18 @@ hero/bottom CTAs further down the page still always point at `/register` regardl
 this page's job for a signed-in visitor is just getting them out to their dashboard, not becoming a
 second one itself.
 
+The landing page's `.features` section plays the same background video login/register use
+(`assets/login-video.mp4`) behind a dark scrim, sandwiched between two gradient regions
+(`.hero-backdrop` above, `.bottom-backdrop` below) that both share one "bridging" dark tone
+(`color-mix(in srgb, var(--mat-sys-tertiary) 40%, #14141a)` — hero's gradient ends on it,
+bottom's starts on it). The video itself starts at `opacity: 0` and only fades in once
+`(canplay)` fires (`videoReady` signal, `LandingComponent`) — every major browser renders an
+unloaded `<video>` with no `poster` as flat black regardless of any CSS `background-color` on it
+or its parent, so without this, visitors briefly saw that flat black (a third, unrelated dark
+tone) hard up against both gradients' tinted tone while the video loaded. `.features-backdrop`
+(the video's parent) now carries that same bridging tone as its own `background-color`, so the
+loading window shows a continuation of the surrounding gradients instead.
+
 `/pricing` (`PricingComponent`) is a public three-tier pricing page (Free/Basic/Pro, Basic marked
 "Most popular"), same unguarded/chrome-hidden/own-nav-and-footer treatment as landing — linked from
 both the landing page's nav and `FooterComponent`. **No billing is wired up yet** — every tier's
