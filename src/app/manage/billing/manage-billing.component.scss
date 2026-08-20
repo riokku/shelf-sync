@@ -120,10 +120,17 @@
   gap: 0.375rem;
 }
 
+// min-height reserves room for .placeholder-tag (Photo storage's "Estimated"
+// badge) whether or not a given label actually has one — without it, that
+// one taller label pushed its own value/progress-bar down relative to the
+// plain-text labels next to it in the same grid row (the grid row itself
+// stretches to fit the tallest cell, but each cell's own content still
+// starts wherever its label's height happens to end).
 .usage-stat-label{
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  min-height: 1.25rem;
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.8125rem;
 }
