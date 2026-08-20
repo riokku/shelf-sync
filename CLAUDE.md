@@ -118,7 +118,21 @@ row counts are minor unless an org reaches tens of thousands of items. Core inve
 functionality is deliberately available on every tier rather than paywalled — differentiation is
 by *scale* (item/team/photo-storage caps) and *admin polish* (custom branding, data export, error
 log access — all Pro-only), not gating the product's basic value proposition this early on. See
-`PricingComponent`'s own doc comment for the full per-tier breakdown.
+`PricingComponent`'s own doc comment for the full per-tier breakdown. The three tiers themselves
+live in `shared/models/pricing-tier.ts` (`PRICING_TIERS`, each with a `limits` object —
+`maxTeamMembers`/`maxInventoryItems`/`storageLimitMb`, `null` meaning unlimited) rather than being
+inlined in `PricingComponent`, so the numbers a prospective customer sees on `/pricing` and the caps
+`manage/billing` measures an existing org against can't drift apart.
+
+`manage/billing` (`ManageBillingComponent`) is an admin-only (`adminGuard` — billing is financial
+information, same audience as Danger Zone, not the broader admin-or-manager audience the rest of
+Manage's sub-pages use) preview of what this page will show once Stripe billing exists. Every org is
+hardcoded onto the Free tier (`pricingTierByKey('free')`) since there's no `subscriptions` table
+yet; a banner at the top says the page isn't connected to real billing. Account creation date, team
+member count, and inventory item count are real, queried numbers; photo storage usage and the
+billing-cycle date are plausible-looking placeholders (getting real storage usage would need a new
+Postgres function reading `storage.objects`, Supabase Storage's own backing table, which isn't
+exposed to PostgREST directly — real future work, not needed for this preview).
 
 The Inventory page has a card/table view toggle (`InventoryComponent.viewMode`, a
 `mat-button-toggle-group` above the item list) — card view is the original gallery layout; table
@@ -267,9 +281,10 @@ privacy/, terms/                                            # standalone legal p
 home/                                                        # post-login landing hub: cards linking to the pages below
 inventory/                                                  # standalone inventory page: filters, item table, opens modal
 tasks/                                                      # standalone personal "My Tasks" list (row-styled task-card)
-manage/                                                     # card hub (ManageComponent) linking to the five below
+manage/                                                     # card hub (ManageComponent) linking to the six below
   inventory/, tasks/, team/, activity/                      # admin/manager only: inventory, tasks, team administration, and the cross-entity activity feed
   error-log/                                                # admin/manager only: client_error_log viewer, see Supabase Schema section
+  billing/                                                  # admin only: pre-Stripe preview of the org's plan/usage, see Project Overview above
   danger-zone/                                              # admin only: org data export + soft-delete (organizations.deleted_at)
 customize/                                                  # admin-only: theme picker + logo upload (site_settings)
 account/                                                    # profile info, avatar picker, light/dark mode toggle
@@ -278,6 +293,7 @@ shared/
   models/inventory-item.model.ts   # InventoryItem class (constructor-based, no defaults)
   models/theme-preset.ts     # THEME_PRESETS — key must match a [data-theme] block in styles.scss
   models/inventory-table-column.ts # optional Inventory table-view columns admin can show/hide (Customize > Data)
+  models/pricing-tier.ts     # PRICING_TIERS — shared by PricingComponent (/pricing) and ManageBillingComponent
   models/database.types.ts   # generated via `npm run supabase:gen:types` — regenerate, don't hand-edit
   utils/inventory-item.mapper.ts   # toInventoryItem(row, images, checkedOutToLabel, activityLog?) — DB row -> InventoryItem
   utils/inventory-item-images.ts   # loadInventoryImagesByItemId() / uploadInventoryItemImages() / deleteInventoryItemImage()

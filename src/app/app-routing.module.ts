@@ -148,6 +148,16 @@ const routes: Routes = [
     title: 'ShelfSync | Error Log'
   },
   {
+    path: 'manage/billing',
+    loadComponent: () => import('./manage/billing/manage-billing.component').then(m => m.ManageBillingComponent),
+    // adminGuard, not manageGuard — billing is financial information, same
+    // audience as Danger Zone, not the broader admin-or-manager audience
+    // the rest of Manage's sub-pages use.
+    canActivate: [approvedGuard, adminGuard],
+    data: { breadcrumb: 'Billing', breadcrumbParent: MANAGE_BREADCRUMB_PARENT },
+    title: 'ShelfSync | Billing'
+  },
+  {
     path: 'manage/danger-zone',
     loadComponent: () => import('./manage/danger-zone/manage-danger-zone.component').then(m => m.ManageDangerZoneComponent),
     canActivate: [approvedGuard, adminGuard],

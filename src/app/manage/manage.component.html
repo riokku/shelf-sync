@@ -51,6 +51,15 @@
         <p>Review errors your team has run into recently.</p>
       </a>
       @if (authService.role() === 'admin') {
+        <a class="manage-card" routerLink="/manage/billing">
+          <span class="permission-badge">
+            <mat-icon>shield</mat-icon>
+            Admin
+          </span>
+          <mat-icon>credit_card</mat-icon>
+          <h3>Billing</h3>
+          <p>Your plan, usage, and billing details.</p>
+        </a>
         <a class="manage-card manage-card-danger" routerLink="/manage/danger-zone">
           <span class="permission-badge">
             <mat-icon>shield</mat-icon>
