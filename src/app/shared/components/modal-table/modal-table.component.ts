@@ -179,6 +179,14 @@ export class ModalTableComponent implements OnInit {
     return this.withCurrentValue(this.inventoryFieldOptions.optionsFor('physical_location'), this.data.physicalLocation);
   }
 
+  /** Same approved physical-location list a container's location picker
+   *  draws from — a per-container variant of physicalLocationOptions above,
+   *  since each box can have its own already-set value that may not be on
+   *  the approved list. */
+  containerLocationOptions(current: string): string[] {
+    return this.withCurrentValue(this.inventoryFieldOptions.optionsFor('physical_location'), current);
+  }
+
   private withCurrentValue(approved: string[], current: string): string[] {
     return current && !approved.includes(current) ? [current, ...approved] : approved;
   }

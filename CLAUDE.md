@@ -41,7 +41,10 @@ pointing at an already org-scoped `inventory_items` row), loaded via
 `loadInventoryItemContainers()` in `shared/utils/inventory-item-containers.ts`. `ModalTableComponent`
 shows them in a "Container breakdown" section (below Quantity information, in both view and edit
 mode) — each box auto-numbered "Box N" by its position in the list (no stored position column;
-display order is just `created_at asc`) plus an optional free-text location. Editing is full
+display order is just `created_at asc`) plus an optional location — a dropdown drawing from the
+same admin-curated `inventory_field_options` physical-location list the item's own Physical
+location field uses (`InventoryFieldOptionsService`), not free text, so a box's location stays
+consistent with the rest of the org's location vocabulary. Editing is full
 add/remove/edit, same Edit/Save/Cancel flow and any-authenticated-user access as every other field;
 an emptied (0-quantity) box stays listed rather than disappearing. Once an item has at least one
 container, `quantity_remaining`/`quantity_total` stop being freely editable and are instead always
