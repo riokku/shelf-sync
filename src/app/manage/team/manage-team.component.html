@@ -76,25 +76,30 @@
       }
       <div class="current-team-header">
         <h3>Current team</h3>
-        <mat-form-field appearance="outline" class="team-search-field">
-          <mat-icon matPrefix>search</mat-icon>
-          <input
-              matInput
-              placeholder="Search by name or nickname"
-              [ngModel]="teamSearchTerm"
-              (ngModelChange)="onTeamSearchChange($event)"
-            />
-        </mat-form-field>
+        <div class="team-filters-row">
+          <mat-form-field appearance="outline" class="team-search-field">
+            <mat-icon matPrefix>search</mat-icon>
+            <input
+                matInput
+                placeholder="Search by name or nickname"
+                [ngModel]="teamSearchTerm"
+                (ngModelChange)="onTeamSearchChange($event)"
+              />
+          </mat-form-field>
+          <mat-slide-toggle [checked]="showOnlineOnly" (change)="toggleShowOnlineOnly($event.checked)">
+            Show online only
+          </mat-slide-toggle>
+        </div>
       </div>
       @if (isLoadingTeam) {
         <mat-spinner diameter="32"></mat-spinner>
       } @else if (teamMembers.length === 0) {
         <app-empty-state icon="group_off" message="No users found." />
       } @else if (filteredTeamMembers.length === 0) {
-        <app-empty-state icon="search_off" message="No team members match your search.">
-          <button mat-stroked-button type="button" (click)="onTeamSearchChange('')">
+        <app-empty-state icon="search_off" [message]="emptyTeamMessage">
+          <button mat-stroked-button type="button" (click)="clearTeamFilters()">
             <mat-icon>clear</mat-icon>
-            Clear search
+            Clear filters
           </button>
         </app-empty-state>
       } @else {

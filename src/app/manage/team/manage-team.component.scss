@@ -43,8 +43,8 @@
 }
 
 // Same header style as .invite-link-section/.pending-members-section's own
-// h3 above (primary-colored) — search field stacks below it rather than
-// sharing its row.
+// h3 above (primary-colored) — the search field/online-only toggle row
+// stacks below it rather than sharing its row.
 .current-team-header{
   margin-bottom: 1rem;
 
@@ -54,8 +54,19 @@
   }
 }
 
+.team-filters-row{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.5rem;
+}
+
 .team-search-field{
-  width: 100%;
+  // flex: 1 1 auto (not width: 100%, now that .mat-slide-toggle shares this
+  // row via .team-filters-row) — width: 100% would claim the whole row for
+  // itself, wrapping the toggle onto its own line every time regardless of
+  // how much room was actually left over.
+  flex: 1 1 14rem;
   max-width: 20rem;
 
   // Density override so this search field doesn't take up more vertical

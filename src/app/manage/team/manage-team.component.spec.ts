@@ -76,6 +76,69 @@ describe('ManageTeamComponent', () => {
       component.teamSearchTerm = '  doe  ';
       expect(component.filteredTeamMembers.map(m => m.profile.id)).toEqual(['user-1']);
     });
+
+    describe('showOnlineOnly', () => {
+      beforeEach(() => {
+        component.teamMembers = [
+          memberOf({ id: 'user-1', full_name: 'Jane Doe', last_active_at: new Date().toISOString() }), // online
+          memberOf({ id: 'user-2', full_name: 'John Smith', last_active_at: null }), // offline
+          memberOf({ id: 'user-3', full_name: 'Jamie Lee', last_active_at: null }) // offline
+        ];
+      });
+
+      it('is a no-op when off', () => {
+        expect(component.filteredTeamMembers.length).toBe(3);
+      });
+
+      it('narrows to only online members when on', () => {
+        component.showOnlineOnly = true;
+        expect(component.filteredTeamMembers.map(m => m.profile.id)).toEqual(['user-1']);
+      });
+
+      it('combines with the search term', () => {
+        component.showOnlineOnly = true;
+        component.teamSearchTerm = 'smith'; // matches user-2, who's offline
+        expect(component.filteredTeamMembers).toEqual([]);
+      });
+    });
+  });
+
+  describe('emptyTeamMessage', () => {
+    it('reads as a plain search-mismatch message by default', () => {
+      component.teamSearchTerm = 'nonexistent';
+      expect(component.emptyTeamMessage).toBe('No team members match your search.');
+    });
+
+    it('reads as an online-specific message when only showOnlineOnly is active', () => {
+      component.showOnlineOnly = true;
+      expect(component.emptyTeamMessage).toBe('No team members are online right now.');
+    });
+
+    it('combines both when search and showOnlineOnly are both active', () => {
+      component.teamSearchTerm = 'nonexistent';
+      component.showOnlineOnly = true;
+      expect(component.emptyTeamMessage).toBe('No online team members match your search.');
+    });
+  });
+
+  describe('toggleShowOnlineOnly / clearTeamFilters', () => {
+    it('toggleShowOnlineOnly() sets showOnlineOnly', () => {
+      component.toggleShowOnlineOnly(true);
+      expect(component.showOnlineOnly).toBeTrue();
+
+      component.toggleShowOnlineOnly(false);
+      expect(component.showOnlineOnly).toBeFalse();
+    });
+
+    it('clearTeamFilters() resets both the search term and showOnlineOnly', () => {
+      component.teamSearchTerm = 'jane';
+      component.showOnlineOnly = true;
+
+      component.clearTeamFilters();
+
+      expect(component.teamSearchTerm).toBe('');
+      expect(component.showOnlineOnly).toBeFalse();
+    });
   });
 
   describe('isOnline / lastSeenLabel', () => {

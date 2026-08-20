@@ -371,7 +371,13 @@ browser tab can slow its own timers enough to under-report. `ManageTeamComponent
 already-loaded `teamMembers`/`pendingMembers` profile objects in place, rather than re-running the
 full `loadProfiles()`/`loadTeamTasks()` pair (which together toggle `isLoadingTeam`, swapping the
 whole accordion for a spinner) — keeps the indicator current without any visible flicker or losing
-the search term/expanded panels/in-flight edits a full reload would disturb.
+the search term/expanded panels/in-flight edits a full reload would disturb. A "Show online only"
+`mat-slide-toggle` next to the name/nickname search field (`showOnlineOnly`, ANDed into
+`filteredTeamMembers` alongside the existing search-term match, same `isOnline()` helper the per-
+member indicator itself uses) narrows the list down to just who's currently online.
+`emptyTeamMessage` picks between three phrasings (search mismatch / nobody online / both) so the
+empty state names which filter(s) actually produced it, and `clearTeamFilters()` (the empty state's
+own button) resets both rather than just the search term the way it used to.
 
 ## Tech Stack
 

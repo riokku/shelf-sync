@@ -6,6 +6,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatDialog } from '@angular/material/dialog';
 import { SupabaseService } from '../../core/supabase.service';
 import { NotificationService } from '../../core/notification.service';
@@ -43,6 +44,7 @@ interface TeamMember {
     MatIconModule,
     MatProgressSpinnerModule,
     MatExpansionModule,
+    MatSlideToggleModule,
     BreadcrumbsComponent,
     UserAvatarComponent,
     TaskCardComponent,
@@ -70,25 +72,51 @@ export class ManageTeamComponent implements OnInit {
   isLoadingTeam = true;
 
   teamSearchTerm = '';
+  showOnlineOnly = false;
 
   /** Matches against full_name (covers first *and* last name — profiles
    *  doesn't split them into separate columns, so a substring match on the
    *  combined name already covers searching by either) and nickname
-   *  separately, not just whichever one profileLabel() happens to display. */
+   *  separately, not just whichever one profileLabel() happens to display —
+   *  AND'd with showOnlineOnly (isOnline(), same helper the per-member dot/
+   *  "Online" text already use) when that toggle is on, rather than two
+   *  independent passes. */
   get filteredTeamMembers(): TeamMember[] {
     const term = this.teamSearchTerm.trim().toLowerCase();
-    if (!term) {
-      return this.teamMembers;
-    }
     return this.teamMembers.filter(member => {
       const profile = member.profile;
-      return !!profile.full_name?.toLowerCase().includes(term)
+      const matchesSearch = !term
+        || !!profile.full_name?.toLowerCase().includes(term)
         || !!profile.nickname?.toLowerCase().includes(term);
+      const matchesOnlineFilter = !this.showOnlineOnly || this.isOnline(profile);
+      return matchesSearch && matchesOnlineFilter;
     });
+  }
+
+  /** Distinguishes "nothing matches the search" from "nobody's online right
+   *  now" (and the combination of both) rather than one flat message for
+   *  every reason filteredTeamMembers could come up empty. */
+  get emptyTeamMessage(): string {
+    if (this.teamSearchTerm && this.showOnlineOnly) {
+      return 'No online team members match your search.';
+    }
+    if (this.showOnlineOnly) {
+      return 'No team members are online right now.';
+    }
+    return 'No team members match your search.';
   }
 
   onTeamSearchChange(value: string) {
     this.teamSearchTerm = value;
+  }
+
+  toggleShowOnlineOnly(checked: boolean) {
+    this.showOnlineOnly = checked;
+  }
+
+  clearTeamFilters() {
+    this.teamSearchTerm = '';
+    this.showOnlineOnly = false;
   }
 
   inviteLink: string | null = null;
