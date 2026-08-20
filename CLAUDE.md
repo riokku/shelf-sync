@@ -33,6 +33,17 @@ every other field. `status`/`retirement_*`/`retired_*` are the exception: exclud
 grant and writable only through the retirement RPCs (see the Supabase Schema section below), so
 editing never lets someone bypass the approval workflow.
 
+Admins and managers get a `manage/activity` route (`ManageActivityComponent`) — a single
+cross-entity feed of everything that changed in the org: inventory item create/edit/retirement,
+task create/status-change (including completion)/transfer, and member join/approval/removal. It
+reads from `activity_log`, a new org-scoped table separate from the per-item
+`inventory_item_activity` above — client-side actions log to it via `logActivity()` in
+`shared/utils/activity-log.ts` (mirroring `logInventoryItemActivity()`'s shape), while anything
+that already goes through a SECURITY DEFINER RPC (retirement, task transfers, `update_task_status`,
+`handle_new_user`, `admin_approve_member`) logs server-side inside that same function instead, so
+the event and the change it describes commit atomically. The page defaults to today and steps
+one day at a time via `loadActivityLog()`'s `{ from, to }` range rather than infinite scroll.
+
 Admins get a `customize` route (guarded by a dedicated `adminGuard`, stricter than the
 admin-or-manager `manageGuard`) for site-wide branding: a color theme picker and a logo upload,
 both backed by the `site_settings` singleton table. Because Angular Material's `mat.theme()` is a
@@ -92,10 +103,11 @@ The app mixes two Angular module styles, which is important to know before addin
 - Routing (`app-routing.module.ts`) is flat — `''` → `LoginComponent`, `'register'` →
   `RegisterComponent`, `'inventory'` → `InventoryComponent` guarded by `authGuard` (plus `home`,
   `tasks`, `customize`, `account` — all authGuard-protected, `customize` also gated by
-  `adminGuard`). `manage` is a card hub (`ManageComponent`) linking to four flat sibling routes —
-  `manage/inventory`, `manage/tasks`, `manage/team` (all `manageGuard`: admin OR manager) and
-  `manage/danger-zone` (`adminGuard`, stricter — org export/delete) — rather than nested child
-  routes, matching the rest of the app's flat routing. No lazy loading or resolvers exist yet.
+  `adminGuard`). `manage` is a card hub (`ManageComponent`) linking to five flat sibling routes —
+  `manage/inventory`, `manage/tasks`, `manage/team`, `manage/activity` (all `manageGuard`: admin OR
+  manager) and `manage/danger-zone` (`adminGuard`, stricter — org export/delete) — rather than
+  nested child routes, matching the rest of the app's flat routing. No lazy loading or resolvers
+  exist yet.
 - `app.component.html` hides the shared `<app-header>`/`<app-footer>` chrome on an explicit
   route allowlist (`router.url !== '/' && router.url !== '/register'`), not on a guard/data flag.
   **Any new unauthenticated/full-bleed page must be added to that condition too**, or it'll
@@ -117,8 +129,8 @@ register/                                                   # standalone signup 
 home/                                                        # post-login landing hub: cards linking to the pages below
 inventory/                                                  # standalone inventory page: filters, item table, opens modal
 tasks/                                                      # standalone personal "My Tasks" list (row-styled task-card)
-manage/                                                     # card hub (ManageComponent) linking to the four below
-  inventory/, tasks/, team/                                 # admin/manager only: inventory, tasks, and team administration
+manage/                                                     # card hub (ManageComponent) linking to the five below
+  inventory/, tasks/, team/, activity/                      # admin/manager only: inventory, tasks, team administration, and the cross-entity activity feed
   danger-zone/                                              # admin only: org data export + soft-delete (organizations.deleted_at)
 customize/                                                  # admin-only: theme picker + logo upload (site_settings)
 account/                                                    # profile info, avatar picker, light/dark mode toggle
@@ -130,6 +142,7 @@ shared/
   utils/inventory-item.mapper.ts   # toInventoryItem(row, images, checkedOutToLabel, activityLog?) — DB row -> InventoryItem
   utils/inventory-item-images.ts   # loadInventoryImagesByItemId() / uploadInventoryItemImages() / deleteInventoryItemImage()
   utils/inventory-item-activity.ts # loadInventoryActivityByItemId() / logInventoryItemActivity() — inventory_item_activity
+  utils/activity-log.ts      # loadActivityLog() / logActivity() — org-wide activity_log, backs Manage > Activity Log
   utils/profile-label.ts     # profileDisplayName()/resolveProfileName() — shared profiles-array lookup
   styles/_auth-shell.scss   # shared full-page video-background shell; login/register `@use` it
                              # rather than duplicating — add new shared auth-page styles here
@@ -237,6 +250,42 @@ yet on a hard refresh of `/inventory`.
   touching this (`TaskDetailModalComponent.saveStatus()`) ever sends `status`. Drops that policy
   and adds `update_task_status()`, a SECURITY DEFINER RPC mirroring `request_task_transfer()`'s
   shape, as the only way a plain assignee can change a task now.
+- `require_approved_task_transfer_target` / `fix_task_transfer_org_null_check` — `request_task_transfer()`
+  gained a check that the target profile is `membership_status = 'approved'`, not just in the
+  caller's org (a pending join request could otherwise be handed a task it couldn't yet see or
+  act on). The first pass's full `create or replace` accidentally dropped the null-safety guard
+  `fix_org_isolation_bugs` had added to this same function; the second migration restores it.
+- `require_approved_task_assignee` — same gap one layer earlier: the "Admins and managers can
+  create tasks for anyone" INSERT policy checked role/org on the new row but never validated
+  `assigned_to` itself, so a task could be created pre-assigned to a pending join request or to a
+  profile in a different organization entirely. Now requires an approved, same-org profile.
+- `add_client_error_log` — `client_error_log` (`user_id`, `organization_id`, `message`, `stack`,
+  `url`, `user_agent`, `app_env`, `created_at`), written via the SECURITY DEFINER
+  `log_client_error()` RPC (granted to `anon` + `authenticated` — a crash can happen pre-login) and
+  read only by an admin/manager of their own org. Backs a `GlobalErrorHandler` that fire-and-forgets
+  every uncaught client error here.
+- `add_inventory_item_barcode` — `inventory_items.barcode` (nullable, unique per org via a partial
+  index), plus the additive `grant update (barcode)` that `add_inventory_item_retirement`'s
+  column-scoped grant means every new `inventory_items` column now needs.
+- `add_more_avatar_presets` — widens `profiles.avatar_key`'s check constraint with 7 more preset
+  keys (see `shared/models/avatar-preset.ts` for the matching client-side list).
+- `add_site_settings_inventory_table_columns` — `site_settings.inventory_table_columns` (a
+  `text[]`, defaulting to a starter set), letting an admin choose which optional columns the
+  Inventory page's table view shows (Customize > Data). Rides along under `site_settings`'
+  existing whole-row admin-only UPDATE policy — no RLS changes needed.
+- `add_activity_log` / `fix_activity_log_status_label_casing` — `activity_log`
+  (`organization_id` defaulting to `current_user_org_id()`, `actor_id`, `entity_type` — one of
+  `inventory_item`/`task`/`member` —, `entity_id`, `message`, `created_at`), backing
+  `manage/activity` (see the Project Overview section above). Readable/insertable by any
+  authenticated user for their own org, self-attributed only (`actor_id = auth.uid()`), same
+  shape as `inventory_item_activity`. RPC-driven events (retirement, task transfers/status,
+  `handle_new_user`, `admin_approve_member`) log inline as part of the same `create or replace`
+  that already existed for each function — `handle_new_user` in particular sets
+  `organization_id`/`actor_id` explicitly rather than relying on the column default, since it runs
+  as an `auth.users` trigger outside a normal authenticated call where `auth.uid()` isn't set. Also
+  adds `profile_display_name()`, a small SECURITY DEFINER helper mirroring
+  `profileDisplayName()`'s nickname → full_name → email fallback, reused by every RPC that needs to
+  name a *different* profile than the caller (e.g. a task transfer's target) in its log message.
 
 `supabase/seed.sql` ports the inventory page's hardcoded dummy items into `inventory_items` inserts
 for local dev (`checked_out_to` is left `null` since it's a real FK to `profiles` now and the

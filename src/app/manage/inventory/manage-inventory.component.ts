@@ -12,7 +12,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialog } from '@angular/material/dialog';
 import { SupabaseService } from '../../core/supabase.service';
 import { NotificationService } from '../../core/notification.service';
-import { Profile } from '../../core/auth.service';
+import { AuthService, Profile } from '../../core/auth.service';
 import { InventoryFieldOptionsService } from '../../core/inventory-field-options.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { ModalTableComponent } from '../../shared/components/modal-table/modal-table.component';
@@ -25,6 +25,7 @@ import { toInventoryItem } from '../../shared/utils/inventory-item.mapper';
 import { resolveProfileAvatarKey, resolveProfileName } from '../../shared/utils/profile-label';
 import { loadInventoryImagesByItemId, uploadInventoryItemImages } from '../../shared/utils/inventory-item-images';
 import { loadInventoryActivityByItemId } from '../../shared/utils/inventory-item-activity';
+import { logActivity } from '../../shared/utils/activity-log';
 
 type InventoryItemRow = Database['public']['Tables']['inventory_items']['Row'];
 type StatusFilter = 'active' | 'include_retired' | 'retired_only';
@@ -52,6 +53,7 @@ type StatusFilter = 'active' | 'include_retired' | 'retired_only';
 })
 export class ManageInventoryComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
+  private authService = inject(AuthService);
   protected inventoryFieldOptions = inject(InventoryFieldOptionsService);
   private dialog = inject(MatDialog);
   private notification = inject(NotificationService);
@@ -315,6 +317,14 @@ export class ManageInventoryComponent implements OnInit {
       if (uploadError) {
         this.itemError = `Item created, but image upload failed: ${uploadError}`;
       }
+    }
+
+    // Best-effort — a failed log write shouldn't block the item having
+    // already been created, same reasoning modal-table.component.ts's edit
+    // flow uses for logInventoryItemActivity().
+    const session = await this.authService.getSession();
+    if (session) {
+      await logActivity(this.supabase, session.user.id, 'inventory_item', inserted.id, `Created item "${inserted.name}"`);
     }
 
     this.isSavingItem = false;

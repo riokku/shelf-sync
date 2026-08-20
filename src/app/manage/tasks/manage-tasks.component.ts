@@ -23,6 +23,7 @@ import { Database } from '../../shared/models/database.types';
 import { TASK_STATUSES, TASK_STATUS_LABELS, TaskStatus } from '../../shared/models/task-status';
 import { toIsoDateString, getTodayIsoDate } from '../../shared/utils/date';
 import { profileDisplayName, resolveProfileAvatarKey, resolveProfileName } from '../../shared/utils/profile-label';
+import { logActivity } from '../../shared/utils/activity-log';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
 type RelatedItemOption = Pick<Database['public']['Tables']['inventory_items']['Row'], 'id' | 'name'>;
@@ -242,6 +243,10 @@ export class ManageTasksComponent implements OnInit {
       return;
     }
 
+    // Captured up front (rather than re-reading this.currentUserId after
+    // the await below) so its non-null narrowing from the guard above holds.
+    const userId = this.currentUserId;
+
     this.isSavingTask = true;
     this.taskError = null;
     this.taskSaved = false;
@@ -254,7 +259,7 @@ export class ManageTasksComponent implements OnInit {
       assigned_to: value.assignedTo,
       due_date: toIsoDateString(value.dueDate),
       related_item_name: value.relatedItemName,
-      created_by: this.currentUserId
+      created_by: userId
     });
 
     this.isSavingTask = false;
@@ -263,6 +268,17 @@ export class ManageTasksComponent implements OnInit {
       this.taskError = error.message;
       return;
     }
+
+    // Best-effort — a failed log write shouldn't block the task having
+    // already been created.
+    const assigneeLabel = value.assignedTo ? resolveProfileName(value.assignedTo, this.assignableProfiles) : null;
+    await logActivity(
+      this.supabase,
+      userId,
+      'task',
+      null,
+      assigneeLabel ? `Created task "${value.title}" (assigned to ${assigneeLabel})` : `Created task "${value.title}"`
+    );
 
     this.taskSaved = true;
     this.taskForm.reset();

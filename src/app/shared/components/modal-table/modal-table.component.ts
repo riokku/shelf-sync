@@ -24,6 +24,7 @@ import { NotificationService } from '../../../core/notification.service';
 import { InventoryFieldOptionsService } from '../../../core/inventory-field-options.service';
 import { toIsoDateString, parseIsoDate } from '../../utils/date';
 import { loadInventoryActivityByItemId, logInventoryItemActivity } from '../../utils/inventory-item-activity';
+import { logActivity } from '../../utils/activity-log';
 import { profileDisplayName, resolveProfileAvatarKey, resolveProfileName } from '../../utils/profile-label';
 import {
   InventoryItemImageRecord,
@@ -238,6 +239,9 @@ export class ModalTableComponent {
         ...this.data.activityLog
       ];
     }
+    // Mirrors the per-item log above into the org-wide activity feed —
+    // prefixed with the item name since that feed spans many items.
+    await logActivity(this.supabase, session.user.id, 'inventory_item', this.data.id, `${this.data.name}: ${message}`);
 
     this.isDiscarding = false;
   }
@@ -595,6 +599,9 @@ export class ModalTableComponent {
           ...this.data.activityLog
         ];
       }
+      // Mirrors the per-item log above into the org-wide activity feed —
+      // prefixed with the item name since that feed spans many items.
+      await logActivity(this.supabase, session.user.id, 'inventory_item', this.data.id, `${this.data.name}: ${message}`);
     }
 
     this.isSaving = false;

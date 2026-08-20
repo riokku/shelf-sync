@@ -1,0 +1,37 @@
+<div class="manage-activity-wrapper">
+  <div class="container">
+    <div class="page-toolbar">
+      <app-breadcrumbs />
+    </div>
+    <h2>Activity Log</h2>
+
+    <div class="day-nav">
+      <button mat-icon-button type="button" aria-label="Previous day" (click)="previousDay()">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      <span class="day-nav-label">{{ selectedDate | date: 'EEEE, MMMM d' }}{{ isToday ? ' (Today)' : '' }}</span>
+      <button mat-icon-button type="button" aria-label="Next day" [disabled]="isToday" (click)="nextDay()">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    </div>
+
+    @if (isLoading) {
+      <mat-spinner diameter="32" />
+    } @else if (entries.length === 0) {
+      <app-empty-state icon="history" message="No activity on this day." />
+    } @else {
+      <div class="activity-list">
+        @for (entry of entries; track entry.timestamp + entry.message) {
+          <div class="activity-row">
+            <app-user-avatar [avatarKey]="entry.actorAvatarKey" size="sm" />
+            <mat-icon class="activity-entity-icon" [attr.aria-label]="entry.entityType">{{ entityIcon(entry.entityType) }}</mat-icon>
+            <div class="activity-details">
+              <p class="activity-message"><strong>{{ entry.actor }}</strong> — {{ entry.message }}</p>
+              <span class="activity-time">{{ entry.timestamp | date: 'shortTime' }}</span>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>

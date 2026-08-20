@@ -12,6 +12,7 @@ import { SupabaseService } from '../../../core/supabase.service';
 import { AuthService, Profile } from '../../../core/auth.service';
 import { TASK_STATUSES, TASK_STATUS_LABELS, TaskStatus } from '../../models/task-status';
 import { toIsoDateString } from '../../utils/date';
+import { logActivity } from '../../utils/activity-log';
 
 export interface CreateTaskModalData {
   relatedItemName?: string;
@@ -77,6 +78,10 @@ export class CreateTaskModalComponent implements OnInit {
       return;
     }
 
+    // Captured up front (rather than re-reading this.currentUserId after
+    // the await below) so its non-null narrowing from the guard above holds.
+    const userId = this.currentUserId;
+
     this.isSaving = true;
     this.error = null;
 
@@ -87,7 +92,7 @@ export class CreateTaskModalComponent implements OnInit {
       status: value.status,
       assigned_to: value.assignedTo,
       due_date: toIsoDateString(value.dueDate),
-      created_by: this.currentUserId,
+      created_by: userId,
       related_item_name: this.data.relatedItemName ?? null
     });
 
@@ -97,6 +102,17 @@ export class CreateTaskModalComponent implements OnInit {
       this.error = error.message;
       return;
     }
+
+    // Best-effort — a failed log write shouldn't block the task having
+    // already been created.
+    const assignee = value.assignedTo ? this.assignableProfiles.find(profile => profile.id === value.assignedTo) : null;
+    await logActivity(
+      this.supabase,
+      userId,
+      'task',
+      null,
+      assignee ? `Created task "${value.title}" (assigned to ${this.profileLabel(assignee)})` : `Created task "${value.title}"`
+    );
 
     this.dialogRef.close(true);
   }

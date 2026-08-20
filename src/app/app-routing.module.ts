@@ -11,6 +11,7 @@ import { ManageComponent } from './manage/manage.component';
 import { ManageInventoryComponent } from './manage/inventory/manage-inventory.component';
 import { ManageTasksComponent } from './manage/tasks/manage-tasks.component';
 import { ManageTeamComponent } from './manage/team/manage-team.component';
+import { ManageActivityComponent } from './manage/activity/manage-activity.component';
 import { ManageDangerZoneComponent } from './manage/danger-zone/manage-danger-zone.component';
 import { CustomizeComponent } from './customize/customize.component';
 import { PendingApprovalComponent } from './pending-approval/pending-approval.component';
@@ -104,6 +105,13 @@ const routes: Routes = [
     canActivate: [approvedGuard, manageGuard],
     data: { breadcrumb: 'Manage Team' },
     title: 'ShelfSync | Manage Team'
+  },
+  {
+    path: 'manage/activity',
+    component: ManageActivityComponent,
+    canActivate: [approvedGuard, manageGuard],
+    data: { breadcrumb: 'Activity Log' },
+    title: 'ShelfSync | Activity Log'
   },
   {
     path: 'manage/danger-zone',

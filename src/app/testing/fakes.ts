@@ -90,7 +90,7 @@ function createFakeQueryBuilder(result: { data?: unknown; count?: number; error?
   const builder: Record<string, unknown> = {
     then: (resolve: (value: typeof result) => void) => resolve(result),
   };
-  for (const method of ['select', 'eq', 'neq', 'not', 'in', 'order', 'limit', 'single', 'maybeSingle', 'insert', 'update', 'delete', 'upsert']) {
+  for (const method of ['select', 'eq', 'neq', 'not', 'in', 'gte', 'lt', 'order', 'limit', 'single', 'maybeSingle', 'insert', 'update', 'delete', 'upsert']) {
     builder[method] = () => builder;
   }
   return builder;
@@ -178,6 +178,7 @@ export function createTestInventoryItemRow(overrides: Partial<InventoryItemRow> 
     name: 'Test Item',
     description: null,
     image: null,
+    barcode: null,
     category: null,
     physical_location: null,
     digital_location: null,

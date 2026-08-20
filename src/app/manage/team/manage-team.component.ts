@@ -20,6 +20,7 @@ import { EmptyStateComponent } from '../../shared/components/empty-state/empty-s
 import { Database } from '../../shared/models/database.types';
 import { TASK_STATUSES, TASK_STATUS_LABELS, TaskStatus } from '../../shared/models/task-status';
 import { profileDisplayName } from '../../shared/utils/profile-label';
+import { logActivity } from '../../shared/utils/activity-log';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
 
@@ -208,7 +209,8 @@ export class ManageTeamComponent implements OnInit {
       title: 'Remove team member?',
       message: `Remove ${profileDisplayName(profile)} from your organization? This can't be undone — they'll lose access immediately.`,
       confirmLabel: 'Remove',
-      successMessage: 'Member removed'
+      successMessage: 'Member removed',
+      activityMessage: `Removed ${profileDisplayName(profile)} from the team`
     });
   }
 
@@ -217,15 +219,16 @@ export class ManageTeamComponent implements OnInit {
       title: 'Deny join request?',
       message: `Deny ${profileDisplayName(profile)}'s request to join your organization? Their account will still exist, but they won't be able to join.`,
       confirmLabel: 'Deny',
-      successMessage: 'Request denied'
+      successMessage: 'Request denied',
+      activityMessage: `Denied ${profileDisplayName(profile)}'s join request`
     });
   }
 
   private confirmAndDeleteProfile(
     profile: Profile,
-    dialogText: { title: string; message: string; confirmLabel: string; successMessage: string }
+    dialogText: { title: string; message: string; confirmLabel: string; successMessage: string; activityMessage: string }
   ) {
-    const { successMessage, ...confirmData } = dialogText;
+    const { successMessage, activityMessage, ...confirmData } = dialogText;
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: { ...confirmData, danger: true },
       width: 'clamp(75%, 25rem, 60%)'
@@ -241,6 +244,12 @@ export class ManageTeamComponent implements OnInit {
       if (error) {
         this.membershipError = `Failed: ${error.message}`;
         return;
+      }
+
+      // Best-effort, and after the delete (not before) — the profile row
+      // being removed is exactly what this event is reporting on.
+      if (this.currentUserId) {
+        await logActivity(this.supabase, this.currentUserId, 'member', profile.id, activityMessage);
       }
 
       await this.loadProfiles();

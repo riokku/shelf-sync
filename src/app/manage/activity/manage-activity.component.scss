@@ -1,0 +1,73 @@
+@use '../../shared/styles/page-toolbar';
+
+.manage-activity-wrapper{
+  color: var(--mat-sys-on-surface);
+  padding: 3rem 1.5rem;
+  max-width: 100%;
+
+  h2{
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+  }
+
+  .container{
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+.day-nav{
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.day-nav-label{
+  font-weight: 600;
+  min-width: 14rem;
+}
+
+.activity-list{
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.activity-row{
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--mat-sys-surface-container-low);
+}
+
+.activity-entity-icon{
+  color: var(--mat-sys-on-surface-variant);
+  flex-shrink: 0;
+}
+
+.activity-details{
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.125rem;
+}
+
+.activity-message{
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.activity-time{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.75rem;
+}
+
+// Same "mobile" breakpoint the rest of Manage's pages use.
+@media (max-width: 600px){
+  .activity-row{
+    align-items: flex-start;
+  }
+}

@@ -39,6 +39,102 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_log: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          message: string
+          organization_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          message: string
+          organization_id?: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          message?: string
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_log_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_log_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_error_log: {
+        Row: {
+          app_env: string | null
+          created_at: string
+          id: string
+          message: string
+          organization_id: string | null
+          stack: string | null
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          app_env?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          organization_id?: string | null
+          stack?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          app_env?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          organization_id?: string | null
+          stack?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_error_log_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_error_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_field_options: {
         Row: {
           created_at: string
@@ -146,6 +242,7 @@ export type Database = {
         Row: {
           activity_log: string | null
           applicable_year: string | null
+          barcode: string | null
           category: string | null
           checked_out_to: string | null
           created_at: string
@@ -179,6 +276,7 @@ export type Database = {
         Insert: {
           activity_log?: string | null
           applicable_year?: string | null
+          barcode?: string | null
           category?: string | null
           checked_out_to?: string | null
           created_at?: string
@@ -212,6 +310,7 @@ export type Database = {
         Update: {
           activity_log?: string | null
           applicable_year?: string | null
+          barcode?: string | null
           category?: string | null
           checked_out_to?: string | null
           created_at?: string
@@ -347,6 +446,7 @@ export type Database = {
       site_settings: {
         Row: {
           id: string
+          inventory_table_columns: string[]
           logo_storage_path: string | null
           organization_id: string
           theme: string
@@ -355,6 +455,7 @@ export type Database = {
         }
         Insert: {
           id?: string
+          inventory_table_columns?: string[]
           logo_storage_path?: string | null
           organization_id: string
           theme?: string
@@ -363,6 +464,7 @@ export type Database = {
         }
         Update: {
           id?: string
+          inventory_table_columns?: string[]
           logo_storage_path?: string | null
           organization_id?: string
           theme?: string
@@ -487,6 +589,17 @@ export type Database = {
       }
       decline_item_retirement: { Args: { item_id: string }; Returns: undefined }
       decline_task_transfer: { Args: { task_id: string }; Returns: undefined }
+      log_client_error: {
+        Args: {
+          p_app_env?: string
+          p_message: string
+          p_stack?: string
+          p_url?: string
+          p_user_agent?: string
+        }
+        Returns: undefined
+      }
+      profile_display_name: { Args: { target_id: string }; Returns: string }
       purge_expired_organizations: { Args: never; Returns: undefined }
       request_item_retirement: {
         Args: { item_id: string; note?: string }
