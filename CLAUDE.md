@@ -33,6 +33,26 @@ every other field. `status`/`retirement_*`/`retired_*` are the exception: exclud
 grant and writable only through the retirement RPCs (see the Supabase Schema section below), so
 editing never lets someone bypass the approval workflow.
 
+An item's remaining stock can also be broken into individually-editable containers/boxes (e.g.
+100 units in 5 boxes of 20) rather than tracked only as the single `quantity_remaining` aggregate —
+`inventory_item_containers` (`item_id`, `quantity`, `location`), a child table in the same shape as
+`inventory_item_images` (no `organization_id` of its own; org isolation comes from `item_id`
+pointing at an already org-scoped `inventory_items` row), loaded via
+`loadInventoryItemContainers()` in `shared/utils/inventory-item-containers.ts`. `ModalTableComponent`
+shows them in a "Container breakdown" section (below Quantity information, in both view and edit
+mode) — each box auto-numbered "Box N" by its position in the list (no stored position column;
+display order is just `created_at asc`) plus an optional free-text location. Editing is full
+add/remove/edit, same Edit/Save/Cancel flow and any-authenticated-user access as every other field;
+an emptied (0-quantity) box stays listed rather than disappearing. Once an item has at least one
+container, `quantity_remaining`/`quantity_total` stop being freely editable and are instead always
+derived (`quantity_remaining` = sum of container quantities, `quantity_total` = that sum +
+`quantity_allocated`) — items with zero containers keep the old flat, freely-editable behavior
+unchanged. This replaced the old "Discard" flow (`DiscardInventoryModalComponent`, a quantity +
+mandatory-reason modal that decremented `quantity_remaining`/`quantity_total` together): container
+editing is now the only way to reduce stock with a record of which box it came from, though unlike
+Discard it has no mandatory reason field — a plain diffed activity log line ("Box 1 (20 → 10)") is
+what's recorded instead, same as every other edited field.
+
 Admins and managers get a `manage/activity` route (`ManageActivityComponent`) — a single
 cross-entity feed of everything that changed in the org: inventory item create/edit/retirement,
 task create/status-change (including completion)/transfer, and member join/approval/removal. It
@@ -475,6 +495,12 @@ yet on a hard refresh of `/inventory`.
   `fix_task_transfer_org_null_check` (its immediately-preceding version, including the
   target-approval check and null-safety guard) before adding the log insert, per that entry's own
   "diff against the previous version" warning.
+- `add_inventory_item_containers` — `inventory_item_containers` (`item_id` FK to `inventory_items`,
+  `quantity`, `location`), backing per-container quantity tracking (see Project Overview above).
+  Same shape as `add_inventory_item_images`: a child table with no `organization_id` of its own,
+  org isolation coming from `item_id`. Unlike images (admin/manager-only insert/delete), all four
+  policies here are any-authenticated-user — matching the widened `inventory_items` UPDATE grant
+  this same item-detail-popup edit flow already rides on.
 
 `supabase/seed.sql` ports the inventory page's hardcoded dummy items into `inventory_items` inserts
 for local dev (`checked_out_to` is left `null` since it's a real FK to `profiles` now and the

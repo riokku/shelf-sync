@@ -1,6 +1,6 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialogModule, MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -12,10 +12,10 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { InventoryItem, MAX_INVENTORY_ITEM_IMAGES, isLowStock } from '../../models/inventory-item.model';
+import { InventoryItemContainer } from '../../models/inventory-item-container.model';
 import { ImageGalleryComponent } from '../image-gallery/image-gallery.component';
 import { UserAvatarComponent } from '../user-avatar/user-avatar.component';
 import { CreateTaskModalComponent } from '../create-task-modal/create-task-modal.component';
-import { DiscardInventoryModalComponent, DiscardInventoryModalResult } from '../discard-inventory-modal/discard-inventory-modal.component';
 import { RequestRetirementModalComponent, RequestRetirementModalResult } from '../request-retirement-modal/request-retirement-modal.component';
 import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.component';
 import { AuthService, Profile } from '../../../core/auth.service';
@@ -32,6 +32,15 @@ import {
   loadInventoryItemImageRecords,
   uploadInventoryItemImages
 } from '../../utils/inventory-item-images';
+import { loadInventoryItemContainers, sumContainerQuantity } from '../../utils/inventory-item-containers';
+
+/** Working copy of a container while the item is being edited — id: null
+ *  marks a box that doesn't exist in inventory_item_containers yet. */
+interface EditableContainer {
+  id: string | null;
+  quantity: number;
+  location: string;
+}
 
 const FIELD_LABELS: Record<string, string> = {
   name: 'Name',
@@ -61,6 +70,7 @@ const FIELD_LABELS: Record<string, string> = {
         DatePipe,
         CurrencyPipe,
         ReactiveFormsModule,
+        FormsModule,
         MatDialogModule,
         MatIconModule,
         MatButtonModule,
@@ -78,7 +88,7 @@ const FIELD_LABELS: Record<string, string> = {
     styleUrl: './modal-table.component.scss'
 })
 
-export class ModalTableComponent {
+export class ModalTableComponent implements OnInit {
   dialogRef = inject(MatDialogRef<ModalTableComponent>);
   data = inject<InventoryItem>(MAT_DIALOG_DATA);
   protected authService = inject(AuthService);
@@ -98,8 +108,47 @@ export class ModalTableComponent {
   isSaving = false;
   saveError: string | null = null;
 
-  isDiscarding = false;
-  discardError: string | null = null;
+  /** Loaded once when the modal opens (not just while editing) since the
+   *  container breakdown is shown in view mode too, not only Edit. */
+  existingContainers: InventoryItemContainer[] = [];
+  editableContainers: EditableContainer[] = [];
+  removedContainerIds = new Set<string>();
+
+  async ngOnInit(){
+    this.existingContainers = await loadInventoryItemContainers(this.supabase, this.data.id);
+  }
+
+  containerSum(containers: { quantity: number }[]): number {
+    return sumContainerQuantity(containers);
+  }
+
+  /** Whether quantityRemaining/quantityTotal are currently derived from
+   *  containers rather than freely editable — true as soon as an item has
+   *  (or is being given) at least one container. */
+  get quantityDerivedFromContainers(): boolean {
+    return this.isEditing ? this.editableContainers.length > 0 : this.existingContainers.length > 0;
+  }
+
+  get containerQuantitySum(): number {
+    return sumContainerQuantity(this.editableContainers);
+  }
+
+  get derivedQuantityTotal(): number {
+    return (this.editForm.controls.quantityAllocated.value ?? 0) + this.containerQuantitySum;
+  }
+
+  addContainer(){
+    const defaultQuantity = this.editForm.controls.quantityPerContainer.value ?? 0;
+    this.editableContainers.push({ id: null, quantity: defaultQuantity, location: '' });
+  }
+
+  removeContainer(index: number){
+    const entry = this.editableContainers[index];
+    if (entry.id !== null) {
+      this.removedContainerIds.add(entry.id);
+    }
+    this.editableContainers.splice(index, 1);
+  }
 
   /** Shared across request/cancel/approve/decline — they're all single
    *  short-lived RPC calls, so one flag disabling all four buttons while any
@@ -211,77 +260,6 @@ export class ModalTableComponent {
       width: 'clamp(20rem, 40vw, 26rem)',
       maxWidth: '90vw'
     });
-  }
-
-  /** Open with any authenticated user, mirroring the edit flow above — same
-   *  RLS widened-to-any-authenticated-user policy backs both. Splits the
-   *  quantity/notes prompt (this dialog) from the actual write (below) so
-   *  the persistence + local-state-sync logic can stay next to saveEdit()'s,
-   *  which it closely mirrors. */
-  openDiscard(){
-    if (this.data.quantityRemaining <= 0 || this.isDiscarding) {
-      return;
-    }
-
-    const dialogRef = this.dialog.open(DiscardInventoryModalComponent, {
-      data: { itemName: this.data.name, quantityRemaining: this.data.quantityRemaining },
-      width: 'clamp(28rem, 50vw, 34rem)',
-      maxWidth: '90vw'
-    });
-
-    dialogRef.afterClosed().subscribe((result: DiscardInventoryModalResult | undefined) => {
-      if (result) {
-        void this.performDiscard(result.quantity, result.notes);
-      }
-    });
-  }
-
-  private async performDiscard(quantity: number, notes: string){
-    this.isDiscarding = true;
-    this.discardError = null;
-
-    const session = await this.authService.getSession();
-    if (!session) {
-      this.isDiscarding = false;
-      this.discardError = 'You must be signed in to discard inventory.';
-      return;
-    }
-
-    const beforeRemaining = this.data.quantityRemaining;
-    const beforeTotal = this.data.quantityTotal;
-    const afterRemaining = Math.max(beforeRemaining - quantity, 0);
-    const afterTotal = Math.max(beforeTotal - quantity, 0);
-
-    const { error } = await this.supabase.from('inventory_items').update({
-      quantity_remaining: afterRemaining,
-      quantity_total: afterTotal
-    }).eq('id', this.data.id);
-
-    if (error) {
-      this.isDiscarding = false;
-      this.discardError = error.message;
-      return;
-    }
-
-    this.data.quantityRemaining = afterRemaining;
-    this.data.quantityTotal = afterTotal;
-
-    const profile = this.authService.profile();
-    const userLabel = profile ? profileDisplayName(profile) : (session.user.email ?? 'Unknown user');
-    const message = `Discarded ${quantity} unit(s) (Quantity remaining ${beforeRemaining} → ${afterRemaining}). Reason: ${notes}`;
-
-    const logError = await logInventoryItemActivity(this.supabase, this.data.id, session.user.id, message);
-    if (!logError) {
-      this.data.activityLog = [
-        { timestamp: new Date().toISOString(), user: userLabel, userAvatarKey: profile?.avatar_key ?? null, message },
-        ...this.data.activityLog
-      ];
-    }
-    // Mirrors the per-item log above into the org-wide activity feed —
-    // prefixed with the item name since that feed spans many items.
-    await logActivity(this.supabase, session.user.id, 'inventory_item', this.data.id, `${this.data.name}: ${message}`);
-
-    this.isDiscarding = false;
   }
 
   /** Only reachable once stock is actually at zero — same gate the
@@ -485,6 +463,8 @@ export class ModalTableComponent {
     });
     this.removedImageIds.clear();
     this.clearNewImages();
+    this.editableContainers = this.existingContainers.map(container => ({ ...container }));
+    this.removedContainerIds.clear();
     const [existingImages, { data: profiles }] = await Promise.all([
       loadInventoryItemImageRecords(this.supabase, this.data.id),
       this.supabase.from('profiles').select('*').order('full_name'),
@@ -500,6 +480,8 @@ export class ModalTableComponent {
     this.saveError = null;
     this.removedImageIds.clear();
     this.clearNewImages();
+    this.editableContainers = [];
+    this.removedContainerIds.clear();
   }
 
   onNewImagesSelected(event: Event){
@@ -562,7 +544,20 @@ export class ModalTableComponent {
       return;
     }
 
-    const value = this.editForm.getRawValue();
+    const rawValue = this.editForm.getRawValue();
+    // Once an item has at least one container, quantityRemaining/quantityTotal
+    // stop being freely editable and are always derived from the containers
+    // instead (see quantityDerivedFromContainers) — overriding them here
+    // before describeChanges()/the update payload/Object.assign run below
+    // means the rest of this method's diff-logging and persistence logic
+    // doesn't need its own separate container-aware path.
+    const value = this.editableContainers.length > 0
+      ? {
+          ...rawValue,
+          quantityRemaining: this.containerQuantitySum,
+          quantityTotal: rawValue.quantityAllocated + this.containerQuantitySum
+        }
+      : rawValue;
     const changes = this.describeChanges(value);
 
     const { error } = await this.supabase.from('inventory_items').update({
@@ -628,6 +623,14 @@ export class ModalTableComponent {
       changes.push(imageSummary);
     }
 
+    // Container operations run independently of the image ones above — a
+    // failure in one shouldn't block the other from being attempted, so
+    // both always run and their errors are combined afterward.
+    const { summary: containerSummary, error: containerError } = await this.saveContainerChanges();
+    if (containerSummary) {
+      changes.push(containerSummary);
+    }
+
     if (changes.length > 0) {
       const profile = this.authService.profile();
       const userLabel = profile ? profileDisplayName(profile) : (session.user.email ?? 'Unknown user');
@@ -647,8 +650,8 @@ export class ModalTableComponent {
 
     this.isSaving = false;
 
-    if (imageError) {
-      this.saveError = imageError;
+    if (imageError || containerError) {
+      this.saveError = imageError ?? containerError;
       return;
     }
 
@@ -690,6 +693,72 @@ export class ModalTableComponent {
 
     this.removedImageIds.clear();
     this.clearNewImages();
+
+    return { summary: summaries.length > 0 ? summaries.join(', ') : null, error: null };
+  }
+
+  /** Mirrors saveImageChanges() above: diffs editableContainers against
+   *  existingContainers (the state startEdit() seeded it from), writes only
+   *  what actually changed (deletes/updates/inserts), and builds a
+   *  human-readable summary of each change. Box numbers in that summary are
+   *  each box's 1-based index within existingContainers at the *start* of
+   *  this edit — stable labels for the diff even though nothing is actually
+   *  persisted as a "box number" (display order is just created_at asc). */
+  private async saveContainerChanges(): Promise<{ summary: string | null; error: string | null }> {
+    const summaries: string[] = [];
+    const labelFor = (container: InventoryItemContainer) => `Box ${this.existingContainers.indexOf(container) + 1}`;
+
+    for (const id of this.removedContainerIds) {
+      const original = this.existingContainers.find(container => container.id === id);
+      const { error } = await this.supabase.from('inventory_item_containers').delete().eq('id', id);
+      if (error) {
+        return { summary: summaries.length > 0 ? summaries.join(', ') : null, error: `Failed to remove a container: ${error.message}` };
+      }
+      if (original) {
+        summaries.push(`Removed ${labelFor(original)}`);
+      }
+    }
+
+    for (const entry of this.editableContainers) {
+      if (entry.id === null) {
+        const { error } = await this.supabase.from('inventory_item_containers').insert({
+          item_id: this.data.id,
+          quantity: entry.quantity,
+          location: entry.location || null
+        });
+        if (error) {
+          return { summary: summaries.length > 0 ? summaries.join(', ') : null, error: `Failed to add a container: ${error.message}` };
+        }
+        summaries.push(`Added a container (${entry.quantity}${entry.location ? `, ${entry.location}` : ''})`);
+        continue;
+      }
+
+      const original = this.existingContainers.find(container => container.id === entry.id);
+      if (!original || (original.quantity === entry.quantity && original.location === entry.location)) {
+        continue;
+      }
+
+      const { error } = await this.supabase.from('inventory_item_containers').update({
+        quantity: entry.quantity,
+        location: entry.location || null
+      }).eq('id', entry.id);
+      if (error) {
+        return { summary: summaries.length > 0 ? summaries.join(', ') : null, error: `Failed to update a container: ${error.message}` };
+      }
+
+      const label = labelFor(original);
+      if (original.quantity !== entry.quantity) {
+        summaries.push(`${label} (${original.quantity} → ${entry.quantity})`);
+      }
+      if (original.location !== entry.location) {
+        summaries.push(`${label} location (${original.location || '—'} → ${entry.location || '—'})`);
+      }
+    }
+
+    if (summaries.length > 0) {
+      this.existingContainers = await loadInventoryItemContainers(this.supabase, this.data.id);
+    }
+    this.removedContainerIds.clear();
 
     return { summary: summaries.length > 0 ? summaries.join(', ') : null, error: null };
   }

@@ -214,16 +214,18 @@
             </header>
             @if (isEditing) {
               <div class="edit-field-row">
-                <mat-form-field appearance="outline">
-                  <mat-label>Total</mat-label>
-                  <mat-icon matPrefix>numbers</mat-icon>
-                  <input matInput type="number" formControlName="quantityTotal" />
-                  @if (editForm.controls.quantityTotal.hasError('required')) {
-                    <mat-error>Required.</mat-error>
-                  } @else if (editForm.controls.quantityTotal.hasError('min')) {
-                    <mat-error>Can't be negative.</mat-error>
-                  }
-                </mat-form-field>
+                @if (!quantityDerivedFromContainers) {
+                  <mat-form-field appearance="outline">
+                    <mat-label>Total</mat-label>
+                    <mat-icon matPrefix>numbers</mat-icon>
+                    <input matInput type="number" formControlName="quantityTotal" />
+                    @if (editForm.controls.quantityTotal.hasError('required')) {
+                      <mat-error>Required.</mat-error>
+                    } @else if (editForm.controls.quantityTotal.hasError('min')) {
+                      <mat-error>Can't be negative.</mat-error>
+                    }
+                  </mat-form-field>
+                }
                 <mat-form-field appearance="outline">
                   <mat-label>Allocated</mat-label>
                   <mat-icon matPrefix>inventory</mat-icon>
@@ -232,15 +234,23 @@
                     <mat-error>Can't be negative.</mat-error>
                   }
                 </mat-form-field>
-                <mat-form-field appearance="outline">
-                  <mat-label>Remaining</mat-label>
-                  <mat-icon matPrefix>inventory_2</mat-icon>
-                  <input matInput type="number" formControlName="quantityRemaining" />
-                  @if (editForm.controls.quantityRemaining.hasError('min')) {
-                    <mat-error>Can't be negative.</mat-error>
-                  }
-                </mat-form-field>
+                @if (!quantityDerivedFromContainers) {
+                  <mat-form-field appearance="outline">
+                    <mat-label>Remaining</mat-label>
+                    <mat-icon matPrefix>inventory_2</mat-icon>
+                    <input matInput type="number" formControlName="quantityRemaining" />
+                    @if (editForm.controls.quantityRemaining.hasError('min')) {
+                      <mat-error>Can't be negative.</mat-error>
+                    }
+                  </mat-form-field>
+                }
               </div>
+              @if (quantityDerivedFromContainers) {
+                <p class="computed-quantity-hint">
+                  <mat-icon>info</mat-icon>
+                  Total ({{ derivedQuantityTotal }}) and Remaining ({{ containerQuantitySum }}) are calculated from the containers below.
+                </p>
+              }
               <div class="edit-field-row">
                 <mat-form-field appearance="outline">
                   <mat-label>Items per container</mat-label>
@@ -275,6 +285,73 @@
                   </td>
                 </tr>
               </table>
+            }
+          </section>
+
+          <section class="info-section">
+            <header class="info-section-header">
+              <mat-icon class="me-2">view_in_ar</mat-icon>
+              Container breakdown
+            </header>
+            @if (isEditing) {
+              @if (editableContainers.length === 0) {
+                <p class="empty-hint container-empty-hint">Not tracked by individual container yet.</p>
+              } @else {
+                <ul class="container-list">
+                  @for (container of editableContainers; track $index) {
+                    <li class="container-row">
+                      <span class="container-label">Box {{ $index + 1 }}</span>
+                      <mat-form-field appearance="outline" class="container-quantity-field">
+                        <mat-label>Quantity</mat-label>
+                        <input
+                            matInput
+                            type="number"
+                            min="0"
+                            [(ngModel)]="container.quantity"
+                            [ngModelOptions]="{ standalone: true }"
+                          />
+                      </mat-form-field>
+                      <mat-form-field appearance="outline" class="container-location-field">
+                        <mat-label>Location</mat-label>
+                        <input
+                            matInput
+                            [(ngModel)]="container.location"
+                            [ngModelOptions]="{ standalone: true }"
+                          />
+                      </mat-form-field>
+                      <button
+                          mat-icon-button
+                          type="button"
+                          matTooltip="Remove container"
+                          (click)="removeContainer($index)"
+                        >
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    </li>
+                  }
+                </ul>
+              }
+              <button mat-stroked-button type="button" (click)="addContainer()">
+                <mat-icon>add</mat-icon>
+                Add container
+              </button>
+            } @else if (existingContainers.length === 0) {
+              <p class="empty-hint container-empty-hint">Not tracked by individual container. Edit to add containers.</p>
+            } @else {
+              <ul class="container-list">
+                @for (container of existingContainers; track container.id) {
+                  <li class="container-row container-row-view">
+                    <span class="container-label">Box {{ $index + 1 }}</span>
+                    @if (container.location) {
+                      <span class="container-location">{{ container.location }}</span>
+                    }
+                    <span class="container-quantity">{{ container.quantity }}</span>
+                  </li>
+                }
+              </ul>
+              <p class="container-total">
+                <span class="semibold">Total in containers:</span> {{ containerSum(existingContainers) }}
+              </p>
             }
           </section>
 
@@ -477,9 +554,6 @@
 @if (saveError) {
   <p class="error-message save-error">{{ saveError }}</p>
 }
-@if (discardError) {
-  <p class="error-message save-error">{{ discardError }}</p>
-}
 @if (retirementError) {
   <p class="error-message save-error">{{ retirementError }}</p>
 }
@@ -525,24 +599,6 @@
       <button mat-stroked-button type="button" (click)="openRequestRetirement()" [disabled]="isProcessingRetirement">
         <mat-icon>inventory_2</mat-icon>
         Request retirement
-      </button>
-    }
-    @if (data.quantityRemaining > 0) {
-      <button
-          mat-stroked-button
-          type="button"
-          color="warn"
-          (click)="openDiscard()"
-          [disabled]="isDiscarding"
-        >
-        @if (isDiscarding) {
-          <mat-spinner diameter="20"></mat-spinner>
-        } @else {
-          <ng-container>
-            <mat-icon>delete_sweep</mat-icon>
-            Discard
-          </ng-container>
-        }
       </button>
     }
     <button mat-stroked-button type="button" (click)="startEdit()">

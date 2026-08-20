@@ -206,6 +206,41 @@ export type Database = {
           },
         ]
       }
+      inventory_item_containers: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          location: string | null
+          quantity: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          location?: string | null
+          quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          location?: string | null
+          quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_item_containers_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_item_images: {
         Row: {
           created_at: string

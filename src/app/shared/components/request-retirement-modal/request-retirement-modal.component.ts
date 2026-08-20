@@ -31,9 +31,9 @@ export class RequestRetirementModalComponent {
   dialogRef = inject(MatDialogRef<RequestRetirementModalComponent, RequestRetirementModalResult>);
   data = inject<RequestRetirementModalData>(MAT_DIALOG_DATA);
 
-  // Unlike DiscardInventoryModalComponent's notes field, a reason here is
-  // optional — the item is already at zero, which is reason enough; the
-  // note is just extra context for whoever reviews the request.
+  // A reason here is optional — the item is already at zero, which is
+  // reason enough; the note is just extra context for whoever reviews the
+  // request.
   requestForm = new FormGroup({
     notes: new FormControl('', { nonNullable: true })
   });
