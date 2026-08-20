@@ -39,12 +39,12 @@ describe('HomeComponent', () => {
       { quantity_remaining: 20, low_quantity_threshold: 5 } // sufficient
     ]);
 
-    expect(component.lowStockCount).toBe(2);
+    expect(component.restockCount).toBe(2);
   });
 
   it('shows zero when nothing needs restocking', async () => {
     await createComponent([{ quantity_remaining: 20, low_quantity_threshold: 5 }]);
 
-    expect(component.lowStockCount).toBe(0);
+    expect(component.restockCount).toBe(0);
   });
 });

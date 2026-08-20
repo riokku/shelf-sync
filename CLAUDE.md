@@ -252,7 +252,12 @@ carry an aggregate "needs restocking" count (`shared/utils/inventory-stock.ts`'s
 subset of the former when no threshold is configured), visible to any authenticated user rather
 than gated to Manager+ the way the nearby pending-approvals badge is — restocking is everyone's
 concern, not an approval queue. Each loads its own count independently rather than sharing one
-service, matching how this app's other small badges already do the same.
+service, matching how this app's other small badges already do the same. `HomeComponent`'s own
+field is `restockCount` (not `lowStockCount`, unlike `HeaderComponent`'s still-so-named one) and its
+card label reads "X low or out of stock" rather than "X low stock" — `needsRestockAttention()`
+counts out-of-stock items too (and, incidentally, any pending-retirement item, since retirement can
+only be requested at zero remaining), so a narrower-sounding "low stock" label undercounted what the
+number actually represented.
 
 Inventory items can carry a `barcode` (manufacturer UPC/EAN scanned off a retail product, or a
 ShelfSync-generated QR label for an internal asset that never had one — see

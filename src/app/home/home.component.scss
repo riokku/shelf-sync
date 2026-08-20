@@ -88,7 +88,7 @@
 // Same pill shape/position as .permission-badge above, warning tone
 // instead of tertiary — reuses the app-wide warning tokens ModalTable's
 // own low-stock notice already uses, rather than a one-off color here.
-.low-stock-badge{
+.restock-badge{
   background: var(--app-warning-bg);
   color: var(--app-warning-on-bg);
 }

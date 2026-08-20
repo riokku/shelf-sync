@@ -23,12 +23,19 @@ export class HomeComponent implements OnInit {
 
   /** Same "needs restocking" fact HeaderComponent's Inventory nav badge
    *  shows, surfaced again here since this is the first thing a signed-in
-   *  user sees — see inventory-stock.ts. Loaded independently rather than
-   *  sharing state with HeaderComponent, matching how this app's other
-   *  small count badges (pendingManageCount vs. ManageComponent's own) are
-   *  already each self-sufficient rather than wired through a shared
-   *  service, for a query this cheap. */
-  lowStockCount = 0;
+   *  user sees — see inventory-stock.ts. needsRestockAttention() combines
+   *  low *and* out-of-stock (and, incidentally, any pending-retirement item
+   *  too, since retirement can only be requested at zero remaining) — named
+   *  restockCount rather than lowStockCount, and the card's own label below
+   *  reads "low or out of stock" rather than "low stock" (matching
+   *  HeaderComponent's own nav-badge tooltip wording), so neither the field
+   *  name nor the visible text implies a narrower "low stock only" count
+   *  than what this actually is. Loaded independently rather than sharing
+   *  state with HeaderComponent, matching how this app's other small count
+   *  badges (pendingManageCount vs. ManageComponent's own) are already each
+   *  self-sufficient rather than wired through a shared service, for a
+   *  query this cheap. */
+  restockCount = 0;
 
   async ngOnInit() {
     const { data } = await this.supabase
@@ -36,6 +43,6 @@ export class HomeComponent implements OnInit {
       .select('quantity_remaining, low_quantity_threshold')
       .neq('status', 'retired');
 
-    this.lowStockCount = (data ?? []).filter(needsRestockAttention).length;
+    this.restockCount = (data ?? []).filter(needsRestockAttention).length;
   }
 }

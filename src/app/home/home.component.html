@@ -8,10 +8,10 @@
 
     <div class="home-grid">
       <a class="home-card" routerLink="/inventory">
-        @if (lowStockCount > 0) {
-          <span class="permission-badge low-stock-badge">
+        @if (restockCount > 0) {
+          <span class="permission-badge restock-badge">
             <mat-icon>warning</mat-icon>
-            {{ lowStockCount }} low stock
+            {{ restockCount }} low or out of stock
           </span>
         }
         <mat-icon>inventory_2</mat-icon>
