@@ -187,9 +187,10 @@ backdrop and would be unreadable in light mode here. `FooterComponent` links to 
 embed it directly (landing, `/pricing` itself); `AppComponent`'s own `<app-footer>` (the one wrapping
 every authenticated page) explicitly passes `[showLegalLinks]="false"`, since a signed-in user has no
 reason to click through to marketing/legal pages from inside the app, and showing them there was just
-noise. `.footer-content` switches from `justify-content: space-between` to `center` when the links are
-hidden, so the lone Studio Rio mark doesn't end up stranded at the flex-start edge with nothing to
-balance against on the other side. The register form's submit button carries a "you agree to our
+noise. `.footer-content` switches from `justify-content: space-between` to `flex-end` when the links
+are hidden, keeping the lone Studio Rio mark in its usual bottom-right corner rather than stranded at
+the flex-start edge with nothing on the other side to push it there anymore. The register form's
+submit button carries a "you agree to our
 Terms/Privacy" notice linking the same routes regardless. The policy text itself is a starting draft
 (attributed to Studio Rio, contact `chris@studiorioconsulting.com`) — **not reviewed by an
 attorney**, and the Terms' governing-law section still has a literal `[Insert governing
