@@ -181,7 +181,11 @@
   display: flex;
   align-items: center;
   padding: 0.85rem 0.75rem;
-  margin-bottom: 0.75rem;
+  // Matches .info-section's own margin-bottom below it (the gap between
+  // one section and the next header) rather than the tighter 0.75rem this
+  // used to be — that read as cramped against the fields immediately
+  // following, more like a label than a section divider.
+  margin-bottom: 1.25rem;
   background-color: var(--mat-sys-surface-container-high);
   color: var(--mat-sys-primary);
   font-weight: 600;
