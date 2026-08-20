@@ -83,13 +83,19 @@ as `[data-theme='x']` blocks in `styles.scss` and toggling that attribute on `<h
 `THEME_PRESETS` in `shared/models/theme-preset.ts` for the option list and `core/site-settings.service.ts`
 for the load/preview/persist logic. `AppComponent` loads settings once on startup (readable by
 `anon` too, so branding applies pre-login) and `HeaderComponent` swaps in the custom logo when set,
-falling back to the default SS mark. The same `customize` route's Data tab holds three sections
-across a two-column layout: the left column stacks "Filter data" (the field-options editors —
-approved category/physical-location *values*) above "Inventory data" (which optional fields appear
-on the "Create item" form), and the right column holds "Table presentation" (which optional columns
-appear in the Inventory page's table view) — the left column's two sections share one
-`.customize-card` (a divider between them, same pattern `.customize-section + .customize-section`
-uses on the Style tab), keeping the two-column grid itself unchanged.
+falling back to the default SS mark. The same `customize` route's Data tab holds three sections,
+each its own full-width card stacked top to bottom rather than side-by-side columns (an earlier
+two-column layout made whichever card held two sections force the page to the height of its
+*tallest* column, wasting the other column's width without actually shortening the page — full
+width instead lets every section's checkbox groups spread across more columns, which is what
+actually cuts down scrolling): "Filter data" (the field-options editors — approved category/
+physical-location *values*) and "Inventory data" (which optional fields appear on the "Create item"
+form) share one `.customize-card` (a divider between them, same pattern `.customize-section +
+.customize-section` uses on the Style tab), then "Table presentation" (which optional columns
+appear in the Inventory page's table view) gets its own. Both grouped-checkbox sections
+("Inventory data"/"Table presentation") share `.table-column-groups`' CSS multi-column layout,
+sized by `column-width` rather than a fixed column count so it adapts to whatever width is actually
+available instead of a breakpoint tuned for the old narrower layout.
 
 "Table presentation" lets an admin choose which columns appear in the Inventory page's table view.
 Every practical `InventoryItem` field is selectable (Barcode, Description, Category, Physical
