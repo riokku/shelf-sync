@@ -60,15 +60,22 @@
   height: 0.5rem;
   border-radius: 50%;
   background: var(--app-success-bg);
-  animation: online-dot-pulse 2s ease-in-out infinite;
+  // More pronounced than ManageTeamComponent's own .online-dot (which sits
+  // in a busier per-row context, one of several small overlays on an
+  // avatar) — this one's the only piece of motion anywhere in the header,
+  // so it can afford to read more noticeably: a bigger/more opaque ring,
+  // a scale bounce on the dot itself alongside it, and a snappier cadence.
+  animation: online-dot-pulse 1.4s ease-in-out infinite;
 }
 
 @keyframes online-dot-pulse{
   0%, 100%{
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--app-success-bg) 55%, transparent);
+    transform: scale(1);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--app-success-bg) 70%, transparent);
   }
   50%{
-    box-shadow: 0 0 0 0.25rem transparent;
+    transform: scale(1.25);
+    box-shadow: 0 0 0 0.4375rem transparent;
   }
 }
 
