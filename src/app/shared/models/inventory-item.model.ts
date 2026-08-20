@@ -56,6 +56,9 @@ export class InventoryItem {
   retirementRequestedAt: string;
   retiredByLabel: string;
   retiredAt: string;
+  isLocked: boolean;
+  lockedByLabel: string;
+  lockedAt: string;
 
   constructor(
     id: string,
@@ -90,7 +93,10 @@ export class InventoryItem {
     retirementRequestNote: string,
     retirementRequestedAt: string,
     retiredByLabel: string,
-    retiredAt: string
+    retiredAt: string,
+    isLocked: boolean,
+    lockedByLabel: string,
+    lockedAt: string
   ) {
     //Tracking
     this.id = id;
@@ -138,6 +144,11 @@ export class InventoryItem {
     this.retirementRequestedAt = retirementRequestedAt;
     this.retiredByLabel = retiredByLabel;
     this.retiredAt = retiredAt;
+
+    //Lock information
+    this.isLocked = isLocked;
+    this.lockedByLabel = lockedByLabel;
+    this.lockedAt = lockedAt;
   }
 
 }

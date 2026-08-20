@@ -14,6 +14,10 @@
         <mat-icon>palette</mat-icon>
         Style
       </mat-button-toggle>
+      <mat-button-toggle value="workflow">
+        <mat-icon>rule</mat-icon>
+        Workflow
+      </mat-button-toggle>
     </mat-button-toggle-group>
 
     @if (viewMode === 'data') {
@@ -123,7 +127,7 @@
           </div>
         </div>
       </div>
-    } @else {
+    } @else if (viewMode === 'style') {
       <div class="customize-tab-content">
         <div class="customize-card">
           <section class="customize-section">
@@ -204,6 +208,48 @@
                 </button>
               }
             </div>
+          </section>
+        </div>
+      </div>
+    } @else {
+      <div class="customize-tab-content">
+        <div class="customize-card">
+          <section class="customize-section">
+            <h3>Retirement approval</h3>
+            <p class="section-hint">
+              When on, retiring an out-of-stock item always needs a second admin/manager to
+              approve or decline the request. Turn this off for a smaller team where that
+              second approval is just friction — retirement requests take effect immediately
+              instead.
+            </p>
+            <mat-slide-toggle
+                [checked]="selectedRequireRetirementApproval"
+                (change)="toggleRequireRetirementApproval($event.checked)"
+              >
+              Require approval for retirement requests
+            </mat-slide-toggle>
+            @if (requireRetirementApprovalError) {
+              <p class="error-message">{{ requireRetirementApprovalError }}</p>
+            }
+            @if (requireRetirementApprovalSaved) {
+              <p class="success-message">Saved for everyone.</p>
+            }
+            <button
+                mat-flat-button
+                color="primary"
+                type="button"
+                (click)="saveRequireRetirementApproval()"
+                [disabled]="isSavingRequireRetirementApproval || !requireRetirementApprovalChanged"
+              >
+              @if (isSavingRequireRetirementApproval) {
+                <mat-spinner diameter="20"></mat-spinner>
+              } @else {
+                <ng-container>
+                  <mat-icon>check</mat-icon>
+                  Save
+                </ng-container>
+              }
+            </button>
           </section>
         </div>
       </div>

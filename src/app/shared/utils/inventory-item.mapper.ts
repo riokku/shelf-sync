@@ -10,7 +10,8 @@ export function toInventoryItem(
   activityLog: ActivityLogEntry[] = [],
   checkedOutToAvatarKey: string | null = null,
   retirementRequestedByLabel = '',
-  retiredByLabel = ''
+  retiredByLabel = '',
+  lockedByLabel = ''
 ): InventoryItem {
   const gallery = images.length > 0 ? images : (row.image ? [row.image] : []);
 
@@ -47,6 +48,9 @@ export function toInventoryItem(
     row.retirement_request_note ?? '',
     row.retirement_requested_at ?? '',
     retiredByLabel,
-    row.retired_at ?? ''
+    row.retired_at ?? '',
+    row.is_locked,
+    lockedByLabel,
+    row.locked_at ?? ''
   );
 }

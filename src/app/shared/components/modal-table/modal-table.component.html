@@ -21,7 +21,21 @@
   <button mat-icon-button type="button" matTooltip="View/print item label" (click)="openQrLabel()">
     <mat-icon>qr_code_2</mat-icon>
   </button>
+  @if (authService.canManage()) {
+    <button
+        mat-icon-button
+        type="button"
+        [matTooltip]="data.isLocked ? 'Unlock item' : 'Lock item'"
+        [disabled]="isProcessingLock"
+        (click)="toggleLock()"
+      >
+      <mat-icon>{{ data.isLocked ? 'lock_open' : 'lock' }}</mat-icon>
+    </button>
+  }
 </div>
+@if (lockError) {
+  <p class="error-message save-error">{{ lockError }}</p>
+}
 @if (data.barcode) {
   <div class="asset-id-row barcode-row">
     <mat-icon>barcode_reader</mat-icon>
@@ -32,6 +46,11 @@
   <p class="retired-notice">
     <mat-icon>inventory_2</mat-icon>
     This item has been retired and is no longer active inventory.
+  </p>
+} @else if (data.isLocked) {
+  <p class="retired-notice">
+    <mat-icon>lock</mat-icon>
+    Locked by {{ data.lockedByLabel || 'a manager' }} — only admins and managers can edit it.
   </p>
 } @else if (isLowStock) {
   <p class="low-stock-warning">
@@ -602,10 +621,12 @@
         Request retirement
       </button>
     }
-    <button mat-stroked-button type="button" (click)="startEdit()">
-      <mat-icon>edit</mat-icon>
-      Edit
-    </button>
+    @if (!data.isLocked || authService.canManage()) {
+      <button mat-stroked-button type="button" (click)="startEdit()">
+        <mat-icon>edit</mat-icon>
+        Edit
+      </button>
+    }
     @if (authService.canManage()) {
       <button mat-flat-button color="primary" type="button" (click)="createTask()">
         <mat-icon>add_task</mat-icon>

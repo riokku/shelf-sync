@@ -4,7 +4,13 @@ import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { ModalTableComponent } from './modal-table.component';
 import { AuthService } from '../../../core/auth.service';
 import { SupabaseService } from '../../../core/supabase.service';
-import { createFakeAuthService, createFakeMatDialogRef, createFakeSupabaseService, createTestInventoryItem } from '../../../testing/fakes';
+import {
+  createFakeAuthService,
+  createFakeMatDialogRef,
+  createFakeProfile,
+  createFakeSupabaseService,
+  createTestInventoryItem
+} from '../../../testing/fakes';
 
 describe('ModalTableComponent', () => {
   let component: ModalTableComponent;
@@ -65,5 +71,67 @@ describe('ModalTableComponent', () => {
     component.isEditing = true;
 
     expect(component.quantityDerivedFromContainers).toBeTrue();
+  });
+
+  describe('toggleLock()', () => {
+    async function setup(options: {
+      role?: 'admin' | 'manager' | 'staff';
+      isLocked?: boolean;
+      rpcError?: { message: string } | null;
+    } = {}) {
+      const profile = createFakeProfile({ role: options.role ?? 'manager', full_name: 'Jamie Rivera', nickname: null });
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [ModalTableComponent],
+        providers: [
+          { provide: AuthService, useValue: createFakeAuthService(profile) },
+          { provide: SupabaseService, useValue: createFakeSupabaseService({ error: options.rpcError ?? null }) },
+          { provide: MatDialogRef, useValue: createFakeMatDialogRef() },
+          { provide: MAT_DIALOG_DATA, useValue: createTestInventoryItem({ isLocked: options.isLocked ?? false }) }
+        ]
+      }).compileComponents();
+
+      const localFixture = TestBed.createComponent(ModalTableComponent);
+      localFixture.detectChanges();
+      return localFixture.componentInstance;
+    }
+
+    it('is a no-op for staff — only admin/manager can lock or unlock', async () => {
+      const staffComponent = await setup({ role: 'staff' });
+
+      await staffComponent.toggleLock();
+
+      expect(staffComponent.data.isLocked).toBeFalse();
+    });
+
+    it('locks the item and records who, for a manager', async () => {
+      const managerComponent = await setup({ role: 'manager', isLocked: false });
+
+      await managerComponent.toggleLock();
+
+      expect(managerComponent.data.isLocked).toBeTrue();
+      expect(managerComponent.data.lockedByLabel).toBe('Jamie Rivera');
+      expect(managerComponent.lockError).toBeNull();
+      expect(managerComponent.isProcessingLock).toBeFalse();
+    });
+
+    it('unlocks an already-locked item, clearing the lockedByLabel', async () => {
+      const adminComponent = await setup({ role: 'admin', isLocked: true });
+
+      await adminComponent.toggleLock();
+
+      expect(adminComponent.data.isLocked).toBeFalse();
+      expect(adminComponent.data.lockedByLabel).toBe('');
+    });
+
+    it('surfaces the RPC error and leaves the lock state unchanged on failure', async () => {
+      const managerComponent = await setup({ role: 'manager', isLocked: false, rpcError: { message: 'nope' } });
+
+      await managerComponent.toggleLock();
+
+      expect(managerComponent.lockError).toBe('nope');
+      expect(managerComponent.data.isLocked).toBeFalse();
+      expect(managerComponent.isProcessingLock).toBeFalse();
+    });
   });
 });

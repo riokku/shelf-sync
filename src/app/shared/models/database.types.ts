@@ -287,6 +287,9 @@ export type Database = {
           id: string
           image: string | null
           is_checked_out: boolean
+          is_locked: boolean
+          locked_at: string | null
+          locked_by: string | null
           low_quantity_threshold: number | null
           name: string
           order_link: string | null
@@ -321,6 +324,9 @@ export type Database = {
           id?: string
           image?: string | null
           is_checked_out?: boolean
+          is_locked?: boolean
+          locked_at?: string | null
+          locked_by?: string | null
           low_quantity_threshold?: number | null
           name: string
           order_link?: string | null
@@ -355,6 +361,9 @@ export type Database = {
           id?: string
           image?: string | null
           is_checked_out?: boolean
+          is_locked?: boolean
+          locked_at?: string | null
+          locked_by?: string | null
           low_quantity_threshold?: number | null
           name?: string
           order_link?: string | null
@@ -380,6 +389,13 @@ export type Database = {
           {
             foreignKeyName: "inventory_items_checked_out_to_fkey"
             columns: ["checked_out_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_locked_by_fkey"
+            columns: ["locked_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -485,6 +501,7 @@ export type Database = {
           inventory_table_columns: string[]
           logo_storage_path: string | null
           organization_id: string
+          require_retirement_approval: boolean
           theme: string
           updated_at: string
           updated_by: string | null
@@ -495,6 +512,7 @@ export type Database = {
           inventory_table_columns?: string[]
           logo_storage_path?: string | null
           organization_id: string
+          require_retirement_approval?: boolean
           theme?: string
           updated_at?: string
           updated_by?: string | null
@@ -505,6 +523,7 @@ export type Database = {
           inventory_table_columns?: string[]
           logo_storage_path?: string | null
           organization_id?: string
+          require_retirement_approval?: boolean
           theme?: string
           updated_at?: string
           updated_by?: string | null
@@ -645,6 +664,10 @@ export type Database = {
       }
       request_task_transfer: {
         Args: { target_id: string; task_id: string }
+        Returns: undefined
+      }
+      set_inventory_item_lock: {
+        Args: { item_id: string; locked: boolean }
         Returns: undefined
       }
       update_task_status: {

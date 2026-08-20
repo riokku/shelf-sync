@@ -113,6 +113,14 @@
   margin-bottom: 1rem;
 }
 
+// Workflow tab's boolean settings (e.g. retirement approval) — same
+// bottom margin as .theme-swatch-row above, ahead of the error/success
+// text and Save button that follow it.
+mat-slide-toggle{
+  display: block;
+  margin-bottom: 1rem;
+}
+
 .theme-swatch{
   display: flex;
   align-items: center;

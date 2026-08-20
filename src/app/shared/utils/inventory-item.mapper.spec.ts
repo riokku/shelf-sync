@@ -106,6 +106,29 @@ describe('toInventoryItem', () => {
     expect(item.retirementRequestNote).toBe('No longer stocked');
   });
 
+  it('maps lock fields, defaulting the label param and empty timestamp', () => {
+    const row = createTestInventoryItemRow({
+      is_locked: true,
+      locked_by: 'user-5',
+      locked_at: '2026-03-01T00:00:00.000Z'
+    });
+
+    const item = toInventoryItem(row, [], '', [], null, '', '', 'Sam Rivera');
+
+    expect(item.isLocked).toBe(true);
+    expect(item.lockedByLabel).toBe('Sam Rivera');
+    expect(item.lockedAt).toBe('2026-03-01T00:00:00.000Z');
+  });
+
+  it('defaults isLocked to false and lockedAt to an empty string when unset', () => {
+    const row = createTestInventoryItemRow({ is_locked: false, locked_at: null });
+
+    const item = toInventoryItem(row, [], '');
+
+    expect(item.isLocked).toBe(false);
+    expect(item.lockedAt).toBe('');
+  });
+
   it('defaults retirement note/timestamps to empty strings rather than null when unset', () => {
     const row = createTestInventoryItemRow({
       retirement_request_note: null,

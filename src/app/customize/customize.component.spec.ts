@@ -211,6 +211,61 @@ describe('CustomizeComponent', () => {
     });
   });
 
+  describe('workflow (retirement approval)', () => {
+    it('initializes selectedRequireRetirementApproval from the persisted setting', () => {
+      expect(component.selectedRequireRetirementApproval).toBe(true);
+    });
+
+    it('toggleRequireRetirementApproval() updates the local selection and clears any prior saved flag', () => {
+      component.requireRetirementApprovalSaved = true;
+
+      component.toggleRequireRetirementApproval(false);
+
+      expect(component.selectedRequireRetirementApproval).toBe(false);
+      expect(component.requireRetirementApprovalSaved).toBe(false);
+    });
+
+    describe('requireRetirementApprovalChanged', () => {
+      it('is false when the selection matches the persisted setting', () => {
+        expect(component.requireRetirementApprovalChanged).toBe(false);
+      });
+
+      it('is true once toggled', () => {
+        component.toggleRequireRetirementApproval(false);
+        expect(component.requireRetirementApprovalChanged).toBe(true);
+      });
+    });
+
+    it('saveRequireRetirementApproval() persists the selection and flags it saved on success', async () => {
+      const updateSpy = spyOn(siteSettings, 'updateRequireRetirementApproval').and.returnValue(Promise.resolve(null));
+      component.selectedRequireRetirementApproval = false;
+
+      await component.saveRequireRetirementApproval();
+
+      expect(updateSpy).toHaveBeenCalledWith(false);
+      expect(component.requireRetirementApprovalSaved).toBe(true);
+      expect(component.requireRetirementApprovalError).toBeNull();
+    });
+
+    it('saveRequireRetirementApproval() surfaces the error on failure', async () => {
+      spyOn(siteSettings, 'updateRequireRetirementApproval').and.returnValue(Promise.resolve('nope'));
+
+      await component.saveRequireRetirementApproval();
+
+      expect(component.requireRetirementApprovalError).toBe('nope');
+      expect(component.requireRetirementApprovalSaved).toBe(false);
+    });
+
+    it('saveRequireRetirementApproval() is a no-op while already saving', async () => {
+      const updateSpy = spyOn(siteSettings, 'updateRequireRetirementApproval').and.returnValue(Promise.resolve(null));
+      component.isSavingRequireRetirementApproval = true;
+
+      await component.saveRequireRetirementApproval();
+
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe('logo', () => {
     function fakeFileInputEvent(file: File | null): Event {
       return { target: { files: file ? [file] : [], value: '' } } as unknown as Event;

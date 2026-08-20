@@ -22,6 +22,7 @@ import { AuthService, Profile } from '../../../core/auth.service';
 import { SupabaseService } from '../../../core/supabase.service';
 import { NotificationService } from '../../../core/notification.service';
 import { InventoryFieldOptionsService } from '../../../core/inventory-field-options.service';
+import { SiteSettingsService } from '../../../core/site-settings.service';
 import { toIsoDateString, parseIsoDate } from '../../utils/date';
 import { loadInventoryActivityByItemId, logInventoryItemActivity } from '../../utils/inventory-item-activity';
 import { logActivity } from '../../utils/activity-log';
@@ -93,6 +94,7 @@ export class ModalTableComponent implements OnInit {
   data = inject<InventoryItem>(MAT_DIALOG_DATA);
   protected authService = inject(AuthService);
   protected inventoryFieldOptions = inject(InventoryFieldOptionsService);
+  protected siteSettings = inject(SiteSettingsService);
   private dialog = inject(MatDialog);
   private supabase = inject(SupabaseService).client;
   private notification = inject(NotificationService);
@@ -155,6 +157,9 @@ export class ModalTableComponent implements OnInit {
    *  is in flight is enough; no need for a separate one per action. */
   isProcessingRetirement = false;
   retirementError: string | null = null;
+
+  isProcessingLock = false;
+  lockError: string | null = null;
 
   readonly maxInventoryItemImages = MAX_INVENTORY_ITEM_IMAGES;
   existingImages: InventoryItemImageRecord[] = [];
@@ -304,13 +309,25 @@ export class ModalTableComponent implements OnInit {
         () => this.supabase.rpc('request_item_retirement', { item_id: this.data.id, note: result.note || undefined }),
         () => {
           const profile = this.authService.profile();
-          this.data.status = 'retirement_pending';
           this.data.retirementRequestedById = profile?.id ?? null;
           this.data.retirementRequestedByLabel = profile ? profileDisplayName(profile) : '';
           this.data.retirementRequestNote = result.note;
           this.data.retirementRequestedAt = new Date().toISOString();
+
+          // Matches whichever path the RPC actually took server-side (see
+          // Customize > Workflow's "Require approval for retirement
+          // requests" toggle) — otherwise a request made while approval
+          // isn't required would show a stale "pending" state here even
+          // though the item was already retired.
+          if (this.siteSettings.requireRetirementApproval()) {
+            this.data.status = 'retirement_pending';
+          } else {
+            this.data.status = 'retired';
+            this.data.retiredByLabel = profile ? profileDisplayName(profile) : '';
+            this.data.retiredAt = new Date().toISOString();
+          }
         },
-        'Retirement requested'
+        this.siteSettings.requireRetirementApproval() ? 'Retirement requested' : 'Item retired'
       );
     });
   }
@@ -406,6 +423,39 @@ export class ModalTableComponent implements OnInit {
     const { data: profiles } = await this.supabase.from('profiles').select('*').order('full_name');
     const activityByItemId = await loadInventoryActivityByItemId(this.supabase, [this.data.id], profiles ?? []);
     this.data.activityLog = activityByItemId.get(this.data.id) ?? [];
+  }
+
+  /** admin/manager only — set_inventory_item_lock() enforces this same
+   *  check server-side, this is just the UI-level mirror of it (same
+   *  reasoning canRequestRetirement's own doc comment gives). Locking an
+   *  item is what actually gates the Edit button/general edit access for
+   *  everyone else — see is_locked's own RLS check on inventory_items'
+   *  UPDATE policy. */
+  async toggleLock(){
+    if (!this.authService.canManage() || this.isProcessingLock) {
+      return;
+    }
+
+    const locking = !this.data.isLocked;
+    this.isProcessingLock = true;
+    this.lockError = null;
+
+    const { error } = await this.supabase.rpc('set_inventory_item_lock', { item_id: this.data.id, locked: locking });
+
+    if (error) {
+      this.isProcessingLock = false;
+      this.lockError = error.message;
+      return;
+    }
+
+    const profile = this.authService.profile();
+    this.data.isLocked = locking;
+    this.data.lockedByLabel = locking ? (profile ? profileDisplayName(profile) : '') : '';
+    this.data.lockedAt = locking ? new Date().toISOString() : '';
+
+    await this.refreshActivityLog();
+    this.isProcessingLock = false;
+    this.notification.success(locking ? 'Item locked' : 'Item unlocked');
   }
 
   async copyId(){

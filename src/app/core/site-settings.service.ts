@@ -29,6 +29,9 @@ export class SiteSettingsService {
   private readonly _inventoryFormFields = signal<InventoryFormFieldKey[]>(DEFAULT_INVENTORY_FORM_FIELDS);
   readonly inventoryFormFields = this._inventoryFormFields.asReadonly();
 
+  private readonly _requireRetirementApproval = signal(true);
+  readonly requireRetirementApproval = this._requireRetirementApproval.asReadonly();
+
   /** Loads the caller's own organization's settings row and applies the theme
    *  attribute. `site_settings` is per-organization and no longer readable by
    *  anon, so pre-login (and any signed-out state) just falls back to the
@@ -41,6 +44,7 @@ export class SiteSettingsService {
       this._logoStoragePath.set(null);
       this._inventoryTableColumns.set(DEFAULT_INVENTORY_TABLE_COLUMNS);
       this._inventoryFormFields.set(DEFAULT_INVENTORY_FORM_FIELDS);
+      this._requireRetirementApproval.set(true);
       this.applyTheme('default');
       return;
     }
@@ -59,6 +63,7 @@ export class SiteSettingsService {
     this._inventoryFormFields.set(
       (data?.inventory_form_fields as InventoryFormFieldKey[] | undefined) ?? DEFAULT_INVENTORY_FORM_FIELDS
     );
+    this._requireRetirementApproval.set(data?.require_retirement_approval ?? true);
     this.applyTheme(this._theme());
   }
 
@@ -153,6 +158,28 @@ export class SiteSettingsService {
     }
 
     this._inventoryFormFields.set(fields);
+    return null;
+  }
+
+  async updateRequireRetirementApproval(required: boolean): Promise<string | null> {
+    const session = await this.authService.getSession();
+    const organizationId = this.authService.organizationId();
+    if (!session || !organizationId) {
+      return 'You must be signed in to update this setting.';
+    }
+
+    const { error } = await this.supabase
+      .from('site_settings')
+      .upsert(
+        { organization_id: organizationId, require_retirement_approval: required, updated_by: session.user.id },
+        { onConflict: 'organization_id' }
+      );
+
+    if (error) {
+      return error.message;
+    }
+
+    this._requireRetirementApproval.set(required);
     return null;
   }
 

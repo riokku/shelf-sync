@@ -5,6 +5,7 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { InventoryFieldOptionsService } from '../core/inventory-field-options.service';
 import { SiteSettingsService } from '../core/site-settings.service';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
@@ -15,7 +16,7 @@ import { INVENTORY_FORM_FIELD_GROUPS, InventoryFormFieldKey } from '../shared/mo
 
 @Component({
   selector: 'app-customize',
-  imports: [FormsModule, MatButtonModule, MatButtonToggleModule, MatCheckboxModule, MatIconModule, MatProgressSpinnerModule, BreadcrumbsComponent, FieldOptionsEditorComponent],
+  imports: [FormsModule, MatButtonModule, MatButtonToggleModule, MatCheckboxModule, MatIconModule, MatProgressSpinnerModule, MatSlideToggleModule, BreadcrumbsComponent, FieldOptionsEditorComponent],
   templateUrl: './customize.component.html',
   styleUrl: './customize.component.scss'
 })
@@ -31,8 +32,11 @@ export class CustomizeComponent implements OnInit, OnDestroy {
   // create/all view switches, rather than mat-tab-group — this page only
   // ever had the two tabs, and this matches the rest of the app's "Manage"
   // section instead of being the one place still using Material's own tab
-  // strip.
-  viewMode: 'style' | 'data' = 'data';
+  // strip. "Workflow" is the new home for org-behavior toggles like
+  // requireRetirementApproval below — deliberately its own tab rather than
+  // folded into Data, since it's about how actions behave, not what data
+  // looks like, and more of these are expected to land here later.
+  viewMode: 'style' | 'data' | 'workflow' = 'data';
 
   readonly presets = THEME_PRESETS;
   selectedTheme = this.siteSettings.theme();
@@ -60,6 +64,11 @@ export class CustomizeComponent implements OnInit, OnDestroy {
   formFieldsError: string | null = null;
   formFieldsSaved = false;
 
+  selectedRequireRetirementApproval = this.siteSettings.requireRetirementApproval();
+  isSavingRequireRetirementApproval = false;
+  requireRetirementApprovalError: string | null = null;
+  requireRetirementApprovalSaved = false;
+
   get currentLogoUrl(): string | null {
     return this.logoPreviewUrl ?? this.siteSettings.logoUrl();
   }
@@ -84,6 +93,10 @@ export class CustomizeComponent implements OnInit, OnDestroy {
     }
     const savedSet = new Set(saved);
     return this.selectedFormFields.some(key => !savedSet.has(key));
+  }
+
+  get requireRetirementApprovalChanged(): boolean {
+    return this.selectedRequireRetirementApproval !== this.siteSettings.requireRetirementApproval();
   }
 
   ngOnDestroy() {
@@ -170,6 +183,30 @@ export class CustomizeComponent implements OnInit, OnDestroy {
       return;
     }
     this.formFieldsSaved = true;
+  }
+
+  toggleRequireRetirementApproval(required: boolean) {
+    this.selectedRequireRetirementApproval = required;
+    this.requireRetirementApprovalSaved = false;
+  }
+
+  async saveRequireRetirementApproval() {
+    if (this.isSavingRequireRetirementApproval) {
+      return;
+    }
+
+    this.isSavingRequireRetirementApproval = true;
+    this.requireRetirementApprovalError = null;
+    this.requireRetirementApprovalSaved = false;
+
+    const error = await this.siteSettings.updateRequireRetirementApproval(this.selectedRequireRetirementApproval);
+    this.isSavingRequireRetirementApproval = false;
+
+    if (error) {
+      this.requireRetirementApprovalError = error;
+      return;
+    }
+    this.requireRetirementApprovalSaved = true;
   }
 
   onLogoSelected(event: Event) {

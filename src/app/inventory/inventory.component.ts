@@ -361,7 +361,8 @@ export class InventoryComponent implements OnInit{
         activityByItemId.get(row.id) ?? [],
         resolveProfileAvatarKey(row.checked_out_to, profileList),
         resolveProfileName(row.retirement_requested_by, profileList),
-        resolveProfileName(row.retired_by, profileList)
+        resolveProfileName(row.retired_by, profileList),
+        resolveProfileName(row.locked_by, profileList)
       )
     );
     this.isLoading = false;

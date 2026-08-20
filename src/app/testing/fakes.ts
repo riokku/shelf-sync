@@ -82,12 +82,14 @@ export function createFakeSiteSettingsService(overrides: Partial<{
   logoUrl: string | null;
   inventoryTableColumns: InventoryTableColumnKey[];
   inventoryFormFields: InventoryFormFieldKey[];
+  requireRetirementApproval: boolean;
 }> = {}): SiteSettingsService {
   const fake = {
     theme: signal(overrides.theme ?? 'default').asReadonly(),
     logoUrl: signal(overrides.logoUrl ?? null).asReadonly(),
     inventoryTableColumns: signal(overrides.inventoryTableColumns ?? DEFAULT_INVENTORY_TABLE_COLUMNS).asReadonly(),
     inventoryFormFields: signal(overrides.inventoryFormFields ?? DEFAULT_INVENTORY_FORM_FIELDS).asReadonly(),
+    requireRetirementApproval: signal(overrides.requireRetirementApproval ?? true).asReadonly(),
     load: async () => {},
     applyTheme: () => {},
     updateTheme: async () => null,
@@ -95,6 +97,7 @@ export function createFakeSiteSettingsService(overrides: Partial<{
     removeLogo: async () => null,
     updateInventoryTableColumns: async () => null,
     updateInventoryFormFields: async () => null,
+    updateRequireRetirementApproval: async () => null,
     loadLogoUrlForOrganization: async () => null,
   };
   return fake as unknown as SiteSettingsService;
@@ -170,11 +173,11 @@ export function createFakeMatDialogRef() {
   };
 }
 
-/** InventoryItem's constructor is positional (25 args, no defaults) rather
+/** InventoryItem's constructor is positional (28 args, no defaults) rather
  *  than an options object, so this helper — with overrides for whatever a
  *  given test actually cares about — keeps specs readable and resilient to
  *  new fields being added later (this file has already had to be updated
- *  twice this project for exactly that reason). */
+ *  several times this project for exactly that reason). */
 export function createTestInventoryItem(overrides: Partial<{
   id: string;
   name: string;
@@ -189,6 +192,8 @@ export function createTestInventoryItem(overrides: Partial<{
   checkedOutToAvatarKey: string | null;
   status: InventoryItemStatus;
   retirementRequestedById: string | null;
+  isLocked: boolean;
+  lockedByLabel: string;
 }> = {}): InventoryItem {
   return new InventoryItem(
     overrides.id ?? 'item-1',
@@ -223,6 +228,9 @@ export function createTestInventoryItem(overrides: Partial<{
     '',
     '',
     '',
+    '',
+    overrides.isLocked ?? false,
+    overrides.lockedByLabel ?? '',
     ''
   );
 }
@@ -261,6 +269,9 @@ export function createTestInventoryItemRow(overrides: Partial<InventoryItemRow> 
     retirement_request_note: null,
     retired_by: null,
     retired_at: null,
+    is_locked: false,
+    locked_by: null,
+    locked_at: null,
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
     ...overrides,

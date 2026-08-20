@@ -247,6 +247,48 @@ existing item's barcode the same way. The shared `QrLabelModalComponent` (QR ren
 via the `qrcode` package) generates a printable/downloadable label encoding an item's id for
 assets with no manufacturer barcode — scanning that label later resolves straight back to the item.
 
+Retirement requests can either always need a second approver (today's original behavior) or
+retire immediately, an admin's choice via a per-org `site_settings.require_retirement_approval`
+toggle (default `true`, so every existing org keeps the original behavior unchanged) surfaced on a
+third `customize` tab, **Workflow** (`CustomizeComponent.viewMode` is now
+`'style' | 'data' | 'workflow'`), the intended home for future org-behavior toggles alongside this
+first one — a `mat-slide-toggle` (this app's first use of that Material module), same local-
+selection/save-button/error/saved-flag pattern the Data tab's other settings already use. The
+toggle is read inside `request_item_retirement()` itself (`coalesce(..., true)` if no
+`site_settings` row exists yet, matching every other site-settings default-when-missing read): when
+true, unchanged existing behavior (item enters `retirement_pending`, still needs
+`approve_item_retirement`/`decline_item_retirement`); when false, the item is retired immediately
+in the same call — `status` goes straight to `retired`, with `retirement_requested_by/at/note` set
+for the audit trail same as before *and* `retired_by`/`retired_at` set immediately — logging
+"Retired (approval not required)" instead of "Requested retirement". `approve_item_retirement`/
+`decline_item_retirement`/`cancel_item_retirement_request` are unchanged; they're simply never
+reached on this path. `ModalTableComponent.openRequestRetirement()`'s local-state update branches
+on `siteSettings.requireRetirementApproval()` the same way, so the popup reflects whichever status
+the RPC actually landed on rather than always assuming `retirement_pending`.
+
+Admins and managers can lock an individual inventory item to stop anyone else from editing it —
+`ModalTableComponent` gets a lock/unlock icon button (next to the existing copy-id/copy-link/QR-
+label icons, visible only to `authService.canManage()`) calling the `set_inventory_item_lock(item_id,
+locked)` RPC, and a "Locked by \<name\> — only admins and managers can edit it" banner in the same
+priority slot as the existing retired/low-stock notices. The Edit button itself is wrapped in
+`@if (!data.isLocked || authService.canManage())`, so a locked item simply has no visible edit entry
+point for anyone else, rather than letting them open the form and fail to save. Backed by
+`inventory_items.is_locked`/`locked_by`/`locked_at`, all three deliberately excluded from the
+existing any-authenticated column grant (same reasoning `status`/`retirement_*` already use) —
+`set_inventory_item_lock` (admin/manager only, checked via `current_user_role()`) is the only way
+they change. The lock is actually *enforced* via a `with check` clause added to the existing broad
+"Authenticated users can update inventory items" UPDATE policy —
+`is_locked = false or current_user_role() in ('admin','manager')` — rather than a grant, since a
+flat `authenticated` Postgres role can't otherwise express "managers can write, staff can't" (see
+the Important RLS constraint note below); this only works safely because `is_locked` is RPC-only,
+so a staff member can never bypass the check by simply resubmitting `is_locked: false` themselves.
+`inventory_item_containers`' three CRUD policies (previously fully any-authenticated with no join
+back to the parent item at all — a real lock-bypass vector, since a locked item's effective
+`quantity_remaining` could still change via its container boxes) got the same
+`is_locked = false or current_user_role() in (...)` check, joined via `item_id`, matching how
+`inventory_item_images`' policies already join through to the parent item for their own checks
+(which, on inspection, turned out to already be admin/manager-only and needed no change here).
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -567,6 +609,18 @@ yet on a hard refresh of `/inventory`.
   `add_site_settings_inventory_table_columns` for needing no RLS/grant changes; unlike that
   migration's intentionally-narrow four-column default, this one defaults to *every* field so an
   org that's never visited the new section sees no change to their create form.
+- `add_site_settings_require_retirement_approval` — adds `site_settings.require_retirement_approval`
+  (`boolean not null default true`, preserving today's always-needs-approval behavior for every
+  existing org) and a `create or replace` on `request_item_retirement()` (diffed against its
+  `add_activity_log` version above, the latest at the time) that reads it and, when false, retires
+  the item immediately instead of setting `retirement_pending` — see Project Overview above for the
+  full behavior and the new Customize > Workflow tab that surfaces it.
+- `add_inventory_item_locking` — adds `inventory_items.is_locked`/`locked_by`/`locked_at` (all three
+  excluded from the existing column grant, RPC-only) and `set_inventory_item_lock(item_id, locked)`
+  (admin/manager only), plus a `with check` addition to the existing broad inventory-items UPDATE
+  policy and matching `is_locked`-aware rewrites of all three `inventory_item_containers` policies —
+  see Project Overview above for the full mechanism and why `is_locked` has to stay out of the
+  column grant for the RLS check to be safe.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

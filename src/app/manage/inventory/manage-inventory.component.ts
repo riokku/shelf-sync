@@ -269,7 +269,8 @@ export class ManageInventoryComponent implements OnInit {
         activityLog,
         resolveProfileAvatarKey(row.checked_out_to, this.assignableProfiles),
         resolveProfileName(row.retirement_requested_by, this.assignableProfiles),
-        resolveProfileName(row.retired_by, this.assignableProfiles)
+        resolveProfileName(row.retired_by, this.assignableProfiles),
+        resolveProfileName(row.locked_by, this.assignableProfiles)
       ),
       width: 'clamp(45rem, 78vw, 70rem)',
       maxWidth: '90vw',
