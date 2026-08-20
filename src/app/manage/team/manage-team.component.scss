@@ -111,6 +111,14 @@
 
 .pending-member-last-seen{
   flex-shrink: 0;
+  // "Online" is much shorter than "Never signed in"/"Last seen 2 months
+  // ago", so without a reserved minimum the actions next to it (and, on
+  // .team-member-last-seen below, the role badge) landed at a different
+  // horizontal spot per row depending on which text a given member
+  // happened to have. white-space: nowrap rather than letting a string
+  // past this minimum wrap onto a second line.
+  min-width: 9.5rem;
+  white-space: nowrap;
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.8125rem;
 
@@ -228,6 +236,12 @@ mat-panel-description{
 }
 
 .team-member-last-seen{
+  // Reserved minimum width so .team-member-role (right next to it) lines
+  // up at the same spot across rows regardless of how long a given
+  // member's presence text is — see .pending-member-last-seen's identical
+  // rule for the full reasoning.
+  min-width: 9.5rem;
+  white-space: nowrap;
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.8125rem;
 
