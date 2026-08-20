@@ -250,9 +250,24 @@ table[mat-table]{
     }
 
     // The description below already clamps to 3 lines (see mat-card-content
-    // p below) — the title/category line has no such treatment, so a long
-    // item name was the thing actually breaking the grid's even row heights.
-    mat-card-title,
+    // p below). The title used to be forced to a single truncated line for
+    // a similar reason (an unbounded wrapped title was making that whole
+    // Bootstrap flex-row of cards taller than the rows around it) — but
+    // that meant long names silently lost information rather than just
+    // running long, which is the actual bug being fixed here. Clamping to
+    // 2 lines instead of 1 bounds how much taller a long-titled row can get
+    // (at most one extra line, not unlimited) while still showing more of
+    // the name than a single truncated line did.
+    mat-card-title{
+      display: -webkit-box;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: normal;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
     mat-card-subtitle{
       display: block;
       overflow: hidden;
