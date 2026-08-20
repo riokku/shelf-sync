@@ -116,7 +116,13 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1.5rem;
-  align-items: start;
+  // Grid's own default (stretch) rather than the align-items: start this
+  // used to have — that sized each card to its own content, so Free (6
+  // features) ended up visibly shorter than Pro (8 features). Stretching
+  // means .tier-card (already display:flex/flex-direction:column) fills
+  // the tallest card's height in the row; the shorter feature lists just
+  // leave more whitespace at the bottom of their card, which is the
+  // normal look for a pricing grid, not a bug.
 
   @media (max-width: 900px){
     grid-template-columns: 1fr;
