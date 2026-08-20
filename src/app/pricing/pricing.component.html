@@ -1,0 +1,75 @@
+<div class="pricing-page">
+  <div class="pricing-hero-region">
+    <div class="pricing-hero-backdrop" aria-hidden="true"></div>
+
+    <header class="pricing-nav">
+      <a class="brand" routerLink="/">
+        <img src="assets/logo-light.svg" alt="ShelfSync logo" class="brand-mark" />
+        <span class="brand-name">ShelfSync</span>
+      </a>
+      <nav class="pricing-nav-actions">
+        <a mat-button routerLink="/login">Log in</a>
+        <a mat-flat-button color="primary" routerLink="/register">
+          Get started free
+        </a>
+      </nav>
+    </header>
+
+    <section class="pricing-hero">
+      <span class="eyebrow">Pricing</span>
+      <h1>Simple pricing that grows with your team</h1>
+      <p class="hero-subtitle">
+        Start free. Upgrade when your inventory — or your team — outgrows it. No credit card
+        required to get started.
+      </p>
+    </section>
+  </div>
+
+  <section class="pricing-tiers">
+    <div class="pricing-grid">
+      @for (tier of tiers; track tier.key) {
+        <div class="tier-card" [class.tier-highlighted]="tier.highlighted">
+          @if (tier.highlighted) {
+            <span class="tier-badge">
+              <mat-icon>star</mat-icon>
+              Most popular
+            </span>
+          }
+          <h2>{{ tier.name }}</h2>
+          <p class="tier-tagline">{{ tier.tagline }}</p>
+          <p class="tier-price">
+            <span class="tier-price-amount">{{ tier.price }}</span>
+            <span class="tier-price-note">{{ tier.priceNote }}</span>
+          </p>
+          <a
+              mat-flat-button
+              [color]="tier.highlighted ? 'primary' : undefined"
+              [class.tier-cta-outline]="!tier.highlighted"
+              routerLink="/register"
+            >
+            {{ tier.ctaLabel }}
+          </a>
+          <ul class="tier-features">
+            @for (feature of tier.features; track feature) {
+              @if (feature.startsWith('Everything in')) {
+                <li class="tier-feature-divider">{{ feature }}</li>
+              } @else {
+                <li>
+                  <mat-icon>check</mat-icon>
+                  {{ feature }}
+                </li>
+              }
+            }
+          </ul>
+        </div>
+      }
+    </div>
+
+    <p class="pricing-footnote">
+      Billing isn't live yet — every plan above signs up through the same free flow today.
+      Prices shown are what each tier is expected to cost once billing launches.
+    </p>
+  </section>
+
+  <app-footer />
+</div>

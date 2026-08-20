@@ -1,0 +1,257 @@
+// Only .pricing-hero-region below is pinned dark (matching landing's own
+// hero treatment) — the pricing cards section follows the visitor's
+// light/dark preference via the usual --mat-sys-* tokens, same as any
+// normal page, rather than replicating landing's video-backed "features"
+// section just for consistency's sake.
+.pricing-page{
+  position: relative;
+  color: var(--mat-sys-on-surface);
+  overflow-x: hidden;
+}
+
+// Same fixed-dark-gradient-plus-nav treatment as landing's own
+// .hero-region — see that component's own comments for the isolation/
+// color-scheme reasoning. No wave transition or mock UI here; this page
+// doesn't need to replicate every decorative element of the full landing
+// page, just its nav/hero visual language.
+.pricing-hero-region{
+  position: relative;
+  isolation: isolate;
+  color-scheme: dark;
+  color: #ffffff;
+}
+
+.pricing-hero-backdrop{
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+  z-index: -1;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--mat-sys-tertiary) 45%, transparent), transparent 55%),
+    linear-gradient(160deg, color-mix(in srgb, var(--mat-sys-primary) 55%, black) 0%, color-mix(in srgb, var(--mat-sys-tertiary) 40%, #14141a) 100%);
+}
+
+.pricing-nav{
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.brand{
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  text-decoration: none;
+  color: #ffffff;
+}
+
+.brand-mark{
+  display: block;
+  height: 2rem;
+  width: auto;
+}
+
+.brand-name{
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.pricing-nav-actions{
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pricing-hero{
+  position: relative;
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 3rem 2rem 5rem;
+  text-align: center;
+}
+
+.eyebrow{
+  display: inline-block;
+  padding: 0.3rem 0.75rem;
+  margin-bottom: 1rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.pricing-hero h1{
+  margin: 0 0 1rem;
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  letter-spacing: -0.01em;
+}
+
+.hero-subtitle{
+  margin: 0 auto;
+  max-width: 34rem;
+  font-size: 1.0625rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.pricing-tiers{
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 4rem 2rem 5rem;
+}
+
+.pricing-grid{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+  align-items: start;
+
+  @media (max-width: 900px){
+    grid-template-columns: 1fr;
+    max-width: 26rem;
+    margin: 0 auto;
+  }
+}
+
+.tier-card{
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 2rem 1.75rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 1rem;
+  background: var(--mat-sys-surface-container-low);
+
+  a[mat-flat-button]{
+    margin: 1.25rem 0 1.75rem;
+  }
+
+  // A plain mat-flat-button's own default already carries the filled
+  // primary treatment — this only needs to visually recede for the two
+  // non-highlighted tiers, so it reads more like a secondary action next
+  // to .tier-highlighted's real primary button.
+  .tier-cta-outline{
+    background: var(--mat-sys-surface-container-high);
+    color: var(--mat-sys-on-surface);
+  }
+}
+
+.tier-highlighted{
+  border-color: var(--mat-sys-primary);
+  // Slightly raised over its neighbors — a common pricing-page convention
+  // for the plan being nudged, reinforced by .tier-badge above it.
+  transform: translateY(-0.5rem);
+  box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, 0.12);
+
+  @media (max-width: 900px){
+    transform: none;
+  }
+}
+
+.tier-badge{
+  position: absolute;
+  top: -0.9rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  background: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+
+  mat-icon{
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+.tier-card h2{
+  margin: 0 0 0.375rem;
+  font-size: 1.375rem;
+}
+
+.tier-tagline{
+  margin: 0;
+  min-height: 2.5rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.9375rem;
+}
+
+.tier-price{
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  margin: 1.25rem 0 0;
+}
+
+.tier-price-amount{
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.tier-price-note{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+}
+
+.tier-features{
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li{
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-size: 0.9375rem;
+
+    mat-icon{
+      flex-shrink: 0;
+      margin-top: 0.125rem;
+      font-size: 1.125rem;
+      width: 1.125rem;
+      height: 1.125rem;
+      color: var(--mat-sys-primary);
+    }
+  }
+}
+
+.tier-feature-divider{
+  margin: 0.25rem 0 -0.25rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.pricing-footnote{
+  margin: 3rem auto 0;
+  max-width: 34rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+  text-align: center;
+}

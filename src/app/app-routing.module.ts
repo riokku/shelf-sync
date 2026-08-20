@@ -33,6 +33,11 @@ const routes: Routes = [
     title: 'ShelfSync | Inventory management, simplified'
   },
   {
+    path: 'pricing',
+    loadComponent: () => import('./pricing/pricing.component').then(m => m.PricingComponent),
+    title: 'ShelfSync | Pricing'
+  },
+  {
     path: 'login',
     loadComponent: () => import('./login/login.component').then(m => m.LoginComponent),
     title: 'ShelfSync | Log in'

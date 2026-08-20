@@ -65,6 +65,9 @@ describe('AppComponent', () => {
     fakeRouter.url = '/terms';
     expect(app.showChrome()).toBe(false);
 
+    fakeRouter.url = '/pricing';
+    expect(app.showChrome()).toBe(false);
+
     fakeRouter.url = '/home';
     expect(app.showChrome()).toBe(true);
 

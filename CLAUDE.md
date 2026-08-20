@@ -104,6 +104,22 @@ text itself is a starting draft (attributed to Studio Rio, contact
 section still has a literal `[Insert governing state/country]` placeholder — have both reviewed
 before relying on them for real signups.
 
+`/pricing` (`PricingComponent`) is a public three-tier pricing page (Free/Basic/Pro, Basic marked
+"Most popular"), same unguarded/chrome-hidden/own-nav-and-footer treatment as landing — linked from
+both the landing page's nav and `FooterComponent`. **No billing is wired up yet** — every tier's
+call to action goes to the same real `/register` flow (a page footnote says so explicitly), since
+signing up today gives full access regardless of which card was clicked; Stripe integration is
+separate, later work. The three tiers' caps and feature splits are a first pass at what *should*
+differentiate them once enforcement exists, chosen around what actually drives Supabase hosting
+cost for this app: item photos are by far the biggest lever (both storage *and* the repeated
+bandwidth/egress cost of browsing them, since Supabase bills egress separately from storage),
+team size is a moderate, predictable lever (Auth bills by monthly active users), and inventory/task
+row counts are minor unless an org reaches tens of thousands of items. Core inventory/task
+functionality is deliberately available on every tier rather than paywalled — differentiation is
+by *scale* (item/team/photo-storage caps) and *admin polish* (custom branding, data export, error
+log access — all Pro-only), not gating the product's basic value proposition this early on. See
+`PricingComponent`'s own doc comment for the full per-tier breakdown.
+
 The Inventory page has a card/table view toggle (`InventoryComponent.viewMode`, a
 `mat-button-toggle-group` above the item list) — card view is the original gallery layout; table
 view is a `mat-table`/`matSort` grid, sortable by clicking any column header (`sortedInventoryList`
@@ -246,6 +262,7 @@ core/
 header/, footer/                                           # standalone layout components; header has the logout button
 login/                                                      # standalone login screen, real Supabase auth
 register/                                                   # standalone signup screen, real Supabase auth
+pricing/                                                    # standalone public pricing page, no billing wired up yet (see Project Overview above)
 privacy/, terms/                                            # standalone legal pages, no session required (see Project Overview above)
 home/                                                        # post-login landing hub: cards linking to the pages below
 inventory/                                                  # standalone inventory page: filters, item table, opens modal
