@@ -572,12 +572,19 @@ yet on a hard refresh of `/inventory`.
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power
 equipment) across matching `inventory_field_options`, plus a 4-pallet `inventory_item_containers`
 breakdown on one item and one `retirement_pending`/one `retired` row, so every stock-status and
-retirement-workflow state has an example out of the box. `checked_out_to`/`retirement_requested_by`/
+retirement-workflow state has an example out of the box. Every item also carries placeholder
+supplier info (a handful of fictional per-category suppliers — e.g. "Gatherwell Event Furniture
+Co." for the furniture rows — each with a lead time and an `https://*.example.com/order/...` link,
+`.example.com` being the reserved, non-resolving placeholder domain), a `digital_location`
+("Shared Drive > Inventory > <category> > <item>"), and an `applicable_year`, rather than leaving
+those null — `expiration_date` and `barcode` are still left null throughout, deliberately:
+expiration doesn't meaningfully apply to rental furniture/AV/tents, and a fabricated barcode risks
+colliding with the real barcode-scanning feature. `checked_out_to`/`retirement_requested_by`/
 `retired_by` are all left `null` since they're real FKs to `profiles` now and the seed doesn't
 create fake auth users. The hosted project's own org was reseeded to the same catalog directly (a
 one-off `supabase db query --linked` run against live data, not a migration — see git history for
-that commit's script) rather than via this file, which only ever runs against a fresh local Docker
-instance.
+that commit's script and the later one that filled in the placeholder fields) rather than via this
+file, which only ever runs against a fresh local Docker instance.
 
 **Important RLS constraint:** every signed-in user maps to the same Postgres role
 (`authenticated`) in Supabase — there's no separate DB role per app role. That means
