@@ -118,7 +118,7 @@
                     @if (!isOnline(member.profile)) {
                       <span class="team-member-last-seen">{{ lastSeenLabel(member.profile) }}</span>
                     }
-                    <span class="team-member-role">{{ member.profile.role }}</span>
+                    <span class="team-member-role" [class]="'role-' + member.profile.role">{{ member.profile.role }}</span>
                   </span>
                   @if (authService.role() === 'admin') {
                     <span class="team-member-actions">

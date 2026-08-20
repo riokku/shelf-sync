@@ -208,13 +208,45 @@ mat-panel-description{
 
 .team-member-info{
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.75rem;
+  // Wider than a typical inline gap since .team-member-role is now a
+  // colored pill rather than plain text — its own background made the
+  // previous 0.75rem read as too tight against .team-member-last-seen
+  // right next to it.
+  gap: 0.5rem 1.25rem;
 }
 
 .team-member-last-seen{
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.8125rem;
+}
+
+// Same pill shape as ModalTableComponent's .status-pill/InventoryComponent's
+// .table-status-pill — role-* modifiers below supply the per-role color.
+.team-member-role{
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+
+  &.role-admin{
+    background: var(--mat-sys-primary-container);
+    color: var(--mat-sys-on-primary-container);
+  }
+
+  &.role-manager{
+    background: var(--mat-sys-tertiary-container);
+    color: var(--mat-sys-on-tertiary-container);
+  }
+
+  &.role-staff{
+    background: var(--mat-sys-surface-variant);
+    color: var(--mat-sys-on-surface-variant);
+  }
 }
 
 // A single flex item (not each button separately) so mat-panel-description's
