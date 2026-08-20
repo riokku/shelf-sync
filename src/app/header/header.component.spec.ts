@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, discardPeriodicTasks, fakeAsync, tick } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 
@@ -39,7 +39,7 @@ describe('HeaderComponent', () => {
  *  canManage() the way pendingManageCount is above), so it needs its own
  *  authenticated fixture rather than the unauthenticated default above. */
 describe('HeaderComponent low stock badge', () => {
-  it('counts items that are low or out of stock, for a plain staff user', async () => {
+  it('counts items that are low or out of stock, for a plain staff user', fakeAsync(() => {
     const supabase = createFakeSupabaseService({
       data: [
         { quantity_remaining: 1, low_quantity_threshold: 5 }, // low
@@ -49,21 +49,26 @@ describe('HeaderComponent low stock badge', () => {
       error: null
     });
 
-    await TestBed.configureTestingModule({
+    TestBed.configureTestingModule({
       imports: [HeaderComponent],
       providers: [
         provideRouter([]),
         { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: 'staff' })) },
         { provide: SupabaseService, useValue: supabase }
       ]
-    }).compileComponents();
+    });
 
     const fixture = TestBed.createComponent(HeaderComponent);
+    // Not fixture.whenStable() — the constructor now also schedules a
+    // setInterval (the online-team-count poll), which Zone.js counts as a
+    // permanently-outstanding macrotask, so whenStable() never resolves
+    // once it's running. tick() flushes the initial async loads instead.
     fixture.detectChanges();
-    await fixture.whenStable();
+    tick();
 
     expect(fixture.componentInstance.lowStockCount()).toBe(2);
-  });
+    discardPeriodicTasks();
+  }));
 });
 
 describe('HeaderComponent organization name', () => {
@@ -101,4 +106,109 @@ describe('HeaderComponent organization name', () => {
 
     expect(fixture.debugElement.query(By.css('.brand-org-name'))).toBeNull();
   });
+});
+
+describe('HeaderComponent online team count', () => {
+  function agoIso(ms: number): string {
+    return new Date(Date.now() - ms).toISOString();
+  }
+
+  it('counts only approved profiles whose last_active_at is recent', fakeAsync(() => {
+    const supabase = createFakeSupabaseService({
+      data: [
+        { last_active_at: agoIso(0) }, // online
+        { last_active_at: null }, // never signed in
+        { last_active_at: agoIso(10 * 60_000) } // 10 minutes ago — offline
+      ],
+      error: null
+    });
+
+    TestBed.configureTestingModule({
+      imports: [HeaderComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: 'staff' })) },
+        { provide: SupabaseService, useValue: supabase }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(HeaderComponent);
+    fixture.detectChanges();
+    tick();
+
+    expect(fixture.componentInstance.onlineTeamCount()).toBe(1);
+    discardPeriodicTasks();
+  }));
+
+  it('shows the count next to a pulsing dot, right below the org name', fakeAsync(() => {
+    const supabase = createFakeSupabaseService({ data: [{ last_active_at: agoIso(0) }], error: null });
+
+    TestBed.configureTestingModule({
+      imports: [HeaderComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile(), { organizationName: 'Acme Co' }) },
+        { provide: SupabaseService, useValue: supabase }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(HeaderComponent);
+    fixture.detectChanges();
+    tick();
+    fixture.detectChanges();
+
+    const onlineCountEl = fixture.debugElement.query(By.css('.brand-online-count'));
+    expect(onlineCountEl.nativeElement.textContent.trim()).toBe('1 online');
+    expect(onlineCountEl.query(By.css('.online-dot'))).not.toBeNull();
+    discardPeriodicTasks();
+  }));
+
+  it('refreshes on a 30s interval while authenticated', fakeAsync(() => {
+    // Counts calls to the 'profiles' table specifically, rather than the
+    // plain createFakeSupabaseService() helper's one-static-result-for-
+    // every-table fake, so each interval tick is distinguishable from the
+    // initial load and from the other counts' own (different-table)
+    // queries this component also fires.
+    let profilesQueryCount = 0;
+    // Chainable through whatever this component's *other* counts call
+    // (lowStockCount's .select().neq(), etc.) — a narrower builder here
+    // would need to anticipate every method each of those happens to
+    // chain, which is exactly what this generic one avoids.
+    const emptyBuilder: Record<string, unknown> = {
+      then: (resolve: (value: unknown) => void) => resolve({ data: [], error: null }),
+    };
+    for (const method of ['select', 'eq', 'neq', 'not', 'in', 'gte', 'lt', 'order', 'limit', 'single', 'maybeSingle']) {
+      emptyBuilder[method] = () => emptyBuilder;
+    }
+    const supabase = {
+      client: {
+        from: (table: string) => {
+          if (table !== 'profiles') {
+            return emptyBuilder;
+          }
+          profilesQueryCount++;
+          return { select: () => ({ eq: () => Promise.resolve({ data: [{ last_active_at: agoIso(0) }], error: null }) }) };
+        }
+      }
+    } as unknown as SupabaseService;
+
+    TestBed.configureTestingModule({
+      imports: [HeaderComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: 'staff' })) },
+        { provide: SupabaseService, useValue: supabase }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(HeaderComponent);
+    fixture.detectChanges();
+    tick();
+    const queriesAfterLoad = profilesQueryCount;
+
+    tick(30_000);
+    expect(profilesQueryCount).toBeGreaterThan(queriesAfterLoad);
+
+    discardPeriodicTasks();
+  }));
 });

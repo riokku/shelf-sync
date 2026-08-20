@@ -12,22 +12,70 @@
   text-decoration: none;
 }
 
-// The signed-in org's name, next to the logo — absent for a visitor whose
+// The signed-in org's name (plus, right below it, how many of its members
+// are currently online) next to the logo — absent for a visitor whose
 // profile/org hasn't loaded yet (AuthService.organizationName() populates
 // asynchronously, same lag every other profile-derived signal has) rather
-// than reserving space for it up front. A vertical divider (rather than
-// just a gap) reads more like "this logo belongs to this org" than two
-// unrelated pieces of text sitting side by side.
-.brand-org-name{
+// than reserving space for it up front. A vertical divider on the wrapper
+// (rather than just a gap) reads more like "this logo belongs to this org"
+// than two unrelated pieces of text sitting next to it; living on the
+// wrapper rather than just .brand-org-name means it spans both stacked
+// lines instead of only the top one.
+.brand-org-info{
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
   padding-left: 0.75rem;
   border-left: 1px solid var(--mat-sys-outline-variant);
+  max-width: 12rem;
+}
+
+.brand-org-name{
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.9375rem;
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 12rem;
+}
+
+// How many approved org members are online right now (HeaderComponent's
+// onlineTeamCount, polled independently — see its own doc comment) — same
+// pulsing-dot visual language as ManageTeamComponent's per-member indicator,
+// just not overlaid on an avatar here, so no absolute positioning.
+.brand-online-count{
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--app-success-text);
+  font-size: 0.8125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.online-dot{
+  flex-shrink: 0;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--app-success-bg);
+  animation: online-dot-pulse 2s ease-in-out infinite;
+}
+
+@keyframes online-dot-pulse{
+  0%, 100%{
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--app-success-bg) 55%, transparent);
+  }
+  50%{
+    box-shadow: 0 0 0 0.25rem transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .online-dot{
+    animation: none;
+  }
 }
 
 // height (not just max-height) is required: some source SVGs declare
@@ -142,10 +190,10 @@
     display: inline-flex;
   }
 
-  // Narrower cap so a long org name can't crowd out the logo/mobile-menu
-  // trigger sharing this same row once .main-nav/.header-actions (above)
-  // have already given up all their own space.
-  .brand-org-name{
+  // Narrower cap so a long org name/online count can't crowd out the
+  // logo/mobile-menu trigger sharing this same row once .main-nav/
+  // .header-actions (above) have already given up all their own space.
+  .brand-org-info{
     max-width: 7rem;
   }
 }

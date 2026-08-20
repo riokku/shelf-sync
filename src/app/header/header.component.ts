@@ -1,4 +1,4 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, effect, inject, signal } from '@angular/core';
 import { A11yModule } from '@angular/cdk/a11y';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatButtonModule } from '@angular/material/button';
@@ -11,6 +11,7 @@ import { SiteSettingsService } from '../core/site-settings.service';
 import { SupabaseService } from '../core/supabase.service';
 import { ThemeModeService } from '../core/theme-mode.service';
 import { needsRestockAttention } from '../shared/utils/inventory-stock';
+import { isProfileOnline } from '../shared/utils/presence';
 
 @Component({
     selector: 'app-header',
@@ -24,6 +25,7 @@ export class HeaderComponent {
   protected themeMode = inject(ThemeModeService);
   private supabase = inject(SupabaseService).client;
   private router = inject(Router);
+  private destroyRef = inject(DestroyRef);
 
   /** Own fixed-position slide-out panel (see header.component.scss) rather
    *  than MatMenu — a menu is a dropdown anchored to its trigger, sized to
@@ -61,6 +63,16 @@ export class HeaderComponent {
   private readonly _lowStockCount = signal(0);
   readonly lowStockCount = this._lowStockCount.asReadonly();
 
+  /** How many approved org members are currently online (see
+   *  shared/utils/presence.ts) — shown right below the org name next to the
+   *  logo. Unlike the two counts above, this is also polled on a plain
+   *  interval (see the setInterval below), not just on auth changes/
+   *  navigation — who's online changes with the mere passage of time, not
+   *  just user actions, the same reasoning ManageTeamComponent's own
+   *  presence poll has. */
+  private readonly _onlineTeamCount = signal(0);
+  readonly onlineTeamCount = this._onlineTeamCount.asReadonly();
+
   constructor() {
     // Re-runs whenever the resolved profile changes (login, logout, role
     // change) — canManage()/role() both derive from it.
@@ -73,8 +85,10 @@ export class HeaderComponent {
 
       if (this.authService.isAuthenticated()) {
         void this.loadLowStockCount();
+        void this.loadOnlineTeamCount();
       } else {
         this._lowStockCount.set(0);
+        this._onlineTeamCount.set(0);
       }
     });
 
@@ -92,9 +106,17 @@ export class HeaderComponent {
         }
         if (this.authService.isAuthenticated()) {
           void this.loadLowStockCount();
+          void this.loadOnlineTeamCount();
         }
       }
     });
+
+    const onlineTeamCountIntervalId = window.setInterval(() => {
+      if (this.authService.isAuthenticated()) {
+        void this.loadOnlineTeamCount();
+      }
+    }, 30_000);
+    this.destroyRef.onDestroy(() => window.clearInterval(onlineTeamCountIntervalId));
   }
 
   private async loadPendingManageCount() {
@@ -134,6 +156,19 @@ export class HeaderComponent {
       .neq('status', 'retired');
 
     this._lowStockCount.set((data ?? []).filter(needsRestockAttention).length);
+  }
+
+  private async loadOnlineTeamCount() {
+    // Narrow select, approved members only — RLS already scopes this to the
+    // caller's own organization. Pending join requests aren't "team
+    // members" yet, same reasoning ManageTeamComponent's assignableProfiles
+    // excludes them from anywhere a role/task-standing matters.
+    const { data } = await this.supabase
+      .from('profiles')
+      .select('last_active_at')
+      .eq('membership_status', 'approved');
+
+    this._onlineTeamCount.set((data ?? []).filter(row => isProfileOnline(row.last_active_at)).length);
   }
 
   async logout() {

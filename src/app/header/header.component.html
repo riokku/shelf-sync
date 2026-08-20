@@ -8,7 +8,13 @@
       <img src="assets/logo-light.svg" alt="ShelfSync logo" class="custom-logo" />
     }
     @if (authService.organizationName(); as organizationName) {
-      <span class="brand-org-name">{{ organizationName }}</span>
+      <span class="brand-org-info">
+        <span class="brand-org-name">{{ organizationName }}</span>
+        <span class="brand-online-count">
+          <span class="online-dot"></span>
+          {{ onlineTeamCount() }} online
+        </span>
+      </span>
     }
   </a>
   <nav class="main-nav">

@@ -109,6 +109,13 @@ profile's own `organization_id` is known, cleared together on sign-out) rather t
 querying `organizations` for itself the way `AccountComponent`/`ManageTeamComponent`'s invite-link
 section/etc. already independently do — this is core identity info tied to the signed-in profile,
 the same category `role`/`organizationId` on that same service already are, not a per-page concern.
+Right below the org name, `HeaderComponent` also shows how many approved org members are currently
+online, next to the same small pulsing dot `ManageTeamComponent`'s own per-member indicator uses
+(shared visual language, not a shared component/stylesheet — each defines its own `.online-dot`).
+Unlike `lowStockCount`/`pendingManageCount` (this component's other two small counts, refreshed only
+on auth changes and navigation), `onlineTeamCount` is *also* polled on a plain 30s `setInterval` —
+who's online changes with the mere passage of time, not just user actions, the same reasoning
+`ManageTeamComponent`'s own presence poll already has.
 The same `customize` route's Data tab holds three sections,
 each its own full-width card stacked top to bottom rather than side-by-side columns (an earlier
 two-column layout made whichever card held two sections force the page to the height of its
