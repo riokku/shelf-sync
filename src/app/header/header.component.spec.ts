@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 
 import { HeaderComponent } from './header.component';
@@ -62,5 +63,42 @@ describe('HeaderComponent low stock badge', () => {
     await fixture.whenStable();
 
     expect(fixture.componentInstance.lowStockCount()).toBe(2);
+  });
+});
+
+describe('HeaderComponent organization name', () => {
+  it('shows the signed-in org\'s name next to the logo when it has loaded', async () => {
+    await TestBed.configureTestingModule({
+      imports: [HeaderComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile(), { organizationName: 'Acme Co' }) },
+        { provide: SupabaseService, useValue: createFakeSupabaseService() }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(HeaderComponent);
+    fixture.detectChanges();
+
+    const orgNameEl = fixture.debugElement.query(By.css('.brand-org-name'));
+    expect(orgNameEl.nativeElement.textContent.trim()).toBe('Acme Co');
+  });
+
+  it('renders nothing there while the org name has not loaded yet', async () => {
+    await TestBed.configureTestingModule({
+      imports: [HeaderComponent],
+      providers: [
+        provideRouter([]),
+        // No organizationName override — createFakeAuthService() defaults
+        // it to null, same as a real profile/org still loading.
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile()) },
+        { provide: SupabaseService, useValue: createFakeSupabaseService() }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(HeaderComponent);
+    fixture.detectChanges();
+
+    expect(fixture.debugElement.query(By.css('.brand-org-name'))).toBeNull();
   });
 });

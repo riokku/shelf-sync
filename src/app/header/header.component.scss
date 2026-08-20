@@ -8,7 +8,26 @@
 .brand{
   display: flex;
   align-items: center;
+  gap: 0.75rem;
   text-decoration: none;
+}
+
+// The signed-in org's name, next to the logo — absent for a visitor whose
+// profile/org hasn't loaded yet (AuthService.organizationName() populates
+// asynchronously, same lag every other profile-derived signal has) rather
+// than reserving space for it up front. A vertical divider (rather than
+// just a gap) reads more like "this logo belongs to this org" than two
+// unrelated pieces of text sitting side by side.
+.brand-org-name{
+  padding-left: 0.75rem;
+  border-left: 1px solid var(--mat-sys-outline-variant);
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 12rem;
 }
 
 // height (not just max-height) is required: some source SVGs declare
@@ -121,6 +140,13 @@
 
   .mobile-menu-trigger{
     display: inline-flex;
+  }
+
+  // Narrower cap so a long org name can't crowd out the logo/mobile-menu
+  // trigger sharing this same row once .main-nav/.header-actions (above)
+  // have already given up all their own space.
+  .brand-org-name{
+    max-width: 7rem;
   }
 }
 

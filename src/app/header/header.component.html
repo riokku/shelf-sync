@@ -7,6 +7,9 @@
     } @else {
       <img src="assets/logo-light.svg" alt="ShelfSync logo" class="custom-logo" />
     }
+    @if (authService.organizationName(); as organizationName) {
+      <span class="brand-org-name">{{ organizationName }}</span>
+    }
   </a>
   <nav class="main-nav">
     <a mat-button routerLink="/home" routerLinkActive="active">

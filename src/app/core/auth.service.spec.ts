@@ -132,3 +132,61 @@ describe('AuthService heartbeat (last_active_at)', () => {
     expect(updateSpy).not.toHaveBeenCalled();
   }));
 });
+
+/** A from() aware of table names, unlike the heartbeat fake above (whose
+ *  single shared builder happily returns the same thing for every table) —
+ *  needed here because loadProfile() now chains two different queries
+ *  (profiles, then organizations by the profile's own organization_id),
+ *  and this exercises what each one resolves to independently. */
+function createFakeSupabaseServiceWithProfile(
+  profile: { id: string; organization_id: string } | null,
+  organizationName: string | null
+) {
+  const updateBuilder = { eq: () => Promise.resolve({ data: null, error: null }) };
+  const fake = {
+    client: {
+      auth: {
+        getSession: () => Promise.resolve({ data: { session: profile ? createFakeSession(profile.id) : null } }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+        signOut: () => Promise.resolve({ error: null }),
+      },
+      from: (table: string) => {
+        if (table === 'organizations') {
+          return { select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: organizationName ? { name: organizationName } : null, error: null }) }) }) };
+        }
+        // 'profiles' — both loadProfile()'s own select().eq().single() and
+        // the heartbeat's update().eq() land here; the heartbeat's own
+        // write just needs to resolve without erroring, unrelated to what
+        // this describe block is testing.
+        return {
+          select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: profile, error: null }) }) }),
+          update: () => updateBuilder,
+        };
+      },
+    },
+  };
+  return fake as unknown as SupabaseService;
+}
+
+describe('AuthService.organizationName', () => {
+  it('loads the organization name alongside the profile once a session exists', fakeAsync(() => {
+    const service = createFakeSupabaseServiceWithProfile({ id: 'user-1', organization_id: 'org-1' }, 'Acme Co');
+    TestBed.configureTestingModule({ providers: [{ provide: SupabaseService, useValue: service }] });
+    const authService = TestBed.inject(AuthService);
+
+    tick();
+
+    expect(authService.organizationName()).toBe('Acme Co');
+    discardPeriodicTasks();
+  }));
+
+  it('stays null when there is no session', fakeAsync(() => {
+    const service = createFakeSupabaseServiceWithProfile(null, null);
+    TestBed.configureTestingModule({ providers: [{ provide: SupabaseService, useValue: service }] });
+    const authService = TestBed.inject(AuthService);
+
+    tick();
+
+    expect(authService.organizationName()).toBeNull();
+  }));
+});

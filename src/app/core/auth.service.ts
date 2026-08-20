@@ -21,6 +21,17 @@ export class AuthService {
   readonly canManage = computed(() => this.role() === 'admin' || this.role() === 'manager');
   readonly organizationId = computed(() => this._profile()?.organization_id ?? null);
 
+  /** Loaded alongside `profile` (same lifecycle: populated once the
+   *  profile's own organization_id is known, cleared together on sign-out)
+   *  rather than each caller querying `organizations` for itself — unlike
+   *  this app's small per-page count badges (restock/pending-approvals),
+   *  which do each load independently, this is core identity info tied
+   *  directly to the signed-in profile, the same category `role`/
+   *  `organizationId` above already are. Backs HeaderComponent's brand
+   *  area (see its own template). */
+  private readonly _organizationName = signal<string | null>(null);
+  readonly organizationName = this._organizationName.asReadonly();
+
   constructor() {
     this.supabase.auth.getSession().then(({ data }) => {
       this._session.set(data.session);
@@ -82,10 +93,18 @@ export class AuthService {
   private async loadProfile(session: Session | null) {
     if (!session) {
       this._profile.set(null);
+      this._organizationName.set(null);
       return;
     }
     const { data } = await this.supabase.from('profiles').select('*').eq('id', session.user.id).single();
     this._profile.set(data);
+
+    if (!data) {
+      this._organizationName.set(null);
+      return;
+    }
+    const { data: org } = await this.supabase.from('organizations').select('name').eq('id', data.organization_id).single();
+    this._organizationName.set(org?.name ?? null);
   }
 
   /** Reads the current session directly, for use in route guards (avoids

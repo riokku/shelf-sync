@@ -101,7 +101,15 @@ as `[data-theme='x']` blocks in `styles.scss` and toggling that attribute on `<h
 `THEME_PRESETS` in `shared/models/theme-preset.ts` for the option list and `core/site-settings.service.ts`
 for the load/preview/persist logic. `AppComponent` loads settings once on startup (readable by
 `anon` too, so branding applies pre-login) and `HeaderComponent` swaps in the custom logo when set,
-falling back to the default SS mark. The same `customize` route's Data tab holds three sections,
+falling back to the default SS mark. `HeaderComponent` also shows the signed-in user's organization
+name next to that logo (a vertical divider between them, not just a gap, so it reads as "this logo
+belongs to this org" rather than two unrelated pieces of text) — `AuthService.organizationName`, a
+new signal loaded alongside `profile` inside `loadProfile()` (same lifecycle: populated once the
+profile's own `organization_id` is known, cleared together on sign-out) rather than each page
+querying `organizations` for itself the way `AccountComponent`/`ManageTeamComponent`'s invite-link
+section/etc. already independently do — this is core identity info tied to the signed-in profile,
+the same category `role`/`organizationId` on that same service already are, not a per-page concern.
+The same `customize` route's Data tab holds three sections,
 each its own full-width card stacked top to bottom rather than side-by-side columns (an earlier
 two-column layout made whichever card held two sections force the page to the height of its
 *tallest* column, wasting the other column's width without actually shortening the page — full
@@ -174,13 +182,18 @@ header full of nav links that just bounce them via guards. Both provide their ow
 (shared layout in `shared/styles/_legal-page.scss`) with a theme-aware logo (same
 `assets/logo-light.svg`/`logo-dark.svg` swap `HeaderComponent` uses) rather than reusing
 `BrandLogoComponent`, which hardcodes white/always-dark styling meant for login/register's video
-backdrop and would be unreadable in light mode here. `FooterComponent` links to both (so they're
-reachable from every authenticated page too, not just pre-login ones), and the register form's
-submit button carries a "you agree to our Terms/Privacy" notice linking the same routes. The policy
-text itself is a starting draft (attributed to Studio Rio, contact
-`chris@studiorioconsulting.com`) — **not reviewed by an attorney**, and the Terms' governing-law
-section still has a literal `[Insert governing state/country]` placeholder — have both reviewed
-before relying on them for real signups.
+backdrop and would be unreadable in light mode here. `FooterComponent` links to both, plus
+`/pricing`, via its `showLegalLinks` input (default `true`) — but only on the pre-login pages that
+embed it directly (landing, `/pricing` itself); `AppComponent`'s own `<app-footer>` (the one wrapping
+every authenticated page) explicitly passes `[showLegalLinks]="false"`, since a signed-in user has no
+reason to click through to marketing/legal pages from inside the app, and showing them there was just
+noise. `.footer-content` switches from `justify-content: space-between` to `center` when the links are
+hidden, so the lone Studio Rio mark doesn't end up stranded at the flex-start edge with nothing to
+balance against on the other side. The register form's submit button carries a "you agree to our
+Terms/Privacy" notice linking the same routes regardless. The policy text itself is a starting draft
+(attributed to Studio Rio, contact `chris@studiorioconsulting.com`) — **not reviewed by an
+attorney**, and the Terms' governing-law section still has a literal `[Insert governing
+state/country]` placeholder — have both reviewed before relying on them for real signups.
 
 The landing page's own nav (`LandingComponent`, distinct from the app shell's `HeaderComponent` —
 see `AppComponent.showChrome()`) is session-aware: a visitor with no session sees the normal

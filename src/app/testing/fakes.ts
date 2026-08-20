@@ -45,7 +45,7 @@ export function createFakeProfile(overrides: Partial<Profile> = {}): Profile {
  *  "signed in" vs "signed out". */
 export function createFakeAuthService(
   profile: Profile | null = null,
-  options: { hasSession?: boolean } = {}
+  options: { hasSession?: boolean; organizationName?: string | null } = {}
 ): AuthService {
   const profileSignal = signal(profile);
   const hasSession = options.hasSession ?? profile !== null;
@@ -60,6 +60,7 @@ export function createFakeAuthService(
       return role === 'admin' || role === 'manager';
     }),
     organizationId: computed(() => profileSignal()?.organization_id ?? null),
+    organizationName: signal(options.organizationName ?? null).asReadonly(),
     getSession: async () => fakeSession,
     getProfile: async () => profileSignal(),
     refreshProfile: async () => {},

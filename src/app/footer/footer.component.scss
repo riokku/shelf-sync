@@ -10,6 +10,14 @@
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 1rem;
+
+    // space-between with .footer-links removed (showLegalLinks: false)
+    // would otherwise leave the lone Studio Rio mark stranded at the
+    // flex-start edge instead of centered, since there's no longer a
+    // second flex item on the other side to balance against.
+    &.legal-links-hidden{
+      justify-content: center;
+    }
   }
 
   .footer-links{
