@@ -74,6 +74,19 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.02em;
+
+  // Only inside .usage-stat-label (Photo storage's "Estimated") — see that
+  // rule's own comment. The "Preview" tag next to the Billing details <h3>
+  // reuses this same class but sits in normal inline flow there, no
+  // sibling column to misalign with.
+  .usage-stat-label &{
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-left: 0.5rem;
+    white-space: nowrap;
+  }
 }
 
 .plan-summary{
@@ -120,17 +133,21 @@
   gap: 0.375rem;
 }
 
-// min-height reserves room for .placeholder-tag (Photo storage's "Estimated"
-// badge) whether or not a given label actually has one — without it, that
-// one taller label pushed its own value/progress-bar down relative to the
-// plain-text labels next to it in the same grid row (the grid row itself
-// stretches to fit the tallest cell, but each cell's own content still
-// starts wherever its label's height happens to end).
+// Photo storage's "Estimated" badge (.placeholder-tag below) made that one
+// label taller than its plain-text siblings, pushing its value/progress bar
+// down relative to the other column in the same usage-grid row — a fixed/
+// min-height here would only paper over it with a guessed number that has
+// to keep matching the badge's actual (inherited, not explicitly set)
+// rendered height. Positioning the badge absolutely instead removes it from
+// the label's own box entirely, so every label's height is governed purely
+// by its text — identical whether or not that particular stat has a badge —
+// no number-matching required. align-self: flex-start keeps this span
+// sized to its own text (not stretched to the full column width by
+// .usage-stat's flex layout), so the badge's `left: 100%` below lands right
+// after the visible text instead of at the column's far edge.
 .usage-stat-label{
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-height: 1.25rem;
+  position: relative;
+  align-self: flex-start;
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.8125rem;
 }
