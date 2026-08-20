@@ -129,18 +129,14 @@
                 </mat-panel-description>
               </mat-expansion-panel-header>
 
-              <div class="status-columns">
-                @for (status of statuses; track status) {
-                  <div class="status-column">
-                    <h4>{{ statusLabels[status] }} ({{ member.tasksByStatus[status].length }})</h4>
-                    @if (member.tasksByStatus[status].length === 0) {
-                      <p class="empty-hint">No tasks.</p>
-                    } @else {
-                      <div class="member-task-rows">
-                        @for (task of member.tasksByStatus[status]; track task.id) {
-                          <app-task-card [task]="task" [createdByLabel]="createdByLabel(task)" (open)="openTaskDetail($event)" />
-                        }
-                      </div>
+              <div class="member-tasks">
+                <h4>Tasks ({{ member.tasks.length }})</h4>
+                @if (member.tasks.length === 0) {
+                  <p class="empty-hint">No tasks.</p>
+                } @else {
+                  <div class="member-task-rows">
+                    @for (task of member.tasks; track task.id) {
+                      <app-task-card [task]="task" [createdByLabel]="createdByLabel(task)" (open)="openTaskDetail($event)" />
                     }
                   </div>
                 }

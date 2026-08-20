@@ -36,7 +36,7 @@ describe('ManageTeamComponent', () => {
     function memberOf(profile: Partial<Profile>) {
       return {
         profile: createFakeProfile(profile),
-        tasksByStatus: { todo: [], in_progress: [], done: [] }
+        tasks: []
       };
     }
 

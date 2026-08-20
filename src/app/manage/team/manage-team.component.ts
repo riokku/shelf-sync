@@ -18,7 +18,6 @@ import { EditProfileModalComponent } from '../../shared/components/edit-profile-
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { Database } from '../../shared/models/database.types';
-import { TASK_STATUSES, TASK_STATUS_LABELS, TaskStatus } from '../../shared/models/task-status';
 import { profileDisplayName, resolveProfileName } from '../../shared/utils/profile-label';
 import { logActivity } from '../../shared/utils/activity-log';
 
@@ -26,7 +25,11 @@ type Task = Database['public']['Tables']['tasks']['Row'];
 
 interface TeamMember {
   profile: Profile;
-  tasksByStatus: Record<TaskStatus, Task[]>;
+  /** Sorted by due date (earliest/soonest first, undated tasks last) — see
+   *  loadTeamTasks()'s query, which already orders it that way, so this
+   *  list doesn't need its own sort. No longer grouped by status; each
+   *  member's expanded accordion panel just shows one flat "Tasks" list. */
+  tasks: Task[];
 }
 
 @Component({
@@ -61,8 +64,6 @@ export class ManageTeamComponent implements OnInit {
   isProcessingMembership = false;
   membershipError: string | null = null;
 
-  readonly statuses = TASK_STATUSES;
-  readonly statusLabels = TASK_STATUS_LABELS;
   teamMembers: TeamMember[] = [];
   isLoadingTeam = true;
 
@@ -128,17 +129,10 @@ export class ManageTeamComponent implements OnInit {
       tasksByUser.set(task.assigned_to, existing);
     }
 
-    this.teamMembers = this.assignableProfiles.map(profile => {
-      const userTasks = tasksByUser.get(profile.id) ?? [];
-      return {
-        profile,
-        tasksByStatus: {
-          todo: userTasks.filter(task => task.status === 'todo'),
-          in_progress: userTasks.filter(task => task.status === 'in_progress'),
-          done: userTasks.filter(task => task.status === 'done')
-        }
-      };
-    });
+    this.teamMembers = this.assignableProfiles.map(profile => ({
+      profile,
+      tasks: tasksByUser.get(profile.id) ?? []
+    }));
 
     this.isLoadingTeam = false;
   }
@@ -178,9 +172,15 @@ export class ManageTeamComponent implements OnInit {
   }
 
   openEditProfile(profile: Profile) {
+    // Narrower than the app's usual 'clamp(75%, 25rem, 60%)' small-dialog
+    // width (which, with min > max, actually always resolves to a flat
+    // 60vw) — this form is just four stacked full-width fields, so it
+    // doesn't need anywhere near that much room. Matches the width other
+    // simple single-column dialogs elsewhere already use (e.g.
+    // RequestRetirementModalComponent).
     const dialogRef = this.dialog.open(EditProfileModalComponent, {
       data: profile,
-      width: 'clamp(75%, 25rem, 60%)',
+      width: 'clamp(24rem, 45vw, 30rem)',
       maxWidth: '90vw',
       panelClass: 'task-details-dialog'
     });

@@ -180,15 +180,9 @@ mat-panel-description{
   }
 }
 
-// Stacked full-width sections (one per status) rather than side-by-side
-// columns — narrow columns couldn't comfortably fit task-card's row layout
-// (it wants ~28rem for its title/due-date/status grid), and cramming it in
-// anyway would've meant reinventing a second, inconsistent "row" look
-// instead of reusing the same component the My Tasks page already uses.
-.status-columns{
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+// A member's expanded accordion panel: one flat "Tasks" list, sorted by
+// due date (see TeamMember.tasks), not grouped by status.
+.member-tasks{
   padding: 1rem 0 0.5rem;
 
   h4{
