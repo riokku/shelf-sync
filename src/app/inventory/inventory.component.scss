@@ -297,6 +297,21 @@ table[mat-table]{
 .option-list{
   max-height: 20rem;
   overflow-y: auto;
+
+  // mat-checkbox's touch-target overlay is a 48px box centered on the
+  // checkbox itself (see Material's own .mat-mdc-checkbox-touch-target
+  // rule) — taller than a tightly-packed row here, so it always overshot
+  // past this element's own bottom edge. That overshoot counts as real
+  // scrollable overflow regardless of how much actual content there is,
+  // so overflow-y: auto kept showing a scrollbar even once a search
+  // narrowed the list down to a single row with nothing to scroll to.
+  // Disabling it via Material's own exposed theming variable (rather than
+  // reaching into its internal DOM, or padding out enough space to hide
+  // the overshoot) removes it outright — each checkbox is still perfectly
+  // clickable via its own visible box, just without the enlarged invisible
+  // tap target, which matters more for mobile than this desktop filter
+  // sidebar.
+  --mat-checkbox-touch-target-display: none;
 }
 
 // Narrows a long checkbox list (Category, Physical location) down to
