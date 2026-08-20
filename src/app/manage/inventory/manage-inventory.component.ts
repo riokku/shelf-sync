@@ -26,6 +26,7 @@ import { toInventoryItem } from '../../shared/utils/inventory-item.mapper';
 import { resolveProfileAvatarKey, resolveProfileName } from '../../shared/utils/profile-label';
 import { loadInventoryImagesByItemId, uploadInventoryItemImages } from '../../shared/utils/inventory-item-images';
 import { loadInventoryActivityByItemId } from '../../shared/utils/inventory-item-activity';
+import { sumContainerQuantity } from '../../shared/utils/inventory-item-containers';
 import { logActivity } from '../../shared/utils/activity-log';
 import { parseItemQrValue } from '../../shared/utils/barcode';
 import { isRowLowStock, isRowOutOfStock } from '../../shared/utils/inventory-stock';
@@ -121,6 +122,29 @@ export class ManageInventoryComponent implements OnInit {
     pricePerUnit: new FormControl<number | null>(null),
     pricePerContainer: new FormControl<number | null>(null)
   });
+
+  /** Whether the new item's stock is a single flat quantity (the original
+   *  behavior — quantityTotal is typed directly) or broken into individual
+   *  containers/boxes from the start (mirrors ModalTableComponent's edit-mode
+   *  "Container breakdown" — see shared/utils/inventory-item-containers.ts).
+   *  Plain field rather than part of inventoryForm, same pattern as
+   *  viewMode/statusFilter below, since it only ever toggles which section
+   *  of the form is shown/used, not a value that's itself submitted. */
+  trackingMode: 'single' | 'containers' = 'single';
+  newContainers: { quantity: number; location: string }[] = [];
+
+  get newContainerQuantitySum(): number {
+    return sumContainerQuantity(this.newContainers);
+  }
+
+  addNewContainer(){
+    const defaultQuantity = this.inventoryForm.controls.quantityPerContainer.value ?? 0;
+    this.newContainers.push({ quantity: defaultQuantity, location: '' });
+  }
+
+  removeNewContainer(index: number){
+    this.newContainers.splice(index, 1);
+  }
 
   isSavingItem = false;
   itemError: string | null = null;
@@ -328,12 +352,21 @@ export class ManageInventoryComponent implements OnInit {
       this.inventoryForm.markAllAsTouched();
       return;
     }
+    if (this.trackingMode === 'containers' && this.newContainers.length === 0) {
+      this.itemError = 'Add at least one container, or switch to a single quantity.';
+      return;
+    }
 
     this.isSavingItem = true;
     this.itemError = null;
     this.itemSaved = false;
 
     const value = this.inventoryForm.getRawValue();
+    // In container mode, quantityTotal isn't user-entered (see the template
+    // — that field is hidden) and is instead the sum of the boxes below,
+    // same derivation ModalTableComponent's edit flow uses once an item has
+    // any containers.
+    const quantityTotal = this.trackingMode === 'containers' ? this.newContainerQuantitySum : value.quantityTotal;
     const { data: inserted, error } = await this.supabase.from('inventory_items').insert({
       name: value.name,
       barcode: value.barcode || null,
@@ -346,9 +379,9 @@ export class ManageInventoryComponent implements OnInit {
       supplier_name: value.supplierName || null,
       supplier_lead_time: value.supplierLeadTime || null,
       order_link: value.orderLink || null,
-      quantity_total: value.quantityTotal,
+      quantity_total: quantityTotal,
       quantity_allocated: 0,
-      quantity_remaining: value.quantityTotal,
+      quantity_remaining: quantityTotal,
       quantity_per_container: value.quantityPerContainer,
       low_quantity_threshold: value.lowQuantityThreshold,
       price_per_unit: value.pricePerUnit,
@@ -359,6 +392,19 @@ export class ManageInventoryComponent implements OnInit {
       this.isSavingItem = false;
       this.itemError = error?.message ?? 'Failed to create item.';
       return;
+    }
+
+    if (this.trackingMode === 'containers') {
+      const { error: containerError } = await this.supabase.from('inventory_item_containers').insert(
+        this.newContainers.map(container => ({
+          item_id: inserted.id,
+          quantity: container.quantity,
+          location: container.location || null
+        }))
+      );
+      if (containerError) {
+        this.itemError = `Item created, but container setup failed: ${containerError.message}`;
+      }
     }
 
     if (this.selectedImageFiles.length > 0) {
@@ -379,6 +425,8 @@ export class ManageInventoryComponent implements OnInit {
     this.isSavingItem = false;
     this.itemSaved = true;
     this.inventoryForm.reset();
+    this.trackingMode = 'single';
+    this.newContainers = [];
     this.clearSelectedImages();
     await this.loadInventoryItems();
   }

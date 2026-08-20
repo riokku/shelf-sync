@@ -51,7 +51,15 @@ unchanged. This replaced the old "Discard" flow (`DiscardInventoryModalComponent
 mandatory-reason modal that decremented `quantity_remaining`/`quantity_total` together): container
 editing is now the only way to reduce stock with a record of which box it came from, though unlike
 Discard it has no mandatory reason field — a plain diffed activity log line ("Box 1 (20 → 10)") is
-what's recorded instead, same as every other edited field.
+what's recorded instead, same as every other edited field. `ManageInventoryComponent`'s create-item
+form offers the same choice up front, via a `trackingMode` ("Single quantity" / "By container/box")
+`mat-button-toggle-group` above the Quantity total field — picking container mode hides Quantity
+total (it becomes the sum of whatever containers are added, same derivation) and shows the same
+box-list editor (add/remove, quantity + optional location) `ModalTableComponent` uses; on submit the
+containers are inserted right after the new `inventory_items` row, in the same best-effort-after-
+the-main-insert style image upload already used there. Choosing container mode with zero containers
+added is blocked client-side (picking that mode implies at least one box) rather than silently
+falling back to a zero-quantity item.
 
 Admins and managers get a `manage/activity` route (`ManageActivityComponent`) — a single
 cross-entity feed of everything that changed in the org: inventory item create/edit/retirement,

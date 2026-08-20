@@ -105,4 +105,36 @@ describe('ManageInventoryComponent', () => {
       expect(component.isInventoryItemOutOfStock(createTestInventoryItemRow({ quantity_remaining: 1 }))).toBe(false);
     });
   });
+
+  describe('new-item container breakdown', () => {
+    it('defaults to single-quantity tracking with no containers', () => {
+      expect(component.trackingMode).toBe('single');
+      expect(component.newContainers).toEqual([]);
+    });
+
+    it('addNewContainer() defaults quantity to the form\'s quantityPerContainer', () => {
+      component.inventoryForm.controls.quantityPerContainer.setValue(20);
+
+      component.addNewContainer();
+
+      expect(component.newContainers).toEqual([{ quantity: 20, location: '' }]);
+      expect(component.newContainerQuantitySum).toBe(20);
+    });
+
+    it('removeNewContainer() drops the container at that index', () => {
+      component.newContainers = [
+        { quantity: 20, location: 'Shelf A' },
+        { quantity: 15, location: '' }
+      ];
+
+      component.removeNewContainer(0);
+
+      expect(component.newContainers).toEqual([{ quantity: 15, location: '' }]);
+    });
+
+    it('newContainerQuantitySum sums every container', () => {
+      component.newContainers = [{ quantity: 20, location: '' }, { quantity: 15, location: '' }];
+      expect(component.newContainerQuantitySum).toBe(35);
+    });
+  });
 });

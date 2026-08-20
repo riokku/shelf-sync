@@ -258,6 +258,63 @@
   margin-bottom: 1rem;
 }
 
+.tracking-mode-toggle{
+  margin-bottom: 1rem;
+}
+
+.empty-hint{
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.semibold{
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.container-breakdown{
+  margin-bottom: 1rem;
+}
+
+.container-list{
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+}
+
+.container-row{
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+
+  &:last-child{
+    border-bottom: none;
+  }
+
+  mat-form-field{
+    margin-top: 0.5rem;
+  }
+}
+
+.container-label{
+  flex: 0 0 auto;
+  min-width: 3.5rem;
+  font-weight: 600;
+}
+
+.container-quantity-field{
+  flex: 0 1 7rem;
+}
+
+.container-location-field{
+  flex: 1 1 12rem;
+}
+
+.container-total{
+  margin: 0 0 0.75rem;
+}
+
 // Overrides .task-row's own 4-column grid (shaped for the All inventory
 // list's name/assignee/due/status columns, which don't apply here) with a
 // simpler flexible-content-plus-fixed-actions layout.
