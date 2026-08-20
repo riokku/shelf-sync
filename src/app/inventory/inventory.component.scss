@@ -289,6 +289,16 @@ table[mat-table]{
   margin: 0;
 }
 
+// Caps Category/Physical location's checkbox list at roughly
+// filterOptionSearchThreshold (8) rows tall — each mat-checkbox row is
+// ~2.5rem including its own touch-target padding — and scrolls internally
+// beyond that, rather than an org with dozens of field-option values
+// pushing the whole accordion (and everything below it) down the page.
+.option-list{
+  max-height: 20rem;
+  overflow-y: auto;
+}
+
 // Narrows a long checkbox list (Category, Physical location) down to
 // something scannable — only shown once there's actually enough options
 // to bother (see filterOptionSearchThreshold). Plain Material outline

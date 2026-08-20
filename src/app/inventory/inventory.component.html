@@ -86,14 +86,16 @@
               @if (filteredCategoryFilterOptions.length === 0) {
                 <p class="empty-filter-hint">No categories match "{{ categoryOptionSearch }}".</p>
               } @else {
-                @for (option of filteredCategoryFilterOptions; track option) {
-                  <div>
-                    <mat-checkbox
-                        [checked]="selectedCategories.includes(option)"
-                        (change)="toggleCategory(option, $event.checked)"
-                      >{{ option }}</mat-checkbox>
-                  </div>
-                }
+                <div class="option-list">
+                  @for (option of filteredCategoryFilterOptions; track option) {
+                    <div>
+                      <mat-checkbox
+                          [checked]="selectedCategories.includes(option)"
+                          (change)="toggleCategory(option, $event.checked)"
+                        >{{ option }}</mat-checkbox>
+                    </div>
+                  }
+                </div>
               }
             }
           </mat-expansion-panel>
@@ -113,14 +115,16 @@
               @if (filteredPhysicalLocationFilterOptions.length === 0) {
                 <p class="empty-filter-hint">No physical locations match "{{ physicalLocationOptionSearch }}".</p>
               } @else {
-                @for (option of filteredPhysicalLocationFilterOptions; track option) {
-                  <div>
-                    <mat-checkbox
-                        [checked]="selectedPhysicalLocations.includes(option)"
-                        (change)="togglePhysicalLocation(option, $event.checked)"
-                      >{{ option }}</mat-checkbox>
-                  </div>
-                }
+                <div class="option-list">
+                  @for (option of filteredPhysicalLocationFilterOptions; track option) {
+                    <div>
+                      <mat-checkbox
+                          [checked]="selectedPhysicalLocations.includes(option)"
+                          (change)="togglePhysicalLocation(option, $event.checked)"
+                        >{{ option }}</mat-checkbox>
+                    </div>
+                  }
+                </div>
               }
             }
           </mat-expansion-panel>
