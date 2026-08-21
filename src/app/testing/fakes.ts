@@ -145,8 +145,14 @@ export function createFakeActivatedRoute(queryParams: Record<string, string> = {
  *  Supabase from its constructor or ngOnInit (e.g. for a nav badge count)
  *  doesn't hit the real hosted project during a unit test that isn't
  *  actually exercising that query, the same reasoning createFakeAuthService
- *  avoids constructing the real AuthService above. */
-function createFakeQueryBuilder(result: { data?: unknown; count?: number; error?: unknown } = { data: [], count: 0, error: null }) {
+ *  avoids constructing the real AuthService above. Exported (rather than
+ *  module-private) so a spec that needs a *table-aware* fake — e.g. a
+ *  realtime change handler test that needs `.from()` to behave differently
+ *  per call — can build its own narrower fake on top of this instead of
+ *  re-implementing the same chainable-builder shape from scratch (see
+ *  auth.service.spec.ts's own hand-rolled fake for the pattern this is
+ *  meant to support). */
+export function createFakeQueryBuilder(result: { data?: unknown; count?: number; error?: unknown } = { data: [], count: 0, error: null }) {
   const builder: Record<string, unknown> = {
     then: (resolve: (value: typeof result) => void) => resolve(result),
   };
@@ -156,11 +162,30 @@ function createFakeQueryBuilder(result: { data?: unknown; count?: number; error?
   return builder;
 }
 
+/** Inert — `.on()` never invokes its callback, `.subscribe()` is just a
+ *  no-op chain terminator. Exists purely so a component that opens a
+ *  realtime channel in ngOnInit (see shared/utils/realtime.ts) doesn't
+ *  throw "...channel is not a function" in a spec built on the plain
+ *  createFakeSupabaseService() below; it never simulates an actual change
+ *  event. A spec that needs a change event to actually fire builds its own
+ *  narrower fake locally (see auth.service.spec.ts's emitAuthStateChange
+ *  for the capture-the-callback pattern to mirror) rather than this one
+ *  growing logic it otherwise wouldn't need. */
+function createFakeRealtimeChannel() {
+  const channel: Record<string, unknown> = {
+    on: () => channel,
+    subscribe: () => channel,
+  };
+  return channel;
+}
+
 export function createFakeSupabaseService(result?: { data?: unknown; count?: number; error?: unknown }): SupabaseService {
   const fake = {
     client: {
       from: () => createFakeQueryBuilder(result),
       rpc: () => createFakeQueryBuilder(result),
+      channel: () => createFakeRealtimeChannel(),
+      removeChannel: async () => ({ status: 'ok' }),
     },
   };
   return fake as unknown as SupabaseService;
