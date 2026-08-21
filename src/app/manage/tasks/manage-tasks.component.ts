@@ -7,6 +7,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -18,6 +19,7 @@ import { AuthService, Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { UserAvatarComponent } from '../../shared/components/user-avatar/user-avatar.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
+import { BulkActionToolbarComponent } from '../../shared/components/bulk-action-toolbar/bulk-action-toolbar.component';
 import { TaskDetailModalComponent } from '../../shared/components/task-detail-modal/task-detail-modal.component';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { Database } from '../../shared/models/database.types';
@@ -44,12 +46,14 @@ type RelatedItemOption = Pick<Database['public']['Tables']['inventory_items']['R
     MatAutocompleteModule,
     MatButtonModule,
     MatButtonToggleModule,
+    MatCheckboxModule,
     MatIconModule,
     MatProgressSpinnerModule,
     MatDatepickerModule,
     BreadcrumbsComponent,
     UserAvatarComponent,
-    EmptyStateComponent
+    EmptyStateComponent,
+    BulkActionToolbarComponent
   ],
   templateUrl: './manage-tasks.component.html',
   styleUrl: './manage-tasks.component.scss',
@@ -125,6 +129,142 @@ export class ManageTasksComponent implements OnInit {
       }
       return true;
     });
+  }
+
+  // Bulk selection — a plain Set of ids, not scoped to any particular
+  // filter state (unlike InventoryComponent's own page-scoped selection):
+  // this page has no pagination, and selectedVisibleTaskIds below already
+  // derives what's actually shown/acted on by intersecting with
+  // filteredAllTasks, so a task that's momentarily filtered out just drops
+  // out of that visible count rather than needing an explicit clear on
+  // every filter change.
+  selectedTaskIds = new Set<string>();
+  bulkStatusValue: TaskStatus | null = null;
+  isBulkProcessing = false;
+  bulkActionError: string | null = null;
+
+  /** What the bulk toolbar actually shows/acts on — selectedTaskIds
+   *  intersected with whatever the current filters leave visible. Keeps
+   *  the toolbar's "N selected" count honest (a hidden-but-still-selected
+   *  task would otherwise silently inflate it) and means a bulk action
+   *  never touches a task the user can't currently see and verify. */
+  get selectedVisibleTaskIds(): Set<string> {
+    const visibleIds = new Set(this.filteredAllTasks.map(task => task.id));
+    return new Set([...this.selectedTaskIds].filter(id => visibleIds.has(id)));
+  }
+
+  isTaskSelected(taskId: string): boolean {
+    return this.selectedTaskIds.has(taskId);
+  }
+
+  toggleTaskSelection(taskId: string, checked: boolean) {
+    const next = new Set(this.selectedTaskIds);
+    if (checked) {
+      next.add(taskId);
+    } else {
+      next.delete(taskId);
+    }
+    this.selectedTaskIds = next;
+  }
+
+  toggleSelectAllFiltered(checked: boolean) {
+    const next = new Set(this.selectedTaskIds);
+    for (const task of this.filteredAllTasks) {
+      if (checked) {
+        next.add(task.id);
+      } else {
+        next.delete(task.id);
+      }
+    }
+    this.selectedTaskIds = next;
+  }
+
+  clearTaskSelection() {
+    this.selectedTaskIds = new Set();
+    this.bulkStatusValue = null;
+    this.bulkActionError = null;
+  }
+
+  async applyBulkStatusChange() {
+    const status = this.bulkStatusValue;
+    if (!status || this.isBulkProcessing) {
+      return;
+    }
+    const ids = [...this.selectedVisibleTaskIds];
+    if (ids.length === 0) {
+      return;
+    }
+
+    this.isBulkProcessing = true;
+    this.bulkActionError = null;
+
+    const results = await Promise.all(
+      ids.map(id => this.supabase.rpc('update_task_status', { task_id: id, new_status: status }))
+    );
+    const failedCount = results.filter(result => result.error).length;
+    const succeededCount = ids.length - failedCount;
+
+    this.isBulkProcessing = false;
+    await this.loadTasks();
+
+    if (succeededCount > 0) {
+      this.notification.success(`Updated ${succeededCount} task${succeededCount === 1 ? '' : 's'}`);
+    }
+    // Not clearTaskSelection() — that also nulls bulkActionError, which
+    // would erase the message set right below before anyone could read it.
+    this.selectedTaskIds = new Set();
+    this.bulkStatusValue = null;
+    if (failedCount > 0) {
+      this.bulkActionError = `${failedCount} of ${ids.length} task${ids.length === 1 ? '' : 's'} couldn't be updated.`;
+    }
+  }
+
+  applyBulkDelete() {
+    const ids = [...this.selectedVisibleTaskIds];
+    if (ids.length === 0) {
+      return;
+    }
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: `Delete ${ids.length} task${ids.length === 1 ? '' : 's'}?`,
+        message: `Delete ${ids.length} task${ids.length === 1 ? '' : 's'}? This can't be undone.`,
+        confirmLabel: 'Delete',
+        danger: true
+      },
+      width: 'clamp(75%, 25rem, 60%)'
+    });
+
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (confirmed) {
+        void this.performBulkDelete(ids);
+      }
+    });
+  }
+
+  /** The actual delete/tally work, split out of applyBulkDelete() above so
+   *  it's directly testable without needing to fake the confirm dialog
+   *  itself (no spec in this app fakes MatDialog.open() — every
+   *  ConfirmDialogComponent caller elsewhere is only tested up to "was the
+   *  dialog opened with the right data"). */
+  private async performBulkDelete(ids: string[]) {
+    this.isBulkProcessing = true;
+    this.bulkActionError = null;
+
+    const results = await Promise.all(ids.map(id => this.supabase.from('tasks').delete().eq('id', id)));
+    const failedCount = results.filter(result => result.error).length;
+    const succeededCount = ids.length - failedCount;
+
+    this.isBulkProcessing = false;
+    await this.loadTasks();
+
+    if (succeededCount > 0) {
+      this.notification.success(`Deleted ${succeededCount} task${succeededCount === 1 ? '' : 's'}`);
+    }
+    this.selectedTaskIds = new Set();
+    if (failedCount > 0) {
+      this.bulkActionError = `${failedCount} of ${ids.length} task${ids.length === 1 ? '' : 's'} couldn't be deleted.`;
+    }
   }
 
   private relatedItemOptions: RelatedItemOption[] = [];

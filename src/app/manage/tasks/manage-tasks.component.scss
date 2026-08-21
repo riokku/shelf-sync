@@ -81,7 +81,7 @@
 // of what a given row's cells contain, so everything lines up.
 .task-row{
   display: grid;
-  grid-template-columns: minmax(10rem, 2fr) minmax(8rem, 1fr) minmax(8rem, 1fr) 7.5rem 2.5rem;
+  grid-template-columns: 2rem minmax(10rem, 2fr) minmax(8rem, 1fr) minmax(8rem, 1fr) 7.5rem 2.5rem;
   align-items: center;
   column-gap: 1.5rem;
   padding: 0.85rem 1.25rem;

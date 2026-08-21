@@ -130,6 +130,64 @@ describe('ManageTasksComponent', () => {
     });
   });
 
+  describe('bulk selection', () => {
+    beforeEach(() => {
+      component.allTasks = [
+        createTestTask({ id: '1', title: 'Restock shelves' }),
+        createTestTask({ id: '2', title: 'Order supplies' })
+      ];
+    });
+
+    it('toggleTaskSelection() adds and removes an id', () => {
+      component.toggleTaskSelection('1', true);
+      expect(component.isTaskSelected('1')).toBeTrue();
+
+      component.toggleTaskSelection('1', false);
+      expect(component.isTaskSelected('1')).toBeFalse();
+    });
+
+    it('toggleSelectAllFiltered() selects/deselects every currently-filtered task', () => {
+      component.toggleSelectAllFiltered(true);
+      expect([...component.selectedTaskIds].sort()).toEqual(['1', '2']);
+
+      component.toggleSelectAllFiltered(false);
+      expect(component.selectedTaskIds.size).toBe(0);
+    });
+
+    it('clearTaskSelection() resets selection, status value, and any bulk error', () => {
+      component.toggleTaskSelection('1', true);
+      component.bulkStatusValue = 'done';
+      component.bulkActionError = 'something went wrong';
+
+      component.clearTaskSelection();
+
+      expect(component.selectedTaskIds.size).toBe(0);
+      expect(component.bulkStatusValue).toBeNull();
+      expect(component.bulkActionError).toBeNull();
+    });
+
+    describe('selectedVisibleTaskIds', () => {
+      it('matches selectedTaskIds when nothing is filtered out', () => {
+        component.toggleSelectAllFiltered(true);
+        expect(component.selectedVisibleTaskIds.size).toBe(2);
+      });
+
+      // The one case this getter exists for: a task selected before a
+      // filter change that hides it stays in selectedTaskIds (so it
+      // reappears if the filter is cleared again) but drops out of the
+      // *visible* count the toolbar and bulk actions actually use.
+      it('excludes a selected task that a filter has since hidden', () => {
+        component.toggleTaskSelection('1', true);
+        component.toggleTaskSelection('2', true);
+
+        component.taskFilterSearch = 'restock';
+
+        expect(component.selectedTaskIds.size).toBe(2);
+        expect([...component.selectedVisibleTaskIds]).toEqual(['1']);
+      });
+    });
+  });
+
 });
 
 describe('ManageTasksComponent submitTask() success', () => {
@@ -357,4 +415,202 @@ describe('ManageTasksComponent realtime updates', () => {
 
     expect(component.isFlashing('task-1')).toBeFalse();
   }));
+});
+
+/** A Supabase fake purpose-built for the bulk status-change/delete tests
+ *  below — tracks every update_task_status RPC call and every
+ *  tasks.delete().eq('id', id) call, and lets a test mark specific ids as
+ *  failing to cover the partial-failure tally path. Everything else
+ *  (profiles/tasks/related-items loads) resolves as a generic empty
+ *  success. */
+function createBulkTaskActionFakeSupabaseService(failingIds: Set<string> = new Set<string>()) {
+  const rpcCalls: { fn: string; args: Record<string, unknown> }[] = [];
+  const deleteCalls: string[] = [];
+
+  function queryBuilder() {
+    let capturedId: string | undefined;
+    let isDelete = false;
+    const b: Record<string, unknown> = {
+      then: (resolve: (value: unknown) => void) => {
+        if (isDelete && capturedId && failingIds.has(capturedId)) {
+          resolve({ error: { message: 'Delete failed' } });
+        } else {
+          resolve({ data: [], error: null });
+        }
+      },
+    };
+    for (const method of ['select', 'order', 'insert']) {
+      b[method] = () => b;
+    }
+    b['delete'] = () => {
+      isDelete = true;
+      return b;
+    };
+    b['eq'] = (column: string, value: string) => {
+      if (column === 'id') {
+        capturedId = value;
+        if (isDelete) {
+          deleteCalls.push(value);
+        }
+      }
+      return b;
+    };
+    return b;
+  }
+
+  const service = {
+    client: {
+      from: () => queryBuilder(),
+      rpc: (fn: string, args: Record<string, unknown>) => {
+        rpcCalls.push({ fn, args });
+        const taskId = args['task_id'] as string;
+        return {
+          then: (resolve: (value: unknown) => void) => {
+            resolve(failingIds.has(taskId) ? { error: { message: 'Status update failed' } } : { error: null });
+          }
+        };
+      }
+    }
+  } as unknown as SupabaseService;
+
+  return { service, rpcCalls, deleteCalls };
+}
+
+describe('ManageTasksComponent bulk actions', () => {
+  async function createComponent(supabaseService: SupabaseService) {
+    await TestBed.configureTestingModule({
+      imports: [ManageTasksComponent],
+      providers: [
+        provideRouter([]),
+        provideNativeDateAdapter(),
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile()) },
+        { provide: SupabaseService, useValue: supabaseService }
+      ]
+    }).compileComponents();
+
+    const localFixture = TestBed.createComponent(ManageTasksComponent);
+    localFixture.detectChanges();
+    await localFixture.whenStable();
+    return localFixture.componentInstance;
+  }
+
+  function callPerformBulkDelete(component: ManageTasksComponent, ids: string[]): Promise<void> {
+    return (component as unknown as { performBulkDelete: (ids: string[]) => Promise<void> }).performBulkDelete(ids);
+  }
+
+  describe('applyBulkStatusChange()', () => {
+    it('does nothing when no status is picked', async () => {
+      const { service, rpcCalls } = createBulkTaskActionFakeSupabaseService();
+      const component = await createComponent(service);
+      component.allTasks = [createTestTask({ id: '1' })];
+      component.selectedTaskIds = new Set(['1']);
+
+      await component.applyBulkStatusChange();
+
+      expect(rpcCalls.length).toBe(0);
+    });
+
+    it('updates every selected task and reports success', async () => {
+      const { service, rpcCalls } = createBulkTaskActionFakeSupabaseService();
+      const component = await createComponent(service);
+      component.allTasks = [createTestTask({ id: '1' }), createTestTask({ id: '2' })];
+      component.selectedTaskIds = new Set(['1', '2']);
+      component.bulkStatusValue = 'done';
+      const notificationSuccessSpy = spyOn((component as unknown as { notification: { success: (msg: string) => void } }).notification, 'success');
+
+      await component.applyBulkStatusChange();
+
+      expect(rpcCalls.length).toBe(2);
+      expect(rpcCalls.every(call => call.fn === 'update_task_status' && call.args['new_status'] === 'done')).toBeTrue();
+      expect(notificationSuccessSpy).toHaveBeenCalledWith('Updated 2 tasks');
+      expect(component.selectedTaskIds.size).toBe(0);
+      expect(component.bulkActionError).toBeNull();
+    });
+
+    it('reports a partial failure without losing the successes', async () => {
+      const { service } = createBulkTaskActionFakeSupabaseService(new Set(['2']));
+      const component = await createComponent(service);
+      component.allTasks = [createTestTask({ id: '1' }), createTestTask({ id: '2' })];
+      component.selectedTaskIds = new Set(['1', '2']);
+      component.bulkStatusValue = 'done';
+      const notificationSuccessSpy = spyOn((component as unknown as { notification: { success: (msg: string) => void } }).notification, 'success');
+
+      await component.applyBulkStatusChange();
+
+      expect(notificationSuccessSpy).toHaveBeenCalledWith('Updated 1 task');
+      expect(component.bulkActionError).toBe("1 of 2 tasks couldn't be updated.");
+    });
+
+    it('only acts on the currently-visible (filtered) selection', async () => {
+      const { service, rpcCalls } = createBulkTaskActionFakeSupabaseService();
+      const component = await createComponent(service);
+      component.allTasks = [
+        createTestTask({ id: '1', title: 'Restock shelves' }),
+        createTestTask({ id: '2', title: 'Order supplies' })
+      ];
+      component.selectedTaskIds = new Set(['1', '2']);
+      component.taskFilterSearch = 'restock';
+      component.bulkStatusValue = 'done';
+
+      await component.applyBulkStatusChange();
+
+      expect(rpcCalls.length).toBe(1);
+      expect(rpcCalls[0].args['task_id']).toBe('1');
+    });
+  });
+
+  describe('applyBulkDelete()', () => {
+    it('opens a confirmation dialog scoped to the currently-visible selection, and does nothing else yet', async () => {
+      const { service, deleteCalls } = createBulkTaskActionFakeSupabaseService();
+      const component = await createComponent(service);
+      component.allTasks = [createTestTask({ id: '1' }), createTestTask({ id: '2' })];
+      component.selectedTaskIds = new Set(['1', '2']);
+      const dialog = (component as unknown as { dialog: { open: (...args: unknown[]) => { afterClosed: () => { subscribe: () => void } } } }).dialog;
+      const openSpy = spyOn(dialog, 'open').and.returnValue({ afterClosed: () => ({ subscribe: () => {} }) });
+
+      component.applyBulkDelete();
+
+      expect(openSpy).toHaveBeenCalledWith(jasmine.any(Function), jasmine.objectContaining({
+        data: jasmine.objectContaining({ title: 'Delete 2 tasks?', danger: true })
+      }));
+      expect(deleteCalls.length).toBe(0);
+    });
+
+    it('does nothing when there is no visible selection', async () => {
+      const { service } = createBulkTaskActionFakeSupabaseService();
+      const component = await createComponent(service);
+      const dialog = (component as unknown as { dialog: { open: (...args: unknown[]) => unknown } }).dialog;
+      const openSpy = spyOn(dialog, 'open');
+
+      component.applyBulkDelete();
+
+      expect(openSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('performBulkDelete() (the actual work applyBulkDelete() runs once confirmed)', () => {
+    it('deletes every given task and reports success', async () => {
+      const { service, deleteCalls } = createBulkTaskActionFakeSupabaseService();
+      const component = await createComponent(service);
+      const notificationSuccessSpy = spyOn((component as unknown as { notification: { success: (msg: string) => void } }).notification, 'success');
+
+      await callPerformBulkDelete(component, ['1', '2']);
+
+      expect(deleteCalls.sort()).toEqual(['1', '2']);
+      expect(notificationSuccessSpy).toHaveBeenCalledWith('Deleted 2 tasks');
+      expect(component.selectedTaskIds.size).toBe(0);
+      expect(component.bulkActionError).toBeNull();
+    });
+
+    it('reports a partial failure without losing the successes', async () => {
+      const { service } = createBulkTaskActionFakeSupabaseService(new Set(['2']));
+      const component = await createComponent(service);
+      const notificationSuccessSpy = spyOn((component as unknown as { notification: { success: (msg: string) => void } }).notification, 'success');
+
+      await callPerformBulkDelete(component, ['1', '2']);
+
+      expect(notificationSuccessSpy).toHaveBeenCalledWith('Deleted 1 task');
+      expect(component.bulkActionError).toBe("1 of 2 tasks couldn't be deleted.");
+    });
+  });
 });

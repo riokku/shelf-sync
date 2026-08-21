@@ -144,6 +144,31 @@
             }
           </app-empty-state>
         } @else {
+          <app-bulk-action-toolbar
+              [selectedCount]="selectedVisibleTaskIds.size"
+              [totalCount]="filteredAllTasks.length"
+              (selectAll)="toggleSelectAllFiltered($event)"
+              (clear)="clearTaskSelection()"
+            >
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bulk-status-field">
+              <mat-label>Set status</mat-label>
+              <mat-select [(ngModel)]="bulkStatusValue">
+                @for (status of statuses; track status) {
+                  <mat-option [value]="status">{{ statusLabels[status] }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <button mat-stroked-button type="button" [disabled]="!bulkStatusValue || isBulkProcessing" (click)="applyBulkStatusChange()">
+              Apply
+            </button>
+            <button mat-stroked-button type="button" color="warn" [disabled]="isBulkProcessing" (click)="applyBulkDelete()">
+              <mat-icon>delete</mat-icon>
+              Delete
+            </button>
+          </app-bulk-action-toolbar>
+          @if (bulkActionError) {
+            <p class="error-message">{{ bulkActionError }}</p>
+          }
           <div class="task-rows">
             @for (task of filteredAllTasks; track task.id) {
               <div
@@ -156,6 +181,11 @@
                   (click)="openTaskDetail(task)"
                   (keydown.enter)="openTaskDetail(task)"
                 >
+                <mat-checkbox
+                    [checked]="isTaskSelected(task.id)"
+                    (change)="toggleTaskSelection(task.id, $event.checked)"
+                    (click)="$event.stopPropagation()"
+                  ></mat-checkbox>
                 <div class="task-row-main">
                   <span class="task-row-title" [title]="task.title">{{ task.title }}</span>
                   @if (task.related_item_name) {
