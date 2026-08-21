@@ -22,6 +22,8 @@ import { Database } from '../../shared/models/database.types';
 import { profileDisplayName, resolveProfileName } from '../../shared/utils/profile-label';
 import { logActivity } from '../../shared/utils/activity-log';
 import { formatLastSeen, isProfileOnline } from '../../shared/utils/presence';
+import { subscribeToTableChanges } from '../../shared/utils/realtime';
+import { debounce } from '../../shared/utils/debounce';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
 
@@ -122,6 +124,11 @@ export class ManageTeamComponent implements OnInit {
   inviteLink: string | null = null;
   inviteLinkCopied = false;
 
+  // Collapses a burst of postgres_changes events (e.g. an accept/decline
+  // touching more than one row) into one reload — see debounce()'s own
+  // doc comment.
+  private readonly debouncedReloadTeamTasks = debounce(() => void this.loadTeamTasks(), 300);
+
   async ngOnInit() {
     const session = await this.authService.getSession();
     this.currentUserId = session?.user.id ?? null;
@@ -138,6 +145,21 @@ export class ManageTeamComponent implements OnInit {
     // spinner) so it can run in the background without any visible flicker.
     const presenceIntervalId = window.setInterval(() => void this.refreshPresence(), 30_000);
     this.destroyRef.onDestroy(() => window.clearInterval(presenceIntervalId));
+
+    // Live updates from other users/tabs — a status change, transfer, or
+    // deletion elsewhere shows up in each member's task list without a
+    // manual refresh. Reuses loadTeamTasks() itself (debounced), same
+    // reasoning as TasksComponent/ManageTasksComponent. Deliberately kept
+    // separate from the presence-poll interval above rather than merged
+    // into it — that code is a distinct, already-settled concern (see its
+    // own comment) this feature shouldn't disturb. No client-side
+    // organization_id filter — see subscribeToTableChanges()'s own comment
+    // for why RLS alone is the right boundary here.
+    const channel = subscribeToTableChanges(this.supabase, 'tasks', () => this.debouncedReloadTeamTasks());
+    this.destroyRef.onDestroy(() => {
+      this.debouncedReloadTeamTasks.cancel();
+      void this.supabase.removeChannel(channel);
+    });
   }
 
   /** Patches last_active_at onto the already-loaded profile objects in

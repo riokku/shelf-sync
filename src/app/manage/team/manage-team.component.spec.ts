@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, discardPeriodicTasks, fakeAsync, tick } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { ManageTeamComponent } from './manage-team.component';
@@ -241,4 +241,110 @@ describe('ManageTeamComponent refreshPresence()', () => {
 
     expect(component.teamMembers[0].profile.last_active_at).toBe('2026-01-01T00:00:00.000Z');
   });
+});
+
+/** Captures the postgres_changes callback ngOnInit()'s realtime subscription
+ *  registers, exposing it as emitChange() — same pattern as
+ *  tasks.component.spec.ts/manage-tasks.component.spec.ts. Counts `tasks`
+ *  table `.select()` calls (one per loadTeamTasks() call) to prove a burst
+ *  of events collapses into a single reload. `profiles`/`organizations`
+ *  (ngOnInit's other queries) resolve to empty/null and aren't counted. */
+function createRealtimeCapturingSupabaseService() {
+  let capturedCallback: ((payload: unknown) => void) | null = null;
+  let tasksSelectCount = 0;
+
+  function builder(table: string) {
+    const b: Record<string, unknown> = {
+      then: (resolve: (value: unknown) => void) => resolve({ data: [], error: null }),
+    };
+    for (const method of ['select', 'eq', 'order', 'delete', 'single']) {
+      b[method] = () => {
+        if (table === 'tasks' && method === 'select') {
+          tasksSelectCount++;
+        }
+        return b;
+      };
+    }
+    return b;
+  }
+
+  const channel: Record<string, unknown> = {
+    on: (_type: string, _filter: unknown, callback: (payload: unknown) => void) => {
+      capturedCallback = callback;
+      return channel;
+    },
+    subscribe: () => channel,
+  };
+
+  const service = {
+    client: {
+      from: (table: string) => builder(table),
+      channel: () => channel,
+      removeChannel: async () => ({ status: 'ok' }),
+    }
+  } as unknown as SupabaseService;
+
+  return {
+    service,
+    emitChange: (payload: unknown) => capturedCallback?.(payload),
+    getTasksSelectCount: () => tasksSelectCount,
+  };
+}
+
+describe('ManageTeamComponent realtime updates', () => {
+  function configure(service: SupabaseService) {
+    TestBed.configureTestingModule({
+      imports: [ManageTeamComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: 'admin' })) },
+        { provide: SupabaseService, useValue: service }
+      ]
+    });
+    return TestBed.createComponent(ManageTeamComponent);
+  }
+
+  // discardPeriodicTasks() at the end of each test — ngOnInit() also starts
+  // the pre-existing, deliberately-untouched presence-poll setInterval (see
+  // its own comment), which fakeAsync() would otherwise complain is still
+  // pending when the test ends. Same pattern header.component.spec.ts
+  // already uses for its own interval.
+  it('collapses a burst of postgres_changes events into a single reload, 300ms after the last one', fakeAsync(() => {
+    const { service, emitChange, getTasksSelectCount } = createRealtimeCapturingSupabaseService();
+    const fixture = configure(service);
+    fixture.detectChanges();
+    tick();
+
+    // ngOnInit's own initial loadTeamTasks() call.
+    expect(getTasksSelectCount()).toBe(1);
+
+    emitChange({ eventType: 'UPDATE', new: { id: 'task-1' }, old: {} });
+    emitChange({ eventType: 'UPDATE', new: { id: 'task-1' }, old: {} });
+    emitChange({ eventType: 'UPDATE', new: { id: 'task-1' }, old: {} });
+
+    tick(299);
+    expect(getTasksSelectCount()).toBe(1); // still within the debounce window
+
+    tick(1);
+    expect(getTasksSelectCount()).toBe(2); // exactly one more loadTeamTasks() call, not three
+
+    discardPeriodicTasks();
+  }));
+
+  it('cancels a pending debounced reload and removes the channel on destroy, without disturbing the presence-poll interval', fakeAsync(() => {
+    const { service, emitChange, getTasksSelectCount } = createRealtimeCapturingSupabaseService();
+    const removeChannelSpy = spyOn(service.client, 'removeChannel').and.callThrough();
+    const fixture = configure(service);
+    fixture.detectChanges();
+    tick();
+
+    emitChange({ eventType: 'UPDATE', new: { id: 'task-1' }, old: {} });
+    fixture.destroy();
+    tick(300);
+
+    expect(removeChannelSpy).toHaveBeenCalled();
+    expect(getTasksSelectCount()).toBe(1); // the debounced reload never fired post-destroy
+
+    discardPeriodicTasks();
+  }));
 });
