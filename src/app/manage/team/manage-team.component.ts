@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
 import { SupabaseService } from '../../core/supabase.service';
 import { NotificationService } from '../../core/notification.service';
@@ -18,6 +19,7 @@ import { TaskDetailModalComponent } from '../../shared/components/task-detail-mo
 import { EditProfileModalComponent } from '../../shared/components/edit-profile-modal/edit-profile-modal.component';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
+import { BulkActionToolbarComponent } from '../../shared/components/bulk-action-toolbar/bulk-action-toolbar.component';
 import { Database } from '../../shared/models/database.types';
 import { profileDisplayName, resolveProfileName } from '../../shared/utils/profile-label';
 import { logActivity } from '../../shared/utils/activity-log';
@@ -48,10 +50,12 @@ interface TeamMember {
     MatProgressSpinnerModule,
     MatExpansionModule,
     MatSlideToggleModule,
+    MatCheckboxModule,
     BreadcrumbsComponent,
     UserAvatarComponent,
     TaskCardComponent,
-    EmptyStateComponent
+    EmptyStateComponent,
+    BulkActionToolbarComponent
   ],
   templateUrl: './manage-team.component.html',
   styleUrl: './manage-team.component.scss',
@@ -70,6 +74,18 @@ export class ManageTeamComponent implements OnInit {
   pendingMembers: Profile[] = [];
   isProcessingMembership = false;
   membershipError: string | null = null;
+
+  // Bulk selection — scoped to pendingMembers only (the "Current team"
+  // accordion isn't part of this feature; removing multiple active members
+  // in bulk is a much more sensitive operation, and its expansion-panel
+  // layout doesn't fit a row-checkbox UX the way this plain list does).
+  // No search/filter on this section, so — unlike ManageTasksComponent's
+  // own selectedVisibleTaskIds — there's nothing to intersect against here;
+  // a plain Set is enough. Reuses isProcessingMembership/membershipError
+  // rather than its own separate flag/error field, since this component
+  // already treats "a membership action is in flight" as one thing
+  // regardless of whether it's a single action or a bulk one.
+  selectedPendingMemberIds = new Set<string>();
 
   teamMembers: TeamMember[] = [];
   isLoadingTeam = true;
@@ -412,6 +428,131 @@ export class ManageTeamComponent implements OnInit {
     await this.loadProfiles();
     await this.loadTeamTasks();
     this.notification.success('Member approved');
+  }
+
+  isPendingSelected(profileId: string): boolean {
+    return this.selectedPendingMemberIds.has(profileId);
+  }
+
+  togglePendingSelection(profileId: string, checked: boolean) {
+    const next = new Set(this.selectedPendingMemberIds);
+    if (checked) {
+      next.add(profileId);
+    } else {
+      next.delete(profileId);
+    }
+    this.selectedPendingMemberIds = next;
+  }
+
+  toggleSelectAllPending(checked: boolean) {
+    const next = new Set(this.selectedPendingMemberIds);
+    for (const profile of this.pendingMembers) {
+      if (checked) {
+        next.add(profile.id);
+      } else {
+        next.delete(profile.id);
+      }
+    }
+    this.selectedPendingMemberIds = next;
+  }
+
+  clearPendingSelection() {
+    this.selectedPendingMemberIds = new Set();
+    this.membershipError = null;
+  }
+
+  async applyBulkApprove() {
+    if (this.isProcessingMembership) {
+      return;
+    }
+    const ids = [...this.selectedPendingMemberIds];
+    if (ids.length === 0) {
+      return;
+    }
+
+    this.isProcessingMembership = true;
+    this.membershipError = null;
+
+    const results = await Promise.all(ids.map(id => this.supabase.rpc('admin_approve_member', { target_id: id })));
+    const failedCount = results.filter(result => result.error).length;
+    const succeededCount = ids.length - failedCount;
+
+    this.isProcessingMembership = false;
+    await this.loadProfiles();
+    await this.loadTeamTasks();
+
+    if (succeededCount > 0) {
+      this.notification.success(`Approved ${succeededCount} member${succeededCount === 1 ? '' : 's'}`);
+    }
+    // Not clearPendingSelection() — that also nulls membershipError, which
+    // would erase the message set right below before anyone could read it.
+    this.selectedPendingMemberIds = new Set();
+    if (failedCount > 0) {
+      this.membershipError = `${failedCount} of ${ids.length} member${ids.length === 1 ? '' : 's'} couldn't be approved.`;
+    }
+  }
+
+  applyBulkDeny() {
+    if (this.isProcessingMembership) {
+      return;
+    }
+    const ids = [...this.selectedPendingMemberIds];
+    if (ids.length === 0) {
+      return;
+    }
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: `Deny ${ids.length} join request${ids.length === 1 ? '' : 's'}?`,
+        message: `Deny ${ids.length} join request${ids.length === 1 ? '' : 's'}? Their account(s) will still exist, but they won't be able to join.`,
+        confirmLabel: 'Deny',
+        danger: true
+      },
+      width: 'clamp(75%, 25rem, 60%)'
+    });
+
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (confirmed) {
+        void this.performBulkDeny(ids);
+      }
+    });
+  }
+
+  /** The actual deny/tally work, split out of applyBulkDeny() above so it's
+   *  directly testable without needing to fake the confirm dialog itself
+   *  (no spec in this app fakes MatDialog.open() — every
+   *  ConfirmDialogComponent caller elsewhere is only tested up to "was the
+   *  dialog opened with the right data"). Mirrors confirmAndDeleteProfile()'s
+   *  single-deny shape: a raw profiles delete (no RPC exists for this —
+   *  there's no separate "denied" status, denying just never lets the row
+   *  become an approved member) plus a best-effort per-profile activity log. */
+  private async performBulkDeny(ids: string[]) {
+    this.isProcessingMembership = true;
+    this.membershipError = null;
+
+    const results = await Promise.all(ids.map(async id => {
+      const { error } = await this.supabase.from('profiles').delete().eq('id', id);
+      if (!error && this.currentUserId) {
+        const profile = this.pendingMembers.find(candidate => candidate.id === id);
+        const label = profile ? profileDisplayName(profile) : 'a user';
+        await logActivity(this.supabase, this.currentUserId, 'member', id, `Denied ${label}'s join request`);
+      }
+      return { error };
+    }));
+    const failedCount = results.filter(result => result.error).length;
+    const succeededCount = ids.length - failedCount;
+
+    this.isProcessingMembership = false;
+    await this.loadProfiles();
+    await this.loadTeamTasks();
+
+    if (succeededCount > 0) {
+      this.notification.success(`Denied ${succeededCount} join request${succeededCount === 1 ? '' : 's'}`);
+    }
+    this.selectedPendingMemberIds = new Set();
+    if (failedCount > 0) {
+      this.membershipError = `${failedCount} of ${ids.length} request${ids.length === 1 ? '' : 's'} couldn't be denied.`;
+    }
   }
 
   openTaskDetail(task: Task) {

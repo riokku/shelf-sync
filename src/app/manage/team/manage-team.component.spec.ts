@@ -167,6 +167,41 @@ describe('ManageTeamComponent', () => {
       expect(component.presenceLabel(offlineProfile)).toBe('Never signed in');
     });
   });
+
+  describe('bulk selection (pending join requests)', () => {
+    beforeEach(() => {
+      component.pendingMembers = [
+        createFakeProfile({ id: '1' }),
+        createFakeProfile({ id: '2' })
+      ];
+    });
+
+    it('togglePendingSelection() adds and removes an id', () => {
+      component.togglePendingSelection('1', true);
+      expect(component.isPendingSelected('1')).toBeTrue();
+
+      component.togglePendingSelection('1', false);
+      expect(component.isPendingSelected('1')).toBeFalse();
+    });
+
+    it('toggleSelectAllPending() selects/deselects every pending request', () => {
+      component.toggleSelectAllPending(true);
+      expect([...component.selectedPendingMemberIds].sort()).toEqual(['1', '2']);
+
+      component.toggleSelectAllPending(false);
+      expect(component.selectedPendingMemberIds.size).toBe(0);
+    });
+
+    it('clearPendingSelection() resets selection and any membership error', () => {
+      component.togglePendingSelection('1', true);
+      component.membershipError = 'something went wrong';
+
+      component.clearPendingSelection();
+
+      expect(component.selectedPendingMemberIds.size).toBe(0);
+      expect(component.membershipError).toBeNull();
+    });
+  });
 });
 
 function memberOf(profile: Partial<Profile>) {
@@ -385,4 +420,204 @@ describe('ManageTeamComponent realtime updates', () => {
 
     discardPeriodicTasks();
   }));
+});
+
+/** A Supabase fake purpose-built for the bulk approve/deny tests below —
+ *  tracks every admin_approve_member RPC call and every
+ *  profiles.delete().eq('id', id) call, and lets a test mark specific ids
+ *  as failing to cover the partial-failure tally path. Everything else
+ *  (profiles/tasks loads, the activity-log insert) resolves as a generic
+ *  empty success. */
+function createBulkMembershipFakeSupabaseService(failingIds: Set<string> = new Set<string>()) {
+  const rpcCalls: { fn: string; args: Record<string, unknown> }[] = [];
+  const deleteCalls: string[] = [];
+
+  function queryBuilder() {
+    let capturedId: string | undefined;
+    let isDelete = false;
+    const b: Record<string, unknown> = {
+      then: (resolve: (value: unknown) => void) => {
+        if (isDelete && capturedId && failingIds.has(capturedId)) {
+          resolve({ error: { message: 'Delete failed' } });
+        } else {
+          resolve({ data: [], error: null });
+        }
+      },
+    };
+    for (const method of ['select', 'order', 'insert', 'single', 'maybeSingle']) {
+      b[method] = () => b;
+    }
+    b['delete'] = () => {
+      isDelete = true;
+      return b;
+    };
+    b['eq'] = (column: string, value: string) => {
+      if (column === 'id') {
+        capturedId = value;
+        if (isDelete) {
+          deleteCalls.push(value);
+        }
+      }
+      return b;
+    };
+    return b;
+  }
+
+  // Inert — ngOnInit() also opens a realtime subscription; this just needs
+  // to exist so that call doesn't throw, same stub shape used elsewhere in
+  // this app's specs for a component that doesn't otherwise care about it.
+  const channel: Record<string, unknown> = {
+    on: () => channel,
+    subscribe: () => channel,
+  };
+
+  const service = {
+    client: {
+      from: () => queryBuilder(),
+      rpc: (fn: string, args: Record<string, unknown>) => {
+        rpcCalls.push({ fn, args });
+        const targetId = args['target_id'] as string;
+        return {
+          then: (resolve: (value: unknown) => void) => {
+            resolve(failingIds.has(targetId) ? { error: { message: 'Approve failed' } } : { error: null });
+          }
+        };
+      },
+      channel: () => channel,
+      removeChannel: async () => ({ status: 'ok' }),
+    }
+  } as unknown as SupabaseService;
+
+  return { service, rpcCalls, deleteCalls };
+}
+
+describe('ManageTeamComponent bulk membership actions', () => {
+  // Plain async/await, not fakeAsync — ngOnInit()'s presence-poll
+  // setInterval is left running (harmless outside fakeAsync, same as the
+  // outer plain describe('ManageTeamComponent', ...) block's own tests),
+  // and mixing fakeAsync with the real async TestBed compilation these
+  // helpers need proved unreliable (discardPeriodicTasks() requires the
+  // fakeAsync zone still be active, which a real await inside the same
+  // test can quietly break out of).
+  //
+  // Deliberately no `await fixture.whenStable()` here either — that live
+  // setInterval counts as a pending NgZone macrotask forever, so
+  // whenStable() would just hang. Not needed anyway: every test below
+  // overwrites pendingMembers/selectedPendingMemberIds itself right after
+  // calling this, so it doesn't depend on ngOnInit's own initial loads
+  // having already settled.
+  async function createComponent(supabaseService: SupabaseService) {
+    await TestBed.configureTestingModule({
+      imports: [ManageTeamComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: 'admin' })) },
+        { provide: SupabaseService, useValue: supabaseService }
+      ]
+    }).compileComponents();
+
+    const localFixture = TestBed.createComponent(ManageTeamComponent);
+    localFixture.detectChanges();
+    return localFixture.componentInstance;
+  }
+
+  function callPerformBulkDeny(component: ManageTeamComponent, ids: string[]): Promise<void> {
+    return (component as unknown as { performBulkDeny: (ids: string[]) => Promise<void> }).performBulkDeny(ids);
+  }
+
+  describe('applyBulkApprove()', () => {
+    it('approves every selected pending request and reports success', async () => {
+      const { service, rpcCalls } = createBulkMembershipFakeSupabaseService();
+      const component = await createComponent(service);
+      component.pendingMembers = [createFakeProfile({ id: '1' }), createFakeProfile({ id: '2' })];
+      component.selectedPendingMemberIds = new Set(['1', '2']);
+      const notificationSuccessSpy = spyOn((component as unknown as { notification: { success: (msg: string) => void } }).notification, 'success');
+
+      await component.applyBulkApprove();
+
+      expect(rpcCalls.length).toBe(2);
+      expect(rpcCalls.every(call => call.fn === 'admin_approve_member')).toBeTrue();
+      expect(notificationSuccessSpy).toHaveBeenCalledWith('Approved 2 members');
+      expect(component.selectedPendingMemberIds.size).toBe(0);
+      expect(component.membershipError).toBeNull();
+    });
+
+    it('reports a partial failure without losing the successes', async () => {
+      const { service } = createBulkMembershipFakeSupabaseService(new Set(['2']));
+      const component = await createComponent(service);
+      component.pendingMembers = [createFakeProfile({ id: '1' }), createFakeProfile({ id: '2' })];
+      component.selectedPendingMemberIds = new Set(['1', '2']);
+      const notificationSuccessSpy = spyOn((component as unknown as { notification: { success: (msg: string) => void } }).notification, 'success');
+
+      await component.applyBulkApprove();
+
+      expect(notificationSuccessSpy).toHaveBeenCalledWith('Approved 1 member');
+      expect(component.membershipError).toBe("1 of 2 members couldn't be approved.");
+    });
+
+    it('does nothing when nothing is selected', async () => {
+      const { service, rpcCalls } = createBulkMembershipFakeSupabaseService();
+      const component = await createComponent(service);
+
+      await component.applyBulkApprove();
+
+      expect(rpcCalls.length).toBe(0);
+    });
+  });
+
+  describe('performBulkDeny() (the actual work applyBulkDeny() runs once confirmed)', () => {
+    it('denies every given request and reports success', async () => {
+      const { service, deleteCalls } = createBulkMembershipFakeSupabaseService();
+      const component = await createComponent(service);
+      component.pendingMembers = [createFakeProfile({ id: '1' }), createFakeProfile({ id: '2' })];
+      const notificationSuccessSpy = spyOn((component as unknown as { notification: { success: (msg: string) => void } }).notification, 'success');
+
+      await callPerformBulkDeny(component, ['1', '2']);
+
+      expect(deleteCalls.sort()).toEqual(['1', '2']);
+      expect(notificationSuccessSpy).toHaveBeenCalledWith('Denied 2 join requests');
+      expect(component.selectedPendingMemberIds.size).toBe(0);
+    });
+
+    it('reports a partial failure without losing the successes', async () => {
+      const { service } = createBulkMembershipFakeSupabaseService(new Set(['2']));
+      const component = await createComponent(service);
+      component.pendingMembers = [createFakeProfile({ id: '1' }), createFakeProfile({ id: '2' })];
+      const notificationSuccessSpy = spyOn((component as unknown as { notification: { success: (msg: string) => void } }).notification, 'success');
+
+      await callPerformBulkDeny(component, ['1', '2']);
+
+      expect(notificationSuccessSpy).toHaveBeenCalledWith('Denied 1 join request');
+      expect(component.membershipError).toBe("1 of 2 requests couldn't be denied.");
+    });
+  });
+
+  describe('applyBulkDeny()', () => {
+    it('opens a confirmation dialog scoped to the current selection, and does nothing else yet', async () => {
+      const { service, deleteCalls } = createBulkMembershipFakeSupabaseService();
+      const component = await createComponent(service);
+      component.pendingMembers = [createFakeProfile({ id: '1' }), createFakeProfile({ id: '2' })];
+      component.selectedPendingMemberIds = new Set(['1', '2']);
+      const dialog = (component as unknown as { dialog: { open: (...args: unknown[]) => { afterClosed: () => { subscribe: () => void } } } }).dialog;
+      const openSpy = spyOn(dialog, 'open').and.returnValue({ afterClosed: () => ({ subscribe: () => {} }) });
+
+      component.applyBulkDeny();
+
+      expect(openSpy).toHaveBeenCalledWith(jasmine.any(Function), jasmine.objectContaining({
+        data: jasmine.objectContaining({ title: 'Deny 2 join requests?', danger: true })
+      }));
+      expect(deleteCalls.length).toBe(0);
+    });
+
+    it('does nothing when nothing is selected', async () => {
+      const { service } = createBulkMembershipFakeSupabaseService();
+      const component = await createComponent(service);
+      const dialog = (component as unknown as { dialog: { open: (...args: unknown[]) => unknown } }).dialog;
+      const openSpy = spyOn(dialog, 'open');
+
+      component.applyBulkDeny();
+
+      expect(openSpy).not.toHaveBeenCalled();
+    });
+  });
 });

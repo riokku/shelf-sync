@@ -436,6 +436,39 @@ the patch itself lands (never on a DELETE, since there's no row left to flash). 
 existing debounced reload actually completes — flashing before the reload would highlight a row
 that's still showing stale data.
 
+Three pages support bulk (multi-select) actions: the Inventory page (bulk category/physical-location
+reassignment), Manage > Tasks' "All tasks" list (bulk status change and bulk delete), and Manage >
+Team's "Pending join requests" list (bulk approve/deny) — deliberately not the "Current team"
+accordion (removing multiple active members in bulk is far more sensitive, and its expansion-panel
+layout doesn't fit a row-checkbox UX anyway) nor Manage > Inventory's retirement-requests tab (out
+of scope for this pass, a natural future extension of the same shared toolbar). No RPC accepts an
+array of ids anywhere in this schema, so every bulk action loops the existing single-item write path
+client-side (`Promise.all`) and tallies per-item success/failure rather than assuming all-or-nothing
+— a success toast reports how many went through, and only if at least one failed, an inline
+`error-message` (matching every other error in this app) reports the failure count, e.g. "1 of 2
+items couldn't be updated." Two new shared components back all three:
+`shared/components/bulk-action-toolbar` (the "N selected / select all / clear" chrome, common to
+all three pages, with each page's own action buttons passed in via content projection — it owns no
+bulk-action behavior itself) and `shared/components/bulk-reassign-modal` (Inventory's own
+category/physical-location picker, each field independently toggleable so an admin can bulk-set
+just one without touching the other, with an explicit "(None)" option to bulk-*clear* a field).
+Selection scope differs by page's own pagination/filtering shape: `InventoryComponent`'s
+`selectedItemIds` is cleared on every search/filter/sort/page change (letting it persist across a
+page change in particular would put it out of sync with that page's own `selectablePagedItems`,
+which the shared toolbar's select-all checkbox operates over); `ManageTasksComponent`'s
+`selectedTaskIds` is never explicitly cleared on filter change (this page has no pagination, and its
+filters are plain `[(ngModel)]` bindings with no handler method to hook into) — instead a
+`selectedVisibleTaskIds` getter intersects it with `filteredAllTasks`, so a filtered-out task simply
+drops out of the visible count/acted-on set and reappears correctly if the filter is later cleared;
+`ManageTeamComponent`'s `selectedPendingMemberIds` needs neither, since pending join requests have no
+search/filter of their own. A locked inventory item's checkbox is disabled (not hidden — hiding would
+shift row layout) for anyone who isn't `authService.canManage()`, mirroring
+`ModalTableComponent`'s own Edit-button gating, so nobody can select an item a bulk reassign would
+just fail on anyway. `InventoryComponent`'s bulk reassign needs no manual list reload afterward —
+its existing realtime subscription already patches (and flashes) every row it touches, including the
+acting user's own writes; the two task pages' bulk actions call their existing reload method
+directly for immediate feedback, same as their single-action counterparts already do.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -559,6 +592,8 @@ customize/                                                  # admin-only: theme 
 account/                                                    # profile info, avatar picker, light/dark mode toggle
 shared/
   components/modal-table/    # standalone Material dialog showing InventoryItem details
+  components/bulk-action-toolbar/ # shared "N selected / select all / clear" chrome for every page with bulk actions
+  components/bulk-reassign-modal/ # Inventory's bulk category/physical-location reassignment dialog
   models/inventory-item.model.ts   # InventoryItem class (constructor-based, no defaults)
   models/theme-preset.ts     # THEME_PRESETS — key must match a [data-theme] block in styles.scss
   models/inventory-table-column.ts # optional Inventory table-view columns admin can show/hide (Customize > Data)

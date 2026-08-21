@@ -27,9 +27,28 @@
       @if (authService.role() === 'admin' && pendingMembers.length > 0) {
         <div class="pending-members-section">
           <h3>Pending join requests</h3>
+          <app-bulk-action-toolbar
+              [selectedCount]="selectedPendingMemberIds.size"
+              [totalCount]="pendingMembers.length"
+              (selectAll)="toggleSelectAllPending($event)"
+              (clear)="clearPendingSelection()"
+            >
+            <button mat-stroked-button type="button" color="warn" [disabled]="isProcessingMembership" (click)="applyBulkDeny()">
+              <mat-icon>close</mat-icon>
+              Deny
+            </button>
+            <button mat-flat-button type="button" color="primary" [disabled]="isProcessingMembership" (click)="applyBulkApprove()">
+              <mat-icon>check</mat-icon>
+              Approve
+            </button>
+          </app-bulk-action-toolbar>
           <div class="pending-members-list">
             @for (profile of pendingMembers; track profile.id) {
               <div class="pending-member-row">
+                <mat-checkbox
+                    [checked]="isPendingSelected(profile.id)"
+                    (change)="togglePendingSelection(profile.id, $event.checked)"
+                  ></mat-checkbox>
                 <span class="pending-member-name">
                   <span class="avatar-status-wrapper">
                     <app-user-avatar [avatarKey]="profile.avatar_key" size="sm" />
