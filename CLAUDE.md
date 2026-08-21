@@ -452,6 +452,14 @@ all three pages, with each page's own action buttons passed in via content proje
 bulk-action behavior itself) and `shared/components/bulk-reassign-modal` (Inventory's own
 category/physical-location picker, each field independently toggleable so an admin can bulk-set
 just one without touching the other, with an explicit "(None)" option to bulk-*clear* a field).
+On the Inventory page specifically, bulk selection sits behind its own `bulkEditEnabled` toggle
+(a `mat-slide-toggle` next to the card/table view switch, off by default) — the toolbar and every
+row/card's checkbox only render once it's on, so ordinary browsing isn't cluttered with a control
+most visits never use; turning it off clears whatever was selected rather than leaving a stale
+selection sitting around unseen. Table view's checkbox is a leading `matColumnDef="select"` column
+(present in `tableColumns` only while the toggle is on); card view's sits absolutely positioned in
+the bottom-right corner of the whole card (not the image — that corner's already claimed by
+`.quantity-badge`, which is confined to the image area above it).
 Selection scope differs by page's own pagination/filtering shape: `InventoryComponent`'s
 `selectedItemIds` is cleared on every search/filter/sort/page change (letting it persist across a
 page change in particular would put it out of sync with that page's own `selectablePagedItems`,

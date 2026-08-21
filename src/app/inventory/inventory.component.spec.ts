@@ -305,24 +305,32 @@ describe('InventoryComponent', () => {
       return localFixture.componentInstance;
     }
 
-    it('always includes select first, name second, and actions last', () => {
-      expect(component.tableColumns[0]).toBe('select');
-      expect(component.tableColumns[1]).toBe('name');
+    it('always includes name first and actions last', () => {
+      expect(component.tableColumns[0]).toBe('name');
       expect(component.tableColumns[component.tableColumns.length - 1]).toBe('actions');
     });
 
-    it('includes every optional column when all are enabled (the default)', () => {
-      expect(component.tableColumns).toEqual(['select', 'name', 'category', 'physicalLocation', 'quantityRemaining', 'status', 'actions']);
+    it('includes every optional column when all are enabled (the default), with no select column since Bulk edit starts off', () => {
+      expect(component.tableColumns).toEqual(['name', 'category', 'physicalLocation', 'quantityRemaining', 'status', 'actions']);
     });
 
     it('only includes the admin-enabled optional columns, in canonical order regardless of the enabled order', async () => {
       const localComponent = await createComponentWithColumns(['status', 'category']);
-      expect(localComponent.tableColumns).toEqual(['select', 'name', 'category', 'status', 'actions']);
+      expect(localComponent.tableColumns).toEqual(['name', 'category', 'status', 'actions']);
     });
 
-    it('drops down to just select/name/actions when no optional columns are enabled', async () => {
+    it('drops down to just name/actions when no optional columns are enabled', async () => {
       const localComponent = await createComponentWithColumns([]);
-      expect(localComponent.tableColumns).toEqual(['select', 'name', 'actions']);
+      expect(localComponent.tableColumns).toEqual(['name', 'actions']);
+    });
+
+    it('adds a leading select column once Bulk edit is turned on, and drops it again once turned off', () => {
+      component.toggleBulkEdit(true);
+      expect(component.tableColumns[0]).toBe('select');
+      expect(component.tableColumns).toEqual(['select', 'name', 'category', 'physicalLocation', 'quantityRemaining', 'status', 'actions']);
+
+      component.toggleBulkEdit(false);
+      expect(component.tableColumns).toEqual(['name', 'category', 'physicalLocation', 'quantityRemaining', 'status', 'actions']);
     });
   });
 
@@ -402,6 +410,32 @@ describe('InventoryComponent', () => {
         component.toggleSelectAllOnPage(true);
         component.toggleSelectAllOnPage(false);
         expect(component.selectedItemIds.size).toBe(0);
+      });
+    });
+
+    describe('toggleBulkEdit()', () => {
+      it('is off by default', () => {
+        expect(component.bulkEditEnabled).toBeFalse();
+      });
+
+      it('turning it on just flips the flag, leaving any selection alone', () => {
+        component.toggleItemSelection('1', true);
+        component.toggleBulkEdit(true);
+
+        expect(component.bulkEditEnabled).toBeTrue();
+        expect(component.isSelected('1')).toBeTrue();
+      });
+
+      it('turning it off clears the selection and any bulk error', () => {
+        component.toggleBulkEdit(true);
+        component.toggleItemSelection('1', true);
+        component.bulkActionError = 'something went wrong';
+
+        component.toggleBulkEdit(false);
+
+        expect(component.bulkEditEnabled).toBeFalse();
+        expect(component.selectedItemIds.size).toBe(0);
+        expect(component.bulkActionError).toBeNull();
       });
     });
 

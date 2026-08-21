@@ -225,6 +225,13 @@ table[mat-table]{
 .inventory-gallery-wrapper{
   row-gap: 1.5rem;
   .inventory-card{
+    // Anchors .inventory-card-select below — it's positioned against the
+    // whole card's own box, not the outer Bootstrap grid column (which can
+    // carry its own gutters/margins that don't belong to the card itself).
+    mat-card{
+      position: relative;
+    }
+
     img{
       aspect-ratio: 16/9;
       object-fit: cover;
@@ -276,14 +283,19 @@ table[mat-table]{
       white-space: nowrap;
     }
 
-    // mat-card-header is already a flex row (Material's own default) —
-    // this just keeps the checkbox from stretching to the title/subtitle
-    // stack's full height and gives it a little breathing room before the
-    // title text starts.
+    // Bottom-right of the whole card (not the image — that corner's already
+    // claimed by .quantity-badge, which is confined to the image area
+    // above) — a small surface-colored backing keeps it legible regardless
+    // of what's directly behind it (mat-card-actions' own background, same
+    // as the rest of the card).
     .inventory-card-select{
-      flex-shrink: 0;
-      align-self: center;
-      margin-right: 0.25rem;
+      position: absolute;
+      bottom: 0.5rem;
+      right: 0.5rem;
+      z-index: 1;
+      background: var(--mat-sys-surface);
+      border-radius: 50%;
+      padding: 0.25rem;
     }
   }
 }

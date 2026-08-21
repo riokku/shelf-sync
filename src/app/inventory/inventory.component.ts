@@ -10,6 +10,7 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatTableModule } from '@angular/material/table';
@@ -54,6 +55,7 @@ type StatusFilter = 'active' | 'include_retired' | 'retired_only';
         MatCardModule,
         MatButtonModule,
         MatButtonToggleModule,
+        MatSlideToggleModule,
         MatProgressSpinnerModule,
         MatPaginatorModule,
         MatTableModule,
@@ -89,6 +91,13 @@ export class InventoryComponent implements OnInit{
   // shared/styles/_realtime-flash.scss) — read from the template via
   // isFlashing(item.id).
   private flashTracker = new FlashTracker();
+
+  // Off by default — an explicit "Bulk edit" toggle rather than always
+  // showing a checkbox on every row/card, so ordinary browsing isn't
+  // cluttered with a control most visits never use. Turning it off clears
+  // whatever was selected (see toggleBulkEdit()) rather than leaving a
+  // stale selection sitting around unseen until it's turned back on.
+  bulkEditEnabled = false;
 
   // Bulk selection — scoped to whatever's currently on the page (see
   // clearSelection()'s callers below): every filter/search/sort/page change
@@ -133,10 +142,12 @@ export class InventoryComponent implements OnInit{
     const optionalColumns = INVENTORY_TABLE_COLUMN_OPTIONS
       .map(option => option.key)
       .filter(key => enabled.has(key));
-    // 'select' (the bulk-selection checkbox column) is always shown too,
-    // same reasoning as 'name'/'actions' — it's not admin-configurable data,
-    // it's a UI affordance every table view needs.
-    return ['select', 'name', ...optionalColumns, 'actions'];
+    // 'select' (the bulk-selection checkbox column) only shows up once
+    // Bulk edit is turned on — unlike 'name'/'actions', which are always
+    // shown regardless of admin settings, this one's gated by the user's
+    // own toggle rather than being permanently present UI chrome.
+    const selectColumn = this.bulkEditEnabled ? ['select'] : [];
+    return [...selectColumn, 'name', ...optionalColumns, 'actions'];
   }
 
   sortActive = '';
@@ -581,6 +592,13 @@ export class InventoryComponent implements OnInit{
   clearSelection() {
     this.selectedItemIds = new Set();
     this.bulkActionError = null;
+  }
+
+  toggleBulkEdit(enabled: boolean) {
+    this.bulkEditEnabled = enabled;
+    if (!enabled) {
+      this.clearSelection();
+    }
   }
 
   openBulkReassign() {

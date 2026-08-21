@@ -151,6 +151,9 @@
               <p>
                 Displaying {{filteredInventoryList.length}} of {{inventoryList.length}} items
               </p>
+              <mat-slide-toggle [checked]="bulkEditEnabled" (change)="toggleBulkEdit($event.checked)">
+                Bulk edit
+              </mat-slide-toggle>
               <mat-button-toggle-group
                   class="view-mode-toggle"
                   [value]="viewMode"
@@ -183,19 +186,21 @@
         } @else {
         <div class="row">
           <div class="col-12">
-            <app-bulk-action-toolbar
-                [selectedCount]="selectedItemIds.size"
-                [totalCount]="selectablePagedItems.length"
-                (selectAll)="toggleSelectAllOnPage($event)"
-                (clear)="clearSelection()"
-              >
-              <button mat-flat-button type="button" color="primary" [disabled]="isBulkProcessing" (click)="openBulkReassign()">
-                <mat-icon>edit_note</mat-icon>
-                Reassign category/location
-              </button>
-            </app-bulk-action-toolbar>
-            @if (bulkActionError) {
-              <p class="error-message">{{ bulkActionError }}</p>
+            @if (bulkEditEnabled) {
+              <app-bulk-action-toolbar
+                  [selectedCount]="selectedItemIds.size"
+                  [totalCount]="selectablePagedItems.length"
+                  (selectAll)="toggleSelectAllOnPage($event)"
+                  (clear)="clearSelection()"
+                >
+                <button mat-flat-button type="button" color="primary" [disabled]="isBulkProcessing" (click)="openBulkReassign()">
+                  <mat-icon>edit_note</mat-icon>
+                  Reassign category/location
+                </button>
+              </app-bulk-action-toolbar>
+              @if (bulkActionError) {
+                <p class="error-message">{{ bulkActionError }}</p>
+              }
             }
             @if (viewMode === 'card') {
               <div class="row inventory-gallery-wrapper">
@@ -246,13 +251,6 @@
                         }
                       </div>
                       <mat-card-header>
-                        <mat-checkbox
-                            class="inventory-card-select"
-                            [checked]="isSelected(item.id)"
-                            [disabled]="!canSelectItem(item)"
-                            [matTooltip]="canSelectItem(item) ? '' : 'Locked — only admins/managers can edit this item'"
-                            (change)="toggleItemSelection(item.id, $event.checked)"
-                          ></mat-checkbox>
                         <mat-card-title [title]="item.name">{{item.name}}</mat-card-title>
                         <mat-card-subtitle [title]="item.category">{{item.category}}</mat-card-subtitle>
                       </mat-card-header>
@@ -266,6 +264,15 @@
                           <button mat-flat-button (click)="showDetails(item)">Details</button>
                         </div>
                       </mat-card-actions>
+                      @if (bulkEditEnabled) {
+                        <mat-checkbox
+                            class="inventory-card-select"
+                            [checked]="isSelected(item.id)"
+                            [disabled]="!canSelectItem(item)"
+                            [matTooltip]="canSelectItem(item) ? '' : 'Locked — only admins/managers can edit this item'"
+                            (change)="toggleItemSelection(item.id, $event.checked)"
+                          ></mat-checkbox>
+                      }
                     </mat-card>
                   </div>
                 }
