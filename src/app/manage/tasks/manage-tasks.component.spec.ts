@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { FormGroupDirective } from '@angular/forms';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { provideNativeDateAdapter } from '@angular/material/core';
@@ -224,4 +224,103 @@ describe('ManageTasksComponent ?task= deep link', () => {
     expect(openTaskDetailSpy).not.toHaveBeenCalled();
     expect(fixture.componentInstance.viewMode).toBe('create');
   });
+});
+
+/** Captures the postgres_changes callback ngOnInit()'s realtime subscription
+ *  registers, exposing it as emitChange() — same pattern as
+ *  tasks.component.spec.ts. Counts `tasks` table `.select()` calls (one per
+ *  loadTasks() call) to prove a burst of events collapses into a single
+ *  reload, without needing to fake realistic row data. `profiles`/
+ *  `inventory_items` (ngOnInit's other two queries) resolve to empty lists
+ *  and aren't counted. */
+function createRealtimeCapturingSupabaseService() {
+  let capturedCallback: ((payload: unknown) => void) | null = null;
+  let tasksSelectCount = 0;
+
+  function builder(table: string) {
+    const b: Record<string, unknown> = {
+      then: (resolve: (value: unknown) => void) => resolve({ data: [], error: null }),
+    };
+    for (const method of ['select', 'eq', 'order', 'delete', 'insert']) {
+      b[method] = () => {
+        if (table === 'tasks' && method === 'select') {
+          tasksSelectCount++;
+        }
+        return b;
+      };
+    }
+    return b;
+  }
+
+  const channel: Record<string, unknown> = {
+    on: (_type: string, _filter: unknown, callback: (payload: unknown) => void) => {
+      capturedCallback = callback;
+      return channel;
+    },
+    subscribe: () => channel,
+  };
+
+  const service = {
+    client: {
+      from: (table: string) => builder(table),
+      channel: () => channel,
+      removeChannel: async () => ({ status: 'ok' }),
+    }
+  } as unknown as SupabaseService;
+
+  return {
+    service,
+    emitChange: (payload: unknown) => capturedCallback?.(payload),
+    getTasksSelectCount: () => tasksSelectCount,
+  };
+}
+
+describe('ManageTasksComponent realtime updates', () => {
+  function configure(service: SupabaseService) {
+    TestBed.configureTestingModule({
+      imports: [ManageTasksComponent],
+      providers: [
+        provideRouter([]),
+        provideNativeDateAdapter(),
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: SupabaseService, useValue: service }
+      ]
+    });
+    return TestBed.createComponent(ManageTasksComponent);
+  }
+
+  it('collapses a burst of postgres_changes events into a single reload, 300ms after the last one', fakeAsync(() => {
+    const { service, emitChange, getTasksSelectCount } = createRealtimeCapturingSupabaseService();
+    const fixture = configure(service);
+    fixture.detectChanges();
+    tick();
+
+    // ngOnInit's own initial loadTasks() call.
+    expect(getTasksSelectCount()).toBe(1);
+
+    emitChange({ eventType: 'UPDATE', new: { id: 'task-1' }, old: {} });
+    emitChange({ eventType: 'UPDATE', new: { id: 'task-1' }, old: {} });
+    emitChange({ eventType: 'UPDATE', new: { id: 'task-1' }, old: {} });
+
+    tick(299);
+    expect(getTasksSelectCount()).toBe(1); // still within the debounce window
+
+    tick(1);
+    expect(getTasksSelectCount()).toBe(2); // exactly one more loadTasks() call, not three
+  }));
+
+  it('cancels a pending debounced reload and removes the channel on destroy', fakeAsync(() => {
+    const { service, emitChange, getTasksSelectCount } = createRealtimeCapturingSupabaseService();
+    const removeChannelSpy = spyOn(service.client, 'removeChannel').and.callThrough();
+    const fixture = configure(service);
+    fixture.detectChanges();
+    tick();
+
+    emitChange({ eventType: 'UPDATE', new: { id: 'task-1' }, old: {} });
+    fixture.destroy();
+    tick(300);
+
+    expect(removeChannelSpy).toHaveBeenCalled();
+    expect(getTasksSelectCount()).toBe(1); // the debounced reload never fired post-destroy
+  }));
 });

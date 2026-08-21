@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, ViewChild, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule, FormControl, FormGroup, FormGroupDirective, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -25,6 +25,8 @@ import { TASK_STATUSES, TASK_STATUS_LABELS, TaskStatus } from '../../shared/mode
 import { toIsoDateString, getTodayIsoDate } from '../../shared/utils/date';
 import { profileDisplayName, resolveProfileAvatarKey, resolveProfileName } from '../../shared/utils/profile-label';
 import { logActivity } from '../../shared/utils/activity-log';
+import { subscribeToTableChanges } from '../../shared/utils/realtime';
+import { debounce } from '../../shared/utils/debounce';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
 type RelatedItemOption = Pick<Database['public']['Tables']['inventory_items']['Row'], 'id' | 'name'>;
@@ -57,9 +59,15 @@ export class ManageTasksComponent implements OnInit {
   private dialog = inject(MatDialog);
   private notification = inject(NotificationService);
   private route = inject(ActivatedRoute);
+  private destroyRef = inject(DestroyRef);
 
   private currentUserId: string | null = null;
   assignableProfiles: Profile[] = [];
+
+  // Collapses a burst of postgres_changes events (e.g. an accept/decline
+  // touching more than one row) into one reload — see debounce()'s own
+  // doc comment.
+  private readonly debouncedReloadTasks = debounce(() => void this.loadTasks(), 300);
 
   readonly statuses = TASK_STATUSES;
   readonly statusLabels = TASK_STATUS_LABELS;
@@ -176,6 +184,20 @@ export class ManageTasksComponent implements OnInit {
         this.openTaskDetail(task);
       }
     }
+
+    // Live updates from other users/tabs — a transfer someone else sends or
+    // responds to, or a plain assignee's own status change, shows up here
+    // without a manual refresh. Reuses loadTasks() itself (debounced) rather
+    // than patching a single row, matching openTaskDetail()'s own reasoning:
+    // a transfer can move a task, which a full reload already handles
+    // correctly. No client-side organization_id filter — see
+    // subscribeToTableChanges()'s own comment for why RLS alone is the right
+    // boundary here.
+    const channel = subscribeToTableChanges(this.supabase, 'tasks', () => this.debouncedReloadTasks());
+    this.destroyRef.onDestroy(() => {
+      this.debouncedReloadTasks.cancel();
+      void this.supabase.removeChannel(channel);
+    });
   }
 
   private async loadProfiles() {
