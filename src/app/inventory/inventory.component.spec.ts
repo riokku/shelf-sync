@@ -588,6 +588,26 @@ describe('InventoryComponent', () => {
         expect(!!(checkbox!.compareDocumentPosition(slideToggle!) & Node.DOCUMENT_POSITION_FOLLOWING)).toBeTrue();
       });
 
+      // Regression coverage: the checkbox appearing used to grow the row by
+      // 8px (32px -> 40px, measured), which visibly shifted the search bar
+      // and everything below it down the instant Bulk edit was flipped on.
+      // .bulk-edit-toggle-row's min-height now pins the row to its
+      // checkbox-present size in both states.
+      it('does not change the row\'s rendered height when the checkbox appears', () => {
+        document.body.appendChild(fixture.nativeElement);
+        try {
+          const row = fixture.nativeElement.querySelector('.bulk-edit-toggle-row') as HTMLElement;
+          const heightBefore = row.getBoundingClientRect().height;
+
+          component.toggleBulkEdit(true);
+          fixture.detectChanges();
+
+          expect(row.getBoundingClientRect().height).toBe(heightBefore);
+        } finally {
+          document.body.removeChild(fixture.nativeElement);
+        }
+      });
+
       it('reflects allSelectableItemsSelected/someSelectableItemsSelected as checked/indeterminate', () => {
         component.toggleBulkEdit(true);
         component.toggleItemSelection('1', true);

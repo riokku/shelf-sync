@@ -31,6 +31,16 @@
   // introducing a new global mb-3 utility for what's currently a single
   // usage.
   margin-bottom: 1rem;
+  // The "Select all" checkbox only renders once Bulk edit is on (see the
+  // template's own @if) and, measured, it's 8px taller than the row is with
+  // just the mat-slide-toggle alone (40px vs 32px) — without a floor on the
+  // row's own height, that 8px shows up as the whole page (search bar and
+  // everything below it) visibly shifting down the instant the toggle is
+  // flipped on. Pinning min-height to the taller (checkbox-present) size
+  // keeps the row's footprint constant in both states, so only the toggle
+  // moves horizontally (as the checkbox appears/disappears to its left) —
+  // nothing below it shifts vertically either way.
+  min-height: 2.5rem;
 }
 
 // The compact "Select all" checkbox next to the Bulk edit toggle — smaller
