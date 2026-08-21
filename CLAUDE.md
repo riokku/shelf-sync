@@ -466,8 +466,22 @@ browsing isn't cluttered with a control most visits never use; turning it off cl
 selected rather than leaving a stale selection sitting around unseen. Table view's checkbox is a
 leading `matColumnDef="select"` column (present in `tableColumns` only while the toggle is on); card
 view's sits absolutely positioned in the bottom-right corner of the whole card (not the image — that
-corner's already claimed by `.quantity-badge`, which is confined to the image area above it). The
-feature itself (not just this session's own toggle state) can be turned off org-wide from
+corner's already claimed by `.quantity-badge`, which is confined to the image area above it).
+`.bulk-edit-toggle-row` also holds a compact "Select all" `mat-checkbox` immediately to the left of
+the `mat-slide-toggle` (same row, shown only while the toggle is on), sized down from Material's
+default via `--mat-checkbox-touch-target-display: none` (shrinking the oversized invisible touch
+target, the same token `.option-list` already used elsewhere in this file rather than reaching into
+MDC's internal DOM) plus a smaller font-size — it's meant as a quick header-row affordance, not a
+focal control. It reads/drives the same state `BulkActionToolbarComponent`'s own built-in checkbox
+would (`allSelectableItemsSelected`/`someSelectableItemsSelected` getters →
+`toggleSelectAll()`), so having both visible at once would be a redundant second "select all"
+control for the same selection — `BulkActionToolbarComponent` takes a `hideSelectAllCheckbox` input
+(set `true` only from `InventoryComponent`'s usage) that suppresses its own checkbox entirely:
+nothing renders until something's selected, at which point it shows plain "N selected" text in the
+checkbox's place instead (the actions row/content-projected buttons still appear as normal).
+`ManageTasksComponent`/`ManageTeamComponent` don't set this input and keep the toolbar's original
+built-in checkbox, since neither has a separate header-row control of its own to be redundant with.
+The feature itself (not just this session's own toggle state) can be turned off org-wide from
 Customize > Workflow's "Bulk edit" section — a second `.customize-section` alongside
 `require_retirement_approval` in that same card, following its exact pattern (`site_settings.
 bulk_edit_enabled`, default `true`, local-selection/save-button/error pattern). When off,

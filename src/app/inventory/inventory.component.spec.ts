@@ -427,6 +427,40 @@ describe('InventoryComponent', () => {
       });
     });
 
+    describe('allSelectableItemsSelected / someSelectableItemsSelected', () => {
+      it('are both false when nothing is selected', () => {
+        expect(component.allSelectableItemsSelected).toBeFalse();
+        expect(component.someSelectableItemsSelected).toBeFalse();
+      });
+
+      it('someSelectableItemsSelected is true, allSelectableItemsSelected false, when only some selectable items are selected', () => {
+        component.toggleItemSelection('1', true);
+
+        expect(component.allSelectableItemsSelected).toBeFalse();
+        expect(component.someSelectableItemsSelected).toBeTrue();
+      });
+
+      it('allSelectableItemsSelected is true, someSelectableItemsSelected false, once every selectable item is selected', () => {
+        component.toggleSelectAll(true);
+
+        expect(component.allSelectableItemsSelected).toBeTrue();
+        expect(component.someSelectableItemsSelected).toBeFalse();
+      });
+
+      // The locked item ('3') is never selectable, so it must not count
+      // against allSelectableItemsSelected once both selectable items ('1',
+      // '2') are picked — otherwise the header checkbox could never show as
+      // fully checked for a non-manager viewing a list with any locked item.
+      it('ignores locked/unselectable items when computing both getters', () => {
+        component.toggleItemSelection('1', true);
+        component.toggleItemSelection('2', true);
+
+        expect(component.isSelected('3')).toBeFalse();
+        expect(component.allSelectableItemsSelected).toBeTrue();
+        expect(component.someSelectableItemsSelected).toBeFalse();
+      });
+    });
+
     describe('toggleBulkEdit()', () => {
       it('is off by default', () => {
         expect(component.bulkEditEnabled).toBeFalse();
@@ -522,6 +556,62 @@ describe('InventoryComponent', () => {
       it('onPageChange', () => {
         component.onPageChange({ pageIndex: 1, pageSize: 12, length: 20 });
         expect(component.isSelected('1')).toBeTrue();
+      });
+    });
+
+    // The compact "Select all" checkbox lives in the header row, to the left
+    // of the Bulk edit toggle — a separate, smaller control from
+    // BulkActionToolbarComponent's own (hidden here via hideSelectAllCheckbox,
+    // see that component's own doc comment).
+    describe('compact "Select all" checkbox (header row)', () => {
+      function selectAllCheckboxEl(): HTMLElement | null {
+        return fixture.nativeElement.querySelector('.select-all-checkbox');
+      }
+
+      it('is hidden until Bulk edit is turned on', () => {
+        expect(component.bulkEditEnabled).toBeFalse();
+        expect(selectAllCheckboxEl()).toBeNull();
+      });
+
+      it('appears, before the Bulk edit toggle, once Bulk edit is on', () => {
+        component.toggleBulkEdit(true);
+        fixture.detectChanges();
+
+        const row = fixture.nativeElement.querySelector('.bulk-edit-toggle-row') as HTMLElement;
+        const checkbox = selectAllCheckboxEl();
+        const slideToggle = row.querySelector('mat-slide-toggle');
+
+        expect(checkbox).not.toBeNull();
+        expect(slideToggle).not.toBeNull();
+        // Node.compareDocumentPosition's DOCUMENT_POSITION_FOLLOWING bit (4)
+        // confirms the toggle comes *after* the checkbox in the DOM.
+        expect(!!(checkbox!.compareDocumentPosition(slideToggle!) & Node.DOCUMENT_POSITION_FOLLOWING)).toBeTrue();
+      });
+
+      it('reflects allSelectableItemsSelected/someSelectableItemsSelected as checked/indeterminate', () => {
+        component.toggleBulkEdit(true);
+        component.toggleItemSelection('1', true);
+        fixture.detectChanges();
+
+        const checkbox = selectAllCheckboxEl();
+        expect(checkbox?.classList.contains('mat-mdc-checkbox-checked')).toBeFalse();
+
+        component.toggleSelectAll(true);
+        fixture.detectChanges();
+
+        expect(selectAllCheckboxEl()?.classList.contains('mat-mdc-checkbox-checked')).toBeTrue();
+      });
+
+      it('calls toggleSelectAll() with the checked value when clicked', () => {
+        component.toggleBulkEdit(true);
+        fixture.detectChanges();
+        const toggleSpy = spyOn(component, 'toggleSelectAll');
+
+        const input = selectAllCheckboxEl()?.querySelector('input') as HTMLInputElement;
+        input.click();
+        fixture.detectChanges();
+
+        expect(toggleSpy).toHaveBeenCalledWith(true);
       });
     });
   });

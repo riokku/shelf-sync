@@ -9,6 +9,13 @@
   background: var(--mat-sys-surface-container);
 }
 
+// Stands in for the checkbox's own label text when hideSelectAllCheckbox is
+// set (InventoryComponent — see its own doc comment) — same font sizing
+// Material's checkbox label uses, just without the control itself.
+.bulk-action-toolbar-count{
+  font-size: 0.875rem;
+}
+
 .bulk-action-toolbar-actions{
   display: flex;
   flex-wrap: wrap;

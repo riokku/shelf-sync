@@ -21,7 +21,9 @@
 
 .bulk-edit-toggle-row{
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 1rem;
   // The row wrapper itself carried no bottom margin (its own "mb-3" class
   // was never actually defined anywhere — see styles.scss's own .mb-0/
   // .mb-4/.mb-5 — so this sat flush against the search bar below it with
@@ -29,6 +31,19 @@
   // introducing a new global mb-3 utility for what's currently a single
   // usage.
   margin-bottom: 1rem;
+}
+
+// The compact "Select all" checkbox next to the Bulk edit toggle — smaller
+// than BulkActionToolbarComponent's own copy (hidden for this page, see its
+// hideSelectAllCheckbox input), since this one just needs to be a quick
+// header-row affordance, not a focal control. Shrinks the label text and
+// removes Material's oversized invisible touch-target padding (same
+// --mat-checkbox-touch-target-display token .option-list already uses
+// below, rather than reaching into MDC's internal DOM) so the whole control
+// takes up less space.
+.select-all-checkbox{
+  font-size: 0.8125rem;
+  --mat-checkbox-touch-target-display: none;
 }
 
 // Own full-width row above the filter/gallery split now, rather than

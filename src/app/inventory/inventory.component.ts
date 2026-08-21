@@ -556,8 +556,8 @@ export class InventoryComponent implements OnInit{
 
   /** Every selectable item matching the current filters — *not* just the
    *  current page (see selectedItemIds's own comment) — so this is what the
-   *  toolbar's select-all checkbox, its tri-state, and toggleSelectAll()
-   *  below all operate over. */
+   *  header row's compact "Select all" checkbox, its tri-state, and
+   *  toggleSelectAll() below all operate over. */
   get selectableFilteredItems(): InventoryItem[] {
     return this.filteredInventoryList.filter(item => this.canSelectItem(item));
   }
@@ -568,6 +568,20 @@ export class InventoryComponent implements OnInit{
    *  select an item a bulk reassign would just fail on anyway. */
   canSelectItem(item: InventoryItem): boolean {
     return !item.isLocked || this.authService.canManage();
+  }
+
+  /** Backs the compact "Select all" checkbox up in the header row (next to
+   *  the Bulk edit toggle) — a separate, smaller control from
+   *  BulkActionToolbarComponent's own (now hidden for this page via
+   *  hideSelectAllCheckbox, see its own doc comment), so this component
+   *  computes its own tri-state rather than reading it off that shared one. */
+  get allSelectableItemsSelected(): boolean {
+    return this.selectableFilteredItems.length > 0
+      && this.selectableFilteredItems.every(item => this.selectedItemIds.has(item.id));
+  }
+
+  get someSelectableItemsSelected(): boolean {
+    return this.selectedItemIds.size > 0 && !this.allSelectableItemsSelected;
   }
 
   isSelected(itemId: string): boolean {

@@ -97,6 +97,28 @@ describe('BulkActionToolbarComponent', () => {
       expect(clearSpy).toHaveBeenCalled();
     });
   });
+
+  describe('hideSelectAllCheckbox (InventoryComponent only — its own compact checkbox lives elsewhere)', () => {
+    it('renders nothing at all when nothing is selected', () => {
+      component.hideSelectAllCheckbox = true;
+      component.selectedCount = 0;
+      component.totalCount = 5;
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('.bulk-action-toolbar')).toBeNull();
+    });
+
+    it('shows the count as plain text (no checkbox) once something is selected, alongside the actions row', () => {
+      component.hideSelectAllCheckbox = true;
+      component.selectedCount = 3;
+      component.totalCount = 5;
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).toContain('3 selected');
+      expect(fixture.nativeElement.querySelector('mat-checkbox')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.bulk-action-toolbar-actions')).not.toBeNull();
+    });
+  });
 });
 
 @Component({

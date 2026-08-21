@@ -12,6 +12,16 @@
     <div class="row">
       <div class="col-12">
         <div class="bulk-edit-toggle-row">
+          @if (bulkEditEnabled) {
+            <mat-checkbox
+                class="select-all-checkbox"
+                [checked]="allSelectableItemsSelected"
+                [indeterminate]="someSelectableItemsSelected"
+                (change)="toggleSelectAll($event.checked)"
+              >
+              Select all
+            </mat-checkbox>
+          }
           <mat-slide-toggle [checked]="bulkEditEnabled" (change)="toggleBulkEdit($event.checked)">
             Bulk edit
           </mat-slide-toggle>
@@ -198,6 +208,7 @@
               <app-bulk-action-toolbar
                   [selectedCount]="selectedItemIds.size"
                   [totalCount]="selectableFilteredItems.length"
+                  [hideSelectAllCheckbox]="true"
                   (selectAll)="toggleSelectAll($event)"
                   (clear)="clearSelection()"
                 >

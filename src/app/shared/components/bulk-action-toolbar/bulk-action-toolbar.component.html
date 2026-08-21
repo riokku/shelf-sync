@@ -1,18 +1,24 @@
-<div class="bulk-action-toolbar">
-  <mat-checkbox
-      [checked]="allSelected"
-      [indeterminate]="partiallySelected"
-      (change)="onSelectAllChange($event.checked)"
-    >
-    {{ selectedCount > 0 ? (selectedCount + ' selected') : 'Select all' }}
-  </mat-checkbox>
-  @if (selectedCount > 0) {
-    <div class="bulk-action-toolbar-actions">
-      <ng-content></ng-content>
-      <button mat-button type="button" (click)="clear.emit()">
-        <mat-icon>close</mat-icon>
-        Clear
-      </button>
-    </div>
-  }
-</div>
+@if (!hideSelectAllCheckbox || selectedCount > 0) {
+  <div class="bulk-action-toolbar">
+    @if (hideSelectAllCheckbox) {
+      <span class="bulk-action-toolbar-count">{{ selectedCount }} selected</span>
+    } @else {
+      <mat-checkbox
+          [checked]="allSelected"
+          [indeterminate]="partiallySelected"
+          (change)="onSelectAllChange($event.checked)"
+        >
+        {{ selectedCount > 0 ? (selectedCount + ' selected') : 'Select all' }}
+      </mat-checkbox>
+    }
+    @if (selectedCount > 0) {
+      <div class="bulk-action-toolbar-actions">
+        <ng-content></ng-content>
+        <button mat-button type="button" (click)="clear.emit()">
+          <mat-icon>close</mat-icon>
+          Clear
+        </button>
+      </div>
+    }
+  </div>
+}
