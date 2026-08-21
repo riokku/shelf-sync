@@ -73,7 +73,7 @@ export class InventoryComponent implements OnInit{
   private supabase = inject(SupabaseService).client;
   private dialog = inject(MatDialog);
   private route = inject(ActivatedRoute);
-  private siteSettings = inject(SiteSettingsService);
+  protected siteSettings = inject(SiteSettingsService);
   private destroyRef = inject(DestroyRef);
   private authService = inject(AuthService);
   private inventoryFieldOptions = inject(InventoryFieldOptionsService);

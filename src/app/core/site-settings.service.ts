@@ -32,6 +32,13 @@ export class SiteSettingsService {
   private readonly _requireRetirementApproval = signal(true);
   readonly requireRetirementApproval = this._requireRetirementApproval.asReadonly();
 
+  // Org-wide kill switch for the Inventory page's "Bulk edit" feature (see
+  // Customize > Workflow), not to be confused with InventoryComponent's own
+  // per-session bulkEditEnabled field (whether *this visit* currently has
+  // it turned on) — this is whether the feature exists for the org at all.
+  private readonly _bulkEditFeatureEnabled = signal(true);
+  readonly bulkEditFeatureEnabled = this._bulkEditFeatureEnabled.asReadonly();
+
   /** Loads the caller's own organization's settings row and applies the theme
    *  attribute. `site_settings` is per-organization and no longer readable by
    *  anon, so pre-login (and any signed-out state) just falls back to the
@@ -45,6 +52,7 @@ export class SiteSettingsService {
       this._inventoryTableColumns.set(DEFAULT_INVENTORY_TABLE_COLUMNS);
       this._inventoryFormFields.set(DEFAULT_INVENTORY_FORM_FIELDS);
       this._requireRetirementApproval.set(true);
+      this._bulkEditFeatureEnabled.set(true);
       this.applyTheme('default');
       return;
     }
@@ -64,6 +72,7 @@ export class SiteSettingsService {
       (data?.inventory_form_fields as InventoryFormFieldKey[] | undefined) ?? DEFAULT_INVENTORY_FORM_FIELDS
     );
     this._requireRetirementApproval.set(data?.require_retirement_approval ?? true);
+    this._bulkEditFeatureEnabled.set(data?.bulk_edit_enabled ?? true);
     this.applyTheme(this._theme());
   }
 
@@ -180,6 +189,28 @@ export class SiteSettingsService {
     }
 
     this._requireRetirementApproval.set(required);
+    return null;
+  }
+
+  async updateBulkEditFeatureEnabled(enabled: boolean): Promise<string | null> {
+    const session = await this.authService.getSession();
+    const organizationId = this.authService.organizationId();
+    if (!session || !organizationId) {
+      return 'You must be signed in to update this setting.';
+    }
+
+    const { error } = await this.supabase
+      .from('site_settings')
+      .upsert(
+        { organization_id: organizationId, bulk_edit_enabled: enabled, updated_by: session.user.id },
+        { onConflict: 'organization_id' }
+      );
+
+    if (error) {
+      return error.message;
+    }
+
+    this._bulkEditFeatureEnabled.set(enabled);
     return null;
   }
 

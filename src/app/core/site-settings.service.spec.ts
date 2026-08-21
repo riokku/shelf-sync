@@ -88,6 +88,7 @@ describe('SiteSettingsService', () => {
       expect(service.inventoryTableColumns()).toEqual(DEFAULT_INVENTORY_TABLE_COLUMNS);
       expect(service.inventoryFormFields()).toEqual(DEFAULT_INVENTORY_FORM_FIELDS);
       expect(service.requireRetirementApproval()).toBe(true);
+      expect(service.bulkEditFeatureEnabled()).toBe(true);
       expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
     });
 
@@ -102,6 +103,7 @@ describe('SiteSettingsService', () => {
       expect(service.inventoryTableColumns()).toEqual(DEFAULT_INVENTORY_TABLE_COLUMNS);
       expect(service.inventoryFormFields()).toEqual(DEFAULT_INVENTORY_FORM_FIELDS);
       expect(service.requireRetirementApproval()).toBe(true);
+      expect(service.bulkEditFeatureEnabled()).toBe(true);
     });
 
     it('applies a persisted theme/logo/table-columns/form-fields row and sets the data-theme attribute', async () => {
@@ -112,7 +114,8 @@ describe('SiteSettingsService', () => {
           logo_storage_path: 'org-1/logo.png',
           inventory_table_columns: ['category', 'status'],
           inventory_form_fields: ['category', 'photos'],
-          require_retirement_approval: false
+          require_retirement_approval: false,
+          bulk_edit_enabled: false
         }
       }, { profile });
 
@@ -123,6 +126,7 @@ describe('SiteSettingsService', () => {
       expect(service.inventoryTableColumns()).toEqual(['category', 'status'] as never);
       expect(service.inventoryFormFields()).toEqual(['category', 'photos'] as never);
       expect(service.requireRetirementApproval()).toBe(false);
+      expect(service.bulkEditFeatureEnabled()).toBe(false);
       expect(document.documentElement.getAttribute('data-theme')).toBe('ocean');
     });
   });
@@ -284,6 +288,41 @@ describe('SiteSettingsService', () => {
 
       expect(error).toBe('nope');
       expect(service.requireRetirementApproval()).toBe(true);
+    });
+  });
+
+  describe('updateBulkEditFeatureEnabled()', () => {
+    it('refuses when signed out', async () => {
+      const { service, upsertSpy } = setup({}, { profile: null });
+
+      const error = await service.updateBulkEditFeatureEnabled(false);
+
+      expect(error).toContain('signed in');
+      expect(upsertSpy).not.toHaveBeenCalled();
+    });
+
+    it('upserts the new value and updates the signal', async () => {
+      const profile = createFakeProfile({ organization_id: 'org-1' });
+      const { service, upsertSpy } = setup({}, { profile });
+
+      const error = await service.updateBulkEditFeatureEnabled(false);
+
+      expect(error).toBeNull();
+      expect(service.bulkEditFeatureEnabled()).toBe(false);
+      expect(upsertSpy).toHaveBeenCalledWith(
+        jasmine.objectContaining({ organization_id: 'org-1', bulk_edit_enabled: false }),
+        { onConflict: 'organization_id' }
+      );
+    });
+
+    it('returns the error message and leaves the signal untouched on failure', async () => {
+      const profile = createFakeProfile();
+      const { service } = setup({ upsertError: { message: 'nope' } }, { profile });
+
+      const error = await service.updateBulkEditFeatureEnabled(false);
+
+      expect(error).toBe('nope');
+      expect(service.bulkEditFeatureEnabled()).toBe(true);
     });
   });
 

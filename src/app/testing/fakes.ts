@@ -85,6 +85,7 @@ export function createFakeSiteSettingsService(overrides: Partial<{
   inventoryTableColumns: InventoryTableColumnKey[];
   inventoryFormFields: InventoryFormFieldKey[];
   requireRetirementApproval: boolean;
+  bulkEditFeatureEnabled: boolean;
 }> = {}): SiteSettingsService {
   const fake = {
     theme: signal(overrides.theme ?? 'default').asReadonly(),
@@ -92,6 +93,7 @@ export function createFakeSiteSettingsService(overrides: Partial<{
     inventoryTableColumns: signal(overrides.inventoryTableColumns ?? DEFAULT_INVENTORY_TABLE_COLUMNS).asReadonly(),
     inventoryFormFields: signal(overrides.inventoryFormFields ?? DEFAULT_INVENTORY_FORM_FIELDS).asReadonly(),
     requireRetirementApproval: signal(overrides.requireRetirementApproval ?? true).asReadonly(),
+    bulkEditFeatureEnabled: signal(overrides.bulkEditFeatureEnabled ?? true).asReadonly(),
     load: async () => {},
     applyTheme: () => {},
     updateTheme: async () => null,
@@ -100,6 +102,7 @@ export function createFakeSiteSettingsService(overrides: Partial<{
     updateInventoryTableColumns: async () => null,
     updateInventoryFormFields: async () => null,
     updateRequireRetirementApproval: async () => null,
+    updateBulkEditFeatureEnabled: async () => null,
     loadLogoUrlForOrganization: async () => null,
   };
   return fake as unknown as SiteSettingsService;

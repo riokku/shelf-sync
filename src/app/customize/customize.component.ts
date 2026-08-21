@@ -67,8 +67,16 @@ export class CustomizeComponent implements OnInit, OnDestroy {
   isSavingRequireRetirementApproval = false;
   requireRetirementApprovalError: string | null = null;
 
+  selectedBulkEditFeatureEnabled = this.siteSettings.bulkEditFeatureEnabled();
+  isSavingBulkEditFeatureEnabled = false;
+  bulkEditFeatureEnabledError: string | null = null;
+
   get currentLogoUrl(): string | null {
     return this.logoPreviewUrl ?? this.siteSettings.logoUrl();
+  }
+
+  get themeChanged(): boolean {
+    return this.selectedTheme !== this.siteSettings.theme();
   }
 
   /** Order-independent comparison against the persisted setting — toggling
@@ -95,6 +103,10 @@ export class CustomizeComponent implements OnInit, OnDestroy {
 
   get requireRetirementApprovalChanged(): boolean {
     return this.selectedRequireRetirementApproval !== this.siteSettings.requireRetirementApproval();
+  }
+
+  get bulkEditFeatureEnabledChanged(): boolean {
+    return this.selectedBulkEditFeatureEnabled !== this.siteSettings.bulkEditFeatureEnabled();
   }
 
   ngOnDestroy() {
@@ -194,6 +206,28 @@ export class CustomizeComponent implements OnInit, OnDestroy {
 
     if (error) {
       this.requireRetirementApprovalError = error;
+      return;
+    }
+    this.notification.success('Saved for everyone');
+  }
+
+  toggleBulkEditFeatureEnabled(enabled: boolean) {
+    this.selectedBulkEditFeatureEnabled = enabled;
+  }
+
+  async saveBulkEditFeatureEnabled() {
+    if (this.isSavingBulkEditFeatureEnabled) {
+      return;
+    }
+
+    this.isSavingBulkEditFeatureEnabled = true;
+    this.bulkEditFeatureEnabledError = null;
+
+    const error = await this.siteSettings.updateBulkEditFeatureEnabled(this.selectedBulkEditFeatureEnabled);
+    this.isSavingBulkEditFeatureEnabled = false;
+
+    if (error) {
+      this.bulkEditFeatureEnabledError = error;
       return;
     }
     this.notification.success('Saved for everyone');

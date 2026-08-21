@@ -67,6 +67,30 @@ describe('CustomizeComponent', () => {
   });
 
   describe('theme', () => {
+    describe('themeChanged', () => {
+      it('is false when the selection matches the persisted setting', () => {
+        expect(component.themeChanged).toBe(false);
+      });
+
+      it('is true once a different theme is selected', () => {
+        component.selectTheme('ocean');
+        expect(component.themeChanged).toBe(true);
+      });
+    });
+
+    // Regression coverage for a real UX change: the Save button used to
+    // always render, just disabled — now it's hidden outright when there's
+    // nothing to save, rather than shown-but-inert.
+    it('hides the Save button until the theme actually changes', () => {
+      component.viewMode = 'style';
+      fixture.detectChanges();
+      expect(fixture.nativeElement.textContent).not.toContain('Save theme');
+
+      component.selectTheme('ocean');
+      fixture.detectChanges();
+      expect(fixture.nativeElement.textContent).toContain('Save theme');
+    });
+
     it('selectTheme() previews the theme immediately', () => {
       const applyThemeSpy = spyOn(siteSettings, 'applyTheme');
 
@@ -251,6 +275,77 @@ describe('CustomizeComponent', () => {
       component.isSavingRequireRetirementApproval = true;
 
       await component.saveRequireRetirementApproval();
+
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+
+    // Regression coverage for a real UX change: the Save button used to
+    // always render, just disabled — now it's hidden outright when there's
+    // nothing to save, rather than shown-but-inert. Checked here (rather
+    // than duplicated for every section) since every section's button
+    // follows the exact same @if (xChanged) pattern.
+    it('hides the Save button until the toggle actually changes', () => {
+      component.viewMode = 'workflow';
+      fixture.detectChanges();
+      // .includes(), not an exact match — mat-icon's "check" ligature text
+      // is part of the same button's textContent alongside the "Save" label.
+      const saveButtons = () => Array.from(fixture.nativeElement.querySelectorAll('button'))
+        .filter((button): button is HTMLButtonElement => !!(button as HTMLButtonElement).textContent?.includes('Save'));
+      expect(saveButtons().length).toBe(0);
+
+      component.toggleRequireRetirementApproval(false);
+      fixture.detectChanges();
+      expect(saveButtons().length).toBe(1);
+    });
+  });
+
+  describe('workflow (bulk edit feature)', () => {
+    it('initializes selectedBulkEditFeatureEnabled from the persisted setting', () => {
+      expect(component.selectedBulkEditFeatureEnabled).toBe(true);
+    });
+
+    it('toggleBulkEditFeatureEnabled() updates the local selection', () => {
+      component.toggleBulkEditFeatureEnabled(false);
+
+      expect(component.selectedBulkEditFeatureEnabled).toBe(false);
+    });
+
+    describe('bulkEditFeatureEnabledChanged', () => {
+      it('is false when the selection matches the persisted setting', () => {
+        expect(component.bulkEditFeatureEnabledChanged).toBe(false);
+      });
+
+      it('is true once toggled', () => {
+        component.toggleBulkEditFeatureEnabled(false);
+        expect(component.bulkEditFeatureEnabledChanged).toBe(true);
+      });
+    });
+
+    it('saveBulkEditFeatureEnabled() persists the selection and shows a success toast', async () => {
+      const updateSpy = spyOn(siteSettings, 'updateBulkEditFeatureEnabled').and.returnValue(Promise.resolve(null));
+      component.selectedBulkEditFeatureEnabled = false;
+
+      await component.saveBulkEditFeatureEnabled();
+
+      expect(updateSpy).toHaveBeenCalledWith(false);
+      expect(notificationSuccessSpy).toHaveBeenCalledWith('Saved for everyone');
+      expect(component.bulkEditFeatureEnabledError).toBeNull();
+    });
+
+    it('saveBulkEditFeatureEnabled() surfaces the error and shows no toast on failure', async () => {
+      spyOn(siteSettings, 'updateBulkEditFeatureEnabled').and.returnValue(Promise.resolve('nope'));
+
+      await component.saveBulkEditFeatureEnabled();
+
+      expect(component.bulkEditFeatureEnabledError).toBe('nope');
+      expect(notificationSuccessSpy).not.toHaveBeenCalled();
+    });
+
+    it('saveBulkEditFeatureEnabled() is a no-op while already saving', async () => {
+      const updateSpy = spyOn(siteSettings, 'updateBulkEditFeatureEnabled').and.returnValue(Promise.resolve(null));
+      component.isSavingBulkEditFeatureEnabled = true;
+
+      await component.saveBulkEditFeatureEnabled();
 
       expect(updateSpy).not.toHaveBeenCalled();
     });

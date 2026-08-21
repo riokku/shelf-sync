@@ -19,6 +19,11 @@
   }
 }
 
+.bulk-edit-toggle-row{
+  display: flex;
+  justify-content: flex-end;
+}
+
 // Own full-width row above the filter/gallery split now, rather than
 // confined to the filter sidebar's ~25% column — the .mb-4 on that row
 // handles spacing below, so this doesn't need its own margin anymore.

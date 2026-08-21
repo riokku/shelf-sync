@@ -8,6 +8,17 @@
       <h2>Inventory</h2>
     </div>
   </div>
+  @if (siteSettings.bulkEditFeatureEnabled()) {
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="bulk-edit-toggle-row">
+          <mat-slide-toggle [checked]="bulkEditEnabled" (change)="toggleBulkEdit($event.checked)">
+            Bulk edit
+          </mat-slide-toggle>
+        </div>
+      </div>
+    </div>
+  }
   <div class="row mb-4">
     <div class="col-12">
       <div class="search-wrapper">
@@ -151,9 +162,6 @@
               <p>
                 Displaying {{filteredInventoryList.length}} of {{inventoryList.length}} items
               </p>
-              <mat-slide-toggle [checked]="bulkEditEnabled" (change)="toggleBulkEdit($event.checked)">
-                Bulk edit
-              </mat-slide-toggle>
               <mat-button-toggle-group
                   class="view-mode-toggle"
                   [value]="viewMode"

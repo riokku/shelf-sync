@@ -312,8 +312,15 @@ toggle (default `true`, so every existing org keeps the original behavior unchan
 third `customize` tab, **Workflow** (`CustomizeComponent.viewMode` is now
 `'style' | 'data' | 'workflow'`), the intended home for future org-behavior toggles alongside this
 first one — a `mat-slide-toggle` (this app's first use of that Material module), same local-
-selection/save-button/error/saved-flag pattern the Data tab's other settings already use. The
-toggle is read inside `request_item_retirement()` itself (`coalesce(..., true)` if no
+selection/save-button/error/saved-flag pattern the Data tab's other settings already use. Every
+section's Save button across the whole Customize page (Theme, Table presentation, Inventory data,
+Retirement approval, Bulk edit) is wrapped in `@if` on that section's own `xChanged` getter — hidden
+outright when the local selection matches what's persisted, rather than rendered-but-disabled, since
+a button with nothing to do doesn't serve a purpose just sitting there. `isSavingX` alone still gates
+the `[disabled]` binding on the ones that render, since `xChanged` stays true for the whole save
+round-trip (the persisted signal only catches up once the save resolves) — so the button doesn't
+disappear mid-save, only once the save actually lands.
+The toggle is read inside `request_item_retirement()` itself (`coalesce(..., true)` if no
 `site_settings` row exists yet, matching every other site-settings default-when-missing read): when
 true, unchanged existing behavior (item enters `retirement_pending`, still needs
 `approve_item_retirement`/`decline_item_retirement`); when false, the item is retired immediately
@@ -453,13 +460,21 @@ bulk-action behavior itself) and `shared/components/bulk-reassign-modal` (Invent
 category/physical-location picker, each field independently toggleable so an admin can bulk-set
 just one without touching the other, with an explicit "(None)" option to bulk-*clear* a field).
 On the Inventory page specifically, bulk selection sits behind its own `bulkEditEnabled` toggle
-(a `mat-slide-toggle` next to the card/table view switch, off by default) — the toolbar and every
-row/card's checkbox only render once it's on, so ordinary browsing isn't cluttered with a control
-most visits never use; turning it off clears whatever was selected rather than leaving a stale
-selection sitting around unseen. Table view's checkbox is a leading `matColumnDef="select"` column
-(present in `tableColumns` only while the toggle is on); card view's sits absolutely positioned in
-the bottom-right corner of the whole card (not the image — that corner's already claimed by
-`.quantity-badge`, which is confined to the image area above it).
+(a `mat-slide-toggle` in its own row above the search bar, right-aligned via `.bulk-edit-toggle-row`
+— off by default) — the toolbar and every row/card's checkbox only render once it's on, so ordinary
+browsing isn't cluttered with a control most visits never use; turning it off clears whatever was
+selected rather than leaving a stale selection sitting around unseen. Table view's checkbox is a
+leading `matColumnDef="select"` column (present in `tableColumns` only while the toggle is on); card
+view's sits absolutely positioned in the bottom-right corner of the whole card (not the image — that
+corner's already claimed by `.quantity-badge`, which is confined to the image area above it). The
+feature itself (not just this session's own toggle state) can be turned off org-wide from
+Customize > Workflow's "Bulk edit" section — a second `.customize-section` alongside
+`require_retirement_approval` in that same card, following its exact pattern (`site_settings.
+bulk_edit_enabled`, default `true`, local-selection/save-button/error pattern). When off,
+`InventoryComponent` hides the "Bulk edit" toggle control entirely (`@if (siteSettings.
+bulkEditFeatureEnabled())`), same "hidden, not disabled" treatment `BARCODE_FEATURE_ENABLED` already
+established — distinct from (and named to avoid confusion with) `InventoryComponent.bulkEditEnabled`,
+which is just this visit's own on/off state of the feature, not whether it exists for the org at all.
 Selection scope differs by page's own pagination/filtering shape: `InventoryComponent`'s
 `selectedItemIds` is cleared on every search/filter/sort/page change (letting it persist across a
 page change in particular would put it out of sync with that page's own `selectablePagedItems`,
@@ -831,6 +846,14 @@ yet on a hard refresh of `/inventory`.
   (including `organization_id`) rather than just the primary key — without it, RLS can't evaluate
   the org-scoping predicate against a DELETE's old row at all, which fails the check *closed* for
   every subscriber, not just a leak-prevention gap.
+- `add_site_settings_bulk_edit_enabled` — adds `site_settings.bulk_edit_enabled` (`boolean not null
+  default true`, preserving the Inventory page's Bulk edit feature as shipped for every existing org),
+  surfaced on Customize > Workflow's new "Bulk edit" section alongside `require_retirement_approval`.
+  Purely a client-side UI gate (`InventoryComponent` hides the toggle/checkboxes/toolbar outright when
+  off, same treatment `BARCODE_FEATURE_ENABLED` already established) — no RPC/function changes needed,
+  unlike `require_retirement_approval`'s own migration. No RLS/grant changes either: same reasoning as
+  every other `site_settings` column added this way — its UPDATE policy is already a flat,
+  non-column-scoped "admin of own org" check, so a new plain column rides along under it.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

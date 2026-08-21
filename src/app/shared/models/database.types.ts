@@ -499,6 +499,7 @@ export type Database = {
       }
       site_settings: {
         Row: {
+          bulk_edit_enabled: boolean
           id: string
           inventory_form_fields: string[]
           inventory_table_columns: string[]
@@ -510,6 +511,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          bulk_edit_enabled?: boolean
           id?: string
           inventory_form_fields?: string[]
           inventory_table_columns?: string[]
@@ -521,6 +523,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          bulk_edit_enabled?: boolean
           id?: string
           inventory_form_fields?: string[]
           inventory_table_columns?: string[]

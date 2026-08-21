@@ -58,22 +58,24 @@
               @if (formFieldsError) {
                 <p class="error-message">{{ formFieldsError }}</p>
               }
-              <button
-                  mat-flat-button
-                  color="primary"
-                  type="button"
-                  (click)="saveFormFields()"
-                  [disabled]="isSavingFormFields || !formFieldsChanged"
-                >
-                @if (isSavingFormFields) {
-                  <mat-spinner diameter="20"></mat-spinner>
-                } @else {
-                  <ng-container>
-                    <mat-icon>check</mat-icon>
-                    Save inventory data
-                  </ng-container>
-                }
-              </button>
+              @if (formFieldsChanged) {
+                <button
+                    mat-flat-button
+                    color="primary"
+                    type="button"
+                    (click)="saveFormFields()"
+                    [disabled]="isSavingFormFields"
+                  >
+                  @if (isSavingFormFields) {
+                    <mat-spinner diameter="20"></mat-spinner>
+                  } @else {
+                    <ng-container>
+                      <mat-icon>check</mat-icon>
+                      Save inventory data
+                    </ng-container>
+                  }
+                </button>
+              }
             </section>
           </div>
 
@@ -101,22 +103,24 @@
               @if (tableColumnsError) {
                 <p class="error-message">{{ tableColumnsError }}</p>
               }
-              <button
-                  mat-flat-button
-                  color="primary"
-                  type="button"
-                  (click)="saveTableColumns()"
-                  [disabled]="isSavingTableColumns || !tableColumnsChanged"
-                >
-                @if (isSavingTableColumns) {
-                  <mat-spinner diameter="20"></mat-spinner>
-                } @else {
-                  <ng-container>
-                    <mat-icon>check</mat-icon>
-                    Save table columns
-                  </ng-container>
-                }
-              </button>
+              @if (tableColumnsChanged) {
+                <button
+                    mat-flat-button
+                    color="primary"
+                    type="button"
+                    (click)="saveTableColumns()"
+                    [disabled]="isSavingTableColumns"
+                  >
+                  @if (isSavingTableColumns) {
+                    <mat-spinner diameter="20"></mat-spinner>
+                  } @else {
+                    <ng-container>
+                      <mat-icon>check</mat-icon>
+                      Save table columns
+                    </ng-container>
+                  }
+                </button>
+              }
             </section>
           </div>
         </div>
@@ -146,22 +150,24 @@
             @if (themeError) {
               <p class="error-message">{{ themeError }}</p>
             }
-            <button
-                mat-flat-button
-                color="primary"
-                type="button"
-                (click)="saveTheme()"
-                [disabled]="isSavingTheme || selectedTheme === siteSettings.theme()"
-              >
-              @if (isSavingTheme) {
-                <mat-spinner diameter="20"></mat-spinner>
-              } @else {
-                <ng-container>
-                  <mat-icon>check</mat-icon>
-                  Save theme
-                </ng-container>
-              }
-            </button>
+            @if (themeChanged) {
+              <button
+                  mat-flat-button
+                  color="primary"
+                  type="button"
+                  (click)="saveTheme()"
+                  [disabled]="isSavingTheme"
+                >
+                @if (isSavingTheme) {
+                  <mat-spinner diameter="20"></mat-spinner>
+                } @else {
+                  <ng-container>
+                    <mat-icon>check</mat-icon>
+                    Save theme
+                  </ng-container>
+                }
+              </button>
+            }
           </section>
 
           <section class="customize-section">
@@ -222,22 +228,59 @@
             @if (requireRetirementApprovalError) {
               <p class="error-message">{{ requireRetirementApprovalError }}</p>
             }
-            <button
-                mat-flat-button
-                color="primary"
-                type="button"
-                (click)="saveRequireRetirementApproval()"
-                [disabled]="isSavingRequireRetirementApproval || !requireRetirementApprovalChanged"
+            @if (requireRetirementApprovalChanged) {
+              <button
+                  mat-flat-button
+                  color="primary"
+                  type="button"
+                  (click)="saveRequireRetirementApproval()"
+                  [disabled]="isSavingRequireRetirementApproval"
+                >
+                @if (isSavingRequireRetirementApproval) {
+                  <mat-spinner diameter="20"></mat-spinner>
+                } @else {
+                  <ng-container>
+                    <mat-icon>check</mat-icon>
+                    Save
+                  </ng-container>
+                }
+              </button>
+            }
+          </section>
+          <section class="customize-section">
+            <h3>Bulk edit</h3>
+            <p class="section-hint">
+              Lets any signed-in user select multiple inventory items at once for bulk
+              category/physical-location reassignment. Turn this off to hide the "Bulk edit"
+              toggle and every selection checkbox from the Inventory page entirely.
+            </p>
+            <mat-slide-toggle
+                [checked]="selectedBulkEditFeatureEnabled"
+                (change)="toggleBulkEditFeatureEnabled($event.checked)"
               >
-              @if (isSavingRequireRetirementApproval) {
-                <mat-spinner diameter="20"></mat-spinner>
-              } @else {
-                <ng-container>
-                  <mat-icon>check</mat-icon>
-                  Save
-                </ng-container>
-              }
-            </button>
+              Allow bulk edit on the Inventory page
+            </mat-slide-toggle>
+            @if (bulkEditFeatureEnabledError) {
+              <p class="error-message">{{ bulkEditFeatureEnabledError }}</p>
+            }
+            @if (bulkEditFeatureEnabledChanged) {
+              <button
+                  mat-flat-button
+                  color="primary"
+                  type="button"
+                  (click)="saveBulkEditFeatureEnabled()"
+                  [disabled]="isSavingBulkEditFeatureEnabled"
+                >
+                @if (isSavingBulkEditFeatureEnabled) {
+                  <mat-spinner diameter="20"></mat-spinner>
+                } @else {
+                  <ng-container>
+                    <mat-icon>check</mat-icon>
+                    Save
+                  </ng-container>
+                }
+              </button>
+            }
           </section>
         </div>
       </div>
