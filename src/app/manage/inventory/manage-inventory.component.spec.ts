@@ -59,9 +59,22 @@ describe('ManageInventoryComponent', () => {
 
   describe('fieldEnabled()', () => {
     it('is true for every field by default (no site_settings row yet)', () => {
-      expect(component.fieldEnabled('barcode')).toBe(true);
+      // Not 'barcode' — DEFAULT_INVENTORY_FORM_FIELDS itself excludes it
+      // while BARCODE_FEATURE_ENABLED is false (see that flag's own doc
+      // comment), so this "every field" default no longer includes it.
+      expect(component.fieldEnabled('description')).toBe(true);
       expect(component.fieldEnabled('photos')).toBe(true);
       expect(component.fieldEnabled('pricePerContainer')).toBe(true);
+    });
+
+    // The create form's barcode field/scan button never renders while
+    // BARCODE_FEATURE_ENABLED is false, regardless of fieldEnabled('barcode')
+    // — see that flag's own doc comment for why this needs its own gate
+    // rather than trusting the org's stored inventory_form_fields setting.
+    it('never shows the barcode field on the create form, even though fieldEnabled(\'category\') is still true', () => {
+      expect(component.barcodeFeatureEnabled).toBeFalse();
+      expect(fixture.nativeElement.textContent).not.toContain('barcode_reader');
+      expect(fixture.nativeElement.textContent).not.toContain('Scan or type');
     });
 
     it('reflects an admin-narrowed inventory_form_fields setting', async () => {

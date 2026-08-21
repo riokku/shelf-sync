@@ -1,3 +1,5 @@
+import { BARCODE_FEATURE_ENABLED } from '../utils/barcode';
+
 /** The optional columns an admin can show/hide in the Inventory page's table
  *  view (Customize > Data). "name" and "actions" aren't part of this list —
  *  they're always shown, since a row with no name column is unusable and the
@@ -55,7 +57,13 @@ export const INVENTORY_TABLE_COLUMN_GROUPS: InventoryTableColumnGroup[] = [
   {
     label: 'Item information',
     options: [
-      { key: 'barcode', label: 'Barcode' },
+      // Excluded from this list, not just left disabled by default, while
+      // BARCODE_FEATURE_ENABLED is false (see its own doc comment) — an
+      // admin toggling it on would have nothing to show for it, since
+      // InventoryComponent.tableColumns filters down to whatever's in this
+      // very options list, which never includes 'barcode' while the flag's
+      // off.
+      ...(BARCODE_FEATURE_ENABLED ? [{ key: 'barcode' as const, label: 'Barcode' }] : []),
       { key: 'description', label: 'Description' },
       { key: 'category', label: 'Category' },
       { key: 'physicalLocation', label: 'Physical location' },

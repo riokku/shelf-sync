@@ -1,3 +1,5 @@
+import { BARCODE_FEATURE_ENABLED } from '../utils/barcode';
+
 /** The optional fields an admin can show/hide on the "Create item" form
  *  (Customize > Data's "Inventory data" section — not to be confused with
  *  the "Filter data" section right above it, which curates approved
@@ -52,7 +54,12 @@ export const INVENTORY_FORM_FIELD_GROUPS: InventoryFormFieldGroup[] = [
   {
     label: 'Item information',
     options: [
-      { key: 'barcode', label: 'Barcode' },
+      // Barcode is excluded from this list, not just left disabled by
+      // default, while BARCODE_FEATURE_ENABLED is false (see its own doc
+      // comment) — an admin toggling it on would have nothing to show for
+      // it, since ManageInventoryComponent's create form hard-gates the
+      // field on the same flag regardless of this setting.
+      ...(BARCODE_FEATURE_ENABLED ? [{ key: 'barcode' as const, label: 'Barcode' }] : []),
       { key: 'description', label: 'Description' },
       { key: 'category', label: 'Category' },
       { key: 'physicalLocation', label: 'Physical location' },

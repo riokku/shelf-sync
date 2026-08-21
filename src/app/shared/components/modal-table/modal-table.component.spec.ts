@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { provideNativeDateAdapter } from '@angular/material/core';
 
 import { ModalTableComponent } from './modal-table.component';
 import { AuthService } from '../../../core/auth.service';
@@ -20,6 +21,7 @@ describe('ModalTableComponent', () => {
     await TestBed.configureTestingModule({
       imports: [ModalTableComponent],
       providers: [
+        provideNativeDateAdapter(),
         { provide: AuthService, useValue: createFakeAuthService() },
         { provide: SupabaseService, useValue: createFakeSupabaseService() },
         { provide: MatDialogRef, useValue: createFakeMatDialogRef() },
@@ -35,6 +37,42 @@ describe('ModalTableComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  // Barcode/QR isn't fully set up to function yet — see
+  // BARCODE_FEATURE_ENABLED's own doc comment — so the QR label button, the
+  // barcode display row, and (once editing) the barcode field/scan button
+  // all stay hidden regardless of whether the item actually has a barcode.
+  describe('barcode UI (BARCODE_FEATURE_ENABLED is currently false)', () => {
+    it('hides the QR label button and the barcode display row even when the item has a barcode', async () => {
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [ModalTableComponent],
+        providers: [
+          provideNativeDateAdapter(),
+          { provide: AuthService, useValue: createFakeAuthService() },
+          { provide: SupabaseService, useValue: createFakeSupabaseService() },
+          { provide: MatDialogRef, useValue: createFakeMatDialogRef() },
+          { provide: MAT_DIALOG_DATA, useValue: createTestInventoryItem({ barcode: 'UPC-12345' }) }
+        ]
+      }).compileComponents();
+
+      const barcodeFixture = TestBed.createComponent(ModalTableComponent);
+      barcodeFixture.detectChanges();
+
+      expect(barcodeFixture.componentInstance.barcodeFeatureEnabled).toBeFalse();
+      expect(barcodeFixture.nativeElement.textContent).not.toContain('barcode_reader');
+      expect(barcodeFixture.nativeElement.textContent).not.toContain('qr_code_2');
+      expect(barcodeFixture.nativeElement.textContent).not.toContain('UPC-12345');
+    });
+
+    it('hides the barcode field and scan button in edit mode', async () => {
+      await component.startEdit();
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).not.toContain('qr_code_scanner');
+      expect(fixture.nativeElement.querySelector('.barcode-edit-row')).toBeNull();
+    });
   });
 
   it('loads no containers for an item that has none yet', () => {

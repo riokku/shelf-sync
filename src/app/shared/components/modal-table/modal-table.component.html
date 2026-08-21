@@ -18,9 +18,11 @@
     >
     <mat-icon>{{ linkCopied ? 'check' : 'link' }}</mat-icon>
   </button>
-  <button mat-icon-button type="button" matTooltip="View/print item label" (click)="openQrLabel()">
-    <mat-icon>qr_code_2</mat-icon>
-  </button>
+  @if (barcodeFeatureEnabled) {
+    <button mat-icon-button type="button" matTooltip="View/print item label" (click)="openQrLabel()">
+      <mat-icon>qr_code_2</mat-icon>
+    </button>
+  }
   @if (authService.canManage()) {
     <button
         mat-icon-button
@@ -36,7 +38,7 @@
 @if (lockError) {
   <p class="error-message save-error">{{ lockError }}</p>
 }
-@if (data.barcode) {
+@if (barcodeFeatureEnabled && data.barcode) {
   <div class="asset-id-row barcode-row">
     <mat-icon>barcode_reader</mat-icon>
     <span class="asset-id">{{ data.barcode }}</span>
@@ -135,17 +137,19 @@
                   }
                 </mat-form-field>
               </div>
-              <div class="edit-field-row barcode-edit-row">
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Barcode</mat-label>
-                  <mat-icon matPrefix>barcode_reader</mat-icon>
-                  <input matInput formControlName="barcode" />
-                </mat-form-field>
-                <button mat-stroked-button type="button" (click)="scanBarcode()">
-                  <mat-icon>qr_code_scanner</mat-icon>
-                  Scan
-                </button>
-              </div>
+              @if (barcodeFeatureEnabled) {
+                <div class="edit-field-row barcode-edit-row">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Barcode</mat-label>
+                    <mat-icon matPrefix>barcode_reader</mat-icon>
+                    <input matInput formControlName="barcode" />
+                  </mat-form-field>
+                  <button mat-stroked-button type="button" (click)="scanBarcode()">
+                    <mat-icon>qr_code_scanner</mat-icon>
+                    Scan
+                  </button>
+                </div>
+              }
               <div class="edit-field-row">
                 <mat-form-field appearance="outline" class="full-width">
                   <mat-label>Description</mat-label>

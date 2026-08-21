@@ -34,6 +34,7 @@ import {
   uploadInventoryItemImages
 } from '../../utils/inventory-item-images';
 import { loadInventoryItemContainers, sumContainerQuantity } from '../../utils/inventory-item-containers';
+import { BARCODE_FEATURE_ENABLED } from '../../utils/barcode';
 
 /** Working copy of a container while the item is being edited — id: null
  *  marks a box that doesn't exist in inventory_item_containers yet. */
@@ -101,6 +102,11 @@ export class ModalTableComponent implements OnInit {
 
   idCopied = false;
   linkCopied = false;
+
+  /** Template-facing flag for the barcode display row, edit field/scan
+   *  button, and QR label button's own kill switch — see
+   *  BARCODE_FEATURE_ENABLED's own doc comment. */
+  readonly barcodeFeatureEnabled = BARCODE_FEATURE_ENABLED;
 
   get isLowStock(): boolean {
     return isLowStock(this.data);

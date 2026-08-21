@@ -292,6 +292,19 @@ non-match prefills the new item's barcode field. `ModalTableComponent`'s edit fl
 existing item's barcode the same way. The shared `QrLabelModalComponent` (QR rendered client-side
 via the `qrcode` package) generates a printable/downloadable label encoding an item's id for
 assets with no manufacturer barcode — scanning that label later resolves straight back to the item.
+**Currently hidden from the UI** via `shared/utils/barcode.ts`'s `BARCODE_FEATURE_ENABLED` (`false`)
+— the feature isn't fully set up to function yet, so every entry point checks this flag and renders
+nothing while it's off: `ManageInventoryComponent`'s create-form field/scan button,
+`ModalTableComponent`'s QR label button/barcode display row/edit field/scan button, and the
+"Barcode" checkbox in both of Customize > Data's grouped-field sections (excluded from
+`INVENTORY_FORM_FIELD_GROUPS`/`INVENTORY_TABLE_COLUMN_GROUPS` while the flag is false, so an admin
+can't toggle on a field that would render as nothing anyway). Deliberately a UI-only kill switch,
+not a removal — the column, migration, models, and both modal components stay fully in place so
+this can be re-enabled later by flipping the one flag back to `true`; nothing else should need to
+change. Checked directly in each rendering site rather than folded into `fieldEnabled()`/
+`tableColumns`, since an org whose stored `site_settings.inventory_form_fields`/
+`inventory_table_columns` already included `'barcode'` (the default before this flag existed) still
+needs it hidden regardless of what's stored.
 
 Retirement requests can either always need a second approver (today's original behavior) or
 retire immediately, an admin's choice via a per-org `site_settings.require_retirement_approval`

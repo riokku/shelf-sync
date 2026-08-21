@@ -30,7 +30,7 @@ import { loadInventoryImagesByItemId, uploadInventoryItemImages } from '../../sh
 import { loadInventoryActivityByItemId } from '../../shared/utils/inventory-item-activity';
 import { sumContainerQuantity } from '../../shared/utils/inventory-item-containers';
 import { logActivity } from '../../shared/utils/activity-log';
-import { parseItemQrValue } from '../../shared/utils/barcode';
+import { BARCODE_FEATURE_ENABLED, parseItemQrValue } from '../../shared/utils/barcode';
 import { subscribeToTableChanges } from '../../shared/utils/realtime';
 import { FlashTracker } from '../../shared/utils/flash-tracker';
 
@@ -73,6 +73,16 @@ export class ManageInventoryComponent implements OnInit {
   fieldEnabled(key: InventoryFormFieldKey): boolean {
     return this.siteSettings.inventoryFormFields().includes(key);
   }
+
+  /** Template-facing flag for the barcode field's own kill switch (see
+   *  BARCODE_FEATURE_ENABLED's own doc comment) — ANDed with fieldEnabled()
+   *  rather than folded into it, since fieldEnabled() is a general-purpose
+   *  "does this org's site_settings enable this field" check, not the place
+   *  for a temporary, product-wide feature gate. An org whose stored
+   *  settings already include 'barcode' (the default before this flag
+   *  existed) still needs the field hidden, which fieldEnabled() alone
+   *  can't guarantee. */
+  readonly barcodeFeatureEnabled = BARCODE_FEATURE_ENABLED;
 
   private assignableProfiles: Profile[] = [];
 

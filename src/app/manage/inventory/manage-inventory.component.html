@@ -44,7 +44,7 @@
                 </mat-select>
               </mat-form-field>
             }
-            @if (fieldEnabled('barcode')) {
+            @if (barcodeFeatureEnabled && fieldEnabled('barcode')) {
               <mat-form-field appearance="outline">
                 <mat-label>Barcode</mat-label>
                 <mat-icon matPrefix>barcode_reader</mat-icon>
