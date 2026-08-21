@@ -34,4 +34,12 @@ describe('FooterComponent', () => {
 
     expect(fixture.debugElement.query(By.css('.footer-links'))).toBeNull();
   });
+
+  it('shows the "Created by Studio Rio" credit next to the logo', () => {
+    const brand = fixture.debugElement.query(By.css('.footer-brand'));
+    expect(brand).not.toBeNull();
+    expect(brand.nativeElement.textContent).toContain('Created by');
+    expect(brand.nativeElement.textContent).toContain('Studio Rio');
+    expect(brand.query(By.css('img'))).not.toBeNull();
+  });
 });

@@ -37,6 +37,60 @@
     }
   }
 
+  // The Studio Rio credit — same logo-plus-text pairing HeaderComponent's
+  // own .brand uses for the signed-in org's logo/name (a vertical divider
+  // between the two pieces, not just a gap, so it reads as one unit rather
+  // than two unrelated things sitting next to each other), but mirrored:
+  // the header puts its logo first and its (divider-then-)text after; this
+  // is credit text *for* the mark beside it, so the text leads and the
+  // logo follows, divider in between either way.
+  .footer-brand{
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  // Two stacked lines, right-aligned against the divider on their own
+  // trailing edge — the mirror image of .brand-org-info's own left-aligned
+  // padding-left/border-left in HeaderComponent (see header.component.scss),
+  // flipped to padding-right/border-right since the logo sits after this
+  // block here instead of before it. currentColor rather than a Material
+  // system token for the divider (same reasoning as .footer-links a's own
+  // color: inherit just below) — .footer-on-dark is a permanently-dark
+  // background regardless of the site's light/dark theme, and a token like
+  // --mat-sys-outline-variant would resolve to a light-mode-appropriate
+  // color there and go nearly invisible, the same trap the logo's own
+  // filter rule below already has to work around.
+  .footer-brand-info{
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.125rem;
+    padding-right: 0.75rem;
+    border-right: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+    text-align: right;
+  }
+
+  // Deliberately subtle — this is a footer credit, not a piece of
+  // navigation or status the way HeaderComponent's own two-line org-info
+  // block is. color: inherit (not a Material token) for the same
+  // footer-on-dark reason as the divider above; both lines stay muted, and
+  // the second is only slightly more prominent than the first (via opacity,
+  // not a stronger color) so "Studio Rio" still reads as the more important
+  // of the two words.
+  .footer-brand-line{
+    font-size: 0.6875rem;
+    color: inherit;
+    opacity: 0.6;
+  }
+
+  .footer-brand-name{
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: inherit;
+    opacity: 0.8;
+  }
+
   img{
     width: clamp(40px, 30px, 100%);
 

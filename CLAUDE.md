@@ -195,9 +195,22 @@ embed it directly (landing, `/pricing` itself); `AppComponent`'s own `<app-foote
 every authenticated page) explicitly passes `[showLegalLinks]="false"`, since a signed-in user has no
 reason to click through to marketing/legal pages from inside the app, and showing them there was just
 noise. `.footer-content` switches from `justify-content: space-between` to `flex-end` when the links
-are hidden, keeping the lone Studio Rio mark in its usual bottom-right corner rather than stranded at
-the flex-start edge with nothing on the other side to push it there anymore. The register form's
-submit button carries a "you agree to our
+are hidden, keeping the Studio Rio mark (and its credit text — see below) in its usual bottom-right
+corner rather than stranded at the flex-start edge with nothing on the other side to push it there
+anymore. A "Created by / Studio Rio" two-line credit sits next to the mark itself, via
+`.footer-brand` — the same logo-plus-text-with-a-vertical-divider pairing `HeaderComponent`'s own
+`.brand` uses for the signed-in org's logo/name, mirrored (text leads, divider, then the logo,
+rather than logo-then-divider-then-text) since this is credit *for* the mark beside it rather than
+identity info the mark belongs to. Deliberately subtle (small, muted, opacity-differentiated rather
+than color-differentiated between its two lines) — a footer credit, not a nav element or status the
+way the header's own two-line block is. Both the divider and the text use `currentColor`/
+`color: inherit` rather than a Material system token: `FooterComponent` is also embedded on the
+landing page's `.footer-on-dark` region, a permanently-dark background regardless of the site's
+light/dark theme, and a token like `--mat-sys-on-surface-variant` would resolve to a light-mode
+color there and go illegible — the same trap the mark's own `img` filter rule already has to work
+around (see its own comment for the mirror-image case: forcing the logo to *stay* white there
+rather than inverting it, since `[data-mode='light']` alone isn't a reliable signal for that region).
+The register form's submit button carries a "you agree to our
 Terms/Privacy" notice linking the same routes regardless. The policy text itself is a starting draft
 (attributed to Studio Rio, contact `chris@studiorioconsulting.com`) — **not reviewed by an
 attorney**, and the Terms' governing-law section still has a literal `[Insert governing
