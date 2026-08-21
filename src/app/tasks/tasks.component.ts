@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -10,6 +10,8 @@ import { TaskCardComponent } from './task-card/task-card.component';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 import { EmptyStateComponent } from '../shared/components/empty-state/empty-state.component';
 import { resolveProfileName } from '../shared/utils/profile-label';
+import { subscribeToTableChanges } from '../shared/utils/realtime';
+import { debounce } from '../shared/utils/debounce';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
 
@@ -25,9 +27,14 @@ export class TasksComponent implements OnInit {
   private dialog = inject(MatDialog);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private destroyRef = inject(DestroyRef);
 
   private currentUserId: string | null = null;
   private orgProfiles: Profile[] = [];
+  // Collapses a burst of postgres_changes events (e.g. an accept/decline
+  // touching more than one row) into one reload — see debounce()'s own
+  // doc comment.
+  private readonly debouncedReloadTasks = debounce(() => void this.loadTasks(), 300);
 
   tasks: Task[] = [];
   /** Tasks someone else has offered to hand off to the current user — kept
@@ -84,6 +91,19 @@ export class TasksComponent implements OnInit {
         }
       }
     }
+
+    // Live updates from other users/tabs — a transfer someone else sends or
+    // responds to shows up here without a manual refresh. Reuses loadTasks()
+    // itself (debounced) rather than patching a single row, matching
+    // openTask()'s own reasoning above: a transfer can move a task between
+    // tasks/incomingTransfers, which a full reload already handles correctly.
+    // No client-side organization_id filter — see subscribeToTableChanges()'s
+    // own comment for why RLS alone is the right boundary here.
+    const channel = subscribeToTableChanges(this.supabase, 'tasks', () => this.debouncedReloadTasks());
+    this.destroyRef.onDestroy(() => {
+      this.debouncedReloadTasks.cancel();
+      void this.supabase.removeChannel(channel);
+    });
   }
 
   private async loadTasks() {
