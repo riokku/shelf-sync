@@ -55,6 +55,7 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    justify-content: flex-end;
   }
 
   // Two stacked lines, right-aligned against the divider on their own
@@ -72,10 +73,10 @@
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 0.125rem;
     padding-right: 0.75rem;
     border-right: 1px solid color-mix(in srgb, currentColor 30%, transparent);
     text-align: right;
+    line-height: 14px;
   }
 
   // Deliberately subtle — this is a footer credit, not a piece of
