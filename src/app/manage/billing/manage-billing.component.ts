@@ -18,14 +18,14 @@ import { PricingTier, pricingTierByKey } from '../../shared/models/pricing-tier'
  *
  *  Every org is hardcoded onto the Free tier below — there's no
  *  subscriptions table yet, so nothing is actually read to determine a
- *  "current plan". Account creation date, team member count, and inventory
- *  item count are real, queried numbers (all trivial single-table reads
- *  this app already does elsewhere); photo storage usage and billing-cycle
- *  dates are plausible-looking placeholders, called out as such in the
- *  template — getting real storage usage would mean a new Postgres
- *  function reading storage.objects (Supabase Storage's own backing table,
- *  not exposed to PostgREST directly), which is real future work, not
- *  something this preview page needs yet. */
+ *  "current plan". Account creation date, team member count, inventory item
+ *  count, and photo storage usage are all real, queried numbers — storage
+ *  usage comes from the `get_inventory_photo_storage_usage()` RPC (reads
+ *  storage.objects, Supabase Storage's own backing table, which isn't
+ *  exposed to PostgREST directly, hence the RPC rather than a plain query).
+ *  Only the billing-cycle date below is still a plausible-looking
+ *  placeholder — there's no real subscription to read a renewal date from
+ *  until Stripe is wired up. */
 @Component({
   selector: 'app-manage-billing',
   imports: [
@@ -51,10 +51,8 @@ export class ManageBillingComponent implements OnInit {
   organizationCreatedAt: string | null = null;
   teamMemberCount = 0;
   inventoryItemCount = 0;
+  storageUsedMb = 0;
 
-  /** Placeholder, not a real measurement — see this component's own doc
-   *  comment above. */
-  readonly placeholderStorageUsedMb = 142;
   /** Placeholder — no real subscription exists to read a renewal date from. */
   readonly placeholderNextBillingDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
@@ -65,15 +63,17 @@ export class ManageBillingComponent implements OnInit {
       return;
     }
 
-    const [{ data: organization }, { count: memberCount }, { count: itemCount }] = await Promise.all([
+    const [{ data: organization }, { count: memberCount }, { count: itemCount }, { data: storageBytes }] = await Promise.all([
       this.supabase.from('organizations').select('created_at').eq('id', profile.organization_id).single(),
       this.supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('membership_status', 'approved'),
-      this.supabase.from('inventory_items').select('id', { count: 'exact', head: true })
+      this.supabase.from('inventory_items').select('id', { count: 'exact', head: true }),
+      this.supabase.rpc('get_inventory_photo_storage_usage')
     ]);
 
     this.organizationCreatedAt = organization?.created_at ?? null;
     this.teamMemberCount = memberCount ?? 0;
     this.inventoryItemCount = itemCount ?? 0;
+    this.storageUsedMb = Math.round(((storageBytes ?? 0) / (1024 * 1024)) * 10) / 10;
     this.isLoading = false;
   }
 
@@ -98,7 +98,7 @@ export class ManageBillingComponent implements OnInit {
   storageUsageLabel(): string {
     const limit = this.currentTier.limits.storageLimitMb;
     return limit === null
-      ? `${this.placeholderStorageUsedMb}MB · Unlimited`
-      : `${this.placeholderStorageUsedMb}MB of ${limit}MB`;
+      ? `${this.storageUsedMb}MB · Unlimited`
+      : `${this.storageUsedMb}MB of ${limit}MB`;
   }
 }

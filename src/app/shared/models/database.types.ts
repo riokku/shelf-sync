@@ -652,6 +652,7 @@ export type Database = {
       }
       decline_item_retirement: { Args: { item_id: string }; Returns: undefined }
       decline_task_transfer: { Args: { task_id: string }; Returns: undefined }
+      get_inventory_photo_storage_usage: { Args: never; Returns: number }
       log_client_error: {
         Args: {
           p_app_env?: string

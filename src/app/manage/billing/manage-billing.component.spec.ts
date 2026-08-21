@@ -11,15 +11,26 @@ describe('ManageBillingComponent', () => {
   let fixture: ComponentFixture<ManageBillingComponent>;
 
   beforeEach(async () => {
+    // ngOnInit loads org/member/item counts and photo storage usage on
+    // construction — faked so this hits nothing real, same reasoning as
+    // every other spec that does this. The shared fake returns the same
+    // canned `data`/`count` for every call regardless of table/RPC, which
+    // doesn't fit here (the RPC needs a plain byte count, not the
+    // organization row), so the RPC call is overridden separately below.
+    const baseFake = createFakeSupabaseService({ data: { created_at: '2026-01-15T00:00:00.000Z' }, count: 3 });
+    const fakeSupabaseService = {
+      client: {
+        ...baseFake.client,
+        rpc: () => Promise.resolve({ data: 10 * 1024 * 1024, error: null })
+      }
+    } as unknown as SupabaseService;
+
     await TestBed.configureTestingModule({
       imports: [ManageBillingComponent],
       providers: [
         provideRouter([]),
         { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: 'admin' })) },
-        // ngOnInit loads org/member/item counts on construction — faked so
-        // this hits nothing real, same reasoning as every other spec that
-        // does this.
-        { provide: SupabaseService, useValue: createFakeSupabaseService({ data: { created_at: '2026-01-15T00:00:00.000Z' }, count: 3 }) }
+        { provide: SupabaseService, useValue: fakeSupabaseService }
       ]
     })
     .compileComponents();
@@ -27,6 +38,7 @@ describe('ManageBillingComponent', () => {
     fixture = TestBed.createComponent(ManageBillingComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+    await fixture.whenStable();
   });
 
   it('should create', () => {
@@ -63,7 +75,8 @@ describe('ManageBillingComponent', () => {
 
   describe('storageUsageLabel', () => {
     it('folds the MB unit into each number rather than appending it once', () => {
-      expect(component.storageUsageLabel()).toBe(`${component.placeholderStorageUsedMb}MB of 500MB`);
+      expect(component.storageUsedMb).toBe(10);
+      expect(component.storageUsageLabel()).toBe('10MB of 500MB');
     });
   });
 });

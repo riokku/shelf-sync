@@ -9,8 +9,8 @@
       <mat-icon>info</mat-icon>
       <p>
         Billing isn't connected yet — this is a preview of what this page will show once it is.
-        Account created, team members, and inventory items below are real; storage usage and
-        billing dates are placeholders.
+        Account created, team members, inventory items, and photo storage below are all real;
+        only the billing date is a placeholder.
       </p>
     </div>
 
@@ -63,13 +63,10 @@
               }
             </div>
             <div class="usage-stat">
-              <span class="usage-stat-label">
-                Photo storage
-                <span class="placeholder-tag">Estimated</span>
-              </span>
+              <span class="usage-stat-label">Photo storage</span>
               <span class="usage-stat-value">{{ storageUsageLabel() }}</span>
               @if (currentTier.limits.storageLimitMb) {
-                <mat-progress-bar mode="determinate" [value]="usagePercent(placeholderStorageUsedMb, currentTier.limits.storageLimitMb)" />
+                <mat-progress-bar mode="determinate" [value]="usagePercent(storageUsedMb, currentTier.limits.storageLimitMb)" />
               }
             </div>
           </div>
