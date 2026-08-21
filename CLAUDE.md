@@ -379,6 +379,35 @@ member indicator itself uses) narrows the list down to just who's currently onli
 empty state names which filter(s) actually produced it, and `clearTeamFilters()` (the empty state's
 own button) resets both rather than just the search term the way it used to.
 
+Inventory item and task changes now show up live across users/tabs instead of needing a manual
+refresh, via Supabase Realtime (`postgres_changes`) — `shared/utils/realtime.ts`'s
+`subscribeToTableChanges()`, a thin wrapper opening one `supabase.channel(...)` per component
+(this is a single-router-outlet SPA, so at most one of the five subscribing components is ever
+mounted at a time — no app-wide channel-manager service needed), torn down via `DestroyRef.
+onDestroy(() => supabase.removeChannel(channel))`, the same cleanup pattern this app's `setInterval`
+usages already established. Deliberately **no client-side `organization_id` filter** on the
+subscription — matches every other query in this app, which trusts RLS alone for org scoping; a
+Realtime `postgres_changes` event is itself gated per-subscriber by the table's own RLS SELECT
+policy, no separate "Realtime Authorization" setup needed for this event type. Each of the five
+subscribing components reuses its own page's existing reload precedent rather than a new merge
+strategy: `ManageInventoryComponent`/`InventoryComponent` patch a single row in place
+(`refreshInventoryItem()`/`refreshInventoryListItem()`, the latter promoting `loadInventory()`'s
+local `profiles` var to a field so it can re-resolve labels for just the one changed item);
+`TasksComponent`/`ManageTasksComponent`/`ManageTeamComponent` instead reuse their existing full-
+reload methods (`loadTasks()`/`loadTeamTasks()`), debounced 300ms via a new plain-`setTimeout`
+`shared/utils/debounce.ts` utility (matching this app's no-RxJS-operators convention) so a burst of
+WAL events collapses into one reload rather than one per event — these three pages already
+deliberately do a full reload after any local mutation, since a transfer can move a task between
+lists. `ManageTeamComponent`'s subscription is added alongside, not merged into, its existing 30s
+presence-poll `setInterval`/cleanup — a separate, already-settled concern (see the presence
+paragraph above) this feature has no reason to disturb. Scope is deliberately narrow: only
+`inventory_items`/`tasks` rows go live — child tables (`inventory_item_images`,
+`inventory_item_containers`, `inventory_item_activity`, `activity_log`) aren't subscribed, so a
+pure photo-only edit won't push live (container edits are covered indirectly, since they write
+derived quantity fields back onto the parent row). No toast fires for a background change from
+another user — `NotificationService` stays scoped to the acting user's own action, same as
+everywhere else in the app; data just updates silently.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -514,6 +543,8 @@ shared/
   utils/profile-label.ts     # profileDisplayName()/resolveProfileName() — shared profiles-array lookup
   utils/barcode.ts           # buildItemQrValue()/parseItemQrValue() — ShelfSync's own QR-label encoding
   utils/presence.ts          # isProfileOnline()/formatLastSeen() — reads profiles.last_active_at, backs Manage > Team's presence indicator
+  utils/realtime.ts          # subscribeToTableChanges() — Supabase Realtime postgres_changes wrapper, see Project Overview above
+  utils/debounce.ts          # debounce() — plain setTimeout debounce with .cancel(), backs the task pages' realtime reload handlers
   styles/_legal-page.scss   # shared top-bar + prose layout for privacy/ and terms/ (see Project Overview above);
                              # login/register no longer share a partial like this — each owns its own layout now
 ```
@@ -718,6 +749,15 @@ yet on a hard refresh of `/inventory`.
   beyond widening the existing column grant, since "Users can update their own profile" already
   scopes it to `auth.uid() = id` and there's no privilege distinction to protect the way
   `role`/`membership_status` need.
+- `enable_realtime_for_inventory_and_tasks` — adds `inventory_items` and `tasks` to the
+  `supabase_realtime` publication (idempotent existence-check wrapper — Postgres has no
+  `ADD TABLE IF NOT EXISTS` for publications) and sets `REPLICA IDENTITY FULL` on both, backing the
+  live-update feature described in Project Overview above. No RLS/grant changes — delivery of each
+  `postgres_changes` event is already gated by the tables' existing org-scoped SELECT policies.
+  `REPLICA IDENTITY FULL` is what makes a DELETE event's "old row" payload carry every column
+  (including `organization_id`) rather than just the primary key — without it, RLS can't evaluate
+  the org-scoping predicate against a DELETE's old row at all, which fails the check *closed* for
+  every subscriber, not just a leak-prevention gap.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power
