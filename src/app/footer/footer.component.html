@@ -1,20 +1,18 @@
 <section class="footer-wrapper">
-  <div class="row">
-    <div class="col-12 footer-content" [class.legal-links-hidden]="!showLegalLinks">
-      @if (showLegalLinks) {
-        <nav class="footer-links">
-          <a routerLink="/pricing">Pricing</a>
-          <a routerLink="/privacy">Privacy Policy</a>
-          <a routerLink="/terms">Terms of Service</a>
-        </nav>
-      }
-      <div class="footer-brand">
-        <span class="footer-brand-info">
-          <span class="footer-brand-line">Created by</span>
-          <span class="footer-brand-name">Studio Rio</span>
-        </span>
-        <img src="../../assets/studio-rio-logo-white.png" alt="">
-      </div>
+  <div class="footer-content" [class.legal-links-hidden]="!showLegalLinks">
+    @if (showLegalLinks) {
+      <nav class="footer-links">
+        <a routerLink="/pricing">Pricing</a>
+        <a routerLink="/privacy">Privacy Policy</a>
+        <a routerLink="/terms">Terms of Service</a>
+      </nav>
+    }
+    <div class="footer-brand">
+      <span class="footer-brand-info">
+        <span class="footer-brand-line">Created by</span>
+        <span class="footer-brand-name">Studio Rio</span>
+      </span>
+      <img src="../../assets/studio-rio-logo-white.png" alt="">
     </div>
   </div>
 </section>

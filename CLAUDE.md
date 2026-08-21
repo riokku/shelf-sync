@@ -197,19 +197,28 @@ reason to click through to marketing/legal pages from inside the app, and showin
 noise. `.footer-content` switches from `justify-content: space-between` to `flex-end` when the links
 are hidden, keeping the Studio Rio mark (and its credit text — see below) in its usual bottom-right
 corner rather than stranded at the flex-start edge with nothing on the other side to push it there
-anymore. A "Created by / Studio Rio" two-line credit sits next to the mark itself, via
+anymore. `.footer-content` sits directly under `.footer-wrapper` with no Bootstrap grid wrapper
+around it — same plain-flex-block treatment as `HeaderComponent`'s own `.header-wrapper` — rather
+than the `.row`/`.col-12` pair this used to have, whose negative margin only partially canceled
+`.footer-wrapper`'s own padding and left the column's own gutter padding stacked on top: an uneven
+double-inset rather than the single, predictable one this padding alone now provides on its own,
+edge-to-edge full width.
+A "Created by / Studio Rio" two-line credit sits next to the mark itself, via
 `.footer-brand` — the same logo-plus-text-with-a-vertical-divider pairing `HeaderComponent`'s own
 `.brand` uses for the signed-in org's logo/name, mirrored (text leads, divider, then the logo,
 rather than logo-then-divider-then-text) since this is credit *for* the mark beside it rather than
-identity info the mark belongs to. Deliberately subtle (small, muted, opacity-differentiated rather
-than color-differentiated between its two lines) — a footer credit, not a nav element or status the
-way the header's own two-line block is. Both the divider and the text use `currentColor`/
-`color: inherit` rather than a Material system token: `FooterComponent` is also embedded on the
+identity info the mark belongs to. Deliberately subtle (small, muted; both lines share one plain,
+explicit light gray — `#c4c4c4`, not a Material system token or `color: inherit` — with only
+size/weight, not color, differentiating "Studio Rio" as the more prominent line) — a footer credit,
+not a nav element or status the way the header's own two-line block is. The explicit (rather than
+themed) color choice matters here specifically because `FooterComponent` is also embedded on the
 landing page's `.footer-on-dark` region, a permanently-dark background regardless of the site's
-light/dark theme, and a token like `--mat-sys-on-surface-variant` would resolve to a light-mode
-color there and go illegible — the same trap the mark's own `img` filter rule already has to work
-around (see its own comment for the mirror-image case: forcing the logo to *stay* white there
-rather than inverting it, since `[data-mode='light']` alone isn't a reliable signal for that region).
+light/dark theme — a token like `--mat-sys-on-surface-variant`, or `color: inherit` from the
+ambient (theme-following) text color, would resolve to a light-mode-appropriate color there and go
+illegible, the same trap the mark's own `img` filter rule already has to work around (see its own
+comment for the mirror-image case: forcing the logo to *stay* white there rather than inverting it,
+since `[data-mode='light']` alone isn't a reliable signal for that region) — the divider alongside
+the text still uses `currentColor` for this same reason.
 The register form's submit button carries a "you agree to our
 Terms/Privacy" notice linking the same routes regardless. The policy text itself is a starting draft
 (attributed to Studio Rio, contact `chris@studiorioconsulting.com`) — **not reviewed by an

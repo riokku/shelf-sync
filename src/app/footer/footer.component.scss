@@ -4,6 +4,13 @@
   text-align: center;
   padding: 1.5rem;
 
+  // A plain block, same as HeaderComponent's own .header-wrapper — no
+  // Bootstrap .row/.col-12 wrapper (this used to have one), since that
+  // grid layer isn't needed for a single full-width block and was actually
+  // counterproductive here: .row's negative margin only partially canceled
+  // this element's own padding, leaving .col-12's own gutter padding on top
+  // of it — a compounded, uneven inset instead of the plain, predictable
+  // one this padding alone already provides now that it's gone.
   .footer-content{
     display: flex;
     align-items: center;
@@ -73,22 +80,24 @@
 
   // Deliberately subtle — this is a footer credit, not a piece of
   // navigation or status the way HeaderComponent's own two-line org-info
-  // block is. color: inherit (not a Material token) for the same
-  // footer-on-dark reason as the divider above; both lines stay muted, and
-  // the second is only slightly more prominent than the first (via opacity,
-  // not a stronger color) so "Studio Rio" still reads as the more important
-  // of the two words.
+  // block is. A plain, explicit light gray (not a Material token, not
+  // color: inherit) for both lines uniformly, same footer-on-dark reasoning
+  // as the divider above — it reads correctly regardless of the ambient
+  // page background, including that permanently-dark region. Size/weight
+  // alone (not color) is what still lets "Studio Rio" read as the more
+  // prominent of the two lines.
+  .footer-brand-line,
+  .footer-brand-name{
+    color: #c4c4c4;
+  }
+
   .footer-brand-line{
     font-size: 0.6875rem;
-    color: inherit;
-    opacity: 0.6;
   }
 
   .footer-brand-name{
     font-size: 0.75rem;
     font-weight: 500;
-    color: inherit;
-    opacity: 0.8;
   }
 
   img{
