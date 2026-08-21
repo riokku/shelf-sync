@@ -99,13 +99,14 @@ export class InventoryComponent implements OnInit{
   // stale selection sitting around unseen until it's turned back on.
   bulkEditEnabled = false;
 
-  // Bulk selection — scoped to whatever's currently on the page (see
-  // clearSelection()'s callers below): every filter/search/sort/page change
-  // clears it, since each of those changes which items are actually visible,
-  // and letting selection quietly persist across a page change in
-  // particular would make selectedItemIds.size and this page's own
-  // selectablePagedItems.length disagree (the shared toolbar's select-all
-  // checkbox has no way to represent "some selected, but not on this page").
+  // Bulk selection — scoped to the *filtered* set (filteredInventoryList),
+  // not the current page: "Select all" (toggleSelectAll() below) selects
+  // every matching item across every page, not just the 12 on screen, and
+  // paging/sorting through to review a selection made this way doesn't lose
+  // it (see onPageChange()/onSortChange()'s own comments). Only an actual
+  // filter/search change clears it (see clearSelection()'s callers below) —
+  // that's the one thing that changes *which* items are in scope at all,
+  // so a stale selection from a previous filter shouldn't silently linger.
   selectedItemIds = new Set<string>();
   isBulkProcessing = false;
   bulkActionError: string | null = null;
@@ -161,7 +162,10 @@ export class InventoryComponent implements OnInit{
     this.sortActive = sort.active;
     this.sortDirection = sort.direction;
     this.pageIndex = 0;
-    this.clearSelection();
+    // No clearSelection() — sorting reorders filteredInventoryList, it
+    // never changes *which* items are in it, and selection is scoped to
+    // the filtered set now (see selectedItemIds' own comment), not to
+    // whatever page/order they happen to be sorted into.
   }
 
   get filteredInventoryList(): InventoryItem[] {
@@ -290,7 +294,9 @@ export class InventoryComponent implements OnInit{
 
   onPageChange(event: PageEvent) {
     this.pageIndex = event.pageIndex;
-    this.clearSelection();
+    // No clearSelection() — "Select all" spans every filtered item, not
+    // just the current page (see selectedItemIds' own comment), so paging
+    // through to check on a selection made elsewhere shouldn't lose it.
   }
 
   onSearchChange(value: string) {
@@ -548,11 +554,12 @@ export class InventoryComponent implements OnInit{
 
   // --- Bulk selection ---
 
-  /** Selectable items on the *current page only* — selection is
-   *  page-scoped (see selectedItemIds's own comment), so this is what the
-   *  toolbar's select-all checkbox and its tri-state both operate over. */
-  get selectablePagedItems(): InventoryItem[] {
-    return this.pagedInventoryList.filter(item => this.canSelectItem(item));
+  /** Every selectable item matching the current filters — *not* just the
+   *  current page (see selectedItemIds's own comment) — so this is what the
+   *  toolbar's select-all checkbox, its tri-state, and toggleSelectAll()
+   *  below all operate over. */
+  get selectableFilteredItems(): InventoryItem[] {
+    return this.filteredInventoryList.filter(item => this.canSelectItem(item));
   }
 
   /** Mirrors ModalTableComponent's own Edit-button gating
@@ -577,9 +584,11 @@ export class InventoryComponent implements OnInit{
     this.selectedItemIds = next;
   }
 
-  toggleSelectAllOnPage(checked: boolean) {
+  /** Selects (or deselects) every selectable item matching the current
+   *  filters, across every page — not just whatever's on screen right now. */
+  toggleSelectAll(checked: boolean) {
     const next = new Set(this.selectedItemIds);
-    for (const item of this.selectablePagedItems) {
+    for (const item of this.selectableFilteredItems) {
       if (checked) {
         next.add(item.id);
       } else {

@@ -376,7 +376,7 @@ describe('InventoryComponent', () => {
       ];
     });
 
-    describe('canSelectItem() / selectablePagedItems', () => {
+    describe('canSelectItem() / selectableFilteredItems', () => {
       it('is selectable when unlocked, regardless of role', () => {
         expect(component.canSelectItem(component.inventoryList[0])).toBeTrue();
       });
@@ -385,8 +385,8 @@ describe('InventoryComponent', () => {
         expect(component.canSelectItem(component.inventoryList[2])).toBeFalse();
       });
 
-      it('excludes locked items from selectablePagedItems for a non-manager', () => {
-        expect(component.selectablePagedItems.map(item => item.id)).toEqual(['1', '2']);
+      it('excludes locked items from selectableFilteredItems for a non-manager', () => {
+        expect(component.selectableFilteredItems.map(item => item.id)).toEqual(['1', '2']);
       });
     });
 
@@ -400,16 +400,30 @@ describe('InventoryComponent', () => {
       });
     });
 
-    describe('toggleSelectAllOnPage()', () => {
-      it('selects every selectable item on the page, skipping locked ones', () => {
-        component.toggleSelectAllOnPage(true);
+    describe('toggleSelectAll()', () => {
+      it('selects every selectable filtered item, skipping locked ones', () => {
+        component.toggleSelectAll(true);
         expect([...component.selectedItemIds].sort()).toEqual(['1', '2']);
       });
 
-      it('deselects every selectable item on the page', () => {
-        component.toggleSelectAllOnPage(true);
-        component.toggleSelectAllOnPage(false);
+      it('deselects every selectable filtered item', () => {
+        component.toggleSelectAll(true);
+        component.toggleSelectAll(false);
         expect(component.selectedItemIds.size).toBe(0);
+      });
+
+      // Regression coverage: "Select all" used to only select whatever was
+      // on the current page (12 items) rather than every filtered item.
+      it('selects items beyond the first page, not just the 12 shown at once', () => {
+        component.inventoryList = Array.from({ length: 20 }, (_, i) =>
+          createTestInventoryItem({ id: `item-${i}` })
+        );
+        expect(component.pagedInventoryList.length).toBe(12);
+
+        component.toggleSelectAll(true);
+
+        expect(component.selectedItemIds.size).toBe(20);
+        expect(component.isSelected('item-15')).toBeTrue();
       });
     });
 
@@ -451,10 +465,10 @@ describe('InventoryComponent', () => {
       });
     });
 
-    // Every filter/search/sort/page change clears selection — see
-    // selectedItemIds's own doc comment for why (each of these changes
-    // which items are actually visible/selectable).
-    describe('clears selection on filter/sort/page changes', () => {
+    // Only an actual filter/search change clears selection — that's the one
+    // thing that changes *which* items are in scope at all. See
+    // selectedItemIds's own doc comment.
+    describe('clears selection on filter/search changes', () => {
       beforeEach(() => {
         component.toggleItemSelection('1', true);
       });
@@ -488,15 +502,26 @@ describe('InventoryComponent', () => {
         component.clearFilters();
         expect(component.selectedItemIds.size).toBe(0);
       });
+    });
+
+    // Regression coverage: sort/page changes used to clear selection too,
+    // back when it was scoped to the current page. Now that "Select all"
+    // spans every filtered item (see toggleSelectAll()'s own comment),
+    // neither should touch it — sorting only reorders the filtered set, and
+    // paging through it is exactly how you'd review a multi-page selection.
+    describe('preserves selection across sort/page changes', () => {
+      beforeEach(() => {
+        component.toggleItemSelection('1', true);
+      });
 
       it('onSortChange', () => {
         component.onSortChange({ active: 'name', direction: 'asc' });
-        expect(component.selectedItemIds.size).toBe(0);
+        expect(component.isSelected('1')).toBeTrue();
       });
 
       it('onPageChange', () => {
         component.onPageChange({ pageIndex: 1, pageSize: 12, length: 20 });
-        expect(component.selectedItemIds.size).toBe(0);
+        expect(component.isSelected('1')).toBeTrue();
       });
     });
   });

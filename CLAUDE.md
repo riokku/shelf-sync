@@ -476,9 +476,13 @@ bulkEditFeatureEnabled())`), same "hidden, not disabled" treatment `BARCODE_FEAT
 established — distinct from (and named to avoid confusion with) `InventoryComponent.bulkEditEnabled`,
 which is just this visit's own on/off state of the feature, not whether it exists for the org at all.
 Selection scope differs by page's own pagination/filtering shape: `InventoryComponent`'s
-`selectedItemIds` is cleared on every search/filter/sort/page change (letting it persist across a
-page change in particular would put it out of sync with that page's own `selectablePagedItems`,
-which the shared toolbar's select-all checkbox operates over); `ManageTasksComponent`'s
+`selectedItemIds` is scoped to the *filtered* set, not the current page — "Select all"
+(`toggleSelectAll()`) selects every matching item across every page, not just the 12 shown at once,
+and paging/sorting through a selection made this way doesn't lose it, since neither changes *which*
+items are in scope (only reordering/paginating them). Only an actual filter/search change clears it
+(via `selectableFilteredItems`, everything `filteredInventoryList` contains that
+`canSelectItem()` allows), since that's the one thing that changes what's actually in scope.
+`ManageTasksComponent`'s
 `selectedTaskIds` is never explicitly cleared on filter change (this page has no pagination, and its
 filters are plain `[(ngModel)]` bindings with no handler method to hook into) — instead a
 `selectedVisibleTaskIds` getter intersects it with `filteredAllTasks`, so a filtered-out task simply

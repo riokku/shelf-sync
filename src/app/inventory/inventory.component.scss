@@ -22,6 +22,13 @@
 .bulk-edit-toggle-row{
   display: flex;
   justify-content: flex-end;
+  // The row wrapper itself carried no bottom margin (its own "mb-3" class
+  // was never actually defined anywhere — see styles.scss's own .mb-0/
+  // .mb-4/.mb-5 — so this sat flush against the search bar below it with
+  // no gap at all). Set directly on this row-specific class rather than
+  // introducing a new global mb-3 utility for what's currently a single
+  // usage.
+  margin-bottom: 1rem;
 }
 
 // Own full-width row above the filter/gallery split now, rather than
