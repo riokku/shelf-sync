@@ -1,11 +1,11 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { InventoryComponent } from './inventory.component';
 import { SiteSettingsService } from '../core/site-settings.service';
 import { SupabaseService } from '../core/supabase.service';
 import { InventoryTableColumnKey } from '../shared/models/inventory-table-column';
-import { createFakeSiteSettingsService, createFakeSupabaseService, createTestInventoryItem } from '../testing/fakes';
+import { createFakeSiteSettingsService, createFakeSupabaseService, createTestInventoryItem, createTestInventoryItemRow } from '../testing/fakes';
 
 describe('InventoryComponent', () => {
   let component: InventoryComponent;
@@ -351,5 +351,124 @@ describe('InventoryComponent', () => {
       expect(component.statusLabel(item)).toBe('Available');
       expect(component.statusSlug(item)).toBe('available');
     });
+  });
+});
+
+/** Captures the postgres_changes callback ngOnInit()'s realtime
+ *  subscription registers, exposing it as emitChange() — mirrors the same
+ *  pattern established in manage-inventory.component.spec.ts and
+ *  auth.service.spec.ts. `singleResult` only once `.single()`/
+ *  `.maybeSingle()` has been called in the chain (refreshInventoryListItem()'s
+ *  own row lookup) — an empty list otherwise (loadInventory()'s initial
+ *  load, and the images/activity list queries refreshInventoryListItem()
+ *  also makes). */
+function createRealtimeCapturingSupabaseService(singleResult: { data: unknown; error: null }) {
+  let capturedCallback: ((payload: unknown) => void) | null = null;
+  function builder() {
+    let wantsSingle = false;
+    const b: Record<string, unknown> = {
+      then: (resolve: (value: unknown) => void) => resolve(wantsSingle ? singleResult : { data: [], error: null }),
+    };
+    for (const method of ['select', 'eq', 'neq', 'not', 'in', 'gte', 'lt', 'order', 'limit', 'insert', 'update', 'delete', 'upsert']) {
+      b[method] = () => b;
+    }
+    b['single'] = () => { wantsSingle = true; return b; };
+    b['maybeSingle'] = () => { wantsSingle = true; return b; };
+    return b;
+  }
+  const channel: Record<string, unknown> = {
+    on: (_type: string, _filter: unknown, callback: (payload: unknown) => void) => {
+      capturedCallback = callback;
+      return channel;
+    },
+    subscribe: () => channel,
+  };
+  const service = {
+    client: { from: () => builder(), rpc: () => builder(), channel: () => channel, removeChannel: async () => ({ status: 'ok' }) }
+  } as unknown as SupabaseService;
+  return { service, emitChange: (payload: unknown) => capturedCallback?.(payload) };
+}
+
+describe('InventoryComponent realtime updates', () => {
+  // fakeAsync()/tick() rather than await fixture.whenStable() — the change
+  // handler's own async chain (a row lookup, then a *second* Promise.all
+  // for images/activity) needs a deterministic flush; whenStable() proved
+  // unreliable for asserting on the tail end of that specific shape here.
+  it('patches the existing InventoryItem instance in place when another user updates it', fakeAsync(() => {
+    const updatedRow = createTestInventoryItemRow({ id: 'item-1', name: 'Updated Name' });
+    const { service, emitChange } = createRealtimeCapturingSupabaseService({ data: updatedRow, error: null });
+
+    TestBed.configureTestingModule({
+      imports: [InventoryComponent],
+      providers: [
+        provideRouter([]),
+        { provide: SupabaseService, useValue: service },
+        { provide: SiteSettingsService, useValue: createFakeSiteSettingsService() }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(InventoryComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    tick();
+
+    // The exact same object identity showDetails() would hand
+    // ModalTableComponent by reference — Object.assign should patch *this*
+    // instance, not just replace the array slot with a different object.
+    const existingItem = createTestInventoryItem({ id: 'item-1', name: 'Old Name' });
+    component.inventoryList = [existingItem];
+
+    emitChange({ eventType: 'UPDATE', new: updatedRow, old: { id: 'item-1' } });
+    tick();
+
+    expect(component.inventoryList[0]).toBe(existingItem);
+    expect(component.inventoryList[0].name).toBe('Updated Name');
+  }));
+
+  it('removes the item when another user deletes it', fakeAsync(() => {
+    const { service, emitChange } = createRealtimeCapturingSupabaseService({ data: null, error: null });
+
+    TestBed.configureTestingModule({
+      imports: [InventoryComponent],
+      providers: [
+        provideRouter([]),
+        { provide: SupabaseService, useValue: service },
+        { provide: SiteSettingsService, useValue: createFakeSiteSettingsService() }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(InventoryComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    tick();
+
+    component.inventoryList = [createTestInventoryItem({ id: 'item-1' })];
+
+    emitChange({ eventType: 'DELETE', new: {}, old: { id: 'item-1' } });
+    tick();
+
+    expect(component.inventoryList).toEqual([]);
+  }));
+
+  it('removes the channel on destroy', async () => {
+    const { service } = createRealtimeCapturingSupabaseService({ data: [], error: null });
+    const removeChannelSpy = spyOn(service.client, 'removeChannel').and.callThrough();
+
+    await TestBed.configureTestingModule({
+      imports: [InventoryComponent],
+      providers: [
+        provideRouter([]),
+        { provide: SupabaseService, useValue: service },
+        { provide: SiteSettingsService, useValue: createFakeSiteSettingsService() }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(InventoryComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    fixture.destroy();
+
+    expect(removeChannelSpy).toHaveBeenCalled();
   });
 });

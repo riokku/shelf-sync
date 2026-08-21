@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -27,6 +27,8 @@ import { toInventoryItem } from '../shared/utils/inventory-item.mapper';
 import { resolveProfileAvatarKey, resolveProfileName } from '../shared/utils/profile-label';
 import { loadInventoryImagesByItemId } from '../shared/utils/inventory-item-images';
 import { loadInventoryActivityByItemId } from '../shared/utils/inventory-item-activity';
+import { subscribeToTableChanges } from '../shared/utils/realtime';
+import { Profile } from '../core/auth.service';
 
 type StockLevel = 'out_of_stock' | 'low_stock' | 'sufficient_stock';
 type StatusFilter = 'active' | 'include_retired' | 'retired_only';
@@ -61,9 +63,15 @@ export class InventoryComponent implements OnInit{
   private dialog = inject(MatDialog);
   private route = inject(ActivatedRoute);
   private siteSettings = inject(SiteSettingsService);
+  private destroyRef = inject(DestroyRef);
 
   inventoryList: InventoryItem[] = [];
   isLoading = true;
+  // Set alongside inventoryList by loadInventory() — kept around so a
+  // single-row realtime refresh (refreshInventoryListItem() below) can
+  // resolve checked-out-to/retirement/lock labels the same way, without
+  // re-fetching every profile just to patch one item.
+  private profiles: Profile[] = [];
 
   searchTerm = '';
   readonly isLowStock = isLowStock;
@@ -335,6 +343,64 @@ export class InventoryComponent implements OnInit{
         this.showDetails(item);
       }
     }
+
+    // Live updates from other users/tabs. No client-side organization_id
+    // filter — see subscribeToTableChanges()'s own comment for why RLS
+    // alone is the right boundary here, same as loadInventory()'s own
+    // unfiltered query above.
+    const channel = subscribeToTableChanges(this.supabase, 'inventory_items', payload => {
+      const changedItemId = payload.eventType === 'DELETE' ? payload.old.id : payload.new.id;
+      if (changedItemId) {
+        void this.refreshInventoryListItem(changedItemId);
+      }
+    });
+    this.destroyRef.onDestroy(() => { void this.supabase.removeChannel(channel); });
+  }
+
+  /** The realtime change handler wired up in ngOnInit() above — mirrors
+   *  ManageInventoryComponent's refreshInventoryItem(), but re-maps into
+   *  InventoryItem (this page needs the full mapped shape, not raw rows)
+   *  and patches the *existing object in place* via Object.assign rather
+   *  than replacing the array slot. That matters here specifically:
+   *  showDetails() hands ModalTableComponent this exact InventoryItem
+   *  instance by reference (see its own doc comment), so an already-open
+   *  detail popup needs the live update to land on that same object, not
+   *  just on a new one sitting in inventoryList that the popup never sees. */
+  private async refreshInventoryListItem(itemId: string) {
+    const { data: row } = await this.supabase.from('inventory_items').select('*').eq('id', itemId).maybeSingle();
+    const index = this.inventoryList.findIndex(item => item.id === itemId);
+
+    if (!row) {
+      if (index !== -1) {
+        this.inventoryList = this.inventoryList.filter(item => item.id !== itemId);
+      }
+      return;
+    }
+
+    const [imagesByItemId, activityByItemId] = await Promise.all([
+      loadInventoryImagesByItemId(this.supabase, [itemId]),
+      loadInventoryActivityByItemId(this.supabase, [itemId], this.profiles)
+    ]);
+
+    const updated = toInventoryItem(
+      row,
+      imagesByItemId.get(itemId) ?? [],
+      resolveProfileName(row.checked_out_to, this.profiles),
+      activityByItemId.get(itemId) ?? [],
+      resolveProfileAvatarKey(row.checked_out_to, this.profiles),
+      resolveProfileName(row.retirement_requested_by, this.profiles),
+      resolveProfileName(row.retired_by, this.profiles),
+      resolveProfileName(row.locked_by, this.profiles)
+    );
+
+    if (index === -1) {
+      // New insert — appended rather than re-sorted into place, same known
+      // cosmetic gap ManageInventoryComponent.refreshInventoryItem() already
+      // has; resolved by the next full reload (e.g. next visit to this page).
+      this.inventoryList = [...this.inventoryList, updated];
+    } else {
+      Object.assign(this.inventoryList[index], updated);
+    }
   }
 
   private async loadInventory() {
@@ -346,6 +412,7 @@ export class InventoryComponent implements OnInit{
     ]);
 
     const profileList = profiles ?? [];
+    this.profiles = profileList;
     const rows = items ?? [];
     const itemIds = rows.map(row => row.id);
     const [imagesByItemId, activityByItemId] = await Promise.all([
