@@ -1,0 +1,27 @@
+form{
+  display: flex;
+  flex-direction: column;
+}
+
+.full-width{
+  width: 100%;
+}
+
+.reassign-title-icon{
+  vertical-align: middle;
+  margin-right: 0.375rem;
+  color: var(--mat-sys-primary);
+}
+
+.reassign-hint{
+  margin: 0 0 1rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+}
+
+.reassign-field-row{
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin-bottom: 0.5rem;
+}

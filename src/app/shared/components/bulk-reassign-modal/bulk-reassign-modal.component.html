@@ -1,0 +1,44 @@
+<h2 mat-dialog-title>
+  <mat-icon class="reassign-title-icon">edit_note</mat-icon>
+  Reassign {{ data.itemCount }} item{{ data.itemCount === 1 ? '' : 's' }}
+</h2>
+<form [formGroup]="form" (ngSubmit)="apply()">
+  <mat-dialog-content>
+    <p class="reassign-hint">
+      Only fields you check below are changed — everything else on each item stays as it is.
+    </p>
+
+    <div class="reassign-field-row">
+      <mat-checkbox formControlName="updateCategory">Update category</mat-checkbox>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Category</mat-label>
+        <mat-select formControlName="category" [disabled]="!form.controls.updateCategory.value">
+          <mat-option value="">(None)</mat-option>
+          @for (option of data.categoryOptions; track option) {
+            <mat-option [value]="option">{{ option }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="reassign-field-row">
+      <mat-checkbox formControlName="updatePhysicalLocation">Update physical location</mat-checkbox>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Physical location</mat-label>
+        <mat-select formControlName="physicalLocation" [disabled]="!form.controls.updatePhysicalLocation.value">
+          <mat-option value="">(None)</mat-option>
+          @for (option of data.physicalLocationOptions; track option) {
+            <mat-option [value]="option">{{ option }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancel()">Cancel</button>
+    <button mat-flat-button color="primary" type="submit" [disabled]="!canApply">
+      <mat-icon>edit_note</mat-icon>
+      Apply
+    </button>
+  </mat-dialog-actions>
+</form>
