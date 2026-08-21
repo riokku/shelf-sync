@@ -149,6 +149,7 @@
               <div
                   class="task-row clickable"
                   [class.overdue]="isTaskOverdue(task)"
+                  [class.realtime-flash]="isFlashing(task.id)"
                   role="button"
                   tabindex="0"
                   [attr.aria-label]="'View details for ' + task.title"

@@ -155,7 +155,7 @@
                 } @else {
                   <div class="member-task-rows">
                     @for (task of member.tasks; track task.id) {
-                      <app-task-card [task]="task" [createdByLabel]="createdByLabel(task)" (open)="openTaskDetail($event)" />
+                      <app-task-card [task]="task" [createdByLabel]="createdByLabel(task)" [flash]="isFlashing(task.id)" (open)="openTaskDetail($event)" />
                     }
                   </div>
                 }

@@ -24,6 +24,7 @@ import { logActivity } from '../../shared/utils/activity-log';
 import { formatLastSeen, isProfileOnline } from '../../shared/utils/presence';
 import { subscribeToTableChanges } from '../../shared/utils/realtime';
 import { debounce } from '../../shared/utils/debounce';
+import { FlashTracker } from '../../shared/utils/flash-tracker';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
 
@@ -124,10 +125,19 @@ export class ManageTeamComponent implements OnInit {
   inviteLink: string | null = null;
   inviteLinkCopied = false;
 
+  // Which rows should currently show the brief "someone else just changed
+  // this" pulse (see shared/utils/flash-tracker.ts and its own
+  // shared/styles/_realtime-flash.scss) — read from the template via
+  // isFlashing(task.id). Ids land here as raw postgres_changes events come
+  // in (see ngOnInit's subscription below) and get flashed once
+  // reloadAndFlashChangedTeamTasks()'s reload actually reflects them.
+  private flashTracker = new FlashTracker();
+  private pendingFlashIds = new Set<string>();
+
   // Collapses a burst of postgres_changes events (e.g. an accept/decline
   // touching more than one row) into one reload — see debounce()'s own
   // doc comment.
-  private readonly debouncedReloadTeamTasks = debounce(() => void this.loadTeamTasks(), 300);
+  private readonly debouncedReloadTeamTasks = debounce(() => void this.reloadAndFlashChangedTeamTasks(), 300);
 
   async ngOnInit() {
     const session = await this.authService.getSession();
@@ -155,11 +165,31 @@ export class ManageTeamComponent implements OnInit {
     // own comment) this feature shouldn't disturb. No client-side
     // organization_id filter — see subscribeToTableChanges()'s own comment
     // for why RLS alone is the right boundary here.
-    const channel = subscribeToTableChanges(this.supabase, 'tasks', () => this.debouncedReloadTeamTasks());
+    const channel = subscribeToTableChanges(this.supabase, 'tasks', payload => {
+      // DELETE isn't tracked — there's no row left to flash once the reload
+      // below completes, so it'd never actually be visible.
+      if (payload.eventType !== 'DELETE' && payload.new.id) {
+        this.pendingFlashIds.add(payload.new.id);
+      }
+      this.debouncedReloadTeamTasks();
+    });
     this.destroyRef.onDestroy(() => {
       this.debouncedReloadTeamTasks.cancel();
+      this.flashTracker.clear();
       void this.supabase.removeChannel(channel);
     });
+  }
+
+  isFlashing(taskId: string): boolean {
+    return this.flashTracker.isFlashing(taskId);
+  }
+
+  private async reloadAndFlashChangedTeamTasks() {
+    await this.loadTeamTasks();
+    for (const id of this.pendingFlashIds) {
+      this.flashTracker.flash(id);
+    }
+    this.pendingFlashIds.clear();
   }
 
   /** Patches last_active_at onto the already-loaded profile objects in

@@ -406,7 +406,22 @@ paragraph above) this feature has no reason to disturb. Scope is deliberately na
 pure photo-only edit won't push live (container edits are covered indirectly, since they write
 derived quantity fields back onto the parent row). No toast fires for a background change from
 another user — `NotificationService` stays scoped to the acting user's own action, same as
-everywhere else in the app; data just updates silently.
+everywhere else in the app; data just updates silently — instead, the specific row/card that
+changed briefly pulses via a shared `.realtime-flash` treatment (`shared/styles/_realtime-flash.scss`,
+a background-color fade reusing the same visual language as `LandingComponent`'s own decorative
+`.mock-row.flash` mockup) so a live update is noticeable without needing a toast. `shared/utils/
+flash-tracker.ts`'s `FlashTracker` (a plain `Set<string>` of currently-flashing ids with its own
+auto-expiry, matching this app's existing convention of plain class fields over a signals-based
+state layer) is what each of the five components adds/reads from — `isFlashing(id)` in the
+template — rather than a signal-per-row. Only ever triggered from the realtime handler itself, not
+from a component's own local-edit reload paths (e.g. `ManageInventoryComponent.openInventoryDetail()`'s
+`afterClosed()`), since flashing your own just-made edit would be pointless — you already see it
+change. `InventoryComponent`/`ManageInventoryComponent` flash the single patched row directly, once
+the patch itself lands (never on a DELETE, since there's no row left to flash). `TasksComponent`/
+`ManageTasksComponent`/`ManageTeamComponent` collect changed ids into a `pendingFlashIds` set as raw
+(pre-debounce) `postgres_changes` events arrive, then flash all of them together right after their
+existing debounced reload actually completes — flashing before the reload would highlight a row
+that's still showing stale data.
 
 ## Tech Stack
 
@@ -545,6 +560,8 @@ shared/
   utils/presence.ts          # isProfileOnline()/formatLastSeen() — reads profiles.last_active_at, backs Manage > Team's presence indicator
   utils/realtime.ts          # subscribeToTableChanges() — Supabase Realtime postgres_changes wrapper, see Project Overview above
   utils/debounce.ts          # debounce() — plain setTimeout debounce with .cancel(), backs the task pages' realtime reload handlers
+  utils/flash-tracker.ts     # FlashTracker — tracks which ids show the .realtime-flash "someone else just changed this" pulse
+  styles/_realtime-flash.scss # shared .realtime-flash keyframes, backing FlashTracker above
   styles/_legal-page.scss   # shared top-bar + prose layout for privacy/ and terms/ (see Project Overview above);
                              # login/register no longer share a partial like this — each owns its own layout now
 ```

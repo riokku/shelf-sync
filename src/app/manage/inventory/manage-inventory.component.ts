@@ -32,6 +32,7 @@ import { sumContainerQuantity } from '../../shared/utils/inventory-item-containe
 import { logActivity } from '../../shared/utils/activity-log';
 import { parseItemQrValue } from '../../shared/utils/barcode';
 import { subscribeToTableChanges } from '../../shared/utils/realtime';
+import { FlashTracker } from '../../shared/utils/flash-tracker';
 
 type InventoryItemRow = Database['public']['Tables']['inventory_items']['Row'];
 
@@ -85,6 +86,11 @@ export class ManageInventoryComponent implements OnInit {
   isLoadingInventoryList = true;
   private inventoryImagesByItemId = new Map<string, string[]>();
   private inventoryActivityByItemId = new Map<string, ActivityLogEntry[]>();
+  // Which rows should currently show the brief "someone else just changed
+  // this" pulse (see shared/utils/flash-tracker.ts and its own
+  // shared/styles/_realtime-flash.scss) — read from the template via
+  // isFlashing(item.id).
+  private flashTracker = new FlashTracker();
 
   get pendingRetirementItems(): InventoryItemRow[] {
     return this.allInventoryItems
@@ -175,11 +181,28 @@ export class ManageInventoryComponent implements OnInit {
     // query on this page.
     const channel = subscribeToTableChanges(this.supabase, 'inventory_items', payload => {
       const itemId = payload.eventType === 'DELETE' ? payload.old.id : payload.new.id;
-      if (itemId) {
-        void this.refreshInventoryItem(itemId);
+      if (!itemId) {
+        return;
       }
+      // Flash only once the patched row is actually reflected — not on
+      // DELETE, since the row's about to disappear rather than update, and
+      // not from openInventoryDetail()'s own afterClosed() call below
+      // (that's this user's own edit, already visible to them without a
+      // flash to draw their eye to it).
+      void this.refreshInventoryItem(itemId).then(() => {
+        if (payload.eventType !== 'DELETE') {
+          this.flashTracker.flash(itemId);
+        }
+      });
     });
-    this.destroyRef.onDestroy(() => { void this.supabase.removeChannel(channel); });
+    this.destroyRef.onDestroy(() => {
+      this.flashTracker.clear();
+      void this.supabase.removeChannel(channel);
+    });
+  }
+
+  isFlashing(itemId: string): boolean {
+    return this.flashTracker.isFlashing(itemId);
   }
 
   private async loadProfiles() {

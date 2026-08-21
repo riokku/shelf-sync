@@ -1,6 +1,7 @@
 <div
     class="task-row"
     [class.overdue]="isOverdue"
+    [class.realtime-flash]="flash"
     role="button"
     tabindex="0"
     [attr.aria-label]="'View details for ' + task.title + (isOverdue ? ' (overdue)' : '')"

@@ -1,3 +1,5 @@
+@use '../../shared/styles/realtime-flash';
+
 // The host is a flex item in .task-rows (tasks.component.scss).
 :host{
   display: block;

@@ -425,6 +425,61 @@ describe('InventoryComponent realtime updates', () => {
     expect(component.inventoryList[0].name).toBe('Updated Name');
   }));
 
+  it('flashes the updated row, then clears the flash after it fades', fakeAsync(() => {
+    const updatedRow = createTestInventoryItemRow({ id: 'item-1', name: 'Updated Name' });
+    const { service, emitChange } = createRealtimeCapturingSupabaseService({ data: updatedRow, error: null });
+
+    TestBed.configureTestingModule({
+      imports: [InventoryComponent],
+      providers: [
+        provideRouter([]),
+        { provide: SupabaseService, useValue: service },
+        { provide: SiteSettingsService, useValue: createFakeSiteSettingsService() }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(InventoryComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    tick();
+
+    component.inventoryList = [createTestInventoryItem({ id: 'item-1', name: 'Old Name' })];
+    expect(component.isFlashing('item-1')).toBeFalse();
+
+    emitChange({ eventType: 'UPDATE', new: updatedRow, old: { id: 'item-1' } });
+    tick();
+
+    expect(component.isFlashing('item-1')).toBeTrue();
+
+    tick(1500);
+    expect(component.isFlashing('item-1')).toBeFalse();
+  }));
+
+  it('does not flash a deleted row — there is nothing left to show it on', fakeAsync(() => {
+    const { service, emitChange } = createRealtimeCapturingSupabaseService({ data: null, error: null });
+
+    TestBed.configureTestingModule({
+      imports: [InventoryComponent],
+      providers: [
+        provideRouter([]),
+        { provide: SupabaseService, useValue: service },
+        { provide: SiteSettingsService, useValue: createFakeSiteSettingsService() }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(InventoryComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    tick();
+
+    component.inventoryList = [createTestInventoryItem({ id: 'item-1' })];
+
+    emitChange({ eventType: 'DELETE', new: {}, old: { id: 'item-1' } });
+    tick();
+
+    expect(component.isFlashing('item-1')).toBeFalse();
+  }));
+
   it('removes the item when another user deletes it', fakeAsync(() => {
     const { service, emitChange } = createRealtimeCapturingSupabaseService({ data: null, error: null });
 

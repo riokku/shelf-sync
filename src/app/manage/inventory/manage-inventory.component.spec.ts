@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { FormGroupDirective } from '@angular/forms';
 import { provideRouter } from '@angular/router';
 import { provideNativeDateAdapter } from '@angular/material/core';
@@ -260,6 +260,66 @@ describe('ManageInventoryComponent realtime updates', () => {
 
     expect(component.allInventoryItems[0].name).toBe('Updated Name');
   });
+
+  // fakeAsync()/tick() rather than await fixture.whenStable() — needs to
+  // deterministically advance past FLASH_DURATION_MS (1500ms), which a real
+  // timer/whenStable() can't do.
+  it('flashes the updated row, then clears the flash after it fades', fakeAsync(() => {
+    const updatedRow = createTestInventoryItemRow({ id: 'item-1', name: 'Updated Name' });
+    const { service, emitChange } = createRealtimeCapturingSupabaseService({ data: updatedRow, error: null });
+
+    TestBed.configureTestingModule({
+      imports: [ManageInventoryComponent],
+      providers: [
+        provideRouter([]),
+        provideNativeDateAdapter(),
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: SupabaseService, useValue: service }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(ManageInventoryComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    tick();
+
+    component.allInventoryItems = [createTestInventoryItemRow({ id: 'item-1', name: 'Old Name' })];
+    expect(component.isFlashing('item-1')).toBeFalse();
+
+    emitChange({ eventType: 'UPDATE', new: updatedRow, old: { id: 'item-1' } });
+    tick();
+
+    expect(component.isFlashing('item-1')).toBeTrue();
+
+    tick(1500);
+    expect(component.isFlashing('item-1')).toBeFalse();
+  }));
+
+  it('does not flash a deleted row — there is nothing left to show it on', fakeAsync(() => {
+    const { service, emitChange } = createRealtimeCapturingSupabaseService({ data: null, error: null });
+
+    TestBed.configureTestingModule({
+      imports: [ManageInventoryComponent],
+      providers: [
+        provideRouter([]),
+        provideNativeDateAdapter(),
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: SupabaseService, useValue: service }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(ManageInventoryComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    tick();
+
+    component.allInventoryItems = [createTestInventoryItemRow({ id: 'item-1' })];
+
+    emitChange({ eventType: 'DELETE', new: {}, old: { id: 'item-1' } });
+    tick();
+
+    expect(component.isFlashing('item-1')).toBeFalse();
+  }));
 
   it('removes the item when another user deletes it', async () => {
     const { service, emitChange } = createRealtimeCapturingSupabaseService({ data: null, error: null });

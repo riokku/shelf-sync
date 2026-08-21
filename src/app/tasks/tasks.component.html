@@ -13,7 +13,7 @@
         <h3>Incoming transfer requests</h3>
         <div class="task-rows">
           @for (task of incomingTransfers; track task.id) {
-            <app-task-card [task]="task" [transferFromLabel]="transferSenderLabel(task)" [createdByLabel]="createdByLabel(task)" (open)="openTask($event)" />
+            <app-task-card [task]="task" [transferFromLabel]="transferSenderLabel(task)" [createdByLabel]="createdByLabel(task)" [flash]="isFlashing(task.id)" (open)="openTask($event)" />
           }
         </div>
       </section>
@@ -29,7 +29,7 @@
         } @else {
           <div class="task-rows">
             @for (task of incompleteTasks; track task.id) {
-              <app-task-card [task]="task" [pendingTransferToLabel]="pendingTransferToLabel(task)" [createdByLabel]="createdByLabel(task)" (open)="openTask($event)" />
+              <app-task-card [task]="task" [pendingTransferToLabel]="pendingTransferToLabel(task)" [createdByLabel]="createdByLabel(task)" [flash]="isFlashing(task.id)" (open)="openTask($event)" />
             }
           </div>
         }
@@ -42,7 +42,7 @@
         } @else {
           <div class="task-rows">
             @for (task of completedTasks; track task.id) {
-              <app-task-card [task]="task" [pendingTransferToLabel]="pendingTransferToLabel(task)" [createdByLabel]="createdByLabel(task)" (open)="openTask($event)" />
+              <app-task-card [task]="task" [pendingTransferToLabel]="pendingTransferToLabel(task)" [createdByLabel]="createdByLabel(task)" [flash]="isFlashing(task.id)" (open)="openTask($event)" />
             }
           </div>
         }

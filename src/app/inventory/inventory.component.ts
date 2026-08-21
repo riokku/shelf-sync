@@ -28,6 +28,7 @@ import { resolveProfileAvatarKey, resolveProfileName } from '../shared/utils/pro
 import { loadInventoryImagesByItemId } from '../shared/utils/inventory-item-images';
 import { loadInventoryActivityByItemId } from '../shared/utils/inventory-item-activity';
 import { subscribeToTableChanges } from '../shared/utils/realtime';
+import { FlashTracker } from '../shared/utils/flash-tracker';
 import { Profile } from '../core/auth.service';
 
 type StockLevel = 'out_of_stock' | 'low_stock' | 'sufficient_stock';
@@ -72,6 +73,11 @@ export class InventoryComponent implements OnInit{
   // resolve checked-out-to/retirement/lock labels the same way, without
   // re-fetching every profile just to patch one item.
   private profiles: Profile[] = [];
+  // Which rows should currently show the brief "someone else just changed
+  // this" pulse (see shared/utils/flash-tracker.ts and its own
+  // shared/styles/_realtime-flash.scss) — read from the template via
+  // isFlashing(item.id).
+  private flashTracker = new FlashTracker();
 
   searchTerm = '';
   readonly isLowStock = isLowStock;
@@ -350,11 +356,25 @@ export class InventoryComponent implements OnInit{
     // unfiltered query above.
     const channel = subscribeToTableChanges(this.supabase, 'inventory_items', payload => {
       const changedItemId = payload.eventType === 'DELETE' ? payload.old.id : payload.new.id;
-      if (changedItemId) {
-        void this.refreshInventoryListItem(changedItemId);
+      if (!changedItemId) {
+        return;
       }
+      // Flash only once the patched row is actually reflected — not on
+      // DELETE, since the row's about to disappear rather than update.
+      void this.refreshInventoryListItem(changedItemId).then(() => {
+        if (payload.eventType !== 'DELETE') {
+          this.flashTracker.flash(changedItemId);
+        }
+      });
     });
-    this.destroyRef.onDestroy(() => { void this.supabase.removeChannel(channel); });
+    this.destroyRef.onDestroy(() => {
+      this.flashTracker.clear();
+      void this.supabase.removeChannel(channel);
+    });
+  }
+
+  isFlashing(itemId: string): boolean {
+    return this.flashTracker.isFlashing(itemId);
   }
 
   /** The realtime change handler wired up in ngOnInit() above — mirrors

@@ -27,6 +27,7 @@ import { profileDisplayName, resolveProfileAvatarKey, resolveProfileName } from 
 import { logActivity } from '../../shared/utils/activity-log';
 import { subscribeToTableChanges } from '../../shared/utils/realtime';
 import { debounce } from '../../shared/utils/debounce';
+import { FlashTracker } from '../../shared/utils/flash-tracker';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
 type RelatedItemOption = Pick<Database['public']['Tables']['inventory_items']['Row'], 'id' | 'name'>;
@@ -64,10 +65,19 @@ export class ManageTasksComponent implements OnInit {
   private currentUserId: string | null = null;
   assignableProfiles: Profile[] = [];
 
+  // Which rows should currently show the brief "someone else just changed
+  // this" pulse (see shared/utils/flash-tracker.ts and its own
+  // shared/styles/_realtime-flash.scss) — read from the template via
+  // isFlashing(task.id). Ids land here as raw postgres_changes events come
+  // in (see ngOnInit's subscription below) and get flashed once
+  // reloadAndFlashChangedTasks()'s reload actually reflects them.
+  private flashTracker = new FlashTracker();
+  private pendingFlashIds = new Set<string>();
+
   // Collapses a burst of postgres_changes events (e.g. an accept/decline
   // touching more than one row) into one reload — see debounce()'s own
   // doc comment.
-  private readonly debouncedReloadTasks = debounce(() => void this.loadTasks(), 300);
+  private readonly debouncedReloadTasks = debounce(() => void this.reloadAndFlashChangedTasks(), 300);
 
   readonly statuses = TASK_STATUSES;
   readonly statusLabels = TASK_STATUS_LABELS;
@@ -193,11 +203,31 @@ export class ManageTasksComponent implements OnInit {
     // correctly. No client-side organization_id filter — see
     // subscribeToTableChanges()'s own comment for why RLS alone is the right
     // boundary here.
-    const channel = subscribeToTableChanges(this.supabase, 'tasks', () => this.debouncedReloadTasks());
+    const channel = subscribeToTableChanges(this.supabase, 'tasks', payload => {
+      // DELETE isn't tracked — there's no row left to flash once the reload
+      // below completes, so it'd never actually be visible.
+      if (payload.eventType !== 'DELETE' && payload.new.id) {
+        this.pendingFlashIds.add(payload.new.id);
+      }
+      this.debouncedReloadTasks();
+    });
     this.destroyRef.onDestroy(() => {
       this.debouncedReloadTasks.cancel();
+      this.flashTracker.clear();
       void this.supabase.removeChannel(channel);
     });
+  }
+
+  isFlashing(taskId: string): boolean {
+    return this.flashTracker.isFlashing(taskId);
+  }
+
+  private async reloadAndFlashChangedTasks() {
+    await this.loadTasks();
+    for (const id of this.pendingFlashIds) {
+      this.flashTracker.flash(id);
+    }
+    this.pendingFlashIds.clear();
   }
 
   private async loadProfiles() {

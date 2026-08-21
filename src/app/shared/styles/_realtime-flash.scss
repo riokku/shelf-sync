@@ -1,0 +1,21 @@
+// A brief highlight sweeping across a row/card right as a realtime
+// subscription (see shared/utils/realtime.ts) patches its data from another
+// user's change — same visual language as LandingComponent's own decorative
+// .mock-row.flash (see landing.component.scss's own @keyframes row-flash),
+// reused here for real data. FlashTracker (shared/utils/flash-tracker.ts)
+// adds/removes this class automatically; its own FLASH_DURATION_MS is kept
+// in sync with this animation's length.
+.realtime-flash{
+  animation: realtime-flash-pulse 1.5s ease-out;
+}
+
+@keyframes realtime-flash-pulse{
+  from{ background-color: color-mix(in srgb, var(--mat-sys-primary) 10%, transparent); }
+  to{ background-color: transparent; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .realtime-flash{
+    animation: none;
+  }
+}

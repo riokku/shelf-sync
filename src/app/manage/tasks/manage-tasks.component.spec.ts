@@ -323,4 +323,38 @@ describe('ManageTasksComponent realtime updates', () => {
     expect(removeChannelSpy).toHaveBeenCalled();
     expect(getTasksSelectCount()).toBe(1); // the debounced reload never fired post-destroy
   }));
+
+  it('flashes a changed task only once the debounced reload actually reflects it, then clears the flash after it fades', fakeAsync(() => {
+    const { service, emitChange } = createRealtimeCapturingSupabaseService();
+    const fixture = configure(service);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    tick();
+
+    expect(component.isFlashing('task-1')).toBeFalse();
+
+    emitChange({ eventType: 'UPDATE', new: { id: 'task-1' }, old: {} });
+    // Not yet — still within the 300ms debounce window, so the reload (and
+    // therefore the flash) hasn't happened yet.
+    expect(component.isFlashing('task-1')).toBeFalse();
+
+    tick(300);
+    expect(component.isFlashing('task-1')).toBeTrue();
+
+    tick(1500);
+    expect(component.isFlashing('task-1')).toBeFalse();
+  }));
+
+  it('does not flash a deleted task — there is nothing left to show it on', fakeAsync(() => {
+    const { service, emitChange } = createRealtimeCapturingSupabaseService();
+    const fixture = configure(service);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    tick();
+
+    emitChange({ eventType: 'DELETE', new: {}, old: { id: 'task-1' } });
+    tick(300);
+
+    expect(component.isFlashing('task-1')).toBeFalse();
+  }));
 });

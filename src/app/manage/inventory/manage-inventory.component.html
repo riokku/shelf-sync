@@ -311,7 +311,7 @@
         } @else {
           <div class="task-rows">
             @for (item of pendingRetirementItems; track item.id) {
-              <div class="task-row retirement-request-row">
+              <div class="task-row retirement-request-row" [class.realtime-flash]="isFlashing(item.id)">
                 <div class="task-row-main clickable" role="button" tabindex="0"
                     [attr.aria-label]="'View details for ' + item.name"
                     (click)="openInventoryDetail(item)"

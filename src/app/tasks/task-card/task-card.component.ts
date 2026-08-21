@@ -27,6 +27,11 @@ export class TaskCardComponent {
    *  read directly off `task` since the raw column is just a profile id,
    *  same reasoning as the transfer labels above. */
   @Input() createdByLabel: string | null = null;
+  /** Set by whichever page is rendering this card when this task was just
+   *  patched in by a realtime update (see shared/utils/flash-tracker.ts) —
+   *  applies the shared `.realtime-flash` treatment (see
+   *  shared/styles/_realtime-flash.scss) to this card's own root element. */
+  @Input() flash = false;
   @Output() open = new EventEmitter<Task>();
 
   readonly statusLabels = TASK_STATUS_LABELS;

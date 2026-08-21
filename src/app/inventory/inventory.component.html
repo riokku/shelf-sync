@@ -187,7 +187,7 @@
               <div class="row inventory-gallery-wrapper">
                 @for (item of pagedInventoryList; track item.id) {
                   <div class="col-12 col-md-6 col-lg-4 inventory-card">
-                    <mat-card>
+                    <mat-card [class.realtime-flash]="isFlashing(item.id)">
                       @if (item.image) {
                         <img mat-card-image [alt]="item.name" [src]="item.image" [class.retired-image]="item.status === 'retired'" />
                       } @else {
@@ -380,7 +380,7 @@
                   </ng-container>
 
                   <tr mat-header-row *matHeaderRowDef="tableColumns"></tr>
-                  <tr mat-row *matRowDef="let row; columns: tableColumns;"></tr>
+                  <tr mat-row *matRowDef="let row; columns: tableColumns;" [class.realtime-flash]="isFlashing(row.id)"></tr>
                 </table>
               </div>
             }
