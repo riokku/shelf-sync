@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, ViewChild, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule, FormControl, FormGroup, FormGroupDirective, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -31,6 +31,7 @@ import { loadInventoryActivityByItemId } from '../../shared/utils/inventory-item
 import { sumContainerQuantity } from '../../shared/utils/inventory-item-containers';
 import { logActivity } from '../../shared/utils/activity-log';
 import { parseItemQrValue } from '../../shared/utils/barcode';
+import { subscribeToTableChanges } from '../../shared/utils/realtime';
 
 type InventoryItemRow = Database['public']['Tables']['inventory_items']['Row'];
 
@@ -62,6 +63,7 @@ export class ManageInventoryComponent implements OnInit {
   protected siteSettings = inject(SiteSettingsService);
   private dialog = inject(MatDialog);
   private notification = inject(NotificationService);
+  private destroyRef = inject(DestroyRef);
 
   /** Whether an admin-optional field is shown on the "Create item" form
    *  below (Customize > Data's "Inventory data" section) — name and
@@ -163,6 +165,21 @@ export class ManageInventoryComponent implements OnInit {
       this.inventoryFieldOptions.load()
     ]);
     await this.loadInventoryItems();
+
+    // Live updates from other users/tabs — reuses refreshInventoryItem()
+    // verbatim (already handles insert/update/delete correctly, since
+    // openInventoryDetail()'s own afterClosed() already relies on it for
+    // exactly that shape of single-row refresh). No client-side
+    // organization_id filter — see subscribeToTableChanges()'s own comment
+    // for why RLS alone is the right boundary here, same as every other
+    // query on this page.
+    const channel = subscribeToTableChanges(this.supabase, 'inventory_items', payload => {
+      const itemId = payload.eventType === 'DELETE' ? payload.old.id : payload.new.id;
+      if (itemId) {
+        void this.refreshInventoryItem(itemId);
+      }
+    });
+    this.destroyRef.onDestroy(() => { void this.supabase.removeChannel(channel); });
   }
 
   private async loadProfiles() {
@@ -276,13 +293,21 @@ export class ManageInventoryComponent implements OnInit {
     dialogRef.afterClosed().subscribe(() => this.refreshInventoryItem(row.id));
   }
 
+  // Also the realtime change handler wired up in ngOnInit() — a single-row
+  // refresh already covers insert (index === -1 below), update, and delete
+  // (row comes back null), which is exactly the three postgres_changes
+  // event types.
   private async refreshInventoryItem(itemId: string) {
     const { data: row } = await this.supabase.from('inventory_items').select('*').eq('id', itemId).maybeSingle();
 
     const index = this.allInventoryItems.findIndex(item => item.id === itemId);
     if (!row) {
-      // Not expected from this dialog (it never deletes items), but handle
-      // it gracefully rather than leaving a stale row behind.
+      // Not expected from openInventoryDetail()'s own dialog (it never
+      // deletes items) and inventory_items has no hard-delete path in the
+      // app today either — but the realtime handler above will still see a
+      // DELETE if a row is ever removed some other way (Studio, a future
+      // feature), so this stays handled gracefully rather than assuming
+      // it can't happen.
       if (index !== -1) {
         this.allInventoryItems = this.allInventoryItems.filter(item => item.id !== itemId);
       }
