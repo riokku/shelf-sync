@@ -14,22 +14,28 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatTableModule } from '@angular/material/table';
 import { MatSortModule, Sort } from '@angular/material/sort';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute } from '@angular/router';
 import { InventoryItem, isLowStock, isOutOfStock } from '../shared/models/inventory-item.model';
 import { ModalTableComponent } from '../shared/components/modal-table/modal-table.component';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 import { EmptyStateComponent } from '../shared/components/empty-state/empty-state.component';
+import { BulkActionToolbarComponent } from '../shared/components/bulk-action-toolbar/bulk-action-toolbar.component';
+import { BulkReassignModalComponent, BulkReassignModalResult } from '../shared/components/bulk-reassign-modal/bulk-reassign-modal.component';
 import { SupabaseService } from '../core/supabase.service';
 import { SiteSettingsService } from '../core/site-settings.service';
+import { InventoryFieldOptionsService } from '../core/inventory-field-options.service';
+import { NotificationService } from '../core/notification.service';
 import { INVENTORY_TABLE_COLUMN_OPTIONS } from '../shared/models/inventory-table-column';
 import { toInventoryItem } from '../shared/utils/inventory-item.mapper';
 import { resolveProfileAvatarKey, resolveProfileName } from '../shared/utils/profile-label';
 import { loadInventoryImagesByItemId } from '../shared/utils/inventory-item-images';
-import { loadInventoryActivityByItemId } from '../shared/utils/inventory-item-activity';
+import { loadInventoryActivityByItemId, logInventoryItemActivity } from '../shared/utils/inventory-item-activity';
+import { logActivity } from '../shared/utils/activity-log';
 import { subscribeToTableChanges } from '../shared/utils/realtime';
 import { FlashTracker } from '../shared/utils/flash-tracker';
-import { Profile } from '../core/auth.service';
+import { AuthService, Profile } from '../core/auth.service';
 
 type StockLevel = 'out_of_stock' | 'low_stock' | 'sufficient_stock';
 type StatusFilter = 'active' | 'include_retired' | 'retired_only';
@@ -52,8 +58,10 @@ type StatusFilter = 'active' | 'include_retired' | 'retired_only';
         MatPaginatorModule,
         MatTableModule,
         MatSortModule,
+        MatTooltipModule,
         BreadcrumbsComponent,
-        EmptyStateComponent
+        EmptyStateComponent,
+        BulkActionToolbarComponent
     ],
     templateUrl: './inventory.component.html',
     styleUrl: './inventory.component.scss'
@@ -65,6 +73,9 @@ export class InventoryComponent implements OnInit{
   private route = inject(ActivatedRoute);
   private siteSettings = inject(SiteSettingsService);
   private destroyRef = inject(DestroyRef);
+  private authService = inject(AuthService);
+  private inventoryFieldOptions = inject(InventoryFieldOptionsService);
+  private notification = inject(NotificationService);
 
   inventoryList: InventoryItem[] = [];
   isLoading = true;
@@ -78,6 +89,17 @@ export class InventoryComponent implements OnInit{
   // shared/styles/_realtime-flash.scss) — read from the template via
   // isFlashing(item.id).
   private flashTracker = new FlashTracker();
+
+  // Bulk selection — scoped to whatever's currently on the page (see
+  // clearSelection()'s callers below): every filter/search/sort/page change
+  // clears it, since each of those changes which items are actually visible,
+  // and letting selection quietly persist across a page change in
+  // particular would make selectedItemIds.size and this page's own
+  // selectablePagedItems.length disagree (the shared toolbar's select-all
+  // checkbox has no way to represent "some selected, but not on this page").
+  selectedItemIds = new Set<string>();
+  isBulkProcessing = false;
+  bulkActionError: string | null = null;
 
   searchTerm = '';
   readonly isLowStock = isLowStock;
@@ -111,7 +133,10 @@ export class InventoryComponent implements OnInit{
     const optionalColumns = INVENTORY_TABLE_COLUMN_OPTIONS
       .map(option => option.key)
       .filter(key => enabled.has(key));
-    return ['name', ...optionalColumns, 'actions'];
+    // 'select' (the bulk-selection checkbox column) is always shown too,
+    // same reasoning as 'name'/'actions' — it's not admin-configurable data,
+    // it's a UI affordance every table view needs.
+    return ['select', 'name', ...optionalColumns, 'actions'];
   }
 
   sortActive = '';
@@ -125,6 +150,7 @@ export class InventoryComponent implements OnInit{
     this.sortActive = sort.active;
     this.sortDirection = sort.direction;
     this.pageIndex = 0;
+    this.clearSelection();
   }
 
   get filteredInventoryList(): InventoryItem[] {
@@ -253,11 +279,13 @@ export class InventoryComponent implements OnInit{
 
   onPageChange(event: PageEvent) {
     this.pageIndex = event.pageIndex;
+    this.clearSelection();
   }
 
   onSearchChange(value: string) {
     this.searchTerm = value;
     this.pageIndex = 0;
+    this.clearSelection();
   }
 
   /** Distinct values actually present on loaded items, not just the admin's
@@ -327,15 +355,23 @@ export class InventoryComponent implements OnInit{
     this.searchTerm = '';
     this.statusFilter = 'active';
     this.pageIndex = 0;
+    this.clearSelection();
   }
 
   setStatusFilter(value: StatusFilter) {
     this.statusFilter = value;
     this.pageIndex = 0;
+    this.clearSelection();
   }
 
   async ngOnInit() {
-    await this.loadInventory();
+    await Promise.all([
+      this.loadInventory(),
+      // Backs the bulk-reassign dialog's category/physical-location
+      // dropdowns — same admin-curated option list ManageInventoryComponent's
+      // create form and ModalTableComponent's edit form already use.
+      this.inventoryFieldOptions.load()
+    ]);
 
     // Supports deep links (?item=<id>), e.g. from the "Copy link" button in
     // ModalTableComponent — opens straight to that item's detail popup if a
@@ -480,6 +516,7 @@ export class InventoryComponent implements OnInit{
       ? [...this.selectedStockLevels, value]
       : this.selectedStockLevels.filter(level => level !== value);
     this.pageIndex = 0;
+    this.clearSelection();
   }
 
   toggleCategory(value: string, checked: boolean){
@@ -487,6 +524,7 @@ export class InventoryComponent implements OnInit{
       ? [...this.selectedCategories, value]
       : this.selectedCategories.filter(category => category !== value);
     this.pageIndex = 0;
+    this.clearSelection();
   }
 
   togglePhysicalLocation(value: string, checked: boolean){
@@ -494,6 +532,149 @@ export class InventoryComponent implements OnInit{
       ? [...this.selectedPhysicalLocations, value]
       : this.selectedPhysicalLocations.filter(location => location !== value);
     this.pageIndex = 0;
+    this.clearSelection();
+  }
+
+  // --- Bulk selection ---
+
+  /** Selectable items on the *current page only* — selection is
+   *  page-scoped (see selectedItemIds's own comment), so this is what the
+   *  toolbar's select-all checkbox and its tri-state both operate over. */
+  get selectablePagedItems(): InventoryItem[] {
+    return this.pagedInventoryList.filter(item => this.canSelectItem(item));
+  }
+
+  /** Mirrors ModalTableComponent's own Edit-button gating
+   *  (`!data.isLocked || authService.canManage()`) — a locked item's
+   *  checkbox is disabled for anyone who can't manage it, so nobody can
+   *  select an item a bulk reassign would just fail on anyway. */
+  canSelectItem(item: InventoryItem): boolean {
+    return !item.isLocked || this.authService.canManage();
+  }
+
+  isSelected(itemId: string): boolean {
+    return this.selectedItemIds.has(itemId);
+  }
+
+  toggleItemSelection(itemId: string, checked: boolean) {
+    const next = new Set(this.selectedItemIds);
+    if (checked) {
+      next.add(itemId);
+    } else {
+      next.delete(itemId);
+    }
+    this.selectedItemIds = next;
+  }
+
+  toggleSelectAllOnPage(checked: boolean) {
+    const next = new Set(this.selectedItemIds);
+    for (const item of this.selectablePagedItems) {
+      if (checked) {
+        next.add(item.id);
+      } else {
+        next.delete(item.id);
+      }
+    }
+    this.selectedItemIds = next;
+  }
+
+  clearSelection() {
+    this.selectedItemIds = new Set();
+    this.bulkActionError = null;
+  }
+
+  openBulkReassign() {
+    const dialogRef = this.dialog.open(BulkReassignModalComponent, {
+      data: {
+        itemCount: this.selectedItemIds.size,
+        categoryOptions: this.inventoryFieldOptions.optionsFor('category'),
+        physicalLocationOptions: this.inventoryFieldOptions.optionsFor('physical_location')
+      },
+      width: 'clamp(24rem, 45vw, 30rem)',
+      maxWidth: '90vw'
+    });
+
+    dialogRef.afterClosed().subscribe((result?: BulkReassignModalResult) => {
+      if (!result) {
+        return;
+      }
+      void this.applyBulkReassign(result);
+    });
+  }
+
+  /** Loops the selected ids rather than a single `.update().in('id', ids)`
+   *  call — each item needs its own before/after diff (for the activity
+   *  log, same "Label (before → after)" format ModalTableComponent.
+   *  describeChanges() uses) and its own independent success/failure, since
+   *  a locked item a non-manager selected... shouldn't have been selectable
+   *  in the first place (canSelectItem() already prevents that), but a
+   *  concurrent lock from another tab is still possible, so this tallies
+   *  failures rather than assuming they can't happen. No manual list
+   *  reload afterward — the existing realtime subscription (see ngOnInit)
+   *  patches each updated row in automatically, no "skip my own changes"
+   *  filter on it. */
+  private async applyBulkReassign(result: BulkReassignModalResult) {
+    const session = await this.authService.getSession();
+    if (!session) {
+      return;
+    }
+
+    const ids = [...this.selectedItemIds];
+    this.isBulkProcessing = true;
+    this.bulkActionError = null;
+
+    let failedCount = 0;
+    let changedCount = 0;
+
+    await Promise.all(ids.map(async id => {
+      const item = this.inventoryList.find(candidate => candidate.id === id);
+      if (!item) {
+        return;
+      }
+
+      const updates: { category?: string | null; physical_location?: string | null } = {};
+      const changes: string[] = [];
+
+      if (result.category && result.category.value !== item.category) {
+        updates.category = result.category.value || null;
+        changes.push(`Category (${item.category || '—'} → ${result.category.value || '—'})`);
+      }
+      if (result.physicalLocation && result.physicalLocation.value !== item.physicalLocation) {
+        updates.physical_location = result.physicalLocation.value || null;
+        changes.push(`Physical location (${item.physicalLocation || '—'} → ${result.physicalLocation.value || '—'})`);
+      }
+
+      if (changes.length === 0) {
+        // Nothing actually changes for this item (e.g. bulk-setting a
+        // category it's already in) — not a failure, just nothing to do.
+        return;
+      }
+
+      const { error } = await this.supabase.from('inventory_items').update(updates).eq('id', id);
+      if (error) {
+        failedCount++;
+        return;
+      }
+
+      changedCount++;
+      const message = `Updated ${changes.join(', ')}`;
+      // Best-effort, same as every other activity-log write in this app —
+      // a failed log shouldn't undo (or block reporting) the change itself.
+      await logInventoryItemActivity(this.supabase, id, session.user.id, message);
+      await logActivity(this.supabase, session.user.id, 'inventory_item', id, `${item.name}: ${message}`);
+    }));
+
+    this.isBulkProcessing = false;
+
+    if (changedCount > 0) {
+      this.notification.success(`Updated ${changedCount} item${changedCount === 1 ? '' : 's'}`);
+    }
+    // Not clearSelection() — that also nulls bulkActionError, which would
+    // erase the message being set right below before anyone could read it.
+    this.selectedItemIds = new Set();
+    if (failedCount > 0) {
+      this.bulkActionError = `${failedCount} of ${ids.length} item${ids.length === 1 ? '' : 's'} couldn't be updated — check they're not locked.`;
+    }
   }
 
 }

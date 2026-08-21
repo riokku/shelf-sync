@@ -183,6 +183,20 @@
         } @else {
         <div class="row">
           <div class="col-12">
+            <app-bulk-action-toolbar
+                [selectedCount]="selectedItemIds.size"
+                [totalCount]="selectablePagedItems.length"
+                (selectAll)="toggleSelectAllOnPage($event)"
+                (clear)="clearSelection()"
+              >
+              <button mat-flat-button type="button" color="primary" [disabled]="isBulkProcessing" (click)="openBulkReassign()">
+                <mat-icon>edit_note</mat-icon>
+                Reassign category/location
+              </button>
+            </app-bulk-action-toolbar>
+            @if (bulkActionError) {
+              <p class="error-message">{{ bulkActionError }}</p>
+            }
             @if (viewMode === 'card') {
               <div class="row inventory-gallery-wrapper">
                 @for (item of pagedInventoryList; track item.id) {
@@ -232,6 +246,13 @@
                         }
                       </div>
                       <mat-card-header>
+                        <mat-checkbox
+                            class="inventory-card-select"
+                            [checked]="isSelected(item.id)"
+                            [disabled]="!canSelectItem(item)"
+                            [matTooltip]="canSelectItem(item) ? '' : 'Locked — only admins/managers can edit this item'"
+                            (change)="toggleItemSelection(item.id, $event.checked)"
+                          ></mat-checkbox>
                         <mat-card-title [title]="item.name">{{item.name}}</mat-card-title>
                         <mat-card-subtitle [title]="item.category">{{item.category}}</mat-card-subtitle>
                       </mat-card-header>
@@ -259,6 +280,18 @@
                     [matSortDirection]="sortDirection"
                     (matSortChange)="onSortChange($event)"
                   >
+                  <ng-container matColumnDef="select">
+                    <th mat-header-cell *matHeaderCellDef></th>
+                    <td mat-cell *matCellDef="let item">
+                      <mat-checkbox
+                          [checked]="isSelected(item.id)"
+                          [disabled]="!canSelectItem(item)"
+                          [matTooltip]="canSelectItem(item) ? '' : 'Locked — only admins/managers can edit this item'"
+                          (change)="toggleItemSelection(item.id, $event.checked)"
+                        ></mat-checkbox>
+                    </td>
+                  </ng-container>
+
                   <ng-container matColumnDef="name">
                     <th mat-header-cell *matHeaderCellDef mat-sort-header>Name</th>
                     <td mat-cell *matCellDef="let item" [class.retired-row-cell]="item.status === 'retired'">

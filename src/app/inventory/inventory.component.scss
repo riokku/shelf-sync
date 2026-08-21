@@ -275,6 +275,16 @@ table[mat-table]{
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+
+    // mat-card-header is already a flex row (Material's own default) —
+    // this just keeps the checkbox from stretching to the title/subtitle
+    // stack's full height and gives it a little breathing room before the
+    // title text starts.
+    .inventory-card-select{
+      flex-shrink: 0;
+      align-self: center;
+      margin-right: 0.25rem;
+    }
   }
 }
 
