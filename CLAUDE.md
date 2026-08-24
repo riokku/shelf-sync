@@ -513,28 +513,40 @@ all three pages, with each page's own action buttons passed in via content proje
 bulk-action behavior itself) and `shared/components/bulk-reassign-modal` (Inventory's own
 category/physical-location picker, each field independently toggleable so an admin can bulk-set
 just one without touching the other, with an explicit "(None)" option to bulk-*clear* a field).
-On the Inventory page specifically, bulk selection sits behind its own `bulkEditEnabled` toggle
-(a `mat-slide-toggle` in its own row above the search bar, right-aligned via `.bulk-edit-toggle-row`
-— off by default) — the toolbar and every row/card's checkbox only render once it's on, so ordinary
-browsing isn't cluttered with a control most visits never use; turning it off clears whatever was
-selected rather than leaving a stale selection sitting around unseen. Table view's checkbox is a
-leading `matColumnDef="select"` column (present in `tableColumns` only while the toggle is on); card
-view's sits absolutely positioned in the bottom-right corner of the whole card (not the image — that
-corner's already claimed by `.quantity-badge`, which is confined to the image area above it).
-`.bulk-edit-toggle-row` also holds a compact "Select all" `mat-checkbox` immediately to the left of
-the `mat-slide-toggle` (same row, shown only while the toggle is on), sized down from Material's
-default via `--mat-checkbox-touch-target-display: none` (shrinking the oversized invisible touch
-target, the same token `.option-list` already used elsewhere in this file rather than reaching into
-MDC's internal DOM) plus a smaller font-size — it's meant as a quick header-row affordance, not a
-focal control. It reads/drives the same state `BulkActionToolbarComponent`'s own built-in checkbox
-would (`allSelectableItemsSelected`/`someSelectableItemsSelected` getters →
-`toggleSelectAll()`), so having both visible at once would be a redundant second "select all"
-control for the same selection — `BulkActionToolbarComponent` takes a `hideSelectAllCheckbox` input
-(set `true` only from `InventoryComponent`'s usage) that suppresses its own checkbox entirely:
-nothing renders until something's selected, at which point it shows plain "N selected" text in the
-checkbox's place instead (the actions row/content-projected buttons still appear as normal).
-`ManageTasksComponent`/`ManageTeamComponent` don't set this input and keep the toolbar's original
-built-in checkbox, since neither has a separate header-row control of its own to be redundant with.
+On the Inventory page and Manage > Tasks' "All tasks" list, bulk selection sits behind its own
+`bulkEditEnabled` toggle (a `mat-slide-toggle` in its own row above the search bar, right-aligned
+via `.bulk-edit-toggle-row` — off by default) — the toolbar and every row/card's checkbox only
+render once it's on, so ordinary browsing isn't cluttered with a control most visits never use;
+turning it off clears whatever was selected rather than leaving a stale selection sitting around
+unseen (`toggleBulkEdit()`, the same shape on both pages). Table view's checkbox is a leading
+`matColumnDef="select"` column (present in `tableColumns` only while the toggle is on); card view's
+sits absolutely positioned in the bottom-right corner of the whole card (not the image — that
+corner's already claimed by `.quantity-badge`, which is confined to the image area above it);
+`ManageTasksComponent`'s own `.task-row` (a manual CSS grid, not a `mat-table`) instead gets a
+`.bulk-edit-active` class bound alongside `bulkEditEnabled` that swaps in a leading `2rem` grid
+column for the checkbox — without it, the row would either reserve that column's space with nothing
+in it while off, or the checkbox would have nowhere to sit once on. `.bulk-edit-toggle-row` also
+holds a compact "Select all" `mat-checkbox` immediately to the left of the `mat-slide-toggle` on the
+Inventory page (same row, shown only while the toggle is on), sized down from Material's default via
+`--mat-checkbox-touch-target-display: none` (shrinking the oversized invisible touch target, the
+same token `.option-list` already used elsewhere in this file rather than reaching into MDC's
+internal DOM) plus a smaller font-size — it's meant as a quick header-row affordance, not a focal
+control. It reads/drives the same state `BulkActionToolbarComponent`'s own built-in checkbox would
+(`allSelectableItemsSelected`/`someSelectableItemsSelected` getters → `toggleSelectAll()`), so having
+both visible at once would be a redundant second "select all" control for the same selection —
+`BulkActionToolbarComponent` takes a `hideSelectAllCheckbox` input (set `true` only from
+`InventoryComponent`'s usage) that suppresses its own checkbox entirely: nothing renders until
+something's selected, at which point it shows plain "N selected" text in the checkbox's place instead
+(the actions row/content-projected buttons still appear as normal). `ManageTasksComponent`/
+`ManageTeamComponent` don't set this input and keep the toolbar's original built-in checkbox, since
+neither has a separate header-row control of its own to be redundant with — on `ManageTasksComponent`
+specifically, that also means its own `.bulk-edit-toggle-row` holds just the `mat-slide-toggle` and
+no compact checkbox, unlike Inventory's. Its `.task-filters` row (search plus the assignee/status/
+due-date fields) spans the full width of the page rather than stopping partway across on a wide
+viewport — every field but the search box keeps the same capped `max-width`, and only the search
+box's own `max-width` is removed (`.task-search-field`), so it's the one field that keeps growing
+to absorb whatever width the capped ones don't need instead of every field stopping at the same
+point and leaving space unused to the right.
 The feature itself (not just this session's own toggle state) can be turned off org-wide from
 Settings > Workflow's "Bulk edit" section — a second `.settings-section` alongside
 `require_retirement_approval` in that same card, following its exact pattern (`site_settings.
@@ -543,6 +555,11 @@ bulk_edit_enabled`, default `true`, local-selection/save-button/error pattern). 
 bulkEditFeatureEnabled())`), same "hidden, not disabled" treatment `BARCODE_FEATURE_ENABLED` already
 established — distinct from (and named to avoid confusion with) `InventoryComponent.bulkEditEnabled`,
 which is just this visit's own on/off state of the feature, not whether it exists for the org at all.
+This org-wide flag currently only gates `InventoryComponent`'s toggle — `ManageTasksComponent`'s own
+`bulkEditEnabled` toggle (added after the fact, once Inventory's had already proven the pattern) isn't
+wired to it, so an org that disables bulk edit there still keeps it on Manage > Tasks; folding Manage
+> Tasks (and Manage > Team's still-always-on pending-requests bulk actions) under the same site-wide
+switch would be a natural, but so far undone, follow-up.
 Selection scope differs by page's own pagination/filtering shape: `InventoryComponent`'s
 `selectedItemIds` is scoped to the *filtered* set, not the current page — "Select all"
 (`toggleSelectAll()`) selects every matching item across every page, not just the 12 shown at once,
