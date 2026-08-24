@@ -10,6 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SupabaseService } from '../../core/supabase.service';
@@ -23,6 +24,7 @@ import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadc
 import { ModalTableComponent } from '../../shared/components/modal-table/modal-table.component';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
+import { BulkActionToolbarComponent } from '../../shared/components/bulk-action-toolbar/bulk-action-toolbar.component';
 import { Database } from '../../shared/models/database.types';
 import { ActivityLogEntry, MAX_INVENTORY_ITEM_IMAGES } from '../../shared/models/inventory-item.model';
 import { toIsoDateString } from '../../shared/utils/date';
@@ -56,8 +58,10 @@ type InventoryItemRow = Database['public']['Tables']['inventory_items']['Row'];
     MatProgressSpinnerModule,
     MatDatepickerModule,
     MatTooltipModule,
+    MatCheckboxModule,
     BreadcrumbsComponent,
-    EmptyStateComponent
+    EmptyStateComponent,
+    BulkActionToolbarComponent
   ],
   templateUrl: './manage-inventory.component.html',
   styleUrl: './manage-inventory.component.scss',
@@ -199,6 +203,16 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
   get pendingRetirementCount(): number {
     return this.pendingRetirementItems.length;
   }
+
+  // Bulk selection for the Requests tab — CLAUDE.md's own bulk-edit
+  // documentation flagged this tab as "out of scope for this pass, a
+  // natural future extension of the same shared toolbar" when the
+  // Inventory/Manage Tasks/Manage Team bulk actions first shipped; this is
+  // that extension. No search/filter here (same as Manage Team's own
+  // pending-join-requests list), so a plain Set is enough — nothing to
+  // intersect against the way ManageTasksComponent's filtered "All tasks"
+  // selection needs to.
+  selectedRetirementItemIds = new Set<string>();
 
   isProcessingRetirement = false;
   retirementError: string | null = null;
@@ -398,6 +412,123 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
       this.supabase.rpc('decline_item_retirement', { item_id: item.id }),
       'Retirement request declined'
     );
+  }
+
+  isRetirementSelected(itemId: string): boolean {
+    return this.selectedRetirementItemIds.has(itemId);
+  }
+
+  toggleRetirementSelection(itemId: string, checked: boolean) {
+    const next = new Set(this.selectedRetirementItemIds);
+    if (checked) {
+      next.add(itemId);
+    } else {
+      next.delete(itemId);
+    }
+    this.selectedRetirementItemIds = next;
+  }
+
+  toggleSelectAllRetirements(checked: boolean) {
+    const next = new Set(this.selectedRetirementItemIds);
+    for (const item of this.pendingRetirementItems) {
+      if (checked) {
+        next.add(item.id);
+      } else {
+        next.delete(item.id);
+      }
+    }
+    this.selectedRetirementItemIds = next;
+  }
+
+  clearRetirementSelection() {
+    this.selectedRetirementItemIds = new Set();
+    this.retirementError = null;
+  }
+
+  // Confirmed first, same reasoning as the single-item approveRetirement()
+  // above — irreversible, no "cancel" the way a pending request has.
+  applyBulkApproveRetirement() {
+    if (this.isProcessingRetirement) {
+      return;
+    }
+    const ids = [...this.selectedRetirementItemIds];
+    if (ids.length === 0) {
+      return;
+    }
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: `Approve ${ids.length} retirement request${ids.length === 1 ? '' : 's'}?`,
+        message: `Retire ${ids.length} item${ids.length === 1 ? '' : 's'}? They'll be hidden from the default inventory view. This can't be undone.`,
+        confirmLabel: 'Approve',
+        danger: true
+      },
+      width: 'clamp(75%, 25rem, 60%)'
+    });
+
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (confirmed) {
+        void this.performBulkApproveRetirement(ids);
+      }
+    });
+  }
+
+  /** The actual approve/tally work, split out of applyBulkApproveRetirement()
+   *  above so it's directly testable without faking the confirm dialog —
+   *  same split ManageTeamComponent's applyBulkApprove()/performBulkDeny()
+   *  pair (and this page's own setViewMode()/applyViewMode()) already use.
+   *  No RPC here accepts an array of ids, so this loops the existing
+   *  single-item RPC client-side (Promise.all) and tallies success/failure,
+   *  same "no all-or-nothing assumption" shape every other bulk action in
+   *  this app already follows. */
+  private async performBulkApproveRetirement(ids: string[]) {
+    this.isProcessingRetirement = true;
+    this.retirementError = null;
+
+    const results = await Promise.all(ids.map(id => this.supabase.rpc('approve_item_retirement', { item_id: id })));
+    const failedCount = results.filter(result => result.error).length;
+    const succeededCount = ids.length - failedCount;
+
+    await this.loadInventoryItems();
+    this.isProcessingRetirement = false;
+    this.selectedRetirementItemIds = new Set();
+
+    if (succeededCount > 0) {
+      this.notification.success(`Retired ${succeededCount} item${succeededCount === 1 ? '' : 's'}`);
+    }
+    if (failedCount > 0) {
+      this.retirementError = `${failedCount} of ${ids.length} item${ids.length === 1 ? '' : 's'} couldn't be retired.`;
+    }
+  }
+
+  // No confirm dialog, same as the single-item declineRetirement() above —
+  // declining just leaves the item active, nothing destructive to guard.
+  async applyBulkDeclineRetirement() {
+    if (this.isProcessingRetirement) {
+      return;
+    }
+    const ids = [...this.selectedRetirementItemIds];
+    if (ids.length === 0) {
+      return;
+    }
+
+    this.isProcessingRetirement = true;
+    this.retirementError = null;
+
+    const results = await Promise.all(ids.map(id => this.supabase.rpc('decline_item_retirement', { item_id: id })));
+    const failedCount = results.filter(result => result.error).length;
+    const succeededCount = ids.length - failedCount;
+
+    await this.loadInventoryItems();
+    this.isProcessingRetirement = false;
+    this.selectedRetirementItemIds = new Set();
+
+    if (succeededCount > 0) {
+      this.notification.success(`Declined ${succeededCount} retirement request${succeededCount === 1 ? '' : 's'}`);
+    }
+    if (failedCount > 0) {
+      this.retirementError = `${failedCount} of ${ids.length} request${ids.length === 1 ? '' : 's'} couldn't be declined.`;
+    }
   }
 
   private async runRetirementAction(call: PromiseLike<{ error: { message: string } | null }>, successMessage: string){

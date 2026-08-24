@@ -173,6 +173,125 @@ describe('ManageInventoryComponent', () => {
     });
   });
 
+  describe('retirement request bulk selection', () => {
+    beforeEach(() => {
+      component.allInventoryItems = [
+        createTestInventoryItemRow({ id: 'req-1', status: 'retirement_pending', retirement_requested_at: '2026-01-01T00:00:00.000Z' }),
+        createTestInventoryItemRow({ id: 'req-2', status: 'retirement_pending', retirement_requested_at: '2026-01-02T00:00:00.000Z' })
+      ];
+    });
+
+    it('toggleRetirementSelection() adds/removes a single id', () => {
+      component.toggleRetirementSelection('req-1', true);
+      expect(component.isRetirementSelected('req-1')).toBeTrue();
+
+      component.toggleRetirementSelection('req-1', false);
+      expect(component.isRetirementSelected('req-1')).toBeFalse();
+    });
+
+    it('toggleSelectAllRetirements() selects/deselects every pending item', () => {
+      component.toggleSelectAllRetirements(true);
+      expect(component.selectedRetirementItemIds).toEqual(new Set(['req-1', 'req-2']));
+
+      component.toggleSelectAllRetirements(false);
+      expect(component.selectedRetirementItemIds.size).toBe(0);
+    });
+
+    it('clearRetirementSelection() empties the selection and any error', () => {
+      component.selectedRetirementItemIds = new Set(['req-1']);
+      component.retirementError = 'something failed';
+
+      component.clearRetirementSelection();
+
+      expect(component.selectedRetirementItemIds.size).toBe(0);
+      expect(component.retirementError).toBeNull();
+    });
+  });
+
+  describe('applyBulkApproveRetirement()', () => {
+    beforeEach(() => {
+      component.allInventoryItems = [
+        createTestInventoryItemRow({ id: 'req-1', status: 'retirement_pending' }),
+        createTestInventoryItemRow({ id: 'req-2', status: 'retirement_pending' })
+      ];
+      component.selectedRetirementItemIds = new Set(['req-1', 'req-2']);
+    });
+
+    it('does nothing when nothing is selected', () => {
+      component.selectedRetirementItemIds = new Set();
+      const dialog = (component as unknown as { dialog: { open: jasmine.Spy } }).dialog;
+      const openSpy = spyOn(dialog, 'open');
+
+      component.applyBulkApproveRetirement();
+
+      expect(openSpy).not.toHaveBeenCalled();
+    });
+
+    it('opens a danger-styled confirm dialog naming the selected count', () => {
+      const dialog = (component as unknown as { dialog: { open: (...args: unknown[]) => { afterClosed: () => { subscribe: () => void } } } }).dialog;
+      const openSpy = spyOn(dialog, 'open').and.returnValue({ afterClosed: () => ({ subscribe: () => {} }) });
+
+      component.applyBulkApproveRetirement();
+
+      expect(openSpy).toHaveBeenCalledWith(jasmine.any(Function), jasmine.objectContaining({
+        data: jasmine.objectContaining({ title: 'Approve 2 retirement requests?', danger: true })
+      }));
+    });
+
+    it('retires the selected items, shows a success toast, and clears the selection once confirmed', async () => {
+      const dialog = (component as unknown as { dialog: { open: (...args: unknown[]) => { afterClosed: () => { subscribe: (cb: (v: boolean) => void) => void } } } }).dialog;
+      spyOn(dialog, 'open').and.returnValue({ afterClosed: () => ({ subscribe: cb => cb(true) }) });
+      const notificationSuccessSpy = spyOn((component as unknown as { notification: NotificationService }).notification, 'success');
+
+      component.applyBulkApproveRetirement();
+      await fixture.whenStable();
+
+      expect(notificationSuccessSpy).toHaveBeenCalledWith('Retired 2 items');
+      expect(component.selectedRetirementItemIds.size).toBe(0);
+    });
+
+    it('does nothing once confirmed with the dialog cancelled', async () => {
+      const dialog = (component as unknown as { dialog: { open: (...args: unknown[]) => { afterClosed: () => { subscribe: (cb: (v: boolean) => void) => void } } } }).dialog;
+      spyOn(dialog, 'open').and.returnValue({ afterClosed: () => ({ subscribe: cb => cb(false) }) });
+      const notificationSuccessSpy = spyOn((component as unknown as { notification: NotificationService }).notification, 'success');
+
+      component.applyBulkApproveRetirement();
+      await fixture.whenStable();
+
+      expect(notificationSuccessSpy).not.toHaveBeenCalled();
+      expect(component.selectedRetirementItemIds.size).toBe(2);
+    });
+  });
+
+  describe('applyBulkDeclineRetirement()', () => {
+    it('does nothing when nothing is selected', async () => {
+      component.allInventoryItems = [createTestInventoryItemRow({ id: 'req-1', status: 'retirement_pending' })];
+      component.selectedRetirementItemIds = new Set();
+      const notificationSuccessSpy = spyOn((component as unknown as { notification: NotificationService }).notification, 'success');
+
+      await component.applyBulkDeclineRetirement();
+
+      expect(notificationSuccessSpy).not.toHaveBeenCalled();
+    });
+
+    it('declines the selected requests without a confirm dialog, shows a success toast, and clears the selection', async () => {
+      component.allInventoryItems = [
+        createTestInventoryItemRow({ id: 'req-1', status: 'retirement_pending' }),
+        createTestInventoryItemRow({ id: 'req-2', status: 'retirement_pending' })
+      ];
+      component.selectedRetirementItemIds = new Set(['req-1', 'req-2']);
+      const dialog = (component as unknown as { dialog: { open: jasmine.Spy } }).dialog;
+      const openSpy = spyOn(dialog, 'open');
+      const notificationSuccessSpy = spyOn((component as unknown as { notification: NotificationService }).notification, 'success');
+
+      await component.applyBulkDeclineRetirement();
+
+      expect(openSpy).not.toHaveBeenCalled();
+      expect(notificationSuccessSpy).toHaveBeenCalledWith('Declined 2 retirement requests');
+      expect(component.selectedRetirementItemIds.size).toBe(0);
+    });
+  });
+
   describe('fieldEnabled()', () => {
     it('is true for every field by default (no site_settings row yet)', () => {
       // Not 'barcode' — DEFAULT_INVENTORY_FORM_FIELDS itself excludes it

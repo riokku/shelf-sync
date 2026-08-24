@@ -327,9 +327,29 @@
         } @else if (pendingRetirementItems.length === 0) {
           <app-empty-state icon="inventory_2" message="No pending retirement requests." />
         } @else {
+          <app-bulk-action-toolbar
+              [selectedCount]="selectedRetirementItemIds.size"
+              [totalCount]="pendingRetirementItems.length"
+              (selectAll)="toggleSelectAllRetirements($event)"
+              (clear)="clearRetirementSelection()"
+            >
+            <button mat-stroked-button type="button" color="warn" [disabled]="isProcessingRetirement" (click)="applyBulkDeclineRetirement()">
+              <mat-icon>close</mat-icon>
+              Decline
+            </button>
+            <button mat-flat-button type="button" color="primary" [disabled]="isProcessingRetirement" (click)="applyBulkApproveRetirement()">
+              <mat-icon>check</mat-icon>
+              Approve
+            </button>
+          </app-bulk-action-toolbar>
           <div class="task-rows">
             @for (item of pendingRetirementItems; track item.id) {
               <div class="task-row retirement-request-row" [class.realtime-flash]="isFlashing(item.id)">
+                <mat-checkbox
+                    [checked]="isRetirementSelected(item.id)"
+                    (change)="toggleRetirementSelection(item.id, $event.checked)"
+                    (click)="$event.stopPropagation()"
+                  ></mat-checkbox>
                 <div class="task-row-main clickable" role="button" tabindex="0"
                     [attr.aria-label]="'View details for ' + item.name"
                     (click)="openInventoryDetail(item)"

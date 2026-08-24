@@ -866,6 +866,26 @@ beforeunload', ...)` (`confirmBeforeUnload()`) on each component, calling `event
 browser) "leave site?" prompt. All three layers share the one `hasUnsavedChanges()` check per
 component rather than duplicating the dirty-state logic three ways.
 
+`ManageInventoryComponent`'s Requests tab (pending retirement requests) now supports bulk
+approve/decline, the extension CLAUDE.md's own bulk-edit documentation had explicitly flagged as
+"out of scope for this pass, a natural future extension of the same shared toolbar" when
+Inventory/Manage Tasks/Manage Team's bulk actions first shipped. Reuses `BulkActionToolbarComponent`
+the same way `ManageTeamComponent`'s pending-join-requests list already does — no separate Bulk
+edit toggle to turn this on/off first (bulk actions are just always available here, same as that
+list), a plain `selectedRetirementItemIds: Set<string>` (no search/filter on this tab to intersect
+against), and a leading `mat-checkbox` per row. No RPC accepts an array of ids, so both bulk actions
+loop the existing single-item `approve_item_retirement`/`decline_item_retirement` RPCs client-side
+(`Promise.all`) and tally per-item success/failure, same "no all-or-nothing assumption, success
+toast plus an inline error count on partial failure" shape every other bulk action in this app
+already follows. Bulk approve is confirmed first via `ConfirmDialogComponent` (`danger: true`,
+naming the selected count) — mirroring the single-item `approveRetirement()`'s own confirm, since
+retiring is irreversible; bulk decline has no confirm dialog, mirroring the single-item
+`declineRetirement()`'s own lack of one, since declining just leaves the item active.
+`applyBulkApproveRetirement()`/`performBulkApproveRetirement()` split the same "public method opens
+the dialog, private method does the work" way `ManageTeamComponent`'s own
+`applyBulkDeny()`/`performBulkDeny()` pair already does, so the actual approve logic stays directly
+testable without faking `MatDialog.open()`.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
