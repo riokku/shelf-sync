@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { FormGroupDirective } from '@angular/forms';
-import { ActivatedRoute, provideRouter } from '@angular/router';
+import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 import { provideNativeDateAdapter } from '@angular/material/core';
 
 import { ManageTasksComponent } from './manage-tasks.component';
@@ -34,6 +34,20 @@ describe('ManageTasksComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('setViewMode() updates viewMode and reflects it in the URL as ?tab=, without adding a history entry', () => {
+    const router = TestBed.inject(Router);
+    const navigateSpy = spyOn(router, 'navigate');
+
+    component.setViewMode('all');
+
+    expect(component.viewMode).toBe('all');
+    expect(navigateSpy).toHaveBeenCalledWith([], jasmine.objectContaining({
+      queryParams: { tab: 'all' },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    }));
   });
 
   describe('filteredAllTasks', () => {
@@ -232,6 +246,58 @@ describe('ManageTasksComponent submitTask() success', () => {
     expect(component.taskForm.controls.title.value).toBe('');
     expect(component.taskForm.controls.title.hasError('required')).toBeTrue();
     expect(notificationSuccessSpy).toHaveBeenCalledWith('Task created');
+  });
+});
+
+/** Covers reading the active tab back out of ?tab= on load — mirrors
+ *  SettingsComponent's own ?tab= spec coverage. */
+describe('ManageTasksComponent ?tab= handling', () => {
+  async function createWithTab(tab: string | undefined): Promise<ManageTasksComponent> {
+    await TestBed.resetTestingModule().configureTestingModule({
+      imports: [ManageTasksComponent],
+      providers: [
+        provideRouter([]),
+        provideNativeDateAdapter(),
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: SupabaseService, useValue: createFakeSupabaseService() },
+        { provide: ActivatedRoute, useValue: createFakeActivatedRoute(tab ? { tab } : {}) }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ManageTasksComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    return fixture.componentInstance;
+  }
+
+  it('opens directly to the tab named in ?tab= when it names a real tab', async () => {
+    expect((await createWithTab('all')).viewMode).toBe('all');
+  });
+
+  it('falls back to the default tab when ?tab= is missing or not a real tab', async () => {
+    expect((await createWithTab(undefined)).viewMode).toBe('create');
+    expect((await createWithTab('bogus')).viewMode).toBe('create');
+  });
+
+  it('a ?task= deep link still wins over ?tab=, since a deep-linked task always lives on "All tasks"', async () => {
+    const task = createTestTask({ id: 'task-1' });
+
+    await TestBed.configureTestingModule({
+      imports: [ManageTasksComponent],
+      providers: [
+        provideRouter([]),
+        provideNativeDateAdapter(),
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: SupabaseService, useValue: createFakeSupabaseService({ data: [task], error: null }) },
+        { provide: ActivatedRoute, useValue: createFakeActivatedRoute({ tab: 'create', task: 'task-1' }) }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ManageTasksComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance.viewMode).toBe('all');
   });
 });
 

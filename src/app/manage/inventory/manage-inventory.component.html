@@ -18,7 +18,7 @@
       </button>
     </div>
 
-    <mat-button-toggle-group [(ngModel)]="viewMode" class="view-toggle">
+    <mat-button-toggle-group [ngModel]="viewMode" (ngModelChange)="setViewMode($event)" class="view-toggle">
       <mat-button-toggle value="create">
         <mat-icon>add</mat-icon>
         Create item

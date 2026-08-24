@@ -38,7 +38,10 @@ both used to. `ManageInventoryComponent.viewMode` is `'create' | 'retirements'` 
 had a third `'all'` tab browsing every inventory item as a row list (mirroring Manage Tasks' own
 "All tasks" tab), removed as low-value once the Inventory page itself already covers browsing/
 filtering/searching every item, card or table view, with far more depth (this tab was a plain,
-unfiltered-beyond-status-toggle name/category/quantity/price row list). `allInventoryItems` itself
+unfiltered-beyond-status-toggle name/category/quantity/price row list). Like `SettingsComponent`'s
+own tabs (see its own paragraph elsewhere in this file for the full mechanism), the active tab is
+reflected in the URL as `?tab=create|retirements` via the same `setViewMode()` shape.
+`allInventoryItems` itself
 is unaffected — still the full org inventory list, still loaded on `ngOnInit()`, since
 `pendingRetirementItems`/`pendingRetirementCount` (the "Requests" tab), `refreshInventoryItem()`,
 and the create form's barcode-scan duplicate check all still need every item, not just the ones
@@ -352,7 +355,18 @@ of `ActivatedRoute`'s snapshot once in `ngOnInit()` — same "read once, this co
 thing that ever changes it" reasoning `InventoryComponent`'s own `?item=` deep-link handling
 already uses) so refreshing, bookmarking, or sharing a link lands back on the same tab rather than
 always the Data tab default; `replaceUrl: true` keeps switching tabs from spamming browser history
-with an entry per click. Every
+with an entry per click. The same `setViewMode()`/`?tab=` shape is reused verbatim by every other
+page in the app with this same "pill-style `mat-button-toggle-group` switching between a handful of
+top-level page sections" shape — `ManageTasksComponent` (`?tab=create|all`) and
+`ManageInventoryComponent` (`?tab=create|retirements`), see their own `viewMode` fields elsewhere in
+this file — but
+deliberately *not* `InventoryComponent`'s card/table toggle (that changes how the same data
+renders, not which content is showing) or `ManageOrdersComponent`'s status filter/`AccountComponent`'s
+theme toggle (filters and preferences, not navigable page sections). On `ManageTasksComponent`
+specifically, the page's existing `?task=<id>` deep link (opens a specific task's detail dialog,
+landed on directly or via `TasksComponent`'s own fallback for a task outside that viewer's personal
+list) is read *after* `?tab=` and wins if both are present, since a deep-linked task always lives on
+"All tasks" regardless of what `?tab=` says. Every
 section's Save button across the whole Settings page (Theme, Table presentation, Inventory data,
 Retirement approval, Bulk edit) is wrapped in `@if` on that section's own `xChanged` getter — hidden
 outright when the local selection matches what's persisted, rather than rendered-but-disabled, since

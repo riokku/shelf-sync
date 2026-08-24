@@ -5,7 +5,7 @@
     </div>
     <h2>Manage Tasks</h2>
 
-    <mat-button-toggle-group [(ngModel)]="viewMode" class="view-toggle">
+    <mat-button-toggle-group [ngModel]="viewMode" (ngModelChange)="setViewMode($event)" class="view-toggle">
       <mat-button-toggle value="create">
         <mat-icon>add_task</mat-icon>
         Create task

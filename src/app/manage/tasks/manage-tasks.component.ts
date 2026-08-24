@@ -12,7 +12,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialog } from '@angular/material/dialog';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { SupabaseService } from '../../core/supabase.service';
 import { NotificationService } from '../../core/notification.service';
 import { AuthService, Profile } from '../../core/auth.service';
@@ -64,6 +64,7 @@ export class ManageTasksComponent implements OnInit {
   private dialog = inject(MatDialog);
   private notification = inject(NotificationService);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private destroyRef = inject(DestroyRef);
 
   private currentUserId: string | null = null;
@@ -90,6 +91,24 @@ export class ManageTasksComponent implements OnInit {
   deleteTaskError: string | null = null;
 
   viewMode: 'create' | 'all' = 'create';
+
+  private isViewMode(value: string | null): value is 'create' | 'all' {
+    return value === 'create' || value === 'all';
+  }
+
+  // Mirrors SettingsComponent's own setViewMode()/?tab= handling — see its
+  // doc comment for the full reasoning. replaceUrl avoids piling up a
+  // history entry per tab click.
+  setViewMode(mode: 'create' | 'all') {
+    this.viewMode = mode;
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tab: mode },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    });
+  }
+
   taskFilterSearch = '';
   taskFilterAssignee: string | null = null;
   taskFilterStatus: TaskStatus | null = null;
@@ -318,6 +337,16 @@ export class ManageTasksComponent implements OnInit {
       this.loadTasks(),
       this.loadRelatedItemOptions()
     ]);
+
+    // Reflects the active tab in the URL (?tab=all) — see
+    // SettingsComponent's own ?tab= handling for the full reasoning. Read
+    // before the ?task= deep link below, so a deep-linked task (which
+    // always lives on the "All tasks" tab) still wins over whatever ?tab=
+    // says.
+    const tabParam = this.route.snapshot.queryParamMap.get('tab');
+    if (this.isViewMode(tabParam)) {
+      this.viewMode = tabParam;
+    }
 
     // Supports deep links (?task=<id>) — either landed on directly (a
     // manager+ user's own copied link) or arrived via TasksComponent's own

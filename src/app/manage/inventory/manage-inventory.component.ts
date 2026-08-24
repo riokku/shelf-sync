@@ -11,6 +11,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
+import { ActivatedRoute, Router } from '@angular/router';
 import { SupabaseService } from '../../core/supabase.service';
 import { NotificationService } from '../../core/notification.service';
 import { AuthService, Profile } from '../../core/auth.service';
@@ -68,6 +69,8 @@ export class ManageInventoryComponent implements OnInit {
   protected supplierService = inject(SupplierService);
   private dialog = inject(MatDialog);
   private notification = inject(NotificationService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private destroyRef = inject(DestroyRef);
 
   /** Whether an admin-optional field is shown on the "Create item" form
@@ -91,6 +94,24 @@ export class ManageInventoryComponent implements OnInit {
   private assignableProfiles: Profile[] = [];
 
   viewMode: 'create' | 'retirements' = 'create';
+
+  private isViewMode(value: string | null): value is 'create' | 'retirements' {
+    return value === 'create' || value === 'retirements';
+  }
+
+  // Mirrors SettingsComponent's own setViewMode()/?tab= handling — see its
+  // doc comment for the full reasoning. replaceUrl avoids piling up a
+  // history entry per tab click.
+  setViewMode(mode: 'create' | 'retirements') {
+    this.viewMode = mode;
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tab: mode },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    });
+  }
+
   // Still the full list, not just pending-retirement items — beyond
   // pendingRetirementItems below, this also backs refreshInventoryItem()'s
   // patch-in-place after the detail popup closes and the barcode-scan
@@ -180,6 +201,13 @@ export class ManageInventoryComponent implements OnInit {
   itemError: string | null = null;
 
   async ngOnInit() {
+    // Reflects the active tab in the URL (?tab=retirements) — see
+    // SettingsComponent's own ?tab= handling for the full reasoning.
+    const tabParam = this.route.snapshot.queryParamMap.get('tab');
+    if (this.isViewMode(tabParam)) {
+      this.viewMode = tabParam;
+    }
+
     await Promise.all([
       this.loadProfiles(),
       this.inventoryFieldOptions.load(),
