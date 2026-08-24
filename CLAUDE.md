@@ -77,7 +77,11 @@ this way never captures *why* — for that, `ModalTableComponent`'s "Discard" bu
 decrements `quantity_remaining`/`quantity_total` directly, a container-tracked item instead prompts
 which box to pull from and decrements (then re-derives from) that container, same formula as a normal
 container edit — either way logging a reason-carrying line ("Discarded 3 units from Box 1. Reason:
-Water damage"). This reinstates (in a unified shape) an original `DiscardInventoryModalComponent`
+Water damage") to `inventory_item_activity`, *and* a structured row (`inventory_item_discards` —
+`item_id`, `container_id` nullable, `quantity`, `reason`, `discarded_by`, `discarded_at`) via the new
+`logInventoryItemDiscard()` alongside it, so `manage/reports`' "Stock movement & loss" section has a
+queryable quantity/reason/category to group by instead of having to regex-parse that free-text
+message — see that page's own paragraph below. This reinstates (in a unified shape) an original `DiscardInventoryModalComponent`
 that only ever worked the flat-item way and was removed once container editing shipped as the
 (reason-less) way to reduce a container item's stock — leaving flat items with no reason-capturing
 path at all, the gap this closes. Same any-authenticated-user reach as every other edit on this item
@@ -787,6 +791,29 @@ Data's cards, neither of these holds a wide checkbox grid that benefits from the
 there's no reason to waste the horizontal space a wide viewport already has. `align-items: stretch`
 keeps both cards the same height regardless of which one's content happens to run longer.
 
+Admins and managers get a `manage/reports` route (`ManageReportsComponent`, `manageGuard`) — three
+full-width cards (not tabs; these are meant to be scanned together, unlike Settings' genuinely
+separate per-section save flows), each an all-time snapshot with no date-range picker yet:
+"Inventory value & stock health" (total $ value — `quantity_remaining` × an effective per-unit
+price, preferring `price_per_unit` but falling back to `price_per_container / quantity_per_container`
+for an item only ever priced "by the case" — plus active item/low-stock/out-of-stock counts, and
+value broken down by category and by physical location), "Stock movement & loss" (total units/events
+discarded, top reasons and discards-by-category from the new `inventory_item_discards` table — see
+its own paragraph above — plus retirement rate by category from `inventory_items.status`), and "Task
+throughput" (completion rate, overdue count, average days-to-close, and workload by assignee, all
+from `tasks`). Every stat is derived client-side from three plain queries
+(`inventory_items`/`inventory_item_discards`/`tasks`, correlated by id the same way this app's other
+multi-entity pages already do — see e.g. `ManageInventoryComponent`'s own images/activity maps)
+rather than a bespoke RPC per number; this app has no precedent for server-side-aggregated reporting,
+and the org sizes this schema realistically holds today make a client-side reduce cheap enough not to
+need one. Average days-to-close reads `tasks.updated_at` as a proxy for "when this was marked done" —
+accurate for a plain assignee (who can only ever change `status` via `update_task_status()`) and only
+approximate for an admin/manager who edited a done task's other fields afterward, since that also
+bumps `updated_at`. Every breakdown list (category, location, reason) shares one `BreakdownRow` shape
+(`label`/`primary`/`itemCount`) so a single `barWidth()` method can scale every list's own
+`mat-progress-bar`s relative to that list's own largest value — the closest thing this page has to an
+actual bar chart, without pulling in a charting library for it.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -877,11 +904,12 @@ The app mixes two Angular module styles, which is important to know before addin
 - Routing (`app-routing.module.ts`) is flat — `''` → `LandingComponent`, `'login'` →
   `LoginComponent`, `'register'` → `RegisterComponent`, `'inventory'` → `InventoryComponent`
   guarded by `approvedGuard` (plus `home`, `tasks`, `account` — all similarly guarded). `manage` is
-  a card hub (`ManageComponent`) linking to nine flat sibling routes — `manage/inventory`,
+  a card hub (`ManageComponent`) linking to ten flat sibling routes — `manage/inventory`,
   `manage/tasks`, `manage/team`, `manage/activity`, `manage/error-log`, `manage/suppliers`,
-  `manage/orders` (all `manageGuard`: admin OR manager) and `manage/billing`/`manage/danger-zone`/
-  `manage/settings` (`adminGuard`, stricter — financial info, org export/delete, and site-wide
-  branding respectively) — rather than nested child routes, matching the rest of the app's flat
+  `manage/orders`, `manage/reports` (all `manageGuard`: admin OR manager) and
+  `manage/billing`/`manage/danger-zone`/`manage/settings` (`adminGuard`, stricter — financial info,
+  org export/delete, and site-wide branding respectively) — rather than nested child routes,
+  matching the rest of the app's flat
   routing. `manage/settings` lives under `manage` (not its own top-level `settings` route) for
   the same reason as every other admin/manager tool here — it's reachable only via the Manage hub's
   own Settings card, not a direct header nav link or Home card, matching Billing/Danger Zone's own
@@ -916,6 +944,7 @@ tasks/                                                      # standalone persona
 manage/                                                     # card hub (ManageComponent) linking to the pages below
   inventory/, tasks/, team/, activity/, suppliers/, orders/ # admin/manager only: inventory (+ CSV export), tasks, team administration, the cross-entity activity feed, the supplier directory, and restock orders
   error-log/                                                # admin/manager only: client_error_log viewer, see Supabase Schema section
+  reports/                                                  # admin/manager only: inventory value/stock health, stock movement/loss, task throughput
   billing/                                                  # admin only: pre-Stripe preview of the org's plan/usage, see Project Overview above
   danger-zone/                                              # admin only: org data export + soft-delete (organizations.deleted_at)
   settings/                                                # admin-only: theme picker + logo upload (site_settings) — see Project Overview above
@@ -938,6 +967,7 @@ shared/
   utils/inventory-item.mapper.ts   # toInventoryItem(row, images, checkedOutToLabel, activityLog?, ..., supplierLabel?) — DB row -> InventoryItem
   utils/inventory-item-images.ts   # loadInventoryImagesByItemId() / uploadInventoryItemImages() / deleteInventoryItemImage()
   utils/inventory-item-activity.ts # loadInventoryActivityByItemId() / logInventoryItemActivity() — inventory_item_activity
+  utils/inventory-item-discards.ts # logInventoryItemDiscard() / loadAllInventoryItemDiscards() — structured counterpart to the free-text discard activity line, backs manage/reports
   utils/inventory-item-orders.ts # loadAllInventoryItemOrders() — every org order, backs manage/orders
   utils/inventory-export.ts  # buildInventoryExportCsv() / downloadCsv() — backs manage/inventory's "Export" button
   utils/activity-log.ts      # loadActivityLog() / logActivity() — org-wide activity_log, backs Manage > Activity Log
@@ -1238,6 +1268,21 @@ yet on a hard refresh of `/inventory`.
   RLS/grant changes needed: same reasoning as every other `site_settings` column added this way — its
   UPDATE policy is already a flat, non-column-scoped "admin of own org" check, so new plain columns
   ride along under it.
+- `add_inventory_item_discards` — adds `inventory_item_discards` (`item_id`, `container_id` nullable/
+  `on delete set null`, `quantity`, `reason`, `discarded_by`, `discarded_at`), a structured
+  counterpart to the free-text "Discarded N units... Reason: ..." line `ModalTableComponent`'s
+  Discard flow already logs to `inventory_item_activity` — see the Project Overview paragraph above
+  for why that text log alone isn't enough for `manage/reports`. Same child-table shape as
+  `inventory_item_containers`/`inventory_item_orders` (no `organization_id` of its own; org isolation
+  comes from `item_id`), with the day-one-correct join-based SELECT policy `add_inventory_item_orders`
+  established rather than the no-join `using (true)` `inventory_item_containers` originally shipped
+  with and had to retrofit. INSERT is any authenticated user, self-attributed only (`with check
+  (discarded_by = auth.uid())`) — same trust level and shape as `inventory_item_activity` itself,
+  matching discarding's own already-any-authenticated-user reach (see
+  `ModalTableComponent.canDiscard`'s own doc comment) — since the stock-reducing writes this table
+  merely logs are already independently enforced (`is_locked` included) by their own existing
+  policies. No UPDATE/DELETE grant at all — permanent, like every other audit-trail table in this
+  schema.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

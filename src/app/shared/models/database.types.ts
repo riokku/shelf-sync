@@ -241,6 +241,58 @@ export type Database = {
           },
         ]
       }
+      inventory_item_discards: {
+        Row: {
+          container_id: string | null
+          discarded_at: string
+          discarded_by: string | null
+          id: string
+          item_id: string
+          quantity: number
+          reason: string
+        }
+        Insert: {
+          container_id?: string | null
+          discarded_at?: string
+          discarded_by?: string | null
+          id?: string
+          item_id: string
+          quantity: number
+          reason: string
+        }
+        Update: {
+          container_id?: string | null
+          discarded_at?: string
+          discarded_by?: string | null
+          id?: string
+          item_id?: string
+          quantity?: number
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_item_discards_container_id_fkey"
+            columns: ["container_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_item_containers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_item_discards_discarded_by_fkey"
+            columns: ["discarded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_item_discards_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_item_images: {
         Row: {
           created_at: string
