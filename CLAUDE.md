@@ -1037,7 +1037,11 @@ retirement-workflow state has an example out of the box. Every item also carries
 supplier (a handful of fictional per-category `suppliers` rows — e.g. "Gatherwell Event Furniture
 Co." for the furniture rows, referenced via `supplier_id` — fixed demo ids, same "hardcode it since
 there's no authenticated caller for `current_user_org_id()` to default from" reasoning
-`organization_id`'s own id already needs), each item further carrying a lead time and an
+`organization_id`'s own id already needs). Each supplier row itself carries a placeholder contact
+name/email/phone/website/notes too, rather than leaving those null — the email/website placeholders
+reuse the exact same `.example.com` domain that supplier's own items already use for their
+`order_link`s, so e.g. Gatherwell's contact email and every Gatherwell item's order link resolve to
+the same fictional company. Each item further carries a lead time and an
 `https://*.example.com/order/...` link (`.example.com` being the reserved, non-resolving placeholder
 domain), a `digital_location` ("Shared Drive > Inventory > <category> > <item>"), and an
 `applicable_year`, rather than leaving those null — `expiration_date` and `barcode` are still left

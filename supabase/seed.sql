@@ -49,14 +49,30 @@ insert into public.inventory_field_options (organization_id, field_name, value) 
 -- free text on every row (see add_supplier_directory migration). Fixed
 -- demo ids, same "hardcode it since there's no authenticated caller for
 -- current_user_org_id() to default from" reasoning organization_id's own
--- id above already needs.
-insert into public.suppliers (id, organization_id, name) values
-  ('22222222-2222-2222-2222-222222222221', '11111111-1111-1111-1111-111111111111', 'Gatherwell Event Furniture Co.'),
-  ('22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'Linen & Lace Event Textiles'),
-  ('22222222-2222-2222-2222-222222222223', '11111111-1111-1111-1111-111111111111', 'Tablescape Decor Supply'),
-  ('22222222-2222-2222-2222-222222222224', '11111111-1111-1111-1111-111111111111', 'BrightStage AV Rentals'),
-  ('22222222-2222-2222-2222-222222222225', '11111111-1111-1111-1111-111111111111', 'Canopy & Deck Structures'),
-  ('22222222-2222-2222-2222-222222222226', '11111111-1111-1111-1111-111111111111', 'Summit Power & Bar Rentals')
+-- id above already needs. contact_name/email/phone/website/notes are
+-- placeholder values (fictional contacts on the same .example.com domain
+-- each supplier's own order links already use) rather than left null,
+-- same "demo data should look plausibly complete" reasoning every other
+-- placeholder field in this file already follows.
+insert into public.suppliers (id, organization_id, name, contact_name, email, phone, website, notes) values
+  ('22222222-2222-2222-2222-222222222221', '11111111-1111-1111-1111-111111111111', 'Gatherwell Event Furniture Co.',
+   'Dana Whitfield', 'orders@gatherwell-events.example.com', '(555) 201-4471', 'https://gatherwell-events.example.com',
+   'Primary furniture vendor — chairs, tables, and cocktail rounds. Ask for Dana on rush orders.'),
+  ('22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'Linen & Lace Event Textiles',
+   'Priya Nandakumar', 'sales@linenandlace.example.com', '(555) 322-6690', 'https://linenandlace.example.com',
+   'Linens, runners, and sashes. Reliable 3-5 day turnaround on standard colors.'),
+  ('22222222-2222-2222-2222-222222222223', '11111111-1111-1111-1111-111111111111', 'Tablescape Decor Supply',
+   'Marcus Iglesias', 'accounts@tablescapedecor.example.com', '(555) 447-2810', 'https://tablescapedecor.example.com',
+   'Charger plates, vases, and other tabletop decor.'),
+  ('22222222-2222-2222-2222-222222222224', '11111111-1111-1111-1111-111111111111', 'BrightStage AV Rentals',
+   'Sasha Whitcombe', 'rentals@brightstage-av.example.com', '(555) 588-1934', 'https://brightstage-av.example.com',
+   'Lighting, string lights, and PA/speaker equipment. Same-day pickup available for local jobs.'),
+  ('22222222-2222-2222-2222-222222222225', '11111111-1111-1111-1111-111111111111', 'Canopy & Deck Structures',
+   'Rowan Blackwood', 'bookings@canopyanddeck.example.com', '(555) 673-5502', 'https://canopyanddeck.example.com',
+   'Tents, frames, and dance floor panels. Needs 2-3 weeks lead time for custom tent sizes.'),
+  ('22222222-2222-2222-2222-222222222226', '11111111-1111-1111-1111-111111111111', 'Summit Power & Bar Rentals',
+   'Elena Vasquez', 'orders@summitpowerbar.example.com', '(555) 764-0928', 'https://summitpowerbar.example.com',
+   'Portable bars and quiet generators for outdoor/off-grid events.')
 on conflict (id) do nothing;
 
 -- All active and fully in-stock except two deliberately varied rows
