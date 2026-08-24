@@ -654,7 +654,7 @@ unconditionally-on behavior every existing org already had before these switches
 (`SiteSettingsService.updateEmailNotifications()` bundles all four into one upsert — same "one
 conceptual group, one save" shape `updateInventoryTableColumns()`/`updateInventoryFormFields()`
 already use for their own multi-item selections, distinct from `requireRetirementApproval`/
-`bulkEditFeatureEnabled`'s own one-setting-one-save shape just above it in that same tab). Checked
+`bulkEditFeatureEnabled`'s own one-setting-one-save shape in that same tab's other card). Checked
 inside the Edge Function itself (`isNotificationEnabled()`, one `site_settings` lookup per
 notification kind right before it would otherwise send) rather than on the Postgres trigger side —
 the triggers always fire regardless (`net.http_post` is async and cheap either way), so keeping "should
@@ -671,6 +671,12 @@ what's persisted" reasoning `emailNotificationsChanged` already uses one level u
 enabled for a mixed selection. Neither button saves by itself — same as ticking an individual
 toggle, the shared Save button below only appears once `emailNotificationsChanged` is true, and the
 change isn't persisted until that's clicked.
+The Workflow tab's two cards (Retirement approval + Bulk edit sharing one card, Email
+notifications in its own) sit side by side (`.settings-workflow-columns`, a `flex-wrap` row rather
+than a fixed two-column grid, so the second card drops to its own row once a narrow viewport can't
+fit both) rather than stacked top to bottom the way the Data tab's cards deliberately are — unlike
+Data's cards, neither of these holds a wide checkbox grid that benefits from the full row width, so
+there's no reason to waste the horizontal space a wide viewport already has.
 
 ## Tech Stack
 

@@ -44,6 +44,25 @@
   }
 }
 
+// The Workflow tab's two cards (Retirement approval + Bulk edit, then Email
+// notifications) sit side by side rather than stacked — unlike the Data
+// tab's cards below, neither one holds a wide checkbox grid that needs the
+// full row width to stay short, so there's no reason not to use the
+// horizontal space a wide viewport already has. flex-basis (not a fixed
+// two-column grid) lets the second card wrap onto its own row once the
+// viewport gets too narrow for both at once, rather than squeezing.
+.settings-workflow-columns{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1.5rem;
+
+  .settings-card{
+    flex: 1 1 20rem;
+    margin-bottom: 0;
+  }
+}
+
 // The Data tab's three sections (Filter data / Inventory data / Table
 // presentation) each get their own full-width card, stacked, rather than
 // the two-column side-by-side layout this used to be — full width lets
