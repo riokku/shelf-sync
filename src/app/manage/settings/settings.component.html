@@ -5,7 +5,7 @@
     </div>
     <h2>Settings</h2>
 
-    <mat-button-toggle-group [(ngModel)]="viewMode" class="view-toggle">
+    <mat-button-toggle-group [ngModel]="viewMode" (ngModelChange)="setViewMode($event)" class="view-toggle">
       <mat-button-toggle value="data">
         <mat-icon>tune</mat-icon>
         Data

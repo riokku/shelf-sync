@@ -1,5 +1,6 @@
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -25,9 +26,23 @@ export class SettingsComponent implements OnInit, OnDestroy {
   protected siteSettings = inject(SiteSettingsService);
   protected inventoryFieldOptions = inject(InventoryFieldOptionsService);
   private notification = inject(NotificationService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
 
   async ngOnInit() {
     await this.inventoryFieldOptions.load();
+
+    // Reflects the active tab in the URL (?tab=workflow) so it survives a
+    // refresh and can be linked/bookmarked directly to a given tab — read
+    // once from the snapshot rather than subscribing, same as
+    // InventoryComponent's own ?item= deep-link handling: this only ever
+    // matters on initial load of this route, not on later query-param
+    // changes (which this component itself is the only thing driving, via
+    // setViewMode() below).
+    const tabParam = this.route.snapshot.queryParamMap.get('tab');
+    if (this.isViewMode(tabParam)) {
+      this.viewMode = tabParam;
+    }
   }
 
   // Same pill-style toggle as manage/tasks and manage/inventory's own
@@ -39,6 +54,24 @@ export class SettingsComponent implements OnInit, OnDestroy {
   // folded into Data, since it's about how actions behave, not what data
   // looks like, and more of these are expected to land here later.
   viewMode: 'style' | 'data' | 'workflow' = 'data';
+
+  private isViewMode(value: string | null): value is 'style' | 'data' | 'workflow' {
+    return value === 'style' || value === 'data' || value === 'workflow';
+  }
+
+  // Split out from a plain [(ngModel)] so switching tabs also updates the
+  // URL's ?tab= param — replaceUrl means clicking between tabs doesn't
+  // spam browser history with an entry per click, matching how a tab strip
+  // is expected to behave (back should leave the page, not cycle tabs).
+  setViewMode(mode: 'style' | 'data' | 'workflow') {
+    this.viewMode = mode;
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tab: mode },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    });
+  }
 
   readonly presets = THEME_PRESETS;
   selectedTheme = this.siteSettings.theme();
