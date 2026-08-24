@@ -586,6 +586,9 @@
 @if (retirementError) {
   <p class="error-message save-error">{{ retirementError }}</p>
 }
+@if (discardError) {
+  <p class="error-message save-error">{{ discardError }}</p>
+}
 <mat-dialog-actions align="end">
   @if (isEditing) {
     <button mat-button type="button" (click)="cancelEdit()" [disabled]="isSaving">
@@ -628,6 +631,12 @@
       <button mat-stroked-button type="button" (click)="openRequestRetirement()" [disabled]="isProcessingRetirement">
         <mat-icon>inventory_2</mat-icon>
         Request retirement
+      </button>
+    }
+    @if (canDiscard) {
+      <button mat-stroked-button type="button" color="warn" (click)="openDiscard()" [disabled]="isDiscarding">
+        <mat-icon>delete_sweep</mat-icon>
+        Discard
       </button>
     }
     @if (!data.isLocked || authService.canManage()) {

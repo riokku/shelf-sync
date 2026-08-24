@@ -9,9 +9,11 @@ import {
   createFakeAuthService,
   createFakeMatDialogRef,
   createFakeProfile,
+  createFakeQueryBuilder,
   createFakeSupabaseService,
   createTestInventoryItem
 } from '../../../testing/fakes';
+import { sumContainerQuantity } from '../../utils/inventory-item-containers';
 
 describe('ModalTableComponent', () => {
   let component: ModalTableComponent;
@@ -173,4 +175,152 @@ describe('ModalTableComponent', () => {
     });
   });
 
+  describe('canDiscard', () => {
+    async function setup(overrides: Parameters<typeof createTestInventoryItem>[0] = {}) {
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [ModalTableComponent],
+        providers: [
+          { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: 'staff' })) },
+          { provide: SupabaseService, useValue: createFakeSupabaseService() },
+          { provide: MatDialogRef, useValue: createFakeMatDialogRef() },
+          { provide: MAT_DIALOG_DATA, useValue: createTestInventoryItem(overrides) }
+        ]
+      }).compileComponents();
+
+      const localFixture = TestBed.createComponent(ModalTableComponent);
+      localFixture.detectChanges();
+      return localFixture.componentInstance;
+    }
+
+    it('is true for an active, unlocked item with stock remaining', async () => {
+      expect((await setup({ quantityRemaining: 5 })).canDiscard).toBeTrue();
+    });
+
+    it('is false once quantityRemaining is zero — nothing left to discard', async () => {
+      expect((await setup({ quantityRemaining: 0 })).canDiscard).toBeFalse();
+    });
+
+    it('is false for a retired item', async () => {
+      expect((await setup({ quantityRemaining: 5, status: 'retired' })).canDiscard).toBeFalse();
+    });
+
+    it('is false for staff on a locked item, matching the Edit button\'s own gate', async () => {
+      expect((await setup({ quantityRemaining: 5, isLocked: true })).canDiscard).toBeFalse();
+    });
+  });
+
+  describe('performDiscard() (openDiscard()\'s dialog result handler)', () => {
+    async function setup(options: {
+      quantityRemaining?: number;
+      quantityTotal?: number;
+      quantityAllocated?: number;
+      hasSession?: boolean;
+      containersTableResult?: { data?: unknown; error?: unknown };
+      itemsUpdateError?: { message: string } | null;
+    } = {}) {
+      const profile = createFakeProfile({ role: 'manager' });
+      TestBed.resetTestingModule();
+
+      const containerBuilder = createFakeQueryBuilder(options.containersTableResult ?? { data: [], error: null });
+      const itemsBuilder = createFakeQueryBuilder({ data: [], error: options.itemsUpdateError ?? null });
+      const defaultBuilder = createFakeQueryBuilder({ data: [], error: null });
+      const fakeSupabase = {
+        client: {
+          from: (table: string) => {
+            if (table === 'inventory_item_containers') {
+              return containerBuilder;
+            }
+            if (table === 'inventory_items') {
+              return itemsBuilder;
+            }
+            return defaultBuilder;
+          },
+          rpc: () => defaultBuilder,
+          channel: () => ({ on: () => ({}), subscribe: () => ({}) }),
+          removeChannel: async () => ({ status: 'ok' }),
+        },
+      } as unknown as SupabaseService;
+
+      await TestBed.configureTestingModule({
+        imports: [ModalTableComponent],
+        providers: [
+          {
+            provide: AuthService,
+            useValue: createFakeAuthService(profile, { hasSession: options.hasSession ?? true })
+          },
+          { provide: SupabaseService, useValue: fakeSupabase },
+          { provide: MatDialogRef, useValue: createFakeMatDialogRef() },
+          {
+            provide: MAT_DIALOG_DATA,
+            useValue: createTestInventoryItem({
+              quantityRemaining: options.quantityRemaining ?? 10
+            })
+          }
+        ]
+      }).compileComponents();
+
+      const localFixture = TestBed.createComponent(ModalTableComponent);
+      localFixture.detectChanges();
+      await localFixture.whenStable();
+      const discardComponent = localFixture.componentInstance;
+      if (options.quantityTotal !== undefined) {
+        discardComponent.data.quantityTotal = options.quantityTotal;
+      }
+      if (options.quantityAllocated !== undefined) {
+        discardComponent.data.quantityAllocated = options.quantityAllocated;
+      }
+      return discardComponent;
+    }
+
+    function performDiscard(component: ModalTableComponent, result: { quantity: number; reason: string; containerId: string | null }) {
+      return (component as unknown as { performDiscard: (r: typeof result) => Promise<void> }).performDiscard(result);
+    }
+
+    it('decrements quantityRemaining/quantityTotal directly for a flat (no-container) discard', async () => {
+      const discardComponent = await setup({ quantityRemaining: 10, quantityTotal: 20 });
+
+      await performDiscard(discardComponent, { quantity: 3, reason: 'Water damage', containerId: null });
+
+      expect(discardComponent.data.quantityRemaining).toBe(7);
+      expect(discardComponent.data.quantityTotal).toBe(17);
+      expect(discardComponent.discardError).toBeNull();
+      expect(discardComponent.isDiscarding).toBeFalse();
+    });
+
+    it('re-derives quantityRemaining/quantityTotal from the container sum for a container discard', async () => {
+      const remainingContainers = [
+        { id: 'box-1', quantity: 7, location: null },
+        { id: 'box-2', quantity: 5, location: null }
+      ];
+      const discardComponent = await setup({
+        quantityAllocated: 2,
+        containersTableResult: { data: remainingContainers, error: null }
+      });
+
+      await performDiscard(discardComponent, { quantity: 3, reason: 'Damaged in transit', containerId: 'box-1' });
+
+      const expectedRemaining = sumContainerQuantity(remainingContainers);
+      expect(discardComponent.data.quantityRemaining).toBe(expectedRemaining);
+      expect(discardComponent.data.quantityTotal).toBe(expectedRemaining + 2);
+      expect(discardComponent.discardError).toBeNull();
+    });
+
+    it('requires a signed-in session', async () => {
+      const discardComponent = await setup({ hasSession: false });
+
+      await performDiscard(discardComponent, { quantity: 3, reason: 'Water damage', containerId: null });
+
+      expect(discardComponent.discardError).toBe('You must be signed in to discard stock.');
+    });
+
+    it('surfaces an inventory_items update error', async () => {
+      const discardComponent = await setup({ itemsUpdateError: { message: 'update failed' } });
+
+      await performDiscard(discardComponent, { quantity: 3, reason: 'Water damage', containerId: null });
+
+      expect(discardComponent.discardError).toBe('update failed');
+      expect(discardComponent.isDiscarding).toBeFalse();
+    });
+  });
 });

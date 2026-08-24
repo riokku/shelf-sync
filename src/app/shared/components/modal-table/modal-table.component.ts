@@ -17,6 +17,7 @@ import { ImageGalleryComponent } from '../image-gallery/image-gallery.component'
 import { UserAvatarComponent } from '../user-avatar/user-avatar.component';
 import { CreateTaskModalComponent } from '../create-task-modal/create-task-modal.component';
 import { RequestRetirementModalComponent, RequestRetirementModalResult } from '../request-retirement-modal/request-retirement-modal.component';
+import { DiscardModalComponent, DiscardModalResult } from '../discard-modal/discard-modal.component';
 import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.component';
 import { AuthService, Profile } from '../../../core/auth.service';
 import { SupabaseService } from '../../../core/supabase.service';
@@ -415,9 +416,125 @@ export class ModalTableComponent implements OnInit {
     this.data.retirementRequestedAt = '';
   }
 
+  isDiscarding = false;
+  discardError: string | null = null;
+
+  /** Same edit-access gate the Edit button itself uses, plus nothing left
+   *  to discard once the item's already at zero and no longer active — same
+   *  reasoning canRequestRetirement's own doc comment gives for its own
+   *  gate. Deliberately not admin/manager-only: discarding stock is just a
+   *  reason-carrying variant of the same quantity edit any authenticated
+   *  user can already make directly, not a stricter action. */
+  get canDiscard(): boolean {
+    return (!this.data.isLocked || this.authService.canManage())
+      && this.data.status === 'active'
+      && this.data.quantityRemaining > 0;
+  }
+
+  openDiscard(){
+    if (!this.canDiscard || this.isDiscarding) {
+      return;
+    }
+
+    const dialogRef = this.dialog.open(DiscardModalComponent, {
+      data: {
+        itemName: this.data.name,
+        quantityRemaining: this.data.quantityRemaining,
+        containers: this.existingContainers
+      },
+      width: 'clamp(26rem, 45vw, 32rem)',
+      maxWidth: '90vw'
+    });
+
+    dialogRef.afterClosed().subscribe((result: DiscardModalResult | undefined) => {
+      if (result) {
+        void this.performDiscard(result);
+      }
+    });
+  }
+
+  /** Unified replacement for the old DiscardInventoryModalComponent — see
+   *  DiscardModalComponent's own doc comment. A flat item decrements
+   *  quantityRemaining/quantityTotal directly; a container-tracked item
+   *  decrements the picked box instead and re-derives both from the
+   *  container sum, the exact same derivation saveContainerChanges()/
+   *  quantityDerivedFromContainers already enforce for a normal edit. */
+  private async performDiscard(result: DiscardModalResult){
+    this.isDiscarding = true;
+    this.discardError = null;
+
+    const session = await this.authService.getSession();
+    if (!session) {
+      this.isDiscarding = false;
+      this.discardError = 'You must be signed in to discard stock.';
+      return;
+    }
+
+    let boxLabel = '';
+
+    if (result.containerId) {
+      const container = this.existingContainers.find(c => c.id === result.containerId);
+      if (!container) {
+        this.isDiscarding = false;
+        this.discardError = 'That box no longer exists — close and reopen the item, then try again.';
+        return;
+      }
+      boxLabel = `Box ${this.existingContainers.indexOf(container) + 1}`;
+
+      const { error: containerError } = await this.supabase.from('inventory_item_containers')
+        .update({ quantity: container.quantity - result.quantity })
+        .eq('id', container.id);
+      if (containerError) {
+        this.isDiscarding = false;
+        this.discardError = containerError.message;
+        return;
+      }
+
+      this.existingContainers = await loadInventoryItemContainers(this.supabase, this.data.id);
+      const newRemaining = this.containerSum(this.existingContainers);
+      const newTotal = newRemaining + this.data.quantityAllocated;
+
+      const { error: itemError } = await this.supabase.from('inventory_items')
+        .update({ quantity_remaining: newRemaining, quantity_total: newTotal })
+        .eq('id', this.data.id);
+      if (itemError) {
+        this.isDiscarding = false;
+        this.discardError = itemError.message;
+        return;
+      }
+      this.data.quantityRemaining = newRemaining;
+      this.data.quantityTotal = newTotal;
+    } else {
+      const newRemaining = this.data.quantityRemaining - result.quantity;
+      const newTotal = this.data.quantityTotal - result.quantity;
+
+      const { error: itemError } = await this.supabase.from('inventory_items')
+        .update({ quantity_remaining: newRemaining, quantity_total: newTotal })
+        .eq('id', this.data.id);
+      if (itemError) {
+        this.isDiscarding = false;
+        this.discardError = itemError.message;
+        return;
+      }
+      this.data.quantityRemaining = newRemaining;
+      this.data.quantityTotal = newTotal;
+    }
+
+    const message = boxLabel
+      ? `Discarded ${result.quantity} units from ${boxLabel}. Reason: ${result.reason}`
+      : `Discarded ${result.quantity} units. Reason: ${result.reason}`;
+
+    await logInventoryItemActivity(this.supabase, this.data.id, session.user.id, message);
+    await logActivity(this.supabase, session.user.id, 'inventory_item', this.data.id, `${this.data.name}: ${message}`);
+    await this.refreshActivityLog();
+
+    this.isDiscarding = false;
+    this.notification.success('Stock discarded');
+  }
+
   /** Shared runner for all four retirement RPCs: applies the known local
    *  effect (rather than reloading the whole item) on success, same
-   *  optimistic-update approach performDiscard() uses above, then refreshes
+   *  optimistic-update approach performDiscard() above uses, then refreshes
    *  just the activity log — the RPC itself writes that log row server-side,
    *  so it can't be predicted client-side the way the log message can for
    *  edits/discards done directly from here. */

@@ -68,11 +68,20 @@ an emptied (0-quantity) box stays listed rather than disappearing. Once an item 
 container, `quantity_remaining`/`quantity_total` stop being freely editable and are instead always
 derived (`quantity_remaining` = sum of container quantities, `quantity_total` = that sum +
 `quantity_allocated`) — items with zero containers keep the old flat, freely-editable behavior
-unchanged. This replaced the old "Discard" flow (`DiscardInventoryModalComponent`, a quantity +
-mandatory-reason modal that decremented `quantity_remaining`/`quantity_total` together): container
-editing is now the only way to reduce stock with a record of which box it came from, though unlike
-Discard it has no mandatory reason field — a plain diffed activity log line ("Box 1 (20 → 10)") is
-what's recorded instead, same as every other edited field. `ManageInventoryComponent`'s create-item
+unchanged. Reducing stock by directly editing Quantity remaining (or a container's own quantity)
+this way never captures *why* — for that, `ModalTableComponent`'s "Discard" button
+(`DiscardModalComponent`) covers both tracking modes with one mandatory-reason flow: a flat item
+decrements `quantity_remaining`/`quantity_total` directly, a container-tracked item instead prompts
+which box to pull from and decrements (then re-derives from) that container, same formula as a normal
+container edit — either way logging a reason-carrying line ("Discarded 3 units from Box 1. Reason:
+Water damage"). This reinstates (in a unified shape) an original `DiscardInventoryModalComponent`
+that only ever worked the flat-item way and was removed once container editing shipped as the
+(reason-less) way to reduce a container item's stock — leaving flat items with no reason-capturing
+path at all, the gap this closes. Same any-authenticated-user reach as every other edit on this item
+(not admin/manager-only) — discarding is just a reason-carrying variant of a quantity edit anyone can
+already make directly, not a stricter action — gated only the same way the Edit button itself is
+(`!is_locked || canManage()`) plus nothing left to reduce (`status = 'active'` and
+`quantity_remaining > 0`, mirroring `canRequestRetirement`'s own gate). `ManageInventoryComponent`'s create-item
 form offers the same choice up front, via a `trackingMode` ("Single quantity" / "By container/box")
 `mat-button-toggle-group` above the Quantity total field — picking container mode hides Quantity
 total (it becomes the sum of whatever containers are added, same derivation) and shows the same
@@ -723,6 +732,7 @@ shared/
   components/bulk-reassign-modal/ # Inventory's bulk category/physical-location reassignment dialog
   components/supplier-form-modal/ # add/edit dialog backing manage/suppliers' directory CRUD
   components/place-order-modal/ # self-contained item picker + quantity/note dialog backing manage/orders' "Place order"
+  components/discard-modal/ # quantity + mandatory-reason dialog backing ModalTableComponent's "Discard" button
   models/inventory-item.model.ts   # InventoryItem class (constructor-based, no defaults)
   models/supplier.model.ts   # Supplier — a directory entry inventory_items.supplier_id can point at
   models/inventory-item-order.model.ts # InventoryItemOrder — one restock order against an item's linked supplier
