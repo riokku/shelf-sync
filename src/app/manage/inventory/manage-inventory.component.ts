@@ -71,7 +71,7 @@ export class ManageInventoryComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
 
   /** Whether an admin-optional field is shown on the "Create item" form
-   *  below (Customize > Data's "Inventory data" section) — name and
+   *  below (Settings > Data's "Inventory data" section) — name and
    *  quantity tracking aren't gated by this since they're never optional,
    *  see shared/models/inventory-form-field.ts's own doc comment. */
   fieldEnabled(key: InventoryFormFieldKey): boolean {

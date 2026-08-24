@@ -1,6 +1,6 @@
 @use '../../shared/styles/page-toolbar';
 
-.customize-wrapper{
+.settings-wrapper{
   color: var(--mat-sys-on-surface);
   padding: 3rem 1.5rem;
   max-width: 100%;
@@ -20,11 +20,11 @@
   margin-bottom: 1.5rem;
 }
 
-.customize-tab-content{
+.settings-tab-content{
   padding: 1.5rem 0.25rem;
 }
 
-.customize-card{
+.settings-card{
   max-width: 40rem;
   margin-bottom: 2rem;
   padding: 1.75rem 2rem;
@@ -32,11 +32,11 @@
   border: 1px solid var(--mat-sys-outline-variant);
   border-radius: 0.75rem;
 
-  .customize-section{
+  .settings-section{
     max-width: none;
     margin-bottom: 0;
 
-    & + .customize-section{
+    & + .settings-section{
       margin-top: 2rem;
       padding-top: 2rem;
       border-top: 1px solid var(--mat-sys-outline-variant);
@@ -49,15 +49,15 @@
 // the two-column side-by-side layout this used to be — full width lets
 // .table-column-groups below spread each section's checkbox groups across
 // more columns, which keeps any one section from running tall and needing
-// its own scroll. .customize-card's own 40rem max-width is meant for a
+// its own scroll. .settings-card's own 40rem max-width is meant for a
 // single stacked card elsewhere on this page, so it's overridden here to
 // let each card fill the available width instead.
-.customize-data-columns{
+.settings-data-columns{
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 
-  .customize-card{
+  .settings-card{
     max-width: none;
     margin-bottom: 0;
   }
@@ -90,7 +90,7 @@
   }
 }
 
-.customize-section{
+.settings-section{
   max-width: 40rem;
   margin-bottom: 2.5rem;
 

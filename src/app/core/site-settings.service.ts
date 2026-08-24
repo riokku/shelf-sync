@@ -33,14 +33,14 @@ export class SiteSettingsService {
   readonly requireRetirementApproval = this._requireRetirementApproval.asReadonly();
 
   // Org-wide kill switch for the Inventory page's "Bulk edit" feature (see
-  // Customize > Workflow), not to be confused with InventoryComponent's own
+  // Settings > Workflow), not to be confused with InventoryComponent's own
   // per-session bulkEditEnabled field (whether *this visit* currently has
   // it turned on) — this is whether the feature exists for the org at all.
   private readonly _bulkEditFeatureEnabled = signal(true);
   readonly bulkEditFeatureEnabled = this._bulkEditFeatureEnabled.asReadonly();
 
   // Per-org kill switches for each of the four email notification kinds
-  // (see Customize > Workflow's "Email notifications" section) — checked
+  // (see Settings > Workflow's "Email notifications" section) — checked
   // by the send-notification-email Edge Function itself, not read
   // anywhere else client-side, but loaded here alongside every other
   // site_settings field for the same single-source-of-truth reasons.

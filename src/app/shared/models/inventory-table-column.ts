@@ -1,7 +1,7 @@
 import { BARCODE_FEATURE_ENABLED } from '../utils/barcode';
 
 /** The optional columns an admin can show/hide in the Inventory page's table
- *  view (Customize > Data). "name" and "actions" aren't part of this list —
+ *  view (Settings > Data). "name" and "actions" aren't part of this list —
  *  they're always shown, since a row with no name column is unusable and the
  *  actions column is just the "view details" link, not real data.
  *
@@ -17,7 +17,7 @@ import { BARCODE_FEATURE_ENABLED } from '../utils/barcode';
  *
  *  Grouped and labeled to match the field groupings InventoryItem's own
  *  constructor comments use (Item/Supplier/Quantity/Price/Other
- *  information), and reused by both CustomizeComponent (grouped checkboxes)
+ *  information), and reused by both SettingsComponent (grouped checkboxes)
  *  and InventoryComponent (flattened via ALL_INVENTORY_TABLE_COLUMN_OPTIONS
  *  for canonical column order). Field labels match modal-table's own
  *  FIELD_LABELS map, so a column header and the item detail popup's field

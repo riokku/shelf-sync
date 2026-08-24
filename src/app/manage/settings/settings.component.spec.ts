@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
-import { CustomizeComponent } from './customize.component';
+import { SettingsComponent } from './settings.component';
 import { SiteSettingsService } from '../../core/site-settings.service';
 import { InventoryFieldOptionsService } from '../../core/inventory-field-options.service';
 import { NotificationService } from '../../core/notification.service';
@@ -9,9 +9,9 @@ import { createFakeInventoryFieldOptionsService, createFakeSiteSettingsService }
 import { DEFAULT_INVENTORY_TABLE_COLUMNS } from '../../shared/models/inventory-table-column';
 import { DEFAULT_INVENTORY_FORM_FIELDS } from '../../shared/models/inventory-form-field';
 
-describe('CustomizeComponent', () => {
-  let component: CustomizeComponent;
-  let fixture: ComponentFixture<CustomizeComponent>;
+describe('SettingsComponent', () => {
+  let component: SettingsComponent;
+  let fixture: ComponentFixture<SettingsComponent>;
   let siteSettings: SiteSettingsService;
   let fieldOptionsService: InventoryFieldOptionsService;
   let fieldOptionsLoadSpy: jasmine.Spy;
@@ -29,7 +29,7 @@ describe('CustomizeComponent', () => {
     fieldOptionsLoadSpy = spyOn(fieldOptionsService, 'load').and.callThrough();
 
     await TestBed.configureTestingModule({
-      imports: [CustomizeComponent],
+      imports: [SettingsComponent],
       providers: [
         provideRouter([]),
         { provide: SiteSettingsService, useValue: siteSettings },
@@ -38,7 +38,7 @@ describe('CustomizeComponent', () => {
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(CustomizeComponent);
+    fixture = TestBed.createComponent(SettingsComponent);
     component = fixture.componentInstance;
     // NotificationService isn't overridden in providers above (same as every
     // other spec in this app — the real service, backed by MatSnackBar,

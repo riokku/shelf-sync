@@ -16,12 +16,12 @@ import { INVENTORY_TABLE_COLUMN_GROUPS, InventoryTableColumnKey } from '../../sh
 import { INVENTORY_FORM_FIELD_GROUPS, InventoryFormFieldKey } from '../../shared/models/inventory-form-field';
 
 @Component({
-  selector: 'app-customize',
+  selector: 'app-settings',
   imports: [FormsModule, MatButtonModule, MatButtonToggleModule, MatCheckboxModule, MatIconModule, MatProgressSpinnerModule, MatSlideToggleModule, BreadcrumbsComponent, FieldOptionsEditorComponent],
-  templateUrl: './customize.component.html',
-  styleUrl: './customize.component.scss'
+  templateUrl: './settings.component.html',
+  styleUrl: './settings.component.scss'
 })
-export class CustomizeComponent implements OnInit, OnDestroy {
+export class SettingsComponent implements OnInit, OnDestroy {
   protected siteSettings = inject(SiteSettingsService);
   protected inventoryFieldOptions = inject(InventoryFieldOptionsService);
   private notification = inject(NotificationService);

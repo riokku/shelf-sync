@@ -120,7 +120,7 @@ export function createFakeSiteSettingsService(overrides: Partial<{
 }
 
 /** Covers both InventoryFieldOptionsService's own consumers and
- *  FieldOptionsEditorComponent (a CustomizeComponent child that injects the
+ *  FieldOptionsEditorComponent (a SettingsComponent child that injects the
  *  same service directly) — Angular DI satisfies both from this one
  *  provider, so a component test doesn't need to fake each separately. */
 export function createFakeInventoryFieldOptionsService(

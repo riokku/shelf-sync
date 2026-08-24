@@ -97,7 +97,7 @@
 // primary/tertiary tokens (SiteSettingsService's [data-theme] preset is
 // readable by anon, so it's already applied before login), so this section
 // still recolors itself per-organization theme rather than always looking
-// the same regardless of which preset is picked in Customize.
+// the same regardless of which preset is picked in Settings.
 .hero{
   position: relative;
   display: grid;

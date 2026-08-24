@@ -134,7 +134,7 @@ export class InventoryComponent implements OnInit{
   viewMode: 'card' | 'table' = 'card';
 
   /** Table-view-only column definitions for mat-table. Name and actions are
-   *  always shown; the rest come from the admin's Customize > Data setting
+   *  always shown; the rest come from the admin's Settings > Data setting
    *  (SiteSettingsService.inventoryTableColumns). Filters
    *  INVENTORY_TABLE_COLUMN_OPTIONS's own fixed order down to whatever's
    *  enabled, rather than reading the enabled list's order directly, so the

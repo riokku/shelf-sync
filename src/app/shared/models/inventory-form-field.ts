@@ -1,7 +1,7 @@
 import { BARCODE_FEATURE_ENABLED } from '../utils/barcode';
 
 /** The optional fields an admin can show/hide on the "Create item" form
- *  (Customize > Data's "Inventory data" section — not to be confused with
+ *  (Settings > Data's "Inventory data" section — not to be confused with
  *  the "Filter data" section right above it, which curates approved
  *  category/physical-location *values*, or "Table presentation" further
  *  over, which is about the Inventory page's table view, not the create
@@ -20,7 +20,7 @@ import { BARCODE_FEATURE_ENABLED } from '../utils/barcode';
  *  Grouped and labeled to match InventoryTableColumnGroup's own grouping
  *  (shared/models/inventory-table-column.ts) and InventoryItem's
  *  constructor comment groupings (Item/Supplier/Quantity/Price/Other
- *  information), reused by CustomizeComponent (grouped checkboxes) and
+ *  information), reused by SettingsComponent (grouped checkboxes) and
  *  ManageInventoryComponent (fieldEnabled() gating which parts of the
  *  create form render). */
 export type InventoryFormFieldKey =

@@ -78,7 +78,7 @@ $enable-smooth-scroll: false;
   padding-inline-end: 0.5rem !important;
 }
 
-// Preset color themes, picked from Customize (admin-only). mat.theme() is a
+// Preset color themes, picked from Settings (admin-only). mat.theme() is a
 // compile-time SCSS mixin — it can't take a runtime palette variable — so
 // each option is precompiled here under its own [data-theme] attribute
 // selector, and SiteSettingsService just toggles that attribute on <html>.

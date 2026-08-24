@@ -1,9 +1,9 @@
-<div class="customize-wrapper">
+<div class="settings-wrapper">
   <div class="container">
     <div class="page-toolbar">
       <app-breadcrumbs />
     </div>
-    <h2>Customize</h2>
+    <h2>Settings</h2>
 
     <mat-button-toggle-group [(ngModel)]="viewMode" class="view-toggle">
       <mat-button-toggle value="data">
@@ -21,10 +21,10 @@
     </mat-button-toggle-group>
 
     @if (viewMode === 'data') {
-      <div class="customize-tab-content">
-        <div class="customize-data-columns">
-          <div class="customize-card">
-            <section class="customize-section">
+      <div class="settings-tab-content">
+        <div class="settings-data-columns">
+          <div class="settings-card">
+            <section class="settings-section">
               <h3>Filter data</h3>
               <p class="section-hint">
                 Approved values for these fields — only these options appear when creating or editing an
@@ -34,7 +34,7 @@
               <app-field-options-editor fieldName="physical_location" label="Physical location" />
             </section>
 
-            <section class="customize-section">
+            <section class="settings-section">
               <h3>Inventory data</h3>
               <p class="section-hint">
                 Choose which fields show up on the "Create item" form, so your team only captures the
@@ -79,8 +79,8 @@
             </section>
           </div>
 
-          <div class="customize-card">
-            <section class="customize-section">
+          <div class="settings-card">
+            <section class="settings-section">
               <h3>Table presentation</h3>
               <p class="section-hint">
                 Choose which columns show in the Inventory page's table view. Name is always shown.
@@ -126,9 +126,9 @@
         </div>
       </div>
     } @else if (viewMode === 'style') {
-      <div class="customize-tab-content">
-        <div class="customize-card">
-          <section class="customize-section">
+      <div class="settings-tab-content">
+        <div class="settings-card">
+          <section class="settings-section">
             <h3>Theme</h3>
             <p class="section-hint">
               Pick a color theme for the whole site. Selecting one previews it immediately, but it only
@@ -170,7 +170,7 @@
             }
           </section>
 
-          <section class="customize-section">
+          <section class="settings-section">
             <h3>Logo</h3>
             <p class="section-hint">
               Appears in the top-left of the nav bar for everyone. Leave unset to use the default
@@ -209,9 +209,9 @@
         </div>
       </div>
     } @else {
-      <div class="customize-tab-content">
-        <div class="customize-card">
-          <section class="customize-section">
+      <div class="settings-tab-content">
+        <div class="settings-card">
+          <section class="settings-section">
             <h3>Retirement approval</h3>
             <p class="section-hint">
               When on, retiring an out-of-stock item always needs a second admin/manager to
@@ -247,7 +247,7 @@
               </button>
             }
           </section>
-          <section class="customize-section">
+          <section class="settings-section">
             <h3>Bulk edit</h3>
             <p class="section-hint">
               Lets any signed-in user select multiple inventory items at once for bulk
@@ -284,8 +284,8 @@
           </section>
         </div>
 
-        <div class="customize-card">
-          <section class="customize-section">
+        <div class="settings-card">
+          <section class="settings-section">
             <h3>Email notifications</h3>
             <p class="section-hint">
               Which events also send an email, on top of always showing up in-app. Turn any of
