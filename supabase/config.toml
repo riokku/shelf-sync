@@ -211,9 +211,18 @@ token_verifications = 30
 web3 = 30
 
 # Configure one of the supported captcha providers: `hcaptcha`, `turnstile`.
+# Left disabled here (this section only ever applies to a local `supabase
+# start` Docker instance, which this app's own dev build doesn't even use —
+# see the Commands section of CLAUDE.md, both environment.ts and
+# environment.prod.ts point at the one hosted project) — the real toggle for
+# the hosted project lives in its own Auth > Attack Protection dashboard
+# settings, which this file has no way to configure. Turnstile's site key
+# (the public half of the pair) lives in both environment files as
+# `turnstileSiteKey`; the secret half only ever goes in that dashboard
+# setting, never committed anywhere.
 # [auth.captcha]
 # enabled = true
-# provider = "hcaptcha"
+# provider = "turnstile"
 # secret = ""
 
 [auth.email]

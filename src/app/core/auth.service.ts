@@ -135,8 +135,14 @@ export class AuthService {
     await this.loadProfile(session);
   }
 
-  async signIn(email: string, password: string) {
-    const { error } = await this.supabase.auth.signInWithPassword({ email, password });
+  /** `captchaToken` is optional only in the type sense — LoginComponent
+   *  always has a real one by the time this is reachable (its Turnstile
+   *  widget gates the submit button itself); undefined here just means
+   *  "no captcha configured yet" locally, which Supabase's own
+   *  captcha-protection setting (off by default, hosted-project-only — see
+   *  CLAUDE.md) treats as fine either way. */
+  async signIn(email: string, password: string, captchaToken?: string) {
+    const { error } = await this.supabase.auth.signInWithPassword({ email, password, options: { captchaToken } });
     return error;
   }
 
@@ -152,7 +158,8 @@ export class AuthService {
     password: string,
     fullName: string,
     nickname: string,
-    organization: { organizationName: string } | { inviteOrganizationId: string }
+    organization: { organizationName: string } | { inviteOrganizationId: string },
+    captchaToken?: string
   ) {
     const { data, error } = await this.supabase.auth.signUp({
       email,
@@ -164,7 +171,8 @@ export class AuthService {
           ...('organizationName' in organization
             ? { organization_name: organization.organizationName }
             : { invite_organization_id: organization.inviteOrganizationId })
-        }
+        },
+        captchaToken
       }
     });
     return { error, needsEmailConfirmation: !error && !data.session };
@@ -197,9 +205,10 @@ export class AuthService {
    *  `getSession()`. Deliberately reports success even when the email isn't
    *  registered (the caller can't distinguish either way — see
    *  ForgotPasswordComponent) so this can't be used to enumerate accounts. */
-  async requestPasswordReset(email: string) {
+  async requestPasswordReset(email: string, captchaToken?: string) {
     const { error } = await this.supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`
+      redirectTo: `${window.location.origin}/reset-password`,
+      captchaToken
     });
     return error;
   }

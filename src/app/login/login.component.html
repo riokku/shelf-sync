@@ -35,11 +35,12 @@
           }
           <a routerLink="/forgot-password" class="forgot-password-link">Forgot password?</a>
         </div>
+        <app-turnstile-widget (verified)="captchaToken = $event" (cleared)="captchaToken = null" />
         <button
             mat-flat-button
             color="primary"
             type="submit"
-            [disabled]="isLoading"
+            [disabled]="isLoading || !captchaToken"
             >
             @if (isLoading) {
               <mat-spinner diameter="20"></mat-spinner>

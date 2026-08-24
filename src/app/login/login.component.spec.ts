@@ -3,13 +3,15 @@ import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 
 import { LoginComponent } from './login.component';
 import { AuthService } from '../core/auth.service';
-import { createFakeActivatedRoute, createFakeAuthService } from '../testing/fakes';
+import { createFakeActivatedRoute, createFakeAuthService, installFakeTurnstile } from '../testing/fakes';
 
 describe('LoginComponent', () => {
   let component: LoginComponent;
   let fixture: ComponentFixture<LoginComponent>;
 
   beforeEach(async () => {
+    installFakeTurnstile();
+
     await TestBed.configureTestingModule({
       imports: [LoginComponent],
       providers: [
@@ -24,8 +26,45 @@ describe('LoginComponent', () => {
     fixture.detectChanges();
   });
 
+  afterEach(() => {
+    delete window.turnstile;
+  });
+
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('disables the submit button until a captcha token has been verified', () => {
+    expect(component.captchaToken).toBeNull();
+
+    const submitButton: HTMLButtonElement = fixture.nativeElement.querySelector('button[type="submit"]');
+    expect(submitButton.disabled).toBeTrue();
+
+    component.captchaToken = 'a-real-token';
+    fixture.detectChanges();
+
+    expect(submitButton.disabled).toBeFalse();
+  });
+
+  it('attemptLogin() is a no-op without a captcha token, same as an invalid form', async () => {
+    const authService = TestBed.inject(AuthService);
+    const signInSpy = spyOn(authService, 'signIn');
+    component.form.setValue({ email: 'test@example.com', password: 'password123' });
+
+    await component.attemptLogin();
+
+    expect(signInSpy).not.toHaveBeenCalled();
+  });
+
+  it('clears the captcha token and resets the widget after a failed attempt', async () => {
+    const authService = TestBed.inject(AuthService);
+    spyOn(authService, 'signIn').and.returnValue(Promise.resolve({ message: 'Invalid credentials' } as never));
+    component.form.setValue({ email: 'test@example.com', password: 'wrong' });
+    component.captchaToken = 'a-real-token';
+
+    await component.attemptLogin();
+
+    expect(component.captchaToken).toBeNull();
   });
 });
 
@@ -34,7 +73,13 @@ describe('LoginComponent', () => {
  *  blocks a protocol-relative returnUrl, since that's the one case where
  *  getting this wrong would be a real security bug, not just a UX papercut. */
 describe('LoginComponent post-login redirect', () => {
+  afterEach(() => {
+    delete window.turnstile;
+  });
+
   async function attemptLoginWithReturnUrl(returnUrl: string | null): Promise<jasmine.Spy> {
+    installFakeTurnstile();
+
     await TestBed.configureTestingModule({
       imports: [LoginComponent],
       providers: [
@@ -50,6 +95,7 @@ describe('LoginComponent post-login redirect', () => {
     const navigateSpy = spyOn(router, 'navigateByUrl');
 
     component.form.setValue({ email: 'test@example.com', password: 'password123' });
+    component.captchaToken = 'a-real-token';
     await component.attemptLogin();
 
     return navigateSpy;

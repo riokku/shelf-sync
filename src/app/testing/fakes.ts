@@ -354,3 +354,22 @@ export function createTestTask(overrides: Partial<Task> = {}): Task {
     ...overrides,
   };
 }
+
+/** Every spec that mounts LoginComponent/RegisterComponent/
+ *  ForgotPasswordComponent embeds a live `<app-turnstile-widget>` — without
+ *  `window.turnstile` already set before `fixture.detectChanges()` runs,
+ *  that child component's own `ngOnInit()` would append a real
+ *  `<script src="https://challenges.cloudflare.com/...">` tag and fire off
+ *  an actual network request. Call this in `beforeEach` (and
+ *  `delete window.turnstile` in `afterEach`, so it can't leak into some
+ *  unrelated spec file run later in the same browser tab) — specs that need
+ *  a captcha token typically set `component.captchaToken` directly instead
+ *  of driving the widget's own UI, the same way they already bypass every
+ *  other piece of template UI to call a component method directly. */
+export function installFakeTurnstile() {
+  window.turnstile = {
+    render: () => 'fake-widget-id',
+    reset: () => {},
+    remove: () => {}
+  };
+}
