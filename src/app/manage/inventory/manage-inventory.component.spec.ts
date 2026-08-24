@@ -52,6 +52,108 @@ describe('ManageInventoryComponent', () => {
     }));
   });
 
+  describe('hasUnsavedChanges()', () => {
+    it('is false for an untouched create form', () => {
+      expect(component.hasUnsavedChanges()).toBeFalse();
+    });
+
+    it('is true once the form itself is dirty', () => {
+      component.inventoryForm.controls.name.setValue('New name');
+      component.inventoryForm.controls.name.markAsDirty();
+      expect(component.hasUnsavedChanges()).toBeTrue();
+    });
+
+    it('is true with a photo selected, even with the form untouched', () => {
+      component.selectedImageFiles = [new File([], 'photo.png')];
+      expect(component.hasUnsavedChanges()).toBeTrue();
+    });
+
+    it('is true with a container/box added, even with the form untouched', () => {
+      component.newContainers = [{ quantity: 10, location: '' }];
+      expect(component.hasUnsavedChanges()).toBeTrue();
+    });
+  });
+
+  describe('setViewMode() confirm-before-leaving-create gate', () => {
+    it('switches immediately, without opening a dialog, when the create form has nothing unsaved', () => {
+      const dialog = (component as unknown as { dialog: { open: jasmine.Spy } }).dialog;
+      const openSpy = spyOn(dialog, 'open');
+
+      component.setViewMode('retirements');
+
+      expect(component.viewMode).toBe('retirements');
+      expect(openSpy).not.toHaveBeenCalled();
+    });
+
+    it('is a no-op when the target mode already matches the current one', () => {
+      const dialog = (component as unknown as { dialog: { open: jasmine.Spy } }).dialog;
+      const openSpy = spyOn(dialog, 'open');
+
+      component.setViewMode('create');
+
+      expect(openSpy).not.toHaveBeenCalled();
+    });
+
+    it('opens a confirm dialog instead of switching immediately when the create form has unsaved changes', () => {
+      component.inventoryForm.controls.name.setValue('New name');
+      component.inventoryForm.controls.name.markAsDirty();
+      const dialog = (component as unknown as { dialog: { open: (...args: unknown[]) => { afterClosed: () => { subscribe: () => void } } } }).dialog;
+      const openSpy = spyOn(dialog, 'open').and.returnValue({ afterClosed: () => ({ subscribe: () => {} }) });
+
+      component.setViewMode('retirements');
+
+      expect(openSpy).toHaveBeenCalledWith(jasmine.any(Function), jasmine.objectContaining({
+        data: jasmine.objectContaining({ title: 'Leave without saving?', danger: true })
+      }));
+      expect(component.viewMode).toBe('create');
+    });
+
+    it('switches once the user confirms leaving', () => {
+      component.inventoryForm.controls.name.setValue('New name');
+      component.inventoryForm.controls.name.markAsDirty();
+      const dialog = (component as unknown as { dialog: { open: (...args: unknown[]) => { afterClosed: () => { subscribe: (cb: (v: boolean) => void) => void } } } }).dialog;
+      spyOn(dialog, 'open').and.returnValue({ afterClosed: () => ({ subscribe: cb => cb(true) }) });
+
+      component.setViewMode('retirements');
+
+      expect(component.viewMode).toBe('retirements');
+    });
+
+    it('stays put when the user cancels', () => {
+      component.inventoryForm.controls.name.setValue('New name');
+      component.inventoryForm.controls.name.markAsDirty();
+      const dialog = (component as unknown as { dialog: { open: (...args: unknown[]) => { afterClosed: () => { subscribe: (cb: (v: boolean) => void) => void } } } }).dialog;
+      spyOn(dialog, 'open').and.returnValue({ afterClosed: () => ({ subscribe: cb => cb(false) }) });
+
+      component.setViewMode('retirements');
+
+      expect(component.viewMode).toBe('create');
+    });
+  });
+
+  describe('confirmBeforeUnload()', () => {
+    function fakeBeforeUnloadEvent() {
+      return { preventDefault: jasmine.createSpy('preventDefault'), returnValue: '' } as unknown as BeforeUnloadEvent;
+    }
+
+    it('does nothing when there are no unsaved changes', () => {
+      const event = fakeBeforeUnloadEvent();
+      component.confirmBeforeUnload(event);
+      expect(event.preventDefault).not.toHaveBeenCalled();
+    });
+
+    it('prevents the default and sets returnValue when there are unsaved changes', () => {
+      component.inventoryForm.controls.name.setValue('New name');
+      component.inventoryForm.controls.name.markAsDirty();
+      const event = fakeBeforeUnloadEvent();
+
+      component.confirmBeforeUnload(event);
+
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(event.returnValue).toBe('');
+    });
+  });
+
   describe('pendingRetirementItems / pendingRetirementCount', () => {
     it('returns only items pending retirement, oldest request first', () => {
       component.allInventoryItems = [

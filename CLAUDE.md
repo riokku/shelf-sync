@@ -843,6 +843,29 @@ branch needs this) — without either, discarding stock (previously always possi
 would suddenly require an admin to visit Settings and curate a list first, or nobody could discard
 anything at all.
 
+`ManageInventoryComponent`'s create form and `ManageTasksComponent`'s create form both now guard
+against losing an in-progress, unsaved entry three different ways, all reading from one shared
+source of truth per component (`hasUnsavedChanges()` — for inventory, `inventoryForm.dirty` or a
+staged photo or a staged container; for tasks, just `taskForm.dirty`, deliberately excluding
+`relatedItemSearchControl` since the autocomplete search box isn't itself submitted data). First,
+switching to the page's other tab (Requests / All tasks) while the create form is dirty no longer
+switches immediately — `setViewMode()` was split into itself (now a guard) plus a private
+`applyViewMode()` that does the actual switch, mirroring `ManageTasksComponent.applyBulkDelete()`/
+`performBulkDelete()`'s existing "public method opens a confirm dialog and subscribes, private
+method does the work" split, so the actual switch stays directly unit-testable without faking
+`MatDialog.open()`. Second, navigating away from the route entirely (clicking a nav link, back
+button, etc.) is covered by `unsavedChangesGuard` (`core/guards/unsaved-changes.guard.ts`), a
+`CanDeactivateFn` wired onto both `manage/inventory` and `manage/tasks` in the route config — it
+calls the same `hasUnsavedChanges()` via a new `HasUnsavedChanges` interface both components
+implement, and only opens `ConfirmDialogComponent` (wrapped in a plain `Promise<boolean>`, not an
+RxJS `.pipe(map(...))`, matching this app's established no-RxJS-operators convention) when there's
+actually something to lose. Third, closing or refreshing the browser tab itself — which
+`CanDeactivate` guards never fire for — is covered separately by a `@HostListener('window:
+beforeunload', ...)` (`confirmBeforeUnload()`) on each component, calling `event.preventDefault()`
++ setting `event.returnValue` to trigger the browser's own native (non-customizable in any modern
+browser) "leave site?" prompt. All three layers share the one `hasUnsavedChanges()` check per
+component rather than duplicating the dirty-state logic three ways.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -962,6 +985,7 @@ core/
   guards/auth.guard.ts    # CanActivateFn — awaits authService.getSession() directly
   guards/manage.guard.ts  # admin OR manager
   guards/admin.guard.ts   # admin only (manage/settings, manage/billing, manage/danger-zone)
+  guards/unsaved-changes.guard.ts # CanDeactivateFn — confirms leaving a dirty create form (manage/inventory, manage/tasks)
 header/, footer/                                           # standalone layout components; header has the logout button
 login/                                                      # standalone login screen, real Supabase auth
 register/                                                   # standalone signup screen, real Supabase auth
