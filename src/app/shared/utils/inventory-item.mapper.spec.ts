@@ -33,7 +33,6 @@ describe('toInventoryItem', () => {
       description: null,
       category: null,
       physical_location: null,
-      supplier_name: null,
       order_link: null
     });
 
@@ -42,8 +41,18 @@ describe('toInventoryItem', () => {
     expect(item.description).toBe('');
     expect(item.category).toBe('');
     expect(item.physicalLocation).toBe('');
-    expect(item.supplierName).toBe('');
     expect(item.orderLink).toBe('');
+  });
+
+  it('resolves supplier_id straight across and defaults the supplier label param to an empty string', () => {
+    const row = createTestInventoryItemRow({ supplier_id: 'supplier-1' });
+
+    const item = toInventoryItem(row, [], '');
+    expect(item.supplierId).toBe('supplier-1');
+    expect(item.supplierName).toBe('');
+
+    const labeled = toInventoryItem(row, [], '', [], null, '', '', '', 'Acme Co.');
+    expect(labeled.supplierName).toBe('Acme Co.');
   });
 
   it('turns nullable numeric columns into 0, not null', () => {

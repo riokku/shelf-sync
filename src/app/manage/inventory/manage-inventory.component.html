@@ -3,7 +3,20 @@
     <div class="page-toolbar">
       <app-breadcrumbs />
     </div>
-    <h2>Manage Inventory</h2>
+
+    <div class="page-header-row">
+      <h2>Manage Inventory</h2>
+      <button
+          mat-stroked-button
+          type="button"
+          [disabled]="isLoadingInventoryList"
+          matTooltip="Export every item's current data and activity log as a CSV"
+          (click)="exportInventoryCsv()"
+        >
+        <mat-icon>download</mat-icon>
+        Export
+      </button>
+    </div>
 
     <mat-button-toggle-group [(ngModel)]="viewMode" class="view-toggle">
       <mat-button-toggle value="create">
@@ -153,7 +166,12 @@
                   <mat-form-field appearance="outline">
                     <mat-label>Supplier name</mat-label>
                     <mat-icon matPrefix>storefront</mat-icon>
-                    <input matInput formControlName="supplierName" />
+                    <mat-select formControlName="supplierId">
+                      <mat-option [value]="null">None</mat-option>
+                      @for (supplier of supplierService.suppliers(); track supplier.id) {
+                        <mat-option [value]="supplier.id">{{ supplier.name }}</mat-option>
+                      }
+                    </mat-select>
                   </mat-form-field>
                 }
                 @if (fieldEnabled('supplierLeadTime')) {

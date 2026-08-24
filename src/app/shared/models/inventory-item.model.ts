@@ -35,6 +35,7 @@ export class InventoryItem {
   applicableYear: string;
   expirationDate: string;
   supplierName: string;
+  supplierId: string | null;
   supplierLeadTime: string;
   orderLink: string;
   quantityTotal: number;
@@ -73,6 +74,7 @@ export class InventoryItem {
     applicableYear: string,
     expirationDate: string,
     supplierName: string,
+    supplierId: string | null,
     supplierLeadTime: string,
     orderLink: string,
     quantityTotal: number,
@@ -115,6 +117,7 @@ export class InventoryItem {
 
     //Supplier information
     this.supplierName = supplierName;
+    this.supplierId = supplierId;
     this.supplierLeadTime = supplierLeadTime;
     this.orderLink = orderLink;
 

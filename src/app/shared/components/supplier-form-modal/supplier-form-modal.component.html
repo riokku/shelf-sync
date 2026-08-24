@@ -1,0 +1,57 @@
+<h2 mat-dialog-title>{{ isEditing ? 'Edit supplier' : 'Add supplier' }}</h2>
+<mat-dialog-content>
+  <form [formGroup]="form" class="supplier-form">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Name</mat-label>
+      <mat-icon matPrefix>storefront</mat-icon>
+      <input matInput formControlName="name" />
+      @if (form.controls.name.hasError('required')) {
+        <mat-error>Name is required.</mat-error>
+      }
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Contact name</mat-label>
+      <mat-icon matPrefix>badge</mat-icon>
+      <input matInput formControlName="contactName" />
+    </mat-form-field>
+    <div class="field-row">
+      <mat-form-field appearance="outline">
+        <mat-label>Email</mat-label>
+        <mat-icon matPrefix>mail</mat-icon>
+        <input matInput type="email" formControlName="email" />
+        @if (form.controls.email.hasError('email')) {
+          <mat-error>Enter a valid email address.</mat-error>
+        }
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Phone</mat-label>
+        <mat-icon matPrefix>call</mat-icon>
+        <input matInput formControlName="phone" />
+      </mat-form-field>
+    </div>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Website</mat-label>
+      <mat-icon matPrefix>link</mat-icon>
+      <input matInput formControlName="website" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Notes</mat-label>
+      <mat-icon matPrefix>notes</mat-icon>
+      <textarea matInput formControlName="notes" rows="2"></textarea>
+    </mat-form-field>
+  </form>
+
+  @if (error) {
+    <p class="error-message">{{ error }}</p>
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="cancel()">Cancel</button>
+  <button mat-flat-button color="primary" type="button" (click)="save()" [disabled]="isSaving">
+    @if (isSaving) {
+      <mat-spinner diameter="20"></mat-spinner>
+    } @else {
+      Save
+    }
+  </button>
+</mat-dialog-actions>

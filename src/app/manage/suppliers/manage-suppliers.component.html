@@ -1,0 +1,70 @@
+<div class="manage-suppliers-wrapper">
+  <div class="container">
+    <div class="page-toolbar">
+      <app-breadcrumbs />
+    </div>
+
+    <div class="page-header-row">
+      <div>
+        <h2>Suppliers</h2>
+        <p class="page-subtitle">Who you order inventory from — pick from this list when creating or editing an item.</p>
+      </div>
+      <button mat-flat-button color="primary" type="button" (click)="addSupplier()">
+        <mat-icon>add</mat-icon>
+        Add supplier
+      </button>
+    </div>
+
+    @if (removeError) {
+      <p class="error-message">{{ removeError }}</p>
+    }
+
+    @if (isLoading) {
+      <div class="loading-row">
+        <mat-spinner diameter="32"></mat-spinner>
+      </div>
+    } @else if (supplierService.suppliers().length === 0) {
+      <app-empty-state icon="storefront" message="No suppliers yet — add your first one." />
+    } @else {
+      <div class="suppliers-table-wrapper">
+        <table class="suppliers-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Contact</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Website</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (supplier of supplierService.suppliers(); track supplier.id) {
+              <tr>
+                <td class="supplier-name">{{ supplier.name }}</td>
+                <td>{{ supplier.contactName || '—' }}</td>
+                <td>{{ supplier.email || '—' }}</td>
+                <td>{{ supplier.phone || '—' }}</td>
+                <td>
+                  @if (supplier.website) {
+                    <a [href]="supplier.website" target="_blank" rel="noopener">{{ supplier.website }}</a>
+                  } @else {
+                    —
+                  }
+                </td>
+                <td class="supplier-actions">
+                  <button mat-icon-button type="button" matTooltip="Edit supplier" (click)="editSupplier(supplier)">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button type="button" matTooltip="Remove supplier" (click)="removeSupplier(supplier)">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>

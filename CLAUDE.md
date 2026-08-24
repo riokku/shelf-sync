@@ -272,10 +272,12 @@ information, same audience as Danger Zone, not the broader admin-or-manager audi
 Manage's sub-pages use) preview of what this page will show once Stripe billing exists. Every org is
 hardcoded onto the Free tier (`pricingTierByKey('free')`) since there's no `subscriptions` table
 yet; a banner at the top says the page isn't connected to real billing. Account creation date, team
-member count, and inventory item count are real, queried numbers; photo storage usage and the
-billing-cycle date are plausible-looking placeholders (getting real storage usage would need a new
-Postgres function reading `storage.objects`, Supabase Storage's own backing table, which isn't
-exposed to PostgREST directly — real future work, not needed for this preview).
+member count, inventory item count, and photo storage usage are all real, queried numbers — storage
+usage comes from `get_inventory_photo_storage_usage()`, an admin-only `SECURITY DEFINER` RPC that
+sums `storage.objects` sizes for the org's inventory photos (joined via `inventory_item_images` ->
+`inventory_items` for org scoping, not by parsing storage paths), since `storage.objects` (Supabase
+Storage's own backing table) isn't exposed to PostgREST directly. Only the billing-cycle date is
+still a plausible-looking placeholder, pending real Stripe billing.
 
 The Inventory page has a card/table view toggle (`InventoryComponent.viewMode`, a
 `mat-button-toggle-group` above the item list) — card view is the original gallery layout; table
@@ -532,6 +534,31 @@ its existing realtime subscription already patches (and flashes) every row it to
 acting user's own writes; the two task pages' bulk actions call their existing reload method
 directly for immediate feedback, same as their single-action counterparts already do.
 
+Admins and managers get a `manage/suppliers` route (`ManageSuppliersComponent`, `manageGuard`) — a
+CRUD directory of who the org orders inventory from (name, contact name, email, phone, website,
+notes), replacing what used to be a free-text "Supplier name" typed independently on every item.
+`inventory_items.supplier_id` is a real foreign key into this new `suppliers` table now (see the
+`add_supplier_directory` migration below for the backfill/RLS details); the create form
+(`ManageInventoryComponent`) and the item edit form (`ModalTableComponent`) both offer it as a
+dropdown rather than a text field, the same "pick from an admin-curated list" pattern
+`inventory_field_options`-backed category/physical-location fields already use. Per-item lead
+time/order link deliberately stay item-level fields, not directory ones — a custom order vs. a
+stocked item, or a specific product page vs. a general storefront, can legitimately differ between
+two items from the same supplier. `InventoryItem.supplierName` keeps its existing shape (a plain
+resolved display string, read everywhere the table columns/CSV export/etc. already expected it) —
+only where it's sourced from changed, via a new `supplierLabel` param on `toInventoryItem()` and
+`resolveSupplierName()` in `shared/utils/supplier-label.ts`, mirroring `checked_out_to`'s own
+"real FK, label resolved client-side" shape exactly.
+
+`manage/inventory` also gets an "Export" button (`ManageInventoryComponent.exportInventoryCsv()`) —
+a single friendly CSV of every item in the org (active/pending/retired alike, not scoped to any
+filter), one row per item with every field plus a final "Activity log" column folding that item's
+complete history into one newline-joined cell, rather than a second file to correlate by item id
+(`shared/utils/inventory-export.ts`'s `buildInventoryExportCsv()`/`downloadCsv()` — plain
+`Blob`/`<a download>`, no new dependency). Reuses data this page already has loaded (`allInventoryItems`
+plus its images/activity maps, mapped through the same `toInventoryItem()` every other consumer of
+this page's data uses) rather than issuing a fresh query.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -635,6 +662,7 @@ core/
   supabase.service.ts   # createClient<Database>() wrapper, providedIn: 'root'
   auth.service.ts        # session signal (isAuthenticated), signIn/signUp/signOut/getSession
   site-settings.service.ts # theme/logo signals; load() on app start, updateTheme()/uploadLogo()/removeLogo()
+  supplier.service.ts     # SupplierService — org's supplier directory; load()/create()/update()/remove()
   guards/auth.guard.ts    # CanActivateFn — awaits authService.getSession() directly
   guards/manage.guard.ts  # admin OR manager
   guards/admin.guard.ts   # admin only (Customize route, manage/danger-zone)
@@ -646,8 +674,8 @@ privacy/, terms/                                            # standalone legal p
 home/                                                        # post-login landing hub: cards linking to the pages below
 inventory/                                                  # standalone inventory page: filters, item table, opens modal
 tasks/                                                      # standalone personal "My Tasks" list (row-styled task-card)
-manage/                                                     # card hub (ManageComponent) linking to the six below
-  inventory/, tasks/, team/, activity/                      # admin/manager only: inventory, tasks, team administration, and the cross-entity activity feed
+manage/                                                     # card hub (ManageComponent) linking to the pages below
+  inventory/, tasks/, team/, activity/, suppliers/          # admin/manager only: inventory (+ CSV export), tasks, team administration, the cross-entity activity feed, and the supplier directory
   error-log/                                                # admin/manager only: client_error_log viewer, see Supabase Schema section
   billing/                                                  # admin only: pre-Stripe preview of the org's plan/usage, see Project Overview above
   danger-zone/                                              # admin only: org data export + soft-delete (organizations.deleted_at)
@@ -657,16 +685,20 @@ shared/
   components/modal-table/    # standalone Material dialog showing InventoryItem details
   components/bulk-action-toolbar/ # shared "N selected / select all / clear" chrome for every page with bulk actions
   components/bulk-reassign-modal/ # Inventory's bulk category/physical-location reassignment dialog
+  components/supplier-form-modal/ # add/edit dialog backing manage/suppliers' directory CRUD
   models/inventory-item.model.ts   # InventoryItem class (constructor-based, no defaults)
+  models/supplier.model.ts   # Supplier — a directory entry inventory_items.supplier_id can point at
   models/theme-preset.ts     # THEME_PRESETS — key must match a [data-theme] block in styles.scss
   models/inventory-table-column.ts # optional Inventory table-view columns admin can show/hide (Customize > Data)
   models/pricing-tier.ts     # PRICING_TIERS — shared by PricingComponent (/pricing) and ManageBillingComponent
   models/database.types.ts   # generated via `npm run supabase:gen:types` — regenerate, don't hand-edit
-  utils/inventory-item.mapper.ts   # toInventoryItem(row, images, checkedOutToLabel, activityLog?) — DB row -> InventoryItem
+  utils/inventory-item.mapper.ts   # toInventoryItem(row, images, checkedOutToLabel, activityLog?, ..., supplierLabel?) — DB row -> InventoryItem
   utils/inventory-item-images.ts   # loadInventoryImagesByItemId() / uploadInventoryItemImages() / deleteInventoryItemImage()
   utils/inventory-item-activity.ts # loadInventoryActivityByItemId() / logInventoryItemActivity() — inventory_item_activity
+  utils/inventory-export.ts  # buildInventoryExportCsv() / downloadCsv() — backs manage/inventory's "Export" button
   utils/activity-log.ts      # loadActivityLog() / logActivity() — org-wide activity_log, backs Manage > Activity Log
   utils/profile-label.ts     # profileDisplayName()/resolveProfileName() — shared profiles-array lookup
+  utils/supplier-label.ts    # resolveSupplierName() — mirrors profile-label.ts for inventory_items.supplier_id
   utils/barcode.ts           # buildItemQrValue()/parseItemQrValue() — ShelfSync's own QR-label encoding
   utils/presence.ts          # isProfileOnline()/formatLastSeen() — reads profiles.last_active_at, backs Manage > Team's presence indicator
   utils/realtime.ts          # subscribeToTableChanges() — Supabase Realtime postgres_changes wrapper, see Project Overview above
@@ -894,24 +926,60 @@ yet on a hard refresh of `/inventory`.
   unlike `require_retirement_approval`'s own migration. No RLS/grant changes either: same reasoning as
   every other `site_settings` column added this way — its UPDATE policy is already a flat,
   non-column-scoped "admin of own org" check, so a new plain column rides along under it.
+- `add_inventory_photo_storage_usage` — adds `get_inventory_photo_storage_usage()`, backing
+  `manage/billing`'s real photo storage usage number (see that page's own paragraph above). Admin-only
+  `SECURITY DEFINER` function (checked via `current_user_role()` inside the function itself, same
+  pattern as `admin_set_user_role()`) since `storage.objects` isn't exposed to PostgREST — reads
+  bypass RLS entirely, joined back through `inventory_item_images` -> `inventory_items` for org
+  scoping rather than parsing `storage_path` prefixes.
+- `add_supplier_directory` — adds `suppliers` (`organization_id`, `name`, `contact_name`, `email`,
+  `phone`, `website`, `notes`; unique per `(organization_id, name)`) and replaces
+  `inventory_items.supplier_name` (free text, independently retyped on every item from the same
+  supplier) with `inventory_items.supplier_id`, a real foreign key into it — backing `manage/suppliers`
+  (`ManageSuppliersComponent`, `manageGuard`) and the supplier picker on both the create form
+  (`ManageInventoryComponent`) and the item edit form (`ModalTableComponent`). Per-item logistics —
+  `supplier_lead_time`/`order_link`, which genuinely can vary item to item even from the same supplier
+  (a custom order vs. a stocked one; a specific product page vs. a general storefront) — deliberately
+  stay on `inventory_items` rather than folding into the directory. The migration backfills: one
+  `suppliers` row per distinct existing `supplier_name` (per org), every matching item repointed at
+  it via `supplier_id`, then the now-redundant `supplier_name` column dropped — its data fully
+  preserved as `suppliers.name` first, same "the FK is the source of truth, the label is resolved
+  client-side" shape `checked_out_to` already has (`InventoryItem.supplierName`, the resolved display
+  label, is unchanged in shape; only where it's sourced from changed — see
+  `toInventoryItem()`'s new `supplierLabel` param and `resolveSupplierName()` in
+  `shared/utils/supplier-label.ts`). RLS: any authenticated org member can read the directory (needed
+  for the picker), but only admin/manager can insert/update/delete it — richer than
+  `inventory_field_options`' admin-only insert/delete (this also needs update, for editing a
+  supplier's contact info), same "any authenticated user picks from an admin/manager-curated list"
+  shape. `inventory_items.supplier_id` itself stays in the existing any-authenticated-user column
+  grant (additive `grant update (supplier_id)`, same pattern `add_inventory_item_barcode` used for its
+  own new column) — reassigning *which* supplier an item uses is as freely editable as every other
+  field, only curating the directory itself is admin/manager-gated. `manage/inventory`'s own "Export"
+  button (`exportInventoryCsv()`) is a separate, no-migration-needed addition alongside this one — a
+  friendly CSV of every item's current data plus its full activity history (one row per item, activity
+  log entries folded into a single newline-joined cell — see `shared/utils/inventory-export.ts`'s own
+  doc comment for why one file beats two correlated-by-id ones), reusing data this page already has
+  loaded rather than a new query.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power
 equipment) across matching `inventory_field_options`, plus a 4-pallet `inventory_item_containers`
 breakdown on one item and one `retirement_pending`/one `retired` row, so every stock-status and
-retirement-workflow state has an example out of the box. Every item also carries placeholder
-supplier info (a handful of fictional per-category suppliers — e.g. "Gatherwell Event Furniture
-Co." for the furniture rows — each with a lead time and an `https://*.example.com/order/...` link,
-`.example.com` being the reserved, non-resolving placeholder domain), a `digital_location`
-("Shared Drive > Inventory > <category> > <item>"), and an `applicable_year`, rather than leaving
-those null — `expiration_date` and `barcode` are still left null throughout, deliberately:
-expiration doesn't meaningfully apply to rental furniture/AV/tents, and a fabricated barcode risks
-colliding with the real barcode-scanning feature. `checked_out_to`/`retirement_requested_by`/
-`retired_by` are all left `null` since they're real FKs to `profiles` now and the seed doesn't
-create fake auth users. The hosted project's own org was reseeded to the same catalog directly (a
-one-off `supabase db query --linked` run against live data, not a migration — see git history for
-that commit's script and the later one that filled in the placeholder fields) rather than via this
-file, which only ever runs against a fresh local Docker instance.
+retirement-workflow state has an example out of the box. Every item also carries a placeholder
+supplier (a handful of fictional per-category `suppliers` rows — e.g. "Gatherwell Event Furniture
+Co." for the furniture rows, referenced via `supplier_id` — fixed demo ids, same "hardcode it since
+there's no authenticated caller for `current_user_org_id()` to default from" reasoning
+`organization_id`'s own id already needs), each item further carrying a lead time and an
+`https://*.example.com/order/...` link (`.example.com` being the reserved, non-resolving placeholder
+domain), a `digital_location` ("Shared Drive > Inventory > <category> > <item>"), and an
+`applicable_year`, rather than leaving those null — `expiration_date` and `barcode` are still left
+null throughout, deliberately: expiration doesn't meaningfully apply to rental furniture/AV/tents,
+and a fabricated barcode risks colliding with the real barcode-scanning feature.
+`checked_out_to`/`retirement_requested_by`/`retired_by` are all left `null` since they're real FKs to
+`profiles` now and the seed doesn't create fake auth users. The hosted project's own org was reseeded
+to the same catalog directly (a one-off `supabase db query --linked` run against live data, not a
+migration — see git history for that commit's script and the later one that filled in the placeholder
+fields) rather than via this file, which only ever runs against a fresh local Docker instance.
 
 **Important RLS constraint:** every signed-in user maps to the same Postgres role
 (`authenticated`) in Supabase — there's no separate DB role per app role. That means

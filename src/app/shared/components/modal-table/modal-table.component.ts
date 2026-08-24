@@ -23,10 +23,13 @@ import { SupabaseService } from '../../../core/supabase.service';
 import { NotificationService } from '../../../core/notification.service';
 import { InventoryFieldOptionsService } from '../../../core/inventory-field-options.service';
 import { SiteSettingsService } from '../../../core/site-settings.service';
+import { SupplierService } from '../../../core/supplier.service';
+import { Supplier } from '../../models/supplier.model';
 import { toIsoDateString, parseIsoDate } from '../../utils/date';
 import { loadInventoryActivityByItemId, logInventoryItemActivity } from '../../utils/inventory-item-activity';
 import { logActivity } from '../../utils/activity-log';
 import { profileDisplayName, resolveProfileAvatarKey, resolveProfileName } from '../../utils/profile-label';
+import { resolveSupplierName } from '../../utils/supplier-label';
 import {
   InventoryItemImageRecord,
   deleteInventoryItemImage,
@@ -96,6 +99,7 @@ export class ModalTableComponent implements OnInit {
   protected authService = inject(AuthService);
   protected inventoryFieldOptions = inject(InventoryFieldOptionsService);
   protected siteSettings = inject(SiteSettingsService);
+  protected supplierService = inject(SupplierService);
   private dialog = inject(MatDialog);
   private supabase = inject(SupabaseService).client;
   private notification = inject(NotificationService);
@@ -202,6 +206,23 @@ export class ModalTableComponent implements OnInit {
     return current && !approved.includes(current) ? [current, ...approved] : approved;
   }
 
+  /** Same "approved list plus the item's own current value" shape as
+   *  categoryOptions/physicalLocationOptions above, adapted for an id-keyed
+   *  list rather than a string one — if the item's supplierId isn't (or is
+   *  no longer) in the loaded directory, it's still included here using the
+   *  already-resolved data.supplierName label, so editing an item whose
+   *  supplier was since deleted doesn't silently blank the field out. */
+  get supplierOptions(): Supplier[] {
+    const list = this.supplierService.suppliers();
+    if (this.data.supplierId && !list.some(s => s.id === this.data.supplierId)) {
+      return [
+        { id: this.data.supplierId, name: this.data.supplierName, contactName: '', email: '', phone: '', website: '', notes: '' },
+        ...list
+      ];
+    }
+    return list;
+  }
+
   /** Org members eligible to be picked in the "Checked out to" selector.
    *  Loaded fresh on every startEdit() — cheap, and keeps this self-sufficient
    *  regardless of whether the parent component already loaded a profile list. */
@@ -220,7 +241,7 @@ export class ModalTableComponent implements OnInit {
     digitalLocation: new FormControl('', { nonNullable: true }),
     applicableYear: new FormControl('', { nonNullable: true }),
     expirationDate: new FormControl<Date | null>(null),
-    supplierName: new FormControl('', { nonNullable: true }),
+    supplierId: new FormControl<string | null>(null),
     supplierLeadTime: new FormControl('', { nonNullable: true }),
     orderLink: new FormControl('', { nonNullable: true }),
     checkedOutTo: new FormControl<string | null>(null),
@@ -513,7 +534,7 @@ export class ModalTableComponent implements OnInit {
       digitalLocation: this.data.digitalLocation,
       applicableYear: this.data.applicableYear,
       expirationDate: parseIsoDate(this.data.expirationDate),
-      supplierName: this.data.supplierName,
+      supplierId: this.data.supplierId,
       supplierLeadTime: this.data.supplierLeadTime,
       orderLink: this.data.orderLink,
       checkedOutTo: this.data.checkedOutToId,
@@ -532,7 +553,8 @@ export class ModalTableComponent implements OnInit {
     const [existingImages, { data: profiles }] = await Promise.all([
       loadInventoryItemImageRecords(this.supabase, this.data.id),
       this.supabase.from('profiles').select('*').order('full_name'),
-      this.inventoryFieldOptions.load()
+      this.inventoryFieldOptions.load(),
+      this.supplierService.load()
     ]);
     this.existingImages = existingImages;
     this.orgProfiles = profiles ?? [];
@@ -633,7 +655,7 @@ export class ModalTableComponent implements OnInit {
       digital_location: value.digitalLocation || null,
       applicable_year: value.applicableYear || null,
       expiration_date: toIsoDateString(value.expirationDate),
-      supplier_name: value.supplierName || null,
+      supplier_id: value.supplierId,
       supplier_lead_time: value.supplierLeadTime || null,
       order_link: value.orderLink || null,
       checked_out_to: value.checkedOutTo,
@@ -662,7 +684,8 @@ export class ModalTableComponent implements OnInit {
       digitalLocation: value.digitalLocation,
       applicableYear: value.applicableYear,
       expirationDate: toIsoDateString(value.expirationDate) ?? '',
-      supplierName: value.supplierName,
+      supplierId: value.supplierId,
+      supplierName: resolveSupplierName(value.supplierId, this.supplierService.suppliers()),
       supplierLeadTime: value.supplierLeadTime,
       orderLink: value.orderLink,
       isCheckedOut: value.checkedOutTo !== null,
@@ -852,7 +875,11 @@ export class ModalTableComponent implements OnInit {
     const after: Record<string, unknown> = {
       ...value,
       expirationDate: toIsoDateString(value.expirationDate) ?? '',
-      checkedOutTo: resolveProfileName(value.checkedOutTo, this.orgProfiles)
+      checkedOutTo: resolveProfileName(value.checkedOutTo, this.orgProfiles),
+      // Diffed by name, not the raw id `value` otherwise spreads in under
+      // this same key — "Supplier name (Old Co. → New Co.)" reads far
+      // better than a pair of uuids.
+      supplierName: resolveSupplierName(value.supplierId, this.supplierService.suppliers())
     };
 
     const changes: string[] = [];

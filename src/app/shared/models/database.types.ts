@@ -307,8 +307,8 @@ export type Database = {
           retirement_requested_at: string | null
           retirement_requested_by: string | null
           status: string
+          supplier_id: string | null
           supplier_lead_time: string | null
-          supplier_name: string | null
           updated_at: string
         }
         Insert: {
@@ -344,8 +344,8 @@ export type Database = {
           retirement_requested_at?: string | null
           retirement_requested_by?: string | null
           status?: string
+          supplier_id?: string | null
           supplier_lead_time?: string | null
-          supplier_name?: string | null
           updated_at?: string
         }
         Update: {
@@ -381,8 +381,8 @@ export type Database = {
           retirement_requested_at?: string | null
           retirement_requested_by?: string | null
           status?: string
+          supplier_id?: string | null
           supplier_lead_time?: string | null
-          supplier_name?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -419,6 +419,13 @@ export type Database = {
             columns: ["retirement_requested_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -547,6 +554,53 @@ export type Database = {
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suppliers: {
+        Row: {
+          contact_name: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          organization_id: string
+          phone: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          organization_id?: string
+          phone?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          organization_id?: string
+          phone?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]

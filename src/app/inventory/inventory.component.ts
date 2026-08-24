@@ -28,9 +28,11 @@ import { SupabaseService } from '../core/supabase.service';
 import { SiteSettingsService } from '../core/site-settings.service';
 import { InventoryFieldOptionsService } from '../core/inventory-field-options.service';
 import { NotificationService } from '../core/notification.service';
+import { SupplierService } from '../core/supplier.service';
 import { INVENTORY_TABLE_COLUMN_OPTIONS } from '../shared/models/inventory-table-column';
 import { toInventoryItem } from '../shared/utils/inventory-item.mapper';
 import { resolveProfileAvatarKey, resolveProfileName } from '../shared/utils/profile-label';
+import { resolveSupplierName } from '../shared/utils/supplier-label';
 import { loadInventoryImagesByItemId } from '../shared/utils/inventory-item-images';
 import { loadInventoryActivityByItemId, logInventoryItemActivity } from '../shared/utils/inventory-item-activity';
 import { logActivity } from '../shared/utils/activity-log';
@@ -78,6 +80,7 @@ export class InventoryComponent implements OnInit{
   private authService = inject(AuthService);
   private inventoryFieldOptions = inject(InventoryFieldOptionsService);
   private notification = inject(NotificationService);
+  private supplierService = inject(SupplierService);
 
   inventoryList: InventoryItem[] = [];
   isLoading = true;
@@ -463,7 +466,8 @@ export class InventoryComponent implements OnInit{
       resolveProfileAvatarKey(row.checked_out_to, this.profiles),
       resolveProfileName(row.retirement_requested_by, this.profiles),
       resolveProfileName(row.retired_by, this.profiles),
-      resolveProfileName(row.locked_by, this.profiles)
+      resolveProfileName(row.locked_by, this.profiles),
+      resolveSupplierName(row.supplier_id, this.supplierService.suppliers())
     );
 
     if (index === -1) {
@@ -479,9 +483,16 @@ export class InventoryComponent implements OnInit{
   private async loadInventory() {
     this.isLoading = true;
 
+    // supplierService.load() runs alongside the two queries below (not in
+    // ngOnInit's own Promise.all one level up) specifically so it's
+    // guaranteed to have landed before the toInventoryItem() mapping further
+    // down reads supplierService.suppliers() — sitting in the outer
+    // Promise.all instead would race this method's own query/mapping steps,
+    // with no guarantee suppliers finish loading first.
     const [{ data: items }, { data: profiles }] = await Promise.all([
       this.supabase.from('inventory_items').select('*').order('name'),
-      this.supabase.from('profiles').select('*').order('full_name')
+      this.supabase.from('profiles').select('*').order('full_name'),
+      this.supplierService.load()
     ]);
 
     const profileList = profiles ?? [];
@@ -502,7 +513,8 @@ export class InventoryComponent implements OnInit{
         resolveProfileAvatarKey(row.checked_out_to, profileList),
         resolveProfileName(row.retirement_requested_by, profileList),
         resolveProfileName(row.retired_by, profileList),
-        resolveProfileName(row.locked_by, profileList)
+        resolveProfileName(row.locked_by, profileList),
+        resolveSupplierName(row.supplier_id, this.supplierService.suppliers())
       )
     );
     this.isLoading = false;

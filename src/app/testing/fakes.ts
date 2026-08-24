@@ -5,7 +5,9 @@ import { AuthService, Profile } from '../core/auth.service';
 import { InventoryFieldName, InventoryFieldOptionsService } from '../core/inventory-field-options.service';
 import { SiteSettingsService } from '../core/site-settings.service';
 import { SupabaseService } from '../core/supabase.service';
+import { SupplierService } from '../core/supplier.service';
 import { InventoryItem, InventoryItemStatus } from '../shared/models/inventory-item.model';
+import { Supplier } from '../shared/models/supplier.model';
 import { DEFAULT_INVENTORY_TABLE_COLUMNS, InventoryTableColumnKey } from '../shared/models/inventory-table-column';
 import { DEFAULT_INVENTORY_FORM_FIELDS, InventoryFormFieldKey } from '../shared/models/inventory-form-field';
 import { Database } from '../shared/models/database.types';
@@ -129,6 +131,21 @@ export function createFakeInventoryFieldOptionsService(
   return fake as unknown as InventoryFieldOptionsService;
 }
 
+/** Mirrors createFakeInventoryFieldOptionsService's shape above — a signal-
+ *  backed list plus no-op writes, for any component that injects
+ *  SupplierService (the supplier picker on the item create/edit forms, and
+ *  manage/suppliers itself). */
+export function createFakeSupplierService(suppliers: Supplier[] = []): SupplierService {
+  const fake = {
+    suppliers: signal(suppliers).asReadonly(),
+    load: async () => {},
+    create: async () => null,
+    update: async () => null,
+    remove: async () => null,
+  };
+  return fake as unknown as SupplierService;
+}
+
 export function createFakeActivatedRoute(queryParams: Record<string, string> = {}): ActivatedRoute {
   return {
     snapshot: {
@@ -238,6 +255,7 @@ export function createTestInventoryItem(overrides: Partial<{
     '2024',
     '',
     '',
+    null,
     '',
     '',
     100,
@@ -279,7 +297,7 @@ export function createTestInventoryItemRow(overrides: Partial<InventoryItemRow> 
     digital_location: null,
     applicable_year: null,
     expiration_date: null,
-    supplier_name: null,
+    supplier_id: null,
     supplier_lead_time: null,
     order_link: null,
     quantity_total: 100,

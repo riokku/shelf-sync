@@ -148,6 +148,13 @@ const routes: Routes = [
     title: 'ShelfSync | Error Log'
   },
   {
+    path: 'manage/suppliers',
+    loadComponent: () => import('./manage/suppliers/manage-suppliers.component').then(m => m.ManageSuppliersComponent),
+    canActivate: [approvedGuard, manageGuard],
+    data: { breadcrumb: 'Suppliers', breadcrumbParent: MANAGE_BREADCRUMB_PARENT },
+    title: 'ShelfSync | Suppliers'
+  },
+  {
     path: 'manage/billing',
     loadComponent: () => import('./manage/billing/manage-billing.component').then(m => m.ManageBillingComponent),
     // adminGuard, not manageGuard — billing is financial information, same

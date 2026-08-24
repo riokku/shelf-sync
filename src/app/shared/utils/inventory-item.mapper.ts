@@ -11,7 +11,15 @@ export function toInventoryItem(
   checkedOutToAvatarKey: string | null = null,
   retirementRequestedByLabel = '',
   retiredByLabel = '',
-  lockedByLabel = ''
+  lockedByLabel = '',
+  // Resolved separately from the row (unlike every other field above) since
+  // supplier_name no longer exists on inventory_items — the item only
+  // stores supplier_id now, and its display name lives on the suppliers
+  // table (see resolveSupplierName()/SupplierService). Defaults to '' so
+  // the handful of callers that don't need it (e.g. TaskDetailModalComponent's
+  // lightweight related-item preview, which already skips the retirement/
+  // lock labels above for the same reason) don't have to pass anything.
+  supplierLabel = ''
 ): InventoryItem {
   const gallery = images.length > 0 ? images : (row.image ? [row.image] : []);
 
@@ -27,7 +35,8 @@ export function toInventoryItem(
     row.digital_location ?? '',
     row.applicable_year ?? '',
     row.expiration_date ?? '',
-    row.supplier_name ?? '',
+    supplierLabel,
+    row.supplier_id,
     row.supplier_lead_time ?? '',
     row.order_link ?? '',
     row.quantity_total,

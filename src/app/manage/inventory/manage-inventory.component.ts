@@ -16,6 +16,7 @@ import { NotificationService } from '../../core/notification.service';
 import { AuthService, Profile } from '../../core/auth.service';
 import { InventoryFieldOptionsService } from '../../core/inventory-field-options.service';
 import { SiteSettingsService } from '../../core/site-settings.service';
+import { SupplierService } from '../../core/supplier.service';
 import { InventoryFormFieldKey } from '../../shared/models/inventory-form-field';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { ModalTableComponent } from '../../shared/components/modal-table/modal-table.component';
@@ -26,6 +27,7 @@ import { ActivityLogEntry, MAX_INVENTORY_ITEM_IMAGES } from '../../shared/models
 import { toIsoDateString } from '../../shared/utils/date';
 import { toInventoryItem } from '../../shared/utils/inventory-item.mapper';
 import { resolveProfileAvatarKey, resolveProfileName } from '../../shared/utils/profile-label';
+import { resolveSupplierName } from '../../shared/utils/supplier-label';
 import { loadInventoryImagesByItemId, uploadInventoryItemImages } from '../../shared/utils/inventory-item-images';
 import { loadInventoryActivityByItemId } from '../../shared/utils/inventory-item-activity';
 import { sumContainerQuantity } from '../../shared/utils/inventory-item-containers';
@@ -33,6 +35,7 @@ import { logActivity } from '../../shared/utils/activity-log';
 import { BARCODE_FEATURE_ENABLED, parseItemQrValue } from '../../shared/utils/barcode';
 import { subscribeToTableChanges } from '../../shared/utils/realtime';
 import { FlashTracker } from '../../shared/utils/flash-tracker';
+import { buildInventoryExportCsv, downloadCsv } from '../../shared/utils/inventory-export';
 
 type InventoryItemRow = Database['public']['Tables']['inventory_items']['Row'];
 
@@ -62,6 +65,7 @@ export class ManageInventoryComponent implements OnInit {
   private authService = inject(AuthService);
   protected inventoryFieldOptions = inject(InventoryFieldOptionsService);
   protected siteSettings = inject(SiteSettingsService);
+  protected supplierService = inject(SupplierService);
   private dialog = inject(MatDialog);
   private notification = inject(NotificationService);
   private destroyRef = inject(DestroyRef);
@@ -139,7 +143,7 @@ export class ManageInventoryComponent implements OnInit {
     digitalLocation: new FormControl('', { nonNullable: true }),
     applicableYear: new FormControl('', { nonNullable: true }),
     expirationDate: new FormControl<Date | null>(null),
-    supplierName: new FormControl('', { nonNullable: true }),
+    supplierId: new FormControl<string | null>(null),
     supplierLeadTime: new FormControl('', { nonNullable: true }),
     orderLink: new FormControl('', { nonNullable: true }),
     quantityTotal: new FormControl(0, { nonNullable: true, validators: [Validators.required, Validators.min(0)] }),
@@ -178,7 +182,8 @@ export class ManageInventoryComponent implements OnInit {
   async ngOnInit() {
     await Promise.all([
       this.loadProfiles(),
-      this.inventoryFieldOptions.load()
+      this.inventoryFieldOptions.load(),
+      this.supplierService.load()
     ]);
     await this.loadInventoryItems();
 
@@ -237,6 +242,34 @@ export class ManageInventoryComponent implements OnInit {
     this.inventoryImagesByItemId = imagesByItemId;
     this.inventoryActivityByItemId = activityByItemId;
     this.isLoadingInventoryList = false;
+  }
+
+  /** Every item in the org, active/pending/retired alike — not just what's
+   *  currently visible on this page (this page has no filter/search of its
+   *  own to scope by) — with its full data plus complete activity history
+   *  folded into one row each, via toInventoryItem() + buildInventoryExportCsv()
+   *  (see that util's own doc comment for the CSV shape). Synchronous: every
+   *  input (allInventoryItems, the images/activity maps, profiles,
+   *  suppliers) is already loaded by the time this page is interactive. */
+  exportInventoryCsv() {
+    const suppliers = this.supplierService.suppliers();
+    const items = this.allInventoryItems.map(row =>
+      toInventoryItem(
+        row,
+        this.inventoryImagesByItemId.get(row.id) ?? [],
+        resolveProfileName(row.checked_out_to, this.assignableProfiles),
+        this.inventoryActivityByItemId.get(row.id) ?? [],
+        resolveProfileAvatarKey(row.checked_out_to, this.assignableProfiles),
+        resolveProfileName(row.retirement_requested_by, this.assignableProfiles),
+        resolveProfileName(row.retired_by, this.assignableProfiles),
+        resolveProfileName(row.locked_by, this.assignableProfiles),
+        resolveSupplierName(row.supplier_id, suppliers)
+      )
+    );
+
+    const csv = buildInventoryExportCsv(items);
+    const date = new Date().toISOString().slice(0, 10);
+    downloadCsv(`shelfsync-inventory-export-${date}.csv`, csv);
   }
 
   retirementRequesterLabel(item: InventoryItemRow): string {
@@ -308,7 +341,8 @@ export class ManageInventoryComponent implements OnInit {
         resolveProfileAvatarKey(row.checked_out_to, this.assignableProfiles),
         resolveProfileName(row.retirement_requested_by, this.assignableProfiles),
         resolveProfileName(row.retired_by, this.assignableProfiles),
-        resolveProfileName(row.locked_by, this.assignableProfiles)
+        resolveProfileName(row.locked_by, this.assignableProfiles),
+        resolveSupplierName(row.supplier_id, this.supplierService.suppliers())
       ),
       width: 'clamp(45rem, 78vw, 70rem)',
       maxWidth: '90vw',
@@ -465,7 +499,7 @@ export class ManageInventoryComponent implements OnInit {
       digital_location: value.digitalLocation || null,
       applicable_year: value.applicableYear || null,
       expiration_date: toIsoDateString(value.expirationDate),
-      supplier_name: value.supplierName || null,
+      supplier_id: value.supplierId,
       supplier_lead_time: value.supplierLeadTime || null,
       order_link: value.orderLink || null,
       quantity_total: quantityTotal,
