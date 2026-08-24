@@ -53,6 +53,12 @@ describe('PlaceOrderModalComponent', () => {
       component.itemSearchControl.setValue('table');
       expect(component.filteredItems).toEqual([ITEMS[1]]);
     });
+
+    it('also matches by id, so pasting an item\'s GUID finds it too', async () => {
+      await setup();
+      component.itemSearchControl.setValue('item-2');
+      expect(component.filteredItems).toEqual([ITEMS[1]]);
+    });
   });
 
   describe('onItemSelected()', () => {

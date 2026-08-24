@@ -106,7 +106,7 @@ export class ManageOrdersComponent implements OnInit {
   openPlaceOrder() {
     const dialogRef = this.dialog.open(PlaceOrderModalComponent, {
       data: { items: this.orderableItems },
-      width: 'clamp(28rem, 50vw, 34rem)',
+      width: 'clamp(32rem, 55vw, 40rem)',
       maxWidth: '90vw'
     });
 

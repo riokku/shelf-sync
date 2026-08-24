@@ -51,12 +51,17 @@ export class PlaceOrderModalComponent {
   itemSearchControl = new FormControl('', { nonNullable: true });
   selectedItem: OrderableItem | null = null;
 
+  // Matches by name or id — same dual match ManageTasksComponent's own
+  // related-item autocomplete uses, so pasting/typing an item's GUID finds
+  // it just as well as typing its name does.
   get filteredItems(): OrderableItem[] {
     const term = this.itemSearchControl.value.trim().toLowerCase();
     if (!term) {
       return this.data.items;
     }
-    return this.data.items.filter(item => item.name.toLowerCase().includes(term));
+    return this.data.items.filter(item =>
+      item.name.toLowerCase().includes(term) || item.id.toLowerCase().includes(term)
+    );
   }
 
   onItemSelected(event: MatAutocompleteSelectedEvent) {
