@@ -604,6 +604,47 @@ a PostgREST embedded-resource select — this app doesn't use those anywhere, ev
 list here correlates separately-queried rows by id instead (e.g. `ManageInventoryComponent`'s images/
 activity maps), and this follows the same convention rather than introducing a new one.
 
+Four in-app events now also send an email, via a new `send-notification-email` Edge Function
+(`supabase/functions/send-notification-email/`) backed by Resend: a task directly assigned to you on
+creation, a task transfer offered to you, an inventory item's retirement request needing admin/manager
+approval, and a new member's join request needing admin approval. Everything before this only ever
+showed up as an in-app badge/toast — see `NotificationService`'s own doc comment for why *those*
+in-app toasts are success-only; this is a separate, complementary channel for "you should know about
+this even if you're not looking at the app right now," not a replacement for them.
+
+Rather than the client calling the Edge Function after each action (which the app's activity-log
+writes already do, and which would've meant duplicating that call at every task-creation/transfer/
+retirement/signup site, *and* silently missing the case entirely for events like a new member's own
+signup — a **pending** member can't read org-scoped data at all under this schema's RLS, so *they*
+have no way to look up which admins to notify even if the client tried), this instead runs entirely
+server-side: four Postgres triggers (`add_notification_email_webhooks` migration), each scoped by its
+own `when (...)` clause to exactly the transition worth emailing about (e.g. `new.status =
+'retirement_pending' and old.status is distinct from 'retirement_pending'`, not "any inventory_items
+update"), call a shared `call_notification_webhook()` function that posts the changed row to the Edge
+Function via `pg_net` (`net.http_post` — async/queued, so it can't slow down or fail the write that
+triggered it). The Edge Function then queries for the right recipient(s) (the assignee/transfer
+target, or every approved admin/manager in the item's org, or every approved admin for a join
+request) using the `service_role` key Supabase injects into every Edge Function automatically, and
+calls Resend's API to actually send.
+
+The trigger's own call authenticates to the Edge Function with a purpose-built shared secret — not
+the far more powerful `service_role` key — checked by the function itself (`verify_jwt = false` in
+`config.toml`'s new `[functions.send-notification-email]` block, since there's no signed-in user's
+JWT to verify in this context anyway). That secret lives in Supabase Vault (`vault.decrypted_secrets`,
+read via `security definer` inside `call_notification_webhook()`) rather than the migration file
+itself — a trigger's arguments are always static literals, so embedding it directly in the `CREATE
+TRIGGER` call would mean committing it to the repo; the actual value was set once, directly against
+the hosted project (`vault.create_secret(...)`, run ad hoc — not a migration, same convention this
+app's other real/sensitive one-off values already follow) and mirrored as an Edge Function secret
+(`supabase secrets set WEBHOOK_SECRET=...`) so the function can check it matches. `RESEND_API_KEY` is
+a second Edge Function secret, set the same way. Neither is committed anywhere.
+
+No verified sending domain yet — emails go out from Resend's own shared `onboarding@resend.dev`
+address (works immediately, no DNS setup, but more likely to land in spam than a verified domain
+would); swap `FROM_ADDRESS` in the Edge Function once a real domain is verified with Resend. `APP_URL`
+is hardcoded to the Cloudflare Workers default (`https://shelf-sync.chrisistinson.workers.dev`) for
+the same reason `wrangler.jsonc` has no custom domain configured yet.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -647,6 +688,12 @@ activity maps), and this follows the same convention rather than introducing a n
   - `npm run supabase:migration:new <name>` — scaffold a new timestamped migration file
   - `npm run supabase:gen:types` — regenerate `src/app/shared/models/database.types.ts` from the
     linked project's schema
+  - `npx supabase functions deploy <name>` — deploy an Edge Function under `supabase/functions/`
+    (currently just `send-notification-email`, see Project Overview above) to the linked project; no
+    `npm run` wrapper for this one yet since it's only been needed once so far. Function secrets
+    (`RESEND_API_KEY`, `WEBHOOK_SECRET`) are set via `npx supabase secrets set NAME=value` — not
+    committed anywhere, and not visible again afterward (`supabase secrets list` shows a digest, not
+    the value).
 - Supabase, local Docker workflow (optional, only if Docker Desktop is available):
   - `npm run supabase:start` / `npm run supabase:stop` — start/stop local Postgres, Studio, Auth
   - `npm run supabase:reset` — reapply all migrations + `supabase/seed.sql` from scratch locally
@@ -1028,6 +1075,15 @@ yet on a hard refresh of `/inventory`.
   as a side effect of the first. `receive_inventory_item_order()` also logs to both
   `inventory_item_activity` and the org-wide `activity_log`, matching how the retirement RPCs already
   log to both from a single call.
+- `add_notification_email_webhooks` — enables `pg_net` and adds `call_notification_webhook()` plus
+  four triggers (`tasks` insert/update, `inventory_items` update, `profiles` insert), backing the
+  email notifications described above. Each trigger's own `when (...)` clause scopes it to exactly one
+  transition (e.g. a task's `pending_transfer_to` actually changing, not any task update) — `when` can
+  only reference `NEW`/`OLD`, not `TG_OP`, which is why direct task assignment (INSERT) and transfer
+  offers (UPDATE) need two separate triggers rather than one covering both. The shared secret
+  authenticating the Edge Function call is read from Vault (`vault.decrypted_secrets`) at call time,
+  not embedded in this migration — see the Project Overview paragraph above for why a trigger's static
+  arguments make that the only real option short of committing it.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

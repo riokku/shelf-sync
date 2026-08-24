@@ -385,6 +385,15 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# Called only by Database Webhook triggers (see the
+# add_notification_email_webhooks migration), never directly by a signed-in
+# user — there's no user JWT to verify in that context. Authenticated
+# instead by a shared secret the function checks itself (see its own doc
+# comment for why that's a deliberately lower-privilege credential than the
+# service_role key it uses internally once a call passes that check).
+[functions.send-notification-email]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
