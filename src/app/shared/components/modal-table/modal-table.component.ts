@@ -343,7 +343,7 @@ export class ModalTableComponent implements OnInit {
           this.data.retirementRequestedAt = new Date().toISOString();
 
           // Matches whichever path the RPC actually took server-side (see
-          // Customize > Workflow's "Require approval for retirement
+          // Settings > Workflow's "Require approval for retirement
           // requests" toggle) — otherwise a request made while approval
           // isn't required would show a stale "pending" state here even
           // though the item was already retired.

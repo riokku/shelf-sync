@@ -179,11 +179,11 @@ const routes: Routes = [
     title: 'ShelfSync | Danger Zone'
   },
   {
-    path: 'manage/customize',
-    loadComponent: () => import('./manage/customize/customize.component').then(m => m.CustomizeComponent),
+    path: 'manage/settings',
+    loadComponent: () => import('./manage/settings/settings.component').then(m => m.SettingsComponent),
     canActivate: [approvedGuard, adminGuard],
-    data: { breadcrumb: 'Customize', breadcrumbParent: MANAGE_BREADCRUMB_PARENT },
-    title: 'ShelfSync | Customize'
+    data: { breadcrumb: 'Settings', breadcrumbParent: MANAGE_BREADCRUMB_PARENT },
+    title: 'ShelfSync | Settings'
   },
   // Catches any URL that doesn't match a route above — must stay last.
   // Unguarded (reachable by a signed-out visitor too, see

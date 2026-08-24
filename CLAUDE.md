@@ -102,7 +102,7 @@ that already goes through a SECURITY DEFINER RPC (retirement, task transfers, `u
 the event and the change it describes commit atomically. The page defaults to today and steps
 one day at a time via `loadActivityLog()`'s `{ from, to }` range rather than infinite scroll.
 
-Admins get a `manage/customize` route (guarded by a dedicated `adminGuard`, stricter than the
+Admins get a `manage/settings` route (guarded by a dedicated `adminGuard`, stricter than the
 admin-or-manager `manageGuard` most of `manage`'s other sub-pages use, same stricter pairing
 Billing/Danger Zone already have) for site-wide branding: a color theme picker and a logo upload,
 both backed by the `site_settings` singleton table. Because Angular Material's `mat.theme()` is a
@@ -126,15 +126,15 @@ Unlike `lowStockCount`/`pendingManageCount` (this component's other two small co
 on auth changes and navigation), `onlineTeamCount` is *also* polled on a plain 30s `setInterval` —
 who's online changes with the mere passage of time, not just user actions, the same reasoning
 `ManageTeamComponent`'s own presence poll already has.
-The same `customize` route's Data tab holds three sections,
+The same `settings` route's Data tab holds three sections,
 each its own full-width card stacked top to bottom rather than side-by-side columns (an earlier
 two-column layout made whichever card held two sections force the page to the height of its
 *tallest* column, wasting the other column's width without actually shortening the page — full
 width instead lets every section's checkbox groups spread across more columns, which is what
 actually cuts down scrolling): "Filter data" (the field-options editors — approved category/
 physical-location *values*) and "Inventory data" (which optional fields appear on the "Create item"
-form) share one `.customize-card` (a divider between them, same pattern `.customize-section +
-.customize-section` uses on the Style tab), then "Table presentation" (which optional columns
+form) share one `.settings-card` (a divider between them, same pattern `.settings-section +
+.settings-section` uses on the Style tab), then "Table presentation" (which optional columns
 appear in the Inventory page's table view) gets its own. Both grouped-checkbox sections
 ("Inventory data"/"Table presentation") share `.table-column-groups`' CSS multi-column layout,
 sized by `column-width` rather than a fixed column count so it adapts to whatever width is actually
@@ -152,7 +152,7 @@ regardless. Selections are `site_settings.inventory_table_columns`, a plain text
 column-scoped grant needed (the existing admin-only, flat-row UPDATE policy already covers it) —
 new orgs default to the original four (Category, Physical location, Quantity remaining, Stock
 status) rather than every column at once. `shared/models/inventory-table-column.ts` defines the
-grouped option list/labels and canonical display order, shared by `CustomizeComponent` (grouped
+grouped option list/labels and canonical display order, shared by `SettingsComponent` (grouped
 checkboxes) and `InventoryComponent` (the `tableColumns` getter that filters that canonical order
 down to whatever's enabled, so the table's column order stays stable regardless of the order
 columns were toggled in; sorting reads whichever `InventoryItem` field matches the clicked column
@@ -298,7 +298,7 @@ rows collapse card view's simultaneous badges (retired, checked-out, low/out-of-
 retirement can all show at once there) into a single higher-priority status pill per row
 (`statusLabel()`/`statusSlug()`, also what "sort by status" sorts on) since a dense row has no room
 for more than one. Which optional columns the table shows (Category, Physical location, Quantity
-remaining, Stock status) is admin-configurable from `customize`'s Data tab, per the paragraph above.
+remaining, Stock status) is admin-configurable from `settings`'s Data tab, per the paragraph above.
 
 Low/out-of-stock items were previously only a per-item badge you'd notice while already browsing
 Inventory — `HeaderComponent`'s Inventory nav link and `HomeComponent`'s Inventory card now also
@@ -330,7 +330,7 @@ assets with no manufacturer barcode — scanning that label later resolves strai
 — the feature isn't fully set up to function yet, so every entry point checks this flag and renders
 nothing while it's off: `ManageInventoryComponent`'s create-form field/scan button,
 `ModalTableComponent`'s QR label button/barcode display row/edit field/scan button, and the
-"Barcode" checkbox in both of Customize > Data's grouped-field sections (excluded from
+"Barcode" checkbox in both of Settings > Data's grouped-field sections (excluded from
 `INVENTORY_FORM_FIELD_GROUPS`/`INVENTORY_TABLE_COLUMN_GROUPS` while the flag is false, so an admin
 can't toggle on a field that would render as nothing anyway). Deliberately a UI-only kill switch,
 not a removal — the column, migration, models, and both modal components stay fully in place so
@@ -343,11 +343,11 @@ needs it hidden regardless of what's stored.
 Retirement requests can either always need a second approver (today's original behavior) or
 retire immediately, an admin's choice via a per-org `site_settings.require_retirement_approval`
 toggle (default `true`, so every existing org keeps the original behavior unchanged) surfaced on a
-third `customize` tab, **Workflow** (`CustomizeComponent.viewMode` is now
+third `settings` tab, **Workflow** (`SettingsComponent.viewMode` is now
 `'style' | 'data' | 'workflow'`), the intended home for future org-behavior toggles alongside this
 first one — a `mat-slide-toggle` (this app's first use of that Material module), same local-
 selection/save-button/error/saved-flag pattern the Data tab's other settings already use. Every
-section's Save button across the whole Customize page (Theme, Table presentation, Inventory data,
+section's Save button across the whole Settings page (Theme, Table presentation, Inventory data,
 Retirement approval, Bulk edit) is wrapped in `@if` on that section's own `xChanged` getter — hidden
 outright when the local selection matches what's persisted, rather than rendered-but-disabled, since
 a button with nothing to do doesn't serve a purpose just sitting there. `isSavingX` alone still gates
@@ -389,10 +389,10 @@ back to the parent item at all — a real lock-bypass vector, since a locked ite
 `inventory_item_images`' policies already join through to the parent item for their own checks
 (which, on inspection, turned out to already be admin/manager-only and needed no change here).
 
-Every brief "it worked" confirmation across the app (task/item created, a Customize setting
+Every brief "it worked" confirmation across the app (task/item created, a Settings page setting
 saved) is a toast via `NotificationService.success()` (`core/notification.service.ts`, thin
 wrapper around `MatSnackBar` rendering `SuccessToastComponent`) rather than a `<p>` left sitting
-under the form — a handful of "Create task"/"Create item"/Customize save flows still used inline
+under the form — a handful of "Create task"/"Create item"/Settings save flows still used inline
 `@if (xSaved) { <p class="success-message">...</p> }` text (each gated by its own now-removed
 `xSaved` boolean, reset on every edit and every save attempt) until this was swept and converted
 for consistency with how every other success feedback in the app already worked (delete/approve/
@@ -516,7 +516,7 @@ checkbox's place instead (the actions row/content-projected buttons still appear
 `ManageTasksComponent`/`ManageTeamComponent` don't set this input and keep the toolbar's original
 built-in checkbox, since neither has a separate header-row control of its own to be redundant with.
 The feature itself (not just this session's own toggle state) can be turned off org-wide from
-Customize > Workflow's "Bulk edit" section — a second `.customize-section` alongside
+Settings > Workflow's "Bulk edit" section — a second `.settings-section` alongside
 `require_retirement_approval` in that same card, following its exact pattern (`site_settings.
 bulk_edit_enabled`, default `true`, local-selection/save-button/error pattern). When off,
 `InventoryComponent` hides the "Bulk edit" toggle control entirely (`@if (siteSettings.
@@ -646,7 +646,7 @@ would); swap `FROM_ADDRESS` in the Edge Function once a real domain is verified 
 is hardcoded to the Cloudflare Workers default (`https://shelf-sync.chrisistinson.workers.dev`) for
 the same reason `wrangler.jsonc` has no custom domain configured yet.
 
-Each of the four notification kinds above has its own org-wide on/off switch — Customize > Workflow's
+Each of the four notification kinds above has its own org-wide on/off switch — Settings > Workflow's
 "Email notifications" section (`site_settings.notify_task_assigned`/`notify_task_transfer`/
 `notify_retirement_request`/`notify_join_request`, all default `true`, preserving the
 unconditionally-on behavior every existing org already had before these switches existed), one
@@ -662,7 +662,7 @@ this actually send" as Edge Function logic means `call_notification_webhook()` s
 dispatcher no matter how many notification kinds/settings get added later, rather than growing a
 per-trigger branch to know which `site_settings` column to check.
 An "Enable all"/"Disable all" button pair sits above the four toggles
-(`CustomizeComponent.enableAllEmailNotifications()`/`disableAllEmailNotifications()`, both just
+(`SettingsComponent.enableAllEmailNotifications()`/`disableAllEmailNotifications()`, both just
 setting all four `selectedNotifyX` fields at once via a shared private `setAllEmailNotifications()`)
 so turning every kind on or off doesn't mean clicking each switch individually — each button
 disables itself once redundant (`allEmailNotificationsEnabled`/`allEmailNotificationsDisabled`
@@ -765,11 +765,11 @@ The app mixes two Angular module styles, which is important to know before addin
   a card hub (`ManageComponent`) linking to nine flat sibling routes — `manage/inventory`,
   `manage/tasks`, `manage/team`, `manage/activity`, `manage/error-log`, `manage/suppliers`,
   `manage/orders` (all `manageGuard`: admin OR manager) and `manage/billing`/`manage/danger-zone`/
-  `manage/customize` (`adminGuard`, stricter — financial info, org export/delete, and site-wide
+  `manage/settings` (`adminGuard`, stricter — financial info, org export/delete, and site-wide
   branding respectively) — rather than nested child routes, matching the rest of the app's flat
-  routing. `manage/customize` lives under `manage` (not its own top-level `customize` route) for
+  routing. `manage/settings` lives under `manage` (not its own top-level `settings` route) for
   the same reason as every other admin/manager tool here — it's reachable only via the Manage hub's
-  own Customize card, not a direct header nav link or Home card, matching Billing/Danger Zone's own
+  own Settings card, not a direct header nav link or Home card, matching Billing/Danger Zone's own
   precedent of being Manage-hub-only rather than duplicated elsewhere. Every route uses
   `loadComponent` rather than a top-level `component` import, so each page (and whatever it
   imports) only ships once actually navigated to instead of all bundling into one initial chunk;
@@ -789,7 +789,7 @@ core/
   supplier.service.ts     # SupplierService — org's supplier directory; load()/create()/update()/remove()
   guards/auth.guard.ts    # CanActivateFn — awaits authService.getSession() directly
   guards/manage.guard.ts  # admin OR manager
-  guards/admin.guard.ts   # admin only (manage/customize, manage/billing, manage/danger-zone)
+  guards/admin.guard.ts   # admin only (manage/settings, manage/billing, manage/danger-zone)
 header/, footer/                                           # standalone layout components; header has the logout button
 login/                                                      # standalone login screen, real Supabase auth
 register/                                                   # standalone signup screen, real Supabase auth
@@ -803,7 +803,7 @@ manage/                                                     # card hub (ManageCo
   error-log/                                                # admin/manager only: client_error_log viewer, see Supabase Schema section
   billing/                                                  # admin only: pre-Stripe preview of the org's plan/usage, see Project Overview above
   danger-zone/                                              # admin only: org data export + soft-delete (organizations.deleted_at)
-  customize/                                                # admin-only: theme picker + logo upload (site_settings) — see Project Overview above
+  settings/                                                # admin-only: theme picker + logo upload (site_settings) — see Project Overview above
 account/                                                    # profile info, avatar picker, light/dark mode toggle
 shared/
   components/modal-table/    # standalone Material dialog showing InventoryItem details
@@ -816,7 +816,7 @@ shared/
   models/supplier.model.ts   # Supplier — a directory entry inventory_items.supplier_id can point at
   models/inventory-item-order.model.ts # InventoryItemOrder — one restock order against an item's linked supplier
   models/theme-preset.ts     # THEME_PRESETS — key must match a [data-theme] block in styles.scss
-  models/inventory-table-column.ts # optional Inventory table-view columns admin can show/hide (Customize > Data)
+  models/inventory-table-column.ts # optional Inventory table-view columns admin can show/hide (Settings > Data)
   models/pricing-tier.ts     # PRICING_TIERS — shared by PricingComponent (/pricing) and ManageBillingComponent
   models/database.types.ts   # generated via `npm run supabase:gen:types` — regenerate, don't hand-edit
   utils/inventory-item.mapper.ts   # toInventoryItem(row, images, checkedOutToLabel, activityLog?, ..., supplierLabel?) — DB row -> InventoryItem
@@ -1014,7 +1014,7 @@ yet on a hard refresh of `/inventory`.
   policies here are any-authenticated-user — matching the widened `inventory_items` UPDATE grant
   this same item-detail-popup edit flow already rides on.
 - `add_site_settings_inventory_form_fields` — adds `site_settings.inventory_form_fields` (`text[]`,
-  `not null default` every field), backing Customize > Data's "Inventory data" section (see Project
+  `not null default` every field), backing Settings > Data's "Inventory data" section (see Project
   Overview above) — which optional fields show on the "Create item" form. Same reasoning as
   `add_site_settings_inventory_table_columns` for needing no RLS/grant changes; unlike that
   migration's intentionally-narrow four-column default, this one defaults to *every* field so an
@@ -1024,7 +1024,7 @@ yet on a hard refresh of `/inventory`.
   existing org) and a `create or replace` on `request_item_retirement()` (diffed against its
   `add_activity_log` version above, the latest at the time) that reads it and, when false, retires
   the item immediately instead of setting `retirement_pending` — see Project Overview above for the
-  full behavior and the new Customize > Workflow tab that surfaces it.
+  full behavior and the new Settings > Workflow tab that surfaces it.
 - `add_inventory_item_locking` — adds `inventory_items.is_locked`/`locked_by`/`locked_at` (all three
   excluded from the existing column grant, RPC-only) and `set_inventory_item_lock(item_id, locked)`
   (admin/manager only), plus a `with check` addition to the existing broad inventory-items UPDATE
@@ -1048,7 +1048,7 @@ yet on a hard refresh of `/inventory`.
   every subscriber, not just a leak-prevention gap.
 - `add_site_settings_bulk_edit_enabled` — adds `site_settings.bulk_edit_enabled` (`boolean not null
   default true`, preserving the Inventory page's Bulk edit feature as shipped for every existing org),
-  surfaced on Customize > Workflow's new "Bulk edit" section alongside `require_retirement_approval`.
+  surfaced on Settings > Workflow's new "Bulk edit" section alongside `require_retirement_approval`.
   Purely a client-side UI gate (`InventoryComponent` hides the toggle/checkboxes/toolbar outright when
   off, same treatment `BARCODE_FEATURE_ENABLED` already established) — no RPC/function changes needed,
   unlike `require_retirement_approval`'s own migration. No RLS/grant changes either: same reasoning as
@@ -1118,7 +1118,7 @@ yet on a hard refresh of `/inventory`.
   arguments make that the only real option short of committing it.
 - `add_site_settings_email_notification_toggles` — adds `site_settings.notify_task_assigned`/
   `notify_task_transfer`/`notify_retirement_request`/`notify_join_request` (all `boolean not null
-  default true`), backing Customize > Workflow's "Email notifications" section (described above). No
+  default true`), backing Settings > Workflow's "Email notifications" section (described above). No
   RLS/grant changes needed: same reasoning as every other `site_settings` column added this way — its
   UPDATE policy is already a flat, non-column-scoped "admin of own org" check, so new plain columns
   ride along under it.

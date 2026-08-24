@@ -3,7 +3,7 @@
  *  function yet, so every UI entry point for it is hidden while this stays
  *  false: ManageInventoryComponent's create-form field/scan button,
  *  ModalTableComponent's QR label button/barcode display row/edit field/
- *  scan button, and the "Barcode" checkbox in both of Customize > Data's
+ *  scan button, and the "Barcode" checkbox in both of Settings > Data's
  *  grouped-field sections (inventory-form-field.ts/inventory-table-column.ts
  *  both exclude the option from their groups while this is false). The
  *  underlying code — this file, BarcodeScannerModalComponent,
