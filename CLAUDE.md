@@ -349,6 +349,28 @@ counts out-of-stock items too (and, incidentally, any pending-retirement item, s
 only be requested at zero remaining), so a narrower-sounding "low stock" label undercounted what the
 number actually represented.
 
+A brand-new organization's Home page otherwise showed nothing but an empty card grid — nothing
+telling its founding admin what to actually do first. `HomeComponent` now also loads a "Getting
+started" checklist (three steps: add an inventory item, invite the team, create a task, each with
+its own count query and a "Go" link to the page that does it) above that grid, admin/manager-only
+(`authService.canManage()` — the same audience every one of the three steps' destination pages
+already requires; a plain staff member can't act on any of them, so `loadGettingStarted()` skips the
+whole thing entirely rather than showing an all-actionless list) and hidden once every step is done
+or this viewer has dismissed it. Team size is "any other approved-or-pending profile in the org"
+(`profiles` count excluding the caller's own id, via `authService.getSession()` directly rather than
+the `profile` signal, same signal-timing caveat this file's own `AuthService.session` note already
+covers elsewhere) rather than "approved only" — someone having joined via the invite link and simply
+awaiting approval is itself real progress on "invite your team," not nothing. `gettingStartedReady`
+gates the whole card's first render so a fully-set-up org's Home page doesn't flash the checklist
+into view for a moment before its real (all-done) counts arrive and hide it again. Dismissal
+(`dismissGettingStarted()`) is deliberately `localStorage`, not a `site_settings` column, even though
+every other org-wide toggle in this app is the latter — `site_settings`'s UPDATE policy is admin-only
+(see the Bulk edit/Workflow paragraphs above), so a manager could see and complete these steps but
+couldn't persist dismissing the card for everyone; keying it to the browser instead (per organization
+id, defensively — this app has no notion of one profile belonging to more than one org to actually
+collide on) means anyone who can see the card can also dismiss it, at the acceptable cost of a
+different teammate or device seeing it again until they do too.
+
 Inventory items can carry a `barcode` (manufacturer UPC/EAN scanned off a retail product, or a
 ShelfSync-generated QR label for an internal asset that never had one — see
 `shared/utils/barcode.ts`'s `buildItemQrValue()`/`parseItemQrValue()` for the encoding). The shared

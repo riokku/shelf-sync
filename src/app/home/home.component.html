@@ -6,6 +6,40 @@
     <h2>Welcome back{{ greetingName ? ', ' + greetingName + '!': '' }}</h2>
     <p class="home-subtitle">Where do you want to go?</p>
 
+    @if (showGettingStarted) {
+      <div class="getting-started-card">
+        <button
+            mat-icon-button
+            type="button"
+            class="getting-started-dismiss"
+            aria-label="Dismiss getting started"
+            (click)="dismissGettingStarted()"
+          >
+          <mat-icon>close</mat-icon>
+        </button>
+        <h3>Getting started</h3>
+        <p class="getting-started-subtitle">
+          {{ gettingStartedCompleteCount }} of {{ gettingStartedSteps.length }} done — a few things to set up your organization.
+        </p>
+        <ul class="getting-started-steps">
+          @for (step of gettingStartedSteps; track step.label) {
+            <li [class.done]="step.done">
+              <span class="getting-started-step-icon">
+                <mat-icon>{{ step.done ? 'check_circle' : step.icon }}</mat-icon>
+              </span>
+              <span class="getting-started-step-text">
+                <span class="getting-started-step-label">{{ step.label }}</span>
+                <span class="getting-started-step-description">{{ step.description }}</span>
+              </span>
+              @if (!step.done) {
+                <a mat-stroked-button [routerLink]="step.routerLink">Go</a>
+              }
+            </li>
+          }
+        </ul>
+      </div>
+    }
+
     <div class="home-grid">
       <a class="home-card" routerLink="/inventory">
         @if (restockCount > 0) {
