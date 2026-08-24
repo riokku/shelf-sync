@@ -2,15 +2,13 @@ export const environment = {
   production: false,
   supabaseUrl: 'https://ailqjqjrzhzspofoslpa.supabase.co',
   supabaseAnonKey: 'sb_publishable_TQGjim7HxESW-PQwX4slYw_m-ONzeEa',
-  // TODO: swap for the real Cloudflare Turnstile site key once one exists
-  // (Cloudflare dashboard > Turnstile > Add site — a single widget can list
-  // both the production hostname and `localhost`, so dev and prod can share
-  // one key, same as they already share one Supabase project). This is
-  // Cloudflare's own published "always passes" test key — safe to commit,
-  // but provides zero actual bot protection; see CLAUDE.md's Turnstile
-  // paragraph. The matching secret key, pasted into Supabase's Auth >
-  // Attack Protection settings, is what actually turns captcha enforcement
-  // on — until that's done, this key being real or fake makes no
-  // difference either way.
-  turnstileSiteKey: '1x00000000000000000000AA',
+  // The real Cloudflare Turnstile site key (public, safe to commit — see
+  // CLAUDE.md's Turnstile paragraph). Dev and prod share one Turnstile
+  // widget, same as they already share one Supabase project, so this value
+  // is identical in environment.prod.ts. The matching *secret* key never
+  // goes in this repo at all — it's pasted directly into Supabase's Auth >
+  // Attack Protection dashboard setting, which is what actually turns
+  // captcha enforcement on; until that's done, this real key still renders
+  // and gates the form correctly but doesn't provide real bot protection.
+  turnstileSiteKey: '0x4AAAAAAEam0AH1M1kDoJci',
 };
