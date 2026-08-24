@@ -210,151 +210,153 @@
       </div>
     } @else {
       <div class="settings-tab-content">
-        <div class="settings-card">
-          <section class="settings-section">
-            <h3>Retirement approval</h3>
-            <p class="section-hint">
-              When on, retiring an out-of-stock item always needs a second admin/manager to
-              approve or decline the request. Turn this off for a smaller team where that
-              second approval is just friction — retirement requests take effect immediately
-              instead.
-            </p>
-            <mat-slide-toggle
-                [checked]="selectedRequireRetirementApproval"
-                (change)="toggleRequireRetirementApproval($event.checked)"
-              >
-              Require approval for retirement requests
-            </mat-slide-toggle>
-            @if (requireRetirementApprovalError) {
-              <p class="error-message">{{ requireRetirementApprovalError }}</p>
-            }
-            @if (requireRetirementApprovalChanged) {
-              <button
-                  mat-flat-button
-                  color="primary"
-                  type="button"
-                  (click)="saveRequireRetirementApproval()"
-                  [disabled]="isSavingRequireRetirementApproval"
+        <div class="settings-workflow-columns">
+          <div class="settings-card">
+            <section class="settings-section">
+              <h3>Retirement approval</h3>
+              <p class="section-hint">
+                When on, retiring an out-of-stock item always needs a second admin/manager to
+                approve or decline the request. Turn this off for a smaller team where that
+                second approval is just friction — retirement requests take effect immediately
+                instead.
+              </p>
+              <mat-slide-toggle
+                  [checked]="selectedRequireRetirementApproval"
+                  (change)="toggleRequireRetirementApproval($event.checked)"
                 >
-                @if (isSavingRequireRetirementApproval) {
-                  <mat-spinner diameter="20"></mat-spinner>
-                } @else {
-                  <ng-container>
-                    <mat-icon>check</mat-icon>
-                    Save
-                  </ng-container>
-                }
-              </button>
-            }
-          </section>
-          <section class="settings-section">
-            <h3>Bulk edit</h3>
-            <p class="section-hint">
-              Lets any signed-in user select multiple inventory items at once for bulk
-              category/physical-location reassignment. Turn this off to hide the "Bulk edit"
-              toggle and every selection checkbox from the Inventory page entirely.
-            </p>
-            <mat-slide-toggle
-                [checked]="selectedBulkEditFeatureEnabled"
-                (change)="toggleBulkEditFeatureEnabled($event.checked)"
-              >
-              Allow bulk edit on the Inventory page
-            </mat-slide-toggle>
-            @if (bulkEditFeatureEnabledError) {
-              <p class="error-message">{{ bulkEditFeatureEnabledError }}</p>
-            }
-            @if (bulkEditFeatureEnabledChanged) {
-              <button
-                  mat-flat-button
-                  color="primary"
-                  type="button"
-                  (click)="saveBulkEditFeatureEnabled()"
-                  [disabled]="isSavingBulkEditFeatureEnabled"
+                Require approval for retirement requests
+              </mat-slide-toggle>
+              @if (requireRetirementApprovalError) {
+                <p class="error-message">{{ requireRetirementApprovalError }}</p>
+              }
+              @if (requireRetirementApprovalChanged) {
+                <button
+                    mat-flat-button
+                    color="primary"
+                    type="button"
+                    (click)="saveRequireRetirementApproval()"
+                    [disabled]="isSavingRequireRetirementApproval"
+                  >
+                  @if (isSavingRequireRetirementApproval) {
+                    <mat-spinner diameter="20"></mat-spinner>
+                  } @else {
+                    <ng-container>
+                      <mat-icon>check</mat-icon>
+                      Save
+                    </ng-container>
+                  }
+                </button>
+              }
+            </section>
+            <section class="settings-section">
+              <h3>Bulk edit</h3>
+              <p class="section-hint">
+                Lets any signed-in user select multiple inventory items at once for bulk
+                category/physical-location reassignment. Turn this off to hide the "Bulk edit"
+                toggle and every selection checkbox from the Inventory page entirely.
+              </p>
+              <mat-slide-toggle
+                  [checked]="selectedBulkEditFeatureEnabled"
+                  (change)="toggleBulkEditFeatureEnabled($event.checked)"
                 >
-                @if (isSavingBulkEditFeatureEnabled) {
-                  <mat-spinner diameter="20"></mat-spinner>
-                } @else {
-                  <ng-container>
-                    <mat-icon>check</mat-icon>
-                    Save
-                  </ng-container>
-                }
-              </button>
-            }
-          </section>
-        </div>
+                Allow bulk edit on the Inventory page
+              </mat-slide-toggle>
+              @if (bulkEditFeatureEnabledError) {
+                <p class="error-message">{{ bulkEditFeatureEnabledError }}</p>
+              }
+              @if (bulkEditFeatureEnabledChanged) {
+                <button
+                    mat-flat-button
+                    color="primary"
+                    type="button"
+                    (click)="saveBulkEditFeatureEnabled()"
+                    [disabled]="isSavingBulkEditFeatureEnabled"
+                  >
+                  @if (isSavingBulkEditFeatureEnabled) {
+                    <mat-spinner diameter="20"></mat-spinner>
+                  } @else {
+                    <ng-container>
+                      <mat-icon>check</mat-icon>
+                      Save
+                    </ng-container>
+                  }
+                </button>
+              }
+            </section>
+          </div>
 
-        <div class="settings-card">
-          <section class="settings-section">
-            <h3>Email notifications</h3>
-            <p class="section-hint">
-              Which events also send an email, on top of always showing up in-app. Turn any of
-              these off to keep that event in-app only.
-            </p>
-            <div class="email-notification-quick-actions">
-              <button
-                  mat-stroked-button
-                  type="button"
-                  (click)="enableAllEmailNotifications()"
-                  [disabled]="allEmailNotificationsEnabled"
+          <div class="settings-card">
+            <section class="settings-section">
+              <h3>Email notifications</h3>
+              <p class="section-hint">
+                Which events also send an email, on top of always showing up in-app. Turn any of
+                these off to keep that event in-app only.
+              </p>
+              <div class="email-notification-quick-actions">
+                <button
+                    mat-stroked-button
+                    type="button"
+                    (click)="enableAllEmailNotifications()"
+                    [disabled]="allEmailNotificationsEnabled"
+                  >
+                  Enable all
+                </button>
+                <button
+                    mat-stroked-button
+                    type="button"
+                    (click)="disableAllEmailNotifications()"
+                    [disabled]="allEmailNotificationsDisabled"
+                  >
+                  Disable all
+                </button>
+              </div>
+              <mat-slide-toggle
+                  [checked]="selectedNotifyTaskAssigned"
+                  (change)="toggleNotifyTaskAssigned($event.checked)"
                 >
-                Enable all
-              </button>
-              <button
-                  mat-stroked-button
-                  type="button"
-                  (click)="disableAllEmailNotifications()"
-                  [disabled]="allEmailNotificationsDisabled"
+                Task assigned directly to someone
+              </mat-slide-toggle>
+              <mat-slide-toggle
+                  [checked]="selectedNotifyTaskTransfer"
+                  (change)="toggleNotifyTaskTransfer($event.checked)"
                 >
-                Disable all
-              </button>
-            </div>
-            <mat-slide-toggle
-                [checked]="selectedNotifyTaskAssigned"
-                (change)="toggleNotifyTaskAssigned($event.checked)"
-              >
-              Task assigned directly to someone
-            </mat-slide-toggle>
-            <mat-slide-toggle
-                [checked]="selectedNotifyTaskTransfer"
-                (change)="toggleNotifyTaskTransfer($event.checked)"
-              >
-              Task transfer offered to someone
-            </mat-slide-toggle>
-            <mat-slide-toggle
-                [checked]="selectedNotifyRetirementRequest"
-                (change)="toggleNotifyRetirementRequest($event.checked)"
-              >
-              Retirement request needs approval
-            </mat-slide-toggle>
-            <mat-slide-toggle
-                [checked]="selectedNotifyJoinRequest"
-                (change)="toggleNotifyJoinRequest($event.checked)"
-              >
-              New join request needs approval
-            </mat-slide-toggle>
-            @if (emailNotificationsError) {
-              <p class="error-message">{{ emailNotificationsError }}</p>
-            }
-            @if (emailNotificationsChanged) {
-              <button
-                  mat-flat-button
-                  color="primary"
-                  type="button"
-                  (click)="saveEmailNotifications()"
-                  [disabled]="isSavingEmailNotifications"
+                Task transfer offered to someone
+              </mat-slide-toggle>
+              <mat-slide-toggle
+                  [checked]="selectedNotifyRetirementRequest"
+                  (change)="toggleNotifyRetirementRequest($event.checked)"
                 >
-                @if (isSavingEmailNotifications) {
-                  <mat-spinner diameter="20"></mat-spinner>
-                } @else {
-                  <ng-container>
-                    <mat-icon>check</mat-icon>
-                    Save
-                  </ng-container>
-                }
-              </button>
-            }
-          </section>
+                Retirement request needs approval
+              </mat-slide-toggle>
+              <mat-slide-toggle
+                  [checked]="selectedNotifyJoinRequest"
+                  (change)="toggleNotifyJoinRequest($event.checked)"
+                >
+                New join request needs approval
+              </mat-slide-toggle>
+              @if (emailNotificationsError) {
+                <p class="error-message">{{ emailNotificationsError }}</p>
+              }
+              @if (emailNotificationsChanged) {
+                <button
+                    mat-flat-button
+                    color="primary"
+                    type="button"
+                    (click)="saveEmailNotifications()"
+                    [disabled]="isSavingEmailNotifications"
+                  >
+                  @if (isSavingEmailNotifications) {
+                    <mat-spinner diameter="20"></mat-spinner>
+                  } @else {
+                    <ng-container>
+                      <mat-icon>check</mat-icon>
+                      Save
+                    </ng-container>
+                  }
+                </button>
+              }
+            </section>
+          </div>
         </div>
       </div>
     }
