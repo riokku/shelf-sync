@@ -36,6 +36,17 @@
   margin-bottom: 0;
 }
 
+// Groups the Select all checkbox with the Bulk edit toggle as one flex item
+// within .tasks-header-row's own space-between — without this wrapper,
+// space-between spreads all three of its direct children (the tab group,
+// the checkbox, the toggle) evenly across the row, stranding the checkbox
+// in the middle instead of glued to the toggle it's meant to sit beside.
+.bulk-edit-controls{
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
 // Same compact treatment InventoryComponent's own header-row "Select all"
 // checkbox uses next to its Bulk edit toggle — shrinks Material's oversized
 // invisible touch target via the same token .option-list already uses
