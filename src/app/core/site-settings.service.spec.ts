@@ -89,6 +89,10 @@ describe('SiteSettingsService', () => {
       expect(service.inventoryFormFields()).toEqual(DEFAULT_INVENTORY_FORM_FIELDS);
       expect(service.requireRetirementApproval()).toBe(true);
       expect(service.bulkEditFeatureEnabled()).toBe(true);
+      expect(service.notifyTaskAssigned()).toBe(true);
+      expect(service.notifyTaskTransfer()).toBe(true);
+      expect(service.notifyRetirementRequest()).toBe(true);
+      expect(service.notifyJoinRequest()).toBe(true);
       expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
     });
 
@@ -115,7 +119,11 @@ describe('SiteSettingsService', () => {
           inventory_table_columns: ['category', 'status'],
           inventory_form_fields: ['category', 'photos'],
           require_retirement_approval: false,
-          bulk_edit_enabled: false
+          bulk_edit_enabled: false,
+          notify_task_assigned: false,
+          notify_task_transfer: false,
+          notify_retirement_request: false,
+          notify_join_request: false
         }
       }, { profile });
 
@@ -127,6 +135,10 @@ describe('SiteSettingsService', () => {
       expect(service.inventoryFormFields()).toEqual(['category', 'photos'] as never);
       expect(service.requireRetirementApproval()).toBe(false);
       expect(service.bulkEditFeatureEnabled()).toBe(false);
+      expect(service.notifyTaskAssigned()).toBe(false);
+      expect(service.notifyTaskTransfer()).toBe(false);
+      expect(service.notifyRetirementRequest()).toBe(false);
+      expect(service.notifyJoinRequest()).toBe(false);
       expect(document.documentElement.getAttribute('data-theme')).toBe('ocean');
     });
   });
@@ -323,6 +335,55 @@ describe('SiteSettingsService', () => {
 
       expect(error).toBe('nope');
       expect(service.bulkEditFeatureEnabled()).toBe(true);
+    });
+  });
+
+  describe('updateEmailNotifications()', () => {
+    const settings = { taskAssigned: false, taskTransfer: true, retirementRequest: false, joinRequest: true };
+
+    it('refuses when signed out', async () => {
+      const { service, upsertSpy } = setup({}, { profile: null });
+
+      const error = await service.updateEmailNotifications(settings);
+
+      expect(error).toContain('signed in');
+      expect(upsertSpy).not.toHaveBeenCalled();
+    });
+
+    it('upserts all four columns in one call and updates all four signals', async () => {
+      const profile = createFakeProfile({ organization_id: 'org-1' });
+      const { service, upsertSpy } = setup({}, { profile });
+
+      const error = await service.updateEmailNotifications(settings);
+
+      expect(error).toBeNull();
+      expect(service.notifyTaskAssigned()).toBe(false);
+      expect(service.notifyTaskTransfer()).toBe(true);
+      expect(service.notifyRetirementRequest()).toBe(false);
+      expect(service.notifyJoinRequest()).toBe(true);
+      expect(upsertSpy).toHaveBeenCalledWith(
+        jasmine.objectContaining({
+          organization_id: 'org-1',
+          notify_task_assigned: false,
+          notify_task_transfer: true,
+          notify_retirement_request: false,
+          notify_join_request: true
+        }),
+        { onConflict: 'organization_id' }
+      );
+    });
+
+    it('returns the error message and leaves the signals untouched on failure', async () => {
+      const profile = createFakeProfile();
+      const { service } = setup({ upsertError: { message: 'nope' } }, { profile });
+
+      const error = await service.updateEmailNotifications(settings);
+
+      expect(error).toBe('nope');
+      expect(service.notifyTaskAssigned()).toBe(true);
+      expect(service.notifyTaskTransfer()).toBe(true);
+      expect(service.notifyRetirementRequest()).toBe(true);
+      expect(service.notifyJoinRequest()).toBe(true);
     });
   });
 

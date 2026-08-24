@@ -351,6 +351,71 @@ describe('CustomizeComponent', () => {
     });
   });
 
+  describe('workflow (email notifications)', () => {
+    it('initializes all four selections from the persisted settings', () => {
+      expect(component.selectedNotifyTaskAssigned).toBe(true);
+      expect(component.selectedNotifyTaskTransfer).toBe(true);
+      expect(component.selectedNotifyRetirementRequest).toBe(true);
+      expect(component.selectedNotifyJoinRequest).toBe(true);
+    });
+
+    it('each toggleNotifyX() updates just its own local selection', () => {
+      component.toggleNotifyTaskAssigned(false);
+      component.toggleNotifyJoinRequest(false);
+
+      expect(component.selectedNotifyTaskAssigned).toBe(false);
+      expect(component.selectedNotifyTaskTransfer).toBe(true);
+      expect(component.selectedNotifyRetirementRequest).toBe(true);
+      expect(component.selectedNotifyJoinRequest).toBe(false);
+    });
+
+    describe('emailNotificationsChanged', () => {
+      it('is false when every selection matches the persisted settings', () => {
+        expect(component.emailNotificationsChanged).toBe(false);
+      });
+
+      it('is true once any one of the four is toggled', () => {
+        component.toggleNotifyRetirementRequest(false);
+        expect(component.emailNotificationsChanged).toBe(true);
+      });
+    });
+
+    it('saveEmailNotifications() persists all four selections together and shows a success toast', async () => {
+      const updateSpy = spyOn(siteSettings, 'updateEmailNotifications').and.returnValue(Promise.resolve(null));
+      component.selectedNotifyTaskAssigned = false;
+      component.selectedNotifyRetirementRequest = false;
+
+      await component.saveEmailNotifications();
+
+      expect(updateSpy).toHaveBeenCalledWith({
+        taskAssigned: false,
+        taskTransfer: true,
+        retirementRequest: false,
+        joinRequest: true
+      });
+      expect(notificationSuccessSpy).toHaveBeenCalledWith('Saved for everyone');
+      expect(component.emailNotificationsError).toBeNull();
+    });
+
+    it('saveEmailNotifications() surfaces the error and shows no toast on failure', async () => {
+      spyOn(siteSettings, 'updateEmailNotifications').and.returnValue(Promise.resolve('nope'));
+
+      await component.saveEmailNotifications();
+
+      expect(component.emailNotificationsError).toBe('nope');
+      expect(notificationSuccessSpy).not.toHaveBeenCalled();
+    });
+
+    it('saveEmailNotifications() is a no-op while already saving', async () => {
+      const updateSpy = spyOn(siteSettings, 'updateEmailNotifications').and.returnValue(Promise.resolve(null));
+      component.isSavingEmailNotifications = true;
+
+      await component.saveEmailNotifications();
+
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe('logo', () => {
     function fakeFileInputEvent(file: File | null): Event {
       return { target: { files: file ? [file] : [], value: '' } } as unknown as Event;

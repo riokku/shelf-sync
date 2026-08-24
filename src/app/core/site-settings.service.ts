@@ -39,6 +39,20 @@ export class SiteSettingsService {
   private readonly _bulkEditFeatureEnabled = signal(true);
   readonly bulkEditFeatureEnabled = this._bulkEditFeatureEnabled.asReadonly();
 
+  // Per-org kill switches for each of the four email notification kinds
+  // (see Customize > Workflow's "Email notifications" section) — checked
+  // by the send-notification-email Edge Function itself, not read
+  // anywhere else client-side, but loaded here alongside every other
+  // site_settings field for the same single-source-of-truth reasons.
+  private readonly _notifyTaskAssigned = signal(true);
+  readonly notifyTaskAssigned = this._notifyTaskAssigned.asReadonly();
+  private readonly _notifyTaskTransfer = signal(true);
+  readonly notifyTaskTransfer = this._notifyTaskTransfer.asReadonly();
+  private readonly _notifyRetirementRequest = signal(true);
+  readonly notifyRetirementRequest = this._notifyRetirementRequest.asReadonly();
+  private readonly _notifyJoinRequest = signal(true);
+  readonly notifyJoinRequest = this._notifyJoinRequest.asReadonly();
+
   /** Loads the caller's own organization's settings row and applies the theme
    *  attribute. `site_settings` is per-organization and no longer readable by
    *  anon, so pre-login (and any signed-out state) just falls back to the
@@ -53,6 +67,10 @@ export class SiteSettingsService {
       this._inventoryFormFields.set(DEFAULT_INVENTORY_FORM_FIELDS);
       this._requireRetirementApproval.set(true);
       this._bulkEditFeatureEnabled.set(true);
+      this._notifyTaskAssigned.set(true);
+      this._notifyTaskTransfer.set(true);
+      this._notifyRetirementRequest.set(true);
+      this._notifyJoinRequest.set(true);
       this.applyTheme('default');
       return;
     }
@@ -73,6 +91,10 @@ export class SiteSettingsService {
     );
     this._requireRetirementApproval.set(data?.require_retirement_approval ?? true);
     this._bulkEditFeatureEnabled.set(data?.bulk_edit_enabled ?? true);
+    this._notifyTaskAssigned.set(data?.notify_task_assigned ?? true);
+    this._notifyTaskTransfer.set(data?.notify_task_transfer ?? true);
+    this._notifyRetirementRequest.set(data?.notify_retirement_request ?? true);
+    this._notifyJoinRequest.set(data?.notify_join_request ?? true);
     this.applyTheme(this._theme());
   }
 
@@ -211,6 +233,50 @@ export class SiteSettingsService {
     }
 
     this._bulkEditFeatureEnabled.set(enabled);
+    return null;
+  }
+
+  /** Bundles all four toggles into one upsert (the "Email notifications"
+   *  section has a single Save button covering the group, same pattern
+   *  updateInventoryTableColumns()/updateInventoryFormFields() already use
+   *  for their own multi-item selections) rather than four separate
+   *  single-field calls the way requireRetirementApproval/bulkEditFeatureEnabled
+   *  each get their own — those are independent settings; these four are
+   *  one conceptual group. */
+  async updateEmailNotifications(settings: {
+    taskAssigned: boolean;
+    taskTransfer: boolean;
+    retirementRequest: boolean;
+    joinRequest: boolean;
+  }): Promise<string | null> {
+    const session = await this.authService.getSession();
+    const organizationId = this.authService.organizationId();
+    if (!session || !organizationId) {
+      return 'You must be signed in to update this setting.';
+    }
+
+    const { error } = await this.supabase
+      .from('site_settings')
+      .upsert(
+        {
+          organization_id: organizationId,
+          notify_task_assigned: settings.taskAssigned,
+          notify_task_transfer: settings.taskTransfer,
+          notify_retirement_request: settings.retirementRequest,
+          notify_join_request: settings.joinRequest,
+          updated_by: session.user.id
+        },
+        { onConflict: 'organization_id' }
+      );
+
+    if (error) {
+      return error.message;
+    }
+
+    this._notifyTaskAssigned.set(settings.taskAssigned);
+    this._notifyTaskTransfer.set(settings.taskTransfer);
+    this._notifyRetirementRequest.set(settings.retirementRequest);
+    this._notifyJoinRequest.set(settings.joinRequest);
     return null;
   }
 

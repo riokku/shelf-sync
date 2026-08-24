@@ -645,6 +645,22 @@ would); swap `FROM_ADDRESS` in the Edge Function once a real domain is verified 
 is hardcoded to the Cloudflare Workers default (`https://shelf-sync.chrisistinson.workers.dev`) for
 the same reason `wrangler.jsonc` has no custom domain configured yet.
 
+Each of the four notification kinds above has its own org-wide on/off switch — Customize > Workflow's
+"Email notifications" section (`site_settings.notify_task_assigned`/`notify_task_transfer`/
+`notify_retirement_request`/`notify_join_request`, all default `true`, preserving the
+unconditionally-on behavior every existing org already had before these switches existed), one
+`mat-slide-toggle` per kind under a single shared Save button
+(`SiteSettingsService.updateEmailNotifications()` bundles all four into one upsert — same "one
+conceptual group, one save" shape `updateInventoryTableColumns()`/`updateInventoryFormFields()`
+already use for their own multi-item selections, distinct from `requireRetirementApproval`/
+`bulkEditFeatureEnabled`'s own one-setting-one-save shape just above it in that same tab). Checked
+inside the Edge Function itself (`isNotificationEnabled()`, one `site_settings` lookup per
+notification kind right before it would otherwise send) rather than on the Postgres trigger side —
+the triggers always fire regardless (`net.http_post` is async and cheap either way), so keeping "should
+this actually send" as Edge Function logic means `call_notification_webhook()` stays one dumb
+dispatcher no matter how many notification kinds/settings get added later, rather than growing a
+per-trigger branch to know which `site_settings` column to check.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -1084,6 +1100,12 @@ yet on a hard refresh of `/inventory`.
   authenticating the Edge Function call is read from Vault (`vault.decrypted_secrets`) at call time,
   not embedded in this migration — see the Project Overview paragraph above for why a trigger's static
   arguments make that the only real option short of committing it.
+- `add_site_settings_email_notification_toggles` — adds `site_settings.notify_task_assigned`/
+  `notify_task_transfer`/`notify_retirement_request`/`notify_join_request` (all `boolean not null
+  default true`), backing Customize > Workflow's "Email notifications" section (described above). No
+  RLS/grant changes needed: same reasoning as every other `site_settings` column added this way — its
+  UPDATE policy is already a flat, non-column-scoped "admin of own org" check, so new plain columns
+  ride along under it.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

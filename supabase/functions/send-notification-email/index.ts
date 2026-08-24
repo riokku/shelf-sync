@@ -138,8 +138,25 @@ async function orgEmailsByRole(organizationId: string, roles: string[]): Promise
   return (data ?? []).map(row => row.email as string);
 }
 
+/** Customize > Workflow's per-org "Email notifications" toggles — checked
+ *  here (not on the Postgres trigger side, which always fires regardless;
+ *  see the add_site_settings_email_notification_toggles migration's own
+ *  doc comment for why) right before each notification kind would
+ *  otherwise send. Defaults to true (same as the column's own DB default)
+ *  when there's no site_settings row yet for the org. */
+async function isNotificationEnabled(organizationId: string, column: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('site_settings')
+    .select(column)
+    .eq('organization_id', organizationId)
+    .maybeSingle();
+  const row = data as Record<string, boolean> | null;
+  return row?.[column] ?? true;
+}
+
 async function emailsForTaskChange(payload: WebhookPayload): Promise<EmailToSend[]> {
-  const record = payload.record as { title: string; assigned_to: string | null; pending_transfer_to: string | null } | null;
+  const record = payload.record as
+    { title: string; assigned_to: string | null; pending_transfer_to: string | null; organization_id: string } | null;
   const oldRecord = payload.old_record as { pending_transfer_to: string | null } | null;
   if (!record) {
     return [];
@@ -147,7 +164,7 @@ async function emailsForTaskChange(payload: WebhookPayload): Promise<EmailToSend
 
   const emails: EmailToSend[] = [];
 
-  if (payload.type === 'INSERT' && record.assigned_to) {
+  if (payload.type === 'INSERT' && record.assigned_to && await isNotificationEnabled(record.organization_id, 'notify_task_assigned')) {
     const assignee = await profileEmail(record.assigned_to);
     if (assignee) {
       emails.push({
@@ -163,7 +180,12 @@ async function emailsForTaskChange(payload: WebhookPayload): Promise<EmailToSend
     }
   }
 
-  if (payload.type === 'UPDATE' && record.pending_transfer_to && record.pending_transfer_to !== oldRecord?.pending_transfer_to) {
+  if (
+    payload.type === 'UPDATE' &&
+    record.pending_transfer_to &&
+    record.pending_transfer_to !== oldRecord?.pending_transfer_to &&
+    await isNotificationEnabled(record.organization_id, 'notify_task_transfer')
+  ) {
     const target = await profileEmail(record.pending_transfer_to);
     if (target) {
       emails.push({
@@ -187,6 +209,9 @@ async function emailsForRetirementRequest(payload: WebhookPayload): Promise<Emai
   if (!record || payload.type !== 'UPDATE' || record.status !== 'retirement_pending') {
     return [];
   }
+  if (!await isNotificationEnabled(record.organization_id, 'notify_retirement_request')) {
+    return [];
+  }
 
   const recipients = await orgEmailsByRole(record.organization_id, ['admin', 'manager']);
   return recipients.map(email => ({
@@ -205,6 +230,9 @@ async function emailsForJoinRequest(payload: WebhookPayload): Promise<EmailToSen
   const record = payload.record as
     { email: string; full_name: string | null; nickname: string | null; membership_status: string; organization_id: string } | null;
   if (!record || payload.type !== 'INSERT' || record.membership_status !== 'pending') {
+    return [];
+  }
+  if (!await isNotificationEnabled(record.organization_id, 'notify_join_request')) {
     return [];
   }
 

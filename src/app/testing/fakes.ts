@@ -88,6 +88,10 @@ export function createFakeSiteSettingsService(overrides: Partial<{
   inventoryFormFields: InventoryFormFieldKey[];
   requireRetirementApproval: boolean;
   bulkEditFeatureEnabled: boolean;
+  notifyTaskAssigned: boolean;
+  notifyTaskTransfer: boolean;
+  notifyRetirementRequest: boolean;
+  notifyJoinRequest: boolean;
 }> = {}): SiteSettingsService {
   const fake = {
     theme: signal(overrides.theme ?? 'default').asReadonly(),
@@ -96,6 +100,10 @@ export function createFakeSiteSettingsService(overrides: Partial<{
     inventoryFormFields: signal(overrides.inventoryFormFields ?? DEFAULT_INVENTORY_FORM_FIELDS).asReadonly(),
     requireRetirementApproval: signal(overrides.requireRetirementApproval ?? true).asReadonly(),
     bulkEditFeatureEnabled: signal(overrides.bulkEditFeatureEnabled ?? true).asReadonly(),
+    notifyTaskAssigned: signal(overrides.notifyTaskAssigned ?? true).asReadonly(),
+    notifyTaskTransfer: signal(overrides.notifyTaskTransfer ?? true).asReadonly(),
+    notifyRetirementRequest: signal(overrides.notifyRetirementRequest ?? true).asReadonly(),
+    notifyJoinRequest: signal(overrides.notifyJoinRequest ?? true).asReadonly(),
     load: async () => {},
     applyTheme: () => {},
     updateTheme: async () => null,
@@ -105,6 +113,7 @@ export function createFakeSiteSettingsService(overrides: Partial<{
     updateInventoryFormFields: async () => null,
     updateRequireRetirementApproval: async () => null,
     updateBulkEditFeatureEnabled: async () => null,
+    updateEmailNotifications: async () => null,
     loadLogoUrlForOrganization: async () => null,
   };
   return fake as unknown as SiteSettingsService;

@@ -71,6 +71,16 @@ export class CustomizeComponent implements OnInit, OnDestroy {
   isSavingBulkEditFeatureEnabled = false;
   bulkEditFeatureEnabledError: string | null = null;
 
+  // One group, one Save button — same reasoning SiteSettingsService's own
+  // updateEmailNotifications() doc comment gives for bundling these four
+  // into a single upsert.
+  selectedNotifyTaskAssigned = this.siteSettings.notifyTaskAssigned();
+  selectedNotifyTaskTransfer = this.siteSettings.notifyTaskTransfer();
+  selectedNotifyRetirementRequest = this.siteSettings.notifyRetirementRequest();
+  selectedNotifyJoinRequest = this.siteSettings.notifyJoinRequest();
+  isSavingEmailNotifications = false;
+  emailNotificationsError: string | null = null;
+
   get currentLogoUrl(): string | null {
     return this.logoPreviewUrl ?? this.siteSettings.logoUrl();
   }
@@ -107,6 +117,13 @@ export class CustomizeComponent implements OnInit, OnDestroy {
 
   get bulkEditFeatureEnabledChanged(): boolean {
     return this.selectedBulkEditFeatureEnabled !== this.siteSettings.bulkEditFeatureEnabled();
+  }
+
+  get emailNotificationsChanged(): boolean {
+    return this.selectedNotifyTaskAssigned !== this.siteSettings.notifyTaskAssigned()
+      || this.selectedNotifyTaskTransfer !== this.siteSettings.notifyTaskTransfer()
+      || this.selectedNotifyRetirementRequest !== this.siteSettings.notifyRetirementRequest()
+      || this.selectedNotifyJoinRequest !== this.siteSettings.notifyJoinRequest();
   }
 
   ngOnDestroy() {
@@ -228,6 +245,45 @@ export class CustomizeComponent implements OnInit, OnDestroy {
 
     if (error) {
       this.bulkEditFeatureEnabledError = error;
+      return;
+    }
+    this.notification.success('Saved for everyone');
+  }
+
+  toggleNotifyTaskAssigned(enabled: boolean) {
+    this.selectedNotifyTaskAssigned = enabled;
+  }
+
+  toggleNotifyTaskTransfer(enabled: boolean) {
+    this.selectedNotifyTaskTransfer = enabled;
+  }
+
+  toggleNotifyRetirementRequest(enabled: boolean) {
+    this.selectedNotifyRetirementRequest = enabled;
+  }
+
+  toggleNotifyJoinRequest(enabled: boolean) {
+    this.selectedNotifyJoinRequest = enabled;
+  }
+
+  async saveEmailNotifications() {
+    if (this.isSavingEmailNotifications) {
+      return;
+    }
+
+    this.isSavingEmailNotifications = true;
+    this.emailNotificationsError = null;
+
+    const error = await this.siteSettings.updateEmailNotifications({
+      taskAssigned: this.selectedNotifyTaskAssigned,
+      taskTransfer: this.selectedNotifyTaskTransfer,
+      retirementRequest: this.selectedNotifyRetirementRequest,
+      joinRequest: this.selectedNotifyJoinRequest
+    });
+    this.isSavingEmailNotifications = false;
+
+    if (error) {
+      this.emailNotificationsError = error;
       return;
     }
     this.notification.success('Saved for everyone');

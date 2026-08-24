@@ -582,6 +582,10 @@ export type Database = {
           inventory_form_fields: string[]
           inventory_table_columns: string[]
           logo_storage_path: string | null
+          notify_join_request: boolean
+          notify_retirement_request: boolean
+          notify_task_assigned: boolean
+          notify_task_transfer: boolean
           organization_id: string
           require_retirement_approval: boolean
           theme: string
@@ -594,6 +598,10 @@ export type Database = {
           inventory_form_fields?: string[]
           inventory_table_columns?: string[]
           logo_storage_path?: string | null
+          notify_join_request?: boolean
+          notify_retirement_request?: boolean
+          notify_task_assigned?: boolean
+          notify_task_transfer?: boolean
           organization_id: string
           require_retirement_approval?: boolean
           theme?: string
@@ -606,6 +614,10 @@ export type Database = {
           inventory_form_fields?: string[]
           inventory_table_columns?: string[]
           logo_storage_path?: string | null
+          notify_join_request?: boolean
+          notify_retirement_request?: boolean
+          notify_task_assigned?: boolean
+          notify_task_transfer?: boolean
           organization_id?: string
           require_retirement_approval?: boolean
           theme?: string
