@@ -102,8 +102,9 @@ that already goes through a SECURITY DEFINER RPC (retirement, task transfers, `u
 the event and the change it describes commit atomically. The page defaults to today and steps
 one day at a time via `loadActivityLog()`'s `{ from, to }` range rather than infinite scroll.
 
-Admins get a `customize` route (guarded by a dedicated `adminGuard`, stricter than the
-admin-or-manager `manageGuard`) for site-wide branding: a color theme picker and a logo upload,
+Admins get a `manage/customize` route (guarded by a dedicated `adminGuard`, stricter than the
+admin-or-manager `manageGuard` most of `manage`'s other sub-pages use, same stricter pairing
+Billing/Danger Zone already have) for site-wide branding: a color theme picker and a logo upload,
 both backed by the `site_settings` singleton table. Because Angular Material's `mat.theme()` is a
 compile-time SCSS mixin, runtime theme switching works by precompiling a handful of named palettes
 as `[data-theme='x']` blocks in `styles.scss` and toggling that attribute on `<html>` — see
@@ -660,6 +661,16 @@ the triggers always fire regardless (`net.http_post` is async and cheap either w
 this actually send" as Edge Function logic means `call_notification_webhook()` stays one dumb
 dispatcher no matter how many notification kinds/settings get added later, rather than growing a
 per-trigger branch to know which `site_settings` column to check.
+An "Enable all"/"Disable all" button pair sits above the four toggles
+(`CustomizeComponent.enableAllEmailNotifications()`/`disableAllEmailNotifications()`, both just
+setting all four `selectedNotifyX` fields at once via a shared private `setAllEmailNotifications()`)
+so turning every kind on or off doesn't mean clicking each switch individually — each button
+disables itself once redundant (`allEmailNotificationsEnabled`/`allEmailNotificationsDisabled`
+getters checked directly against the *local* selection, same "reflects the in-progress edit, not
+what's persisted" reasoning `emailNotificationsChanged` already uses one level up), leaving both
+enabled for a mixed selection. Neither button saves by itself — same as ticking an individual
+toggle, the shared Save button below only appears once `emailNotificationsChanged` is true, and the
+change isn't persisted until that's clicked.
 
 ## Tech Stack
 
@@ -750,14 +761,19 @@ The app mixes two Angular module styles, which is important to know before addin
   `@Component({ imports: [...] })` array rather than through a shared `NgModule`.
 - Routing (`app-routing.module.ts`) is flat — `''` → `LandingComponent`, `'login'` →
   `LoginComponent`, `'register'` → `RegisterComponent`, `'inventory'` → `InventoryComponent`
-  guarded by `approvedGuard` (plus `home`, `tasks`, `customize`, `account` — all similarly guarded,
-  `customize` also gated by `adminGuard`). `manage` is a card hub (`ManageComponent`) linking to
-  six flat sibling routes — `manage/inventory`, `manage/tasks`, `manage/team`, `manage/activity`,
-  `manage/error-log` (all `manageGuard`: admin OR manager) and `manage/danger-zone` (`adminGuard`,
-  stricter — org export/delete) — rather than nested child routes, matching the rest of the app's
-  flat routing. Every route uses `loadComponent` rather than a top-level `component` import, so
-  each page (and whatever it imports) only ships once actually navigated to instead of all
-  bundling into one initial chunk; no resolvers exist yet.
+  guarded by `approvedGuard` (plus `home`, `tasks`, `account` — all similarly guarded). `manage` is
+  a card hub (`ManageComponent`) linking to nine flat sibling routes — `manage/inventory`,
+  `manage/tasks`, `manage/team`, `manage/activity`, `manage/error-log`, `manage/suppliers`,
+  `manage/orders` (all `manageGuard`: admin OR manager) and `manage/billing`/`manage/danger-zone`/
+  `manage/customize` (`adminGuard`, stricter — financial info, org export/delete, and site-wide
+  branding respectively) — rather than nested child routes, matching the rest of the app's flat
+  routing. `manage/customize` lives under `manage` (not its own top-level `customize` route) for
+  the same reason as every other admin/manager tool here — it's reachable only via the Manage hub's
+  own Customize card, not a direct header nav link or Home card, matching Billing/Danger Zone's own
+  precedent of being Manage-hub-only rather than duplicated elsewhere. Every route uses
+  `loadComponent` rather than a top-level `component` import, so each page (and whatever it
+  imports) only ships once actually navigated to instead of all bundling into one initial chunk;
+  no resolvers exist yet.
 - `AppComponent.showChrome()` hides the shared `<app-header>`/`<app-footer>` chrome on an explicit
   path allowlist (landing, login, register, forgot-password, reset-password), not on a guard/data
   flag. **Any new unauthenticated/full-bleed page must be added to that allowlist too**, or it'll
@@ -773,7 +789,7 @@ core/
   supplier.service.ts     # SupplierService — org's supplier directory; load()/create()/update()/remove()
   guards/auth.guard.ts    # CanActivateFn — awaits authService.getSession() directly
   guards/manage.guard.ts  # admin OR manager
-  guards/admin.guard.ts   # admin only (Customize route, manage/danger-zone)
+  guards/admin.guard.ts   # admin only (manage/customize, manage/billing, manage/danger-zone)
 header/, footer/                                           # standalone layout components; header has the logout button
 login/                                                      # standalone login screen, real Supabase auth
 register/                                                   # standalone signup screen, real Supabase auth
@@ -787,7 +803,7 @@ manage/                                                     # card hub (ManageCo
   error-log/                                                # admin/manager only: client_error_log viewer, see Supabase Schema section
   billing/                                                  # admin only: pre-Stripe preview of the org's plan/usage, see Project Overview above
   danger-zone/                                              # admin only: org data export + soft-delete (organizations.deleted_at)
-customize/                                                  # admin-only: theme picker + logo upload (site_settings)
+  customize/                                                # admin-only: theme picker + logo upload (site_settings) — see Project Overview above
 account/                                                    # profile info, avatar picker, light/dark mode toggle
 shared/
   components/modal-table/    # standalone Material dialog showing InventoryItem details

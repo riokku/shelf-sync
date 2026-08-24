@@ -6,14 +6,14 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { InventoryFieldOptionsService } from '../core/inventory-field-options.service';
-import { NotificationService } from '../core/notification.service';
-import { SiteSettingsService } from '../core/site-settings.service';
-import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
-import { FieldOptionsEditorComponent } from '../shared/components/field-options-editor/field-options-editor.component';
-import { THEME_PRESETS } from '../shared/models/theme-preset';
-import { INVENTORY_TABLE_COLUMN_GROUPS, InventoryTableColumnKey } from '../shared/models/inventory-table-column';
-import { INVENTORY_FORM_FIELD_GROUPS, InventoryFormFieldKey } from '../shared/models/inventory-form-field';
+import { InventoryFieldOptionsService } from '../../core/inventory-field-options.service';
+import { NotificationService } from '../../core/notification.service';
+import { SiteSettingsService } from '../../core/site-settings.service';
+import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
+import { FieldOptionsEditorComponent } from '../../shared/components/field-options-editor/field-options-editor.component';
+import { THEME_PRESETS } from '../../shared/models/theme-preset';
+import { INVENTORY_TABLE_COLUMN_GROUPS, InventoryTableColumnKey } from '../../shared/models/inventory-table-column';
+import { INVENTORY_FORM_FIELD_GROUPS, InventoryFormFieldKey } from '../../shared/models/inventory-form-field';
 
 @Component({
   selector: 'app-customize',
@@ -264,6 +264,38 @@ export class CustomizeComponent implements OnInit, OnDestroy {
 
   toggleNotifyJoinRequest(enabled: boolean) {
     this.selectedNotifyJoinRequest = enabled;
+  }
+
+  /** Backs the "Enable all"/"Disable all" quick actions above the four
+   *  individual toggles — sets all four at once rather than making an admin
+   *  click each one when they just want every notification kind on or off. */
+  private setAllEmailNotifications(enabled: boolean) {
+    this.selectedNotifyTaskAssigned = enabled;
+    this.selectedNotifyTaskTransfer = enabled;
+    this.selectedNotifyRetirementRequest = enabled;
+    this.selectedNotifyJoinRequest = enabled;
+  }
+
+  enableAllEmailNotifications() {
+    this.setAllEmailNotifications(true);
+  }
+
+  disableAllEmailNotifications() {
+    this.setAllEmailNotifications(false);
+  }
+
+  get allEmailNotificationsEnabled(): boolean {
+    return this.selectedNotifyTaskAssigned
+      && this.selectedNotifyTaskTransfer
+      && this.selectedNotifyRetirementRequest
+      && this.selectedNotifyJoinRequest;
+  }
+
+  get allEmailNotificationsDisabled(): boolean {
+    return !this.selectedNotifyTaskAssigned
+      && !this.selectedNotifyTaskTransfer
+      && !this.selectedNotifyRetirementRequest
+      && !this.selectedNotifyJoinRequest;
   }
 
   async saveEmailNotifications() {

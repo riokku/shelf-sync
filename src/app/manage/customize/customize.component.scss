@@ -1,4 +1,4 @@
-@use '../shared/styles/page-toolbar';
+@use '../../shared/styles/page-toolbar';
 
 .customize-wrapper{
   color: var(--mat-sys-on-surface);
@@ -107,6 +107,16 @@
 }
 
 .theme-swatch-row{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+// Email notifications' "Enable all"/"Disable all" quick actions, sitting
+// above the four individual mat-slide-toggles below — same row/gap/margin
+// shape as .theme-swatch-row above.
+.email-notification-quick-actions{
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;

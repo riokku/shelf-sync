@@ -291,6 +291,24 @@
               Which events also send an email, on top of always showing up in-app. Turn any of
               these off to keep that event in-app only.
             </p>
+            <div class="email-notification-quick-actions">
+              <button
+                  mat-stroked-button
+                  type="button"
+                  (click)="enableAllEmailNotifications()"
+                  [disabled]="allEmailNotificationsEnabled"
+                >
+                Enable all
+              </button>
+              <button
+                  mat-stroked-button
+                  type="button"
+                  (click)="disableAllEmailNotifications()"
+                  [disabled]="allEmailNotificationsDisabled"
+                >
+                Disable all
+              </button>
+            </div>
             <mat-slide-toggle
                 [checked]="selectedNotifyTaskAssigned"
                 (change)="toggleNotifyTaskAssigned($event.checked)"

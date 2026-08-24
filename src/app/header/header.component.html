@@ -51,12 +51,6 @@
         Manage
       </a>
     }
-    @if (authService.role() === 'admin') {
-      <a mat-button routerLink="/customize" routerLinkActive="active">
-        <mat-icon>palette</mat-icon>
-        Customize
-      </a>
-    }
   </nav>
   <div class="header-actions">
     <button
@@ -160,12 +154,6 @@
         >
         <mat-icon>admin_panel_settings</mat-icon>
         Manage
-      </a>
-    }
-    @if (authService.role() === 'admin') {
-      <a mat-button routerLink="/customize" routerLinkActive="active">
-        <mat-icon>palette</mat-icon>
-        Customize
       </a>
     }
     <mat-divider></mat-divider>
