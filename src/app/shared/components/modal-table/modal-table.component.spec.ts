@@ -224,6 +224,7 @@ describe('ModalTableComponent', () => {
 
       const containerBuilder = createFakeQueryBuilder(options.containersTableResult ?? { data: [], error: null });
       const itemsBuilder = createFakeQueryBuilder({ data: [], error: options.itemsUpdateError ?? null });
+      const discardsBuilder = createFakeQueryBuilder({ data: [], error: null });
       const defaultBuilder = createFakeQueryBuilder({ data: [], error: null });
       const fakeSupabase = {
         client: {
@@ -233,6 +234,9 @@ describe('ModalTableComponent', () => {
             }
             if (table === 'inventory_items') {
               return itemsBuilder;
+            }
+            if (table === 'inventory_item_discards') {
+              return discardsBuilder;
             }
             return defaultBuilder;
           },
@@ -270,7 +274,7 @@ describe('ModalTableComponent', () => {
       if (options.quantityAllocated !== undefined) {
         discardComponent.data.quantityAllocated = options.quantityAllocated;
       }
-      return discardComponent;
+      return { discardComponent, discardsBuilder };
     }
 
     function performDiscard(component: ModalTableComponent, result: { quantity: number; reason: string; containerId: string | null }) {
@@ -278,7 +282,7 @@ describe('ModalTableComponent', () => {
     }
 
     it('decrements quantityRemaining/quantityTotal directly for a flat (no-container) discard', async () => {
-      const discardComponent = await setup({ quantityRemaining: 10, quantityTotal: 20 });
+      const { discardComponent } = await setup({ quantityRemaining: 10, quantityTotal: 20 });
 
       await performDiscard(discardComponent, { quantity: 3, reason: 'Water damage', containerId: null });
 
@@ -293,7 +297,7 @@ describe('ModalTableComponent', () => {
         { id: 'box-1', quantity: 7, location: null },
         { id: 'box-2', quantity: 5, location: null }
       ];
-      const discardComponent = await setup({
+      const { discardComponent } = await setup({
         quantityAllocated: 2,
         containersTableResult: { data: remainingContainers, error: null }
       });
@@ -307,7 +311,7 @@ describe('ModalTableComponent', () => {
     });
 
     it('requires a signed-in session', async () => {
-      const discardComponent = await setup({ hasSession: false });
+      const { discardComponent } = await setup({ hasSession: false });
 
       await performDiscard(discardComponent, { quantity: 3, reason: 'Water damage', containerId: null });
 
@@ -315,12 +319,26 @@ describe('ModalTableComponent', () => {
     });
 
     it('surfaces an inventory_items update error', async () => {
-      const discardComponent = await setup({ itemsUpdateError: { message: 'update failed' } });
+      const { discardComponent } = await setup({ itemsUpdateError: { message: 'update failed' } });
 
       await performDiscard(discardComponent, { quantity: 3, reason: 'Water damage', containerId: null });
 
       expect(discardComponent.discardError).toBe('update failed');
       expect(discardComponent.isDiscarding).toBeFalse();
+    });
+
+    it('also logs a structured discard row for reporting, alongside the free-text activity line', async () => {
+      const { discardComponent, discardsBuilder } = await setup({ quantityRemaining: 10, quantityTotal: 20 });
+      const insertSpy = spyOn(discardsBuilder as { insert: (...args: unknown[]) => unknown }, 'insert').and.callThrough();
+
+      await performDiscard(discardComponent, { quantity: 3, reason: 'Water damage', containerId: null });
+
+      expect(insertSpy).toHaveBeenCalledWith(jasmine.objectContaining({
+        item_id: discardComponent.data.id,
+        quantity: 3,
+        reason: 'Water damage',
+        container_id: null
+      }));
     });
   });
 });

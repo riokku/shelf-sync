@@ -29,6 +29,7 @@ import { Supplier } from '../../models/supplier.model';
 import { toIsoDateString, parseIsoDate } from '../../utils/date';
 import { loadInventoryActivityByItemId, logInventoryItemActivity } from '../../utils/inventory-item-activity';
 import { logActivity } from '../../utils/activity-log';
+import { logInventoryItemDiscard } from '../../utils/inventory-item-discards';
 import { profileDisplayName, resolveProfileAvatarKey, resolveProfileName } from '../../utils/profile-label';
 import { resolveSupplierName } from '../../utils/supplier-label';
 import {
@@ -526,6 +527,10 @@ export class ModalTableComponent implements OnInit {
 
     await logInventoryItemActivity(this.supabase, this.data.id, session.user.id, message);
     await logActivity(this.supabase, session.user.id, 'inventory_item', this.data.id, `${this.data.name}: ${message}`);
+    // Structured counterpart to the text log line above — see its own doc
+    // comment for why manage/reports needs this and the text log alone
+    // isn't enough. Best-effort, after the writes that actually matter.
+    await logInventoryItemDiscard(this.supabase, this.data.id, session.user.id, result.quantity, result.reason, result.containerId);
     await this.refreshActivityLog();
 
     this.isDiscarding = false;

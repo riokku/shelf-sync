@@ -60,6 +60,11 @@
         <h3>Error Log</h3>
         <p>Review errors your team has run into recently.</p>
       </a>
+      <a class="manage-card" routerLink="/manage/reports">
+        <mat-icon>bar_chart</mat-icon>
+        <h3>Reports</h3>
+        <p>Inventory value, stock movement, and task throughput.</p>
+      </a>
       @if (authService.role() === 'admin') {
         <a class="manage-card" routerLink="/manage/billing">
           <span class="permission-badge">
