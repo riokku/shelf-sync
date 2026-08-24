@@ -2,12 +2,12 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { CustomizeComponent } from './customize.component';
-import { SiteSettingsService } from '../core/site-settings.service';
-import { InventoryFieldOptionsService } from '../core/inventory-field-options.service';
-import { NotificationService } from '../core/notification.service';
-import { createFakeInventoryFieldOptionsService, createFakeSiteSettingsService } from '../testing/fakes';
-import { DEFAULT_INVENTORY_TABLE_COLUMNS } from '../shared/models/inventory-table-column';
-import { DEFAULT_INVENTORY_FORM_FIELDS } from '../shared/models/inventory-form-field';
+import { SiteSettingsService } from '../../core/site-settings.service';
+import { InventoryFieldOptionsService } from '../../core/inventory-field-options.service';
+import { NotificationService } from '../../core/notification.service';
+import { createFakeInventoryFieldOptionsService, createFakeSiteSettingsService } from '../../testing/fakes';
+import { DEFAULT_INVENTORY_TABLE_COLUMNS } from '../../shared/models/inventory-table-column';
+import { DEFAULT_INVENTORY_FORM_FIELDS } from '../../shared/models/inventory-form-field';
 
 describe('CustomizeComponent', () => {
   let component: CustomizeComponent;
@@ -367,6 +367,46 @@ describe('CustomizeComponent', () => {
       expect(component.selectedNotifyTaskTransfer).toBe(true);
       expect(component.selectedNotifyRetirementRequest).toBe(true);
       expect(component.selectedNotifyJoinRequest).toBe(false);
+    });
+
+    describe('enableAllEmailNotifications() / disableAllEmailNotifications()', () => {
+      it('enableAllEmailNotifications() sets all four selections to true', () => {
+        component.toggleNotifyTaskAssigned(false);
+        component.toggleNotifyJoinRequest(false);
+
+        component.enableAllEmailNotifications();
+
+        expect(component.selectedNotifyTaskAssigned).toBe(true);
+        expect(component.selectedNotifyTaskTransfer).toBe(true);
+        expect(component.selectedNotifyRetirementRequest).toBe(true);
+        expect(component.selectedNotifyJoinRequest).toBe(true);
+      });
+
+      it('disableAllEmailNotifications() sets all four selections to false', () => {
+        component.disableAllEmailNotifications();
+
+        expect(component.selectedNotifyTaskAssigned).toBe(false);
+        expect(component.selectedNotifyTaskTransfer).toBe(false);
+        expect(component.selectedNotifyRetirementRequest).toBe(false);
+        expect(component.selectedNotifyJoinRequest).toBe(false);
+      });
+
+      it('allEmailNotificationsEnabled/allEmailNotificationsDisabled reflect a uniform selection', () => {
+        component.enableAllEmailNotifications();
+        expect(component.allEmailNotificationsEnabled).toBe(true);
+        expect(component.allEmailNotificationsDisabled).toBe(false);
+
+        component.disableAllEmailNotifications();
+        expect(component.allEmailNotificationsEnabled).toBe(false);
+        expect(component.allEmailNotificationsDisabled).toBe(true);
+      });
+
+      it('allEmailNotificationsEnabled/allEmailNotificationsDisabled are both false for a mixed selection', () => {
+        component.toggleNotifyTaskAssigned(false);
+
+        expect(component.allEmailNotificationsEnabled).toBe(false);
+        expect(component.allEmailNotificationsDisabled).toBe(false);
+      });
     });
 
     describe('emailNotificationsChanged', () => {

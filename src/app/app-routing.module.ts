@@ -179,10 +179,10 @@ const routes: Routes = [
     title: 'ShelfSync | Danger Zone'
   },
   {
-    path: 'customize',
-    loadComponent: () => import('./customize/customize.component').then(m => m.CustomizeComponent),
+    path: 'manage/customize',
+    loadComponent: () => import('./manage/customize/customize.component').then(m => m.CustomizeComponent),
     canActivate: [approvedGuard, adminGuard],
-    data: { breadcrumb: 'Customize' },
+    data: { breadcrumb: 'Customize', breadcrumbParent: MANAGE_BREADCRUMB_PARENT },
     title: 'ShelfSync | Customize'
   },
   // Catches any URL that doesn't match a route above — must stay last.

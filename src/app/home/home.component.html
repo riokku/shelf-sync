@@ -34,17 +34,6 @@
           <p>Administer inventory, tasks, and your team.</p>
         </a>
       }
-      @if (authService.role() === 'admin') {
-        <a class="home-card" routerLink="/customize">
-          <span class="permission-badge">
-            <mat-icon>shield</mat-icon>
-            Admin
-          </span>
-          <mat-icon>palette</mat-icon>
-          <h3>Customize</h3>
-          <p>Branding and site settings.</p>
-        </a>
-      }
       <a class="home-card" routerLink="/account">
         <mat-icon>account_circle</mat-icon>
         <h3>Account</h3>
