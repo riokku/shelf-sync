@@ -101,6 +101,25 @@ async function sendEmail(email: EmailToSend) {
   }
 }
 
+/** Escapes a plain-text value (a task title, item name, or signup name —
+ *  every one of these is freely user-editable, and the join-request case is
+ *  reachable by a completely unauthenticated visitor via the public signup
+ *  form) before it's interpolated into an email's HTML body — emailShell()'s
+ *  own bodyHtml param is otherwise raw HTML with no escaping applied
+ *  anywhere in this file, so injecting markup/links into a real recipient's
+ *  inbox (a phishing vector, e.g. `<a href="...">` styled as a legitimate
+ *  CTA) took nothing more than naming a task or item, or signing up with a
+ *  crafted display name. Every call below wraps its interpolated value in
+ *  this — never the surrounding literal markup itself. */
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
 function emailShell(heading: string, bodyHtml: string, ctaLabel: string, ctaHref: string): string {
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 32rem; margin: 0 auto; color: #1a1a1a;">
@@ -172,7 +191,7 @@ async function emailsForTaskChange(payload: WebhookPayload): Promise<EmailToSend
         subject: `You've been assigned a task: ${record.title}`,
         html: emailShell(
           'New task assigned to you',
-          `You've been assigned <strong>${record.title}</strong> in ShelfSync.`,
+          `You've been assigned <strong>${escapeHtml(record.title)}</strong> in ShelfSync.`,
           'View task',
           `${APP_URL}/tasks`
         )
@@ -193,7 +212,7 @@ async function emailsForTaskChange(payload: WebhookPayload): Promise<EmailToSend
         subject: `A task has been offered to you: ${record.title}`,
         html: emailShell(
           'Task transfer offered',
-          `You've been offered <strong>${record.title}</strong> in ShelfSync. Accept it to add it to your queue.`,
+          `You've been offered <strong>${escapeHtml(record.title)}</strong> in ShelfSync. Accept it to add it to your queue.`,
           'View task',
           `${APP_URL}/tasks`
         )
@@ -219,7 +238,7 @@ async function emailsForRetirementRequest(payload: WebhookPayload): Promise<Emai
     subject: `Retirement request needs approval: ${record.name}`,
     html: emailShell(
       'Retirement request needs approval',
-      `<strong>${record.name}</strong> has a pending retirement request waiting for your review.`,
+      `<strong>${escapeHtml(record.name)}</strong> has a pending retirement request waiting for your review.`,
       'Review request',
       `${APP_URL}/manage/inventory`
     )
@@ -243,7 +262,7 @@ async function emailsForJoinRequest(payload: WebhookPayload): Promise<EmailToSen
     subject: `${requesterLabel} wants to join your organization`,
     html: emailShell(
       'New join request',
-      `<strong>${requesterLabel}</strong> (${record.email}) has requested to join your organization on ShelfSync.`,
+      `<strong>${escapeHtml(requesterLabel)}</strong> (${escapeHtml(record.email)}) has requested to join your organization on ShelfSync.`,
       'Review request',
       `${APP_URL}/manage/team`
     )
