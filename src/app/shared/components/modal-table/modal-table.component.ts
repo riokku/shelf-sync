@@ -521,16 +521,20 @@ export class ModalTableComponent implements OnInit {
       this.data.quantityTotal = newTotal;
     }
 
+    // "Reason:" for one, "Reasons:" for more than one — reads oddly
+    // pluralized otherwise ("Reason: Water damage, Wear and tear").
+    const reasonLabel = result.reasons.length > 1 ? 'Reasons' : 'Reason';
+    const reasonText = result.reasons.join(', ');
     const message = boxLabel
-      ? `Discarded ${result.quantity} units from ${boxLabel}. Reason: ${result.reason}`
-      : `Discarded ${result.quantity} units. Reason: ${result.reason}`;
+      ? `Discarded ${result.quantity} units from ${boxLabel}. ${reasonLabel}: ${reasonText}`
+      : `Discarded ${result.quantity} units. ${reasonLabel}: ${reasonText}`;
 
     await logInventoryItemActivity(this.supabase, this.data.id, session.user.id, message);
     await logActivity(this.supabase, session.user.id, 'inventory_item', this.data.id, `${this.data.name}: ${message}`);
     // Structured counterpart to the text log line above — see its own doc
     // comment for why manage/reports needs this and the text log alone
     // isn't enough. Best-effort, after the writes that actually matter.
-    await logInventoryItemDiscard(this.supabase, this.data.id, session.user.id, result.quantity, result.reason, result.containerId);
+    await logInventoryItemDiscard(this.supabase, this.data.id, session.user.id, result.quantity, result.reasons, result.containerId);
     await this.refreshActivityLog();
 
     this.isDiscarding = false;

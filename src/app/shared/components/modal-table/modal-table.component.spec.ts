@@ -277,14 +277,14 @@ describe('ModalTableComponent', () => {
       return { discardComponent, discardsBuilder };
     }
 
-    function performDiscard(component: ModalTableComponent, result: { quantity: number; reason: string; containerId: string | null }) {
+    function performDiscard(component: ModalTableComponent, result: { quantity: number; reasons: string[]; containerId: string | null }) {
       return (component as unknown as { performDiscard: (r: typeof result) => Promise<void> }).performDiscard(result);
     }
 
     it('decrements quantityRemaining/quantityTotal directly for a flat (no-container) discard', async () => {
       const { discardComponent } = await setup({ quantityRemaining: 10, quantityTotal: 20 });
 
-      await performDiscard(discardComponent, { quantity: 3, reason: 'Water damage', containerId: null });
+      await performDiscard(discardComponent, { quantity: 3, reasons: ['Water damage'], containerId: null });
 
       expect(discardComponent.data.quantityRemaining).toBe(7);
       expect(discardComponent.data.quantityTotal).toBe(17);
@@ -302,7 +302,7 @@ describe('ModalTableComponent', () => {
         containersTableResult: { data: remainingContainers, error: null }
       });
 
-      await performDiscard(discardComponent, { quantity: 3, reason: 'Damaged in transit', containerId: 'box-1' });
+      await performDiscard(discardComponent, { quantity: 3, reasons: ['Damaged in transit'], containerId: 'box-1' });
 
       const expectedRemaining = sumContainerQuantity(remainingContainers);
       expect(discardComponent.data.quantityRemaining).toBe(expectedRemaining);
@@ -313,7 +313,7 @@ describe('ModalTableComponent', () => {
     it('requires a signed-in session', async () => {
       const { discardComponent } = await setup({ hasSession: false });
 
-      await performDiscard(discardComponent, { quantity: 3, reason: 'Water damage', containerId: null });
+      await performDiscard(discardComponent, { quantity: 3, reasons: ['Water damage'], containerId: null });
 
       expect(discardComponent.discardError).toBe('You must be signed in to discard stock.');
     });
@@ -321,7 +321,7 @@ describe('ModalTableComponent', () => {
     it('surfaces an inventory_items update error', async () => {
       const { discardComponent } = await setup({ itemsUpdateError: { message: 'update failed' } });
 
-      await performDiscard(discardComponent, { quantity: 3, reason: 'Water damage', containerId: null });
+      await performDiscard(discardComponent, { quantity: 3, reasons: ['Water damage'], containerId: null });
 
       expect(discardComponent.discardError).toBe('update failed');
       expect(discardComponent.isDiscarding).toBeFalse();
@@ -331,12 +331,12 @@ describe('ModalTableComponent', () => {
       const { discardComponent, discardsBuilder } = await setup({ quantityRemaining: 10, quantityTotal: 20 });
       const insertSpy = spyOn(discardsBuilder as { insert: (...args: unknown[]) => unknown }, 'insert').and.callThrough();
 
-      await performDiscard(discardComponent, { quantity: 3, reason: 'Water damage', containerId: null });
+      await performDiscard(discardComponent, { quantity: 3, reasons: ['Water damage', 'Wear and tear'], containerId: null });
 
       expect(insertSpy).toHaveBeenCalledWith(jasmine.objectContaining({
         item_id: discardComponent.data.id,
         quantity: 3,
-        reason: 'Water damage',
+        reason: ['Water damage', 'Wear and tear'],
         container_id: null
       }));
     });

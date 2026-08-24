@@ -34,9 +34,13 @@
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Reason</mat-label>
       <mat-icon matPrefix>notes</mat-icon>
-      <textarea matInput placeholder="Why is this stock being discarded?" formControlName="reason" rows="2"></textarea>
-      @if (discardForm.controls.reason.hasError('required')) {
-        <mat-error>A reason is required.</mat-error>
+      <mat-select formControlName="reasons" multiple>
+        @for (reason of inventoryFieldOptions.optionsFor('discard_reason'); track reason) {
+          <mat-option [value]="reason">{{ reason }}</mat-option>
+        }
+      </mat-select>
+      @if (discardForm.controls.reasons.hasError('required')) {
+        <mat-error>Pick at least one reason.</mat-error>
       }
     </mat-form-field>
 

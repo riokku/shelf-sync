@@ -2,7 +2,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 
 import { DiscardModalComponent, DiscardModalData } from './discard-modal.component';
-import { createFakeMatDialogRef } from '../../../testing/fakes';
+import { InventoryFieldOptionsService } from '../../../core/inventory-field-options.service';
+import { createFakeInventoryFieldOptionsService, createFakeMatDialogRef } from '../../../testing/fakes';
 import { InventoryItemContainer } from '../../models/inventory-item-container.model';
 
 const CONTAINERS: InventoryItemContainer[] = [
@@ -23,13 +24,18 @@ describe('DiscardModalComponent', () => {
       imports: [DiscardModalComponent],
       providers: [
         { provide: MatDialogRef, useValue: dialogRef },
-        { provide: MAT_DIALOG_DATA, useValue: data }
+        { provide: MAT_DIALOG_DATA, useValue: data },
+        {
+          provide: InventoryFieldOptionsService,
+          useValue: createFakeInventoryFieldOptionsService({ discard_reason: ['Water damage', 'Damaged in transit'] })
+        }
       ]
     }).compileComponents();
 
     fixture = TestBed.createComponent(DiscardModalComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+    await fixture.whenStable();
   }
 
   it('should create', async () => {
@@ -45,30 +51,40 @@ describe('DiscardModalComponent', () => {
 
     it('rejects a quantity above what remains', async () => {
       await setup({ itemName: 'Frame Tent', quantityRemaining: 8, containers: [] });
-      component.discardForm.setValue({ containerId: null, quantity: 9, reason: 'Water damage' });
+      component.discardForm.setValue({ containerId: null, quantity: 9, reasons: ['Water damage'] });
 
       component.submit();
 
       expect(component.error).toBe('Only 8 available to discard.');
     });
 
-    it('requires a reason', async () => {
+    it('requires at least one reason', async () => {
       await setup({ itemName: 'Frame Tent', quantityRemaining: 8, containers: [] });
       component.discardForm.controls.quantity.setValue(2);
 
       component.submit();
 
-      expect(component.discardForm.controls.reason.hasError('required')).toBeTrue();
+      expect(component.discardForm.controls.reasons.hasError('required')).toBeTrue();
     });
 
-    it('closes with the discarded quantity/reason and a null containerId on success', async () => {
+    it('closes with the discarded quantity/reasons and a null containerId on success', async () => {
       await setup({ itemName: 'Frame Tent', quantityRemaining: 8, containers: [] });
       const closeSpy = spyOn(dialogRef, 'close');
-      component.discardForm.setValue({ containerId: null, quantity: 3, reason: 'Water damage' });
+      component.discardForm.setValue({ containerId: null, quantity: 3, reasons: ['Water damage'] });
 
       component.submit();
 
-      expect(closeSpy).toHaveBeenCalledWith({ quantity: 3, reason: 'Water damage', containerId: null });
+      expect(closeSpy).toHaveBeenCalledWith({ quantity: 3, reasons: ['Water damage'], containerId: null });
+    });
+
+    it('closes with every reason picked, for a multi-select', async () => {
+      await setup({ itemName: 'Frame Tent', quantityRemaining: 8, containers: [] });
+      const closeSpy = spyOn(dialogRef, 'close');
+      component.discardForm.setValue({ containerId: null, quantity: 3, reasons: ['Water damage', 'Damaged in transit'] });
+
+      component.submit();
+
+      expect(closeSpy).toHaveBeenCalledWith({ quantity: 3, reasons: ['Water damage', 'Damaged in transit'], containerId: null });
     });
   });
 
@@ -81,7 +97,7 @@ describe('DiscardModalComponent', () => {
     it('requires a box to be picked first', async () => {
       await setup({ itemName: 'Chiavari Chairs', quantityRemaining: 15, containers: CONTAINERS });
       component.discardForm.controls.quantity.setValue(2);
-      component.discardForm.controls.reason.setValue('Damaged in transit');
+      component.discardForm.controls.reasons.setValue(['Damaged in transit']);
 
       component.submit();
 
@@ -96,7 +112,7 @@ describe('DiscardModalComponent', () => {
 
     it('rejects a quantity above the picked box\'s own quantity', async () => {
       await setup({ itemName: 'Chiavari Chairs', quantityRemaining: 15, containers: CONTAINERS });
-      component.discardForm.setValue({ containerId: 'box-3', quantity: 6, reason: 'Damaged in transit' });
+      component.discardForm.setValue({ containerId: 'box-3', quantity: 6, reasons: ['Damaged in transit'] });
 
       component.submit();
 
@@ -106,11 +122,11 @@ describe('DiscardModalComponent', () => {
     it('closes with the picked box\'s id on success', async () => {
       await setup({ itemName: 'Chiavari Chairs', quantityRemaining: 15, containers: CONTAINERS });
       const closeSpy = spyOn(dialogRef, 'close');
-      component.discardForm.setValue({ containerId: 'box-1', quantity: 4, reason: 'Damaged in transit' });
+      component.discardForm.setValue({ containerId: 'box-1', quantity: 4, reasons: ['Damaged in transit'] });
 
       component.submit();
 
-      expect(closeSpy).toHaveBeenCalledWith({ quantity: 4, reason: 'Damaged in transit', containerId: 'box-1' });
+      expect(closeSpy).toHaveBeenCalledWith({ quantity: 4, reasons: ['Damaged in transit'], containerId: 'box-1' });
     });
   });
 
