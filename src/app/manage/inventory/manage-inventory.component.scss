@@ -234,15 +234,24 @@
 
 // Supplies .task-row's layout now that its own grid (shaped for the
 // since-removed "All inventory" list's columns) is gone — a simple
-// flexible-content-plus-fixed-actions row instead.
+// checkbox-plus-flexible-content-plus-fixed-actions row instead. No
+// bulk-edit-active toggle to gate the checkbox column the way
+// ManageTasksComponent's own .task-row does — bulk actions are always
+// available here, same as ManageTeamComponent's pending-join-requests list,
+// which has no such toggle either.
 .retirement-request-row{
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 1rem;
 
   .task-row-main{
+    flex: 1 1 auto;
+    min-width: 0;
     cursor: pointer;
+  }
+
+  mat-checkbox{
+    flex-shrink: 0;
   }
 }
 
