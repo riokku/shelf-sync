@@ -137,10 +137,11 @@ export class AuthService {
 
   /** `captchaToken` is optional only in the type sense — LoginComponent
    *  always has a real one by the time this is reachable (its Turnstile
-   *  widget gates the submit button itself); undefined here just means
-   *  "no captcha configured yet" locally, which Supabase's own
-   *  captcha-protection setting (off by default, hosted-project-only — see
-   *  CLAUDE.md) treats as fine either way. */
+   *  widget gates the submit button itself). Supabase's own captcha
+   *  protection is turned on for the hosted project (Auth > Attack
+   *  Protection dashboard setting — see CLAUDE.md), so an `undefined` here
+   *  isn't actually a supported path in production; the type stays optional
+   *  mainly so a test can call this without needing a real token. */
   async signIn(email: string, password: string, captchaToken?: string) {
     const { error } = await this.supabase.auth.signInWithPassword({ email, password, options: { captchaToken } });
     return error;
