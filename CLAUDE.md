@@ -691,6 +691,15 @@ would); swap `FROM_ADDRESS` in the Edge Function once a real domain is verified 
 is hardcoded to the Cloudflare Workers default (`https://shelf-sync.chrisistinson.workers.dev`) for
 the same reason `wrangler.jsonc` has no custom domain configured yet.
 
+Every user-controlled string that lands in one of these emails (a task title, an inventory item's
+name, a signup's `full_name`/`nickname`/`email` on the join-request kind — that last one reachable by
+a completely unauthenticated visitor via the public signup form, before any approval step) is run
+through `escapeHtml()` before being interpolated into `emailShell()`'s HTML body — caught in a
+`/security-review` pass: none of these were escaped originally, so naming a task/item, or just
+signing up with a crafted display name, could inject arbitrary markup (e.g. a spoofed CTA link) into
+an email a real admin/manager receives, a phishing vector. `ctaHref`/`ctaLabel`/`heading` never need
+it — every call site passes those as hardcoded string literals, never a record field.
+
 Each of the four notification kinds above has its own org-wide on/off switch — Settings > Workflow's
 "Email notifications" section (`site_settings.notify_task_assigned`/`notify_task_transfer`/
 `notify_retirement_request`/`notify_join_request`, all default `true`, preserving the
