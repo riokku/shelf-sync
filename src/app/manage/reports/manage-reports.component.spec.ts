@@ -163,10 +163,10 @@ describe('ManageReportsComponent', () => {
     it('totals discarded units and events, and finds the top 5 reasons by quantity', async () => {
       const component = await createComponent({
         discards: [
-          { item_id: 'item-1', quantity: 3, reason: 'Water damage' },
-          { item_id: 'item-1', quantity: 2, reason: 'Water damage' },
-          { item_id: 'item-2', quantity: 10, reason: 'Broken in transit' },
-          { item_id: 'item-2', quantity: 1, reason: 'Expired' }
+          { item_id: 'item-1', quantity: 3, reason: ['Water damage'] },
+          { item_id: 'item-1', quantity: 2, reason: ['Water damage'] },
+          { item_id: 'item-2', quantity: 10, reason: ['Broken in transit'] },
+          { item_id: 'item-2', quantity: 1, reason: ['Expired'] }
         ]
       });
 
@@ -177,9 +177,22 @@ describe('ManageReportsComponent', () => {
       expect(component.topDiscardReasons[1].primary).toBe(5);
     });
 
+    it('credits every selected reason with the full quantity, for a multi-reason discard', async () => {
+      const component = await createComponent({
+        discards: [{ item_id: 'item-1', quantity: 5, reason: ['Water damage', 'Wear and tear'] }]
+      });
+
+      const byLabel = new Map(component.topDiscardReasons.map(row => [row.label, row.primary]));
+      expect(byLabel.get('Water damage')).toBe(5);
+      expect(byLabel.get('Wear and tear')).toBe(5);
+      // Not double-counted in the totals — those are per discard event, not per reason.
+      expect(component.totalDiscardedUnits).toBe(5);
+      expect(component.discardEventCount).toBe(1);
+    });
+
     it('caps top reasons at 5', async () => {
       const component = await createComponent({
-        discards: Array.from({ length: 8 }, (_, i) => ({ item_id: 'item-1', quantity: 1, reason: `Reason ${i}` }))
+        discards: Array.from({ length: 8 }, (_, i) => ({ item_id: 'item-1', quantity: 1, reason: [`Reason ${i}`] }))
       });
 
       expect(component.topDiscardReasons.length).toBe(5);
@@ -192,9 +205,9 @@ describe('ManageReportsComponent', () => {
           item({ id: 'tent-1', category: 'Tents' })
         ],
         discards: [
-          { item_id: 'chair-1', quantity: 2, reason: 'Water damage' },
-          { item_id: 'tent-1', quantity: 1, reason: 'Ripped' },
-          { item_id: 'unknown-item', quantity: 4, reason: 'Lost' }
+          { item_id: 'chair-1', quantity: 2, reason: ['Water damage'] },
+          { item_id: 'tent-1', quantity: 1, reason: ['Ripped'] },
+          { item_id: 'unknown-item', quantity: 4, reason: ['Lost'] }
         ]
       });
 

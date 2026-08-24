@@ -76,12 +76,14 @@ this way never captures *why* — for that, `ModalTableComponent`'s "Discard" bu
 (`DiscardModalComponent`) covers both tracking modes with one mandatory-reason flow: a flat item
 decrements `quantity_remaining`/`quantity_total` directly, a container-tracked item instead prompts
 which box to pull from and decrements (then re-derives from) that container, same formula as a normal
-container edit — either way logging a reason-carrying line ("Discarded 3 units from Box 1. Reason:
-Water damage") to `inventory_item_activity`, *and* a structured row (`inventory_item_discards` —
-`item_id`, `container_id` nullable, `quantity`, `reason`, `discarded_by`, `discarded_at`) via the new
-`logInventoryItemDiscard()` alongside it, so `manage/reports`' "Stock movement & loss" section has a
-queryable quantity/reason/category to group by instead of having to regex-parse that free-text
-message — see that page's own paragraph below. This reinstates (in a unified shape) an original `DiscardInventoryModalComponent`
+container edit — either way logging a reason-carrying line ("Discarded 3 units from Box 1. Reasons:
+Water damage, Wear and tear" — "Reason:" singular when only one is picked) to
+`inventory_item_activity`, *and* a structured row (`inventory_item_discards` — `item_id`,
+`container_id` nullable, `quantity`, `reason` (a `text[]`, one or more entries — see the multi-select
+reasons paragraph below), `discarded_by`, `discarded_at`) via the new `logInventoryItemDiscard()`
+alongside it, so `manage/reports`' "Stock movement & loss" section has a queryable quantity/reason/
+category to group by instead of having to regex-parse that free-text message — see that page's own
+paragraph below. This reinstates (in a unified shape) an original `DiscardInventoryModalComponent`
 that only ever worked the flat-item way and was removed once container editing shipped as the
 (reason-less) way to reduce a container item's stock — leaving flat items with no reason-capturing
 path at all, the gap this closes. Same any-authenticated-user reach as every other edit on this item
@@ -792,16 +794,20 @@ there's no reason to waste the horizontal space a wide viewport already has. `al
 keeps both cards the same height regardless of which one's content happens to run longer.
 
 Admins and managers get a `manage/reports` route (`ManageReportsComponent`, `manageGuard`) — three
-full-width cards (not tabs; these are meant to be scanned together, unlike Settings' genuinely
-separate per-section save flows), each an all-time snapshot with no date-range picker yet:
-"Inventory value & stock health" (total $ value — `quantity_remaining` × an effective per-unit
-price, preferring `price_per_unit` but falling back to `price_per_container / quantity_per_container`
-for an item only ever priced "by the case" — plus active item/low-stock/out-of-stock counts, and
-value broken down by category and by physical location), "Stock movement & loss" (total units/events
-discarded, top reasons and discards-by-category from the new `inventory_item_discards` table — see
-its own paragraph above — plus retirement rate by category from `inventory_items.status`), and "Task
-throughput" (completion rate, overdue count, average days-to-close, and workload by assignee, all
-from `tasks`). Every stat is derived client-side from three plain queries
+cards (not tabs; these are meant to be scanned together, unlike Settings' genuinely separate
+per-section save flows), each an all-time snapshot with no date-range picker yet. "Inventory value &
+stock health" (the org's overall stock *position* — total $ value, `quantity_remaining` × an
+effective per-unit price, preferring `price_per_unit` but falling back to `price_per_container /
+quantity_per_container` for an item only ever priced "by the case" — plus active item/low-stock/
+out-of-stock counts, and value broken down by category and by physical location) sits alone on the
+left; "Stock movement & loss" (total units/events discarded, top reasons and discards-by-category
+from `inventory_item_discards` — see the Discard flow's own paragraph above, and the multi-select
+reasons paragraph just below — plus retirement rate by category from `inventory_items.status`) and
+"Task throughput" (completion rate, overdue count, average
+days-to-close, and workload by assignee, all from `tasks`) are both more "what's been *happening*"
+than "where things stand," so they stack together on the right (`.reports-columns` /
+`.reports-column-secondary`) rather than reading as three equally-weighted cards in a row. Every stat
+is derived client-side from three plain queries
 (`inventory_items`/`inventory_item_discards`/`tasks`, correlated by id the same way this app's other
 multi-entity pages already do — see e.g. `ManageInventoryComponent`'s own images/activity maps)
 rather than a bespoke RPC per number; this app has no precedent for server-side-aggregated reporting,
@@ -813,6 +819,23 @@ bumps `updated_at`. Every breakdown list (category, location, reason) shares one
 (`label`/`primary`/`itemCount`) so a single `barWidth()` method can scale every list's own
 `mat-progress-bar`s relative to that list's own largest value — the closest thing this page has to an
 actual bar chart, without pulling in a charting library for it.
+
+`DiscardModalComponent`'s reason field is a multi-select (`mat-select multiple`) drawing from an
+admin-curated list rather than free text, so "Top reasons" above groups on a real controlled
+vocabulary instead of however differently two people happened to phrase the same thing in a box —
+reuses `inventory_field_options` (a new `'discard_reason'` `field_name`, same admin-curated-list shape
+category/physical_location already have, surfaced the same way via `FieldOptionsEditorComponent` on
+Settings > Data, alongside them) rather than a dedicated table.
+`inventory_item_discards.reason` is now `text[]`, not `text` — a discard can carry more than one
+reason at once (e.g. "Water damage" *and* "Wear and tear"), and each selected reason gets full credit
+for the whole discarded quantity in the report's grouping rather than the combination becoming its
+own distinct bucket (`buildMovementAndLoss()` loops `discard.reason`, crediting every entry). Every
+organization that already existed got a starting list seeded on migration (`'Damaged'`, `'Lost or
+missing'`, `'Expired'`, `'Wear and tear'`, `'Other'`); `handle_new_user()` seeds the same list for a
+newly created org going forward (existing invite-join path is unaffected — only the org-creation
+branch needs this) — without either, discarding stock (previously always possible via free text)
+would suddenly require an admin to visit Settings and curate a list first, or nobody could discard
+anything at all.
 
 ## Tech Stack
 
@@ -1283,6 +1306,19 @@ yet on a hard refresh of `/inventory`.
   merely logs are already independently enforced (`is_locked` included) by their own existing
   policies. No UPDATE/DELETE grant at all — permanent, like every other audit-trail table in this
   schema.
+- `add_inventory_item_discard_reasons` — widens `inventory_field_options.field_name`'s check
+  constraint to also allow `'discard_reason'` (a check constraint can't be altered in place, same as
+  `add_more_avatar_presets`, so this drops and recreates it), backing `DiscardModalComponent`'s
+  reason field becoming a multi-select against that admin-curated list instead of free text. Changes
+  `inventory_item_discards.reason` from `text` to `text[]` (`alter column ... using array[reason]`
+  preserves every already-logged row as a one-element array) plus a `cardinality(reason) > 0` check,
+  since a discard can now carry more than one reason at once. Seeds a starting list (`'Damaged'`,
+  `'Lost or missing'`, `'Expired'`, `'Wear and tear'`, `'Other'`) for every organization that already
+  existed, and extends `handle_new_user()` (diffed against its `add_activity_log` version, the most
+  recent at the time, per this repo's own "diff against the previous version" lesson) to seed the
+  same list for a newly created org going forward — without either, discarding stock (previously
+  always possible via free text) would suddenly require an admin to curate a list first, or nobody
+  could discard anything at all.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

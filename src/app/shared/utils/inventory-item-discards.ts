@@ -4,29 +4,33 @@ import { Database } from '../models/database.types';
 type InventoryItemDiscardRow = Database['public']['Tables']['inventory_item_discards']['Row'];
 
 /** Structured counterpart to logInventoryItemActivity()'s free-text
- *  "Discarded N units... Reason: ..." line — written alongside it (not
+ *  "Discarded N units... Reason(s): ..." line — written alongside it (not
  *  instead of it) by ModalTableComponent.performDiscard(), so the item's
  *  own activity history keeps reading exactly as it always has while
  *  manage/reports' "Stock movement & loss" section gets a queryable
- *  quantity/reason/category to group by. Best-effort: a failure here
- *  shouldn't undo or block the discard itself (which has already
- *  succeeded by the time this is called), only leave that one event
- *  missing from the aggregate report — same "logging must never block the
- *  action it's describing" reasoning this app's other audit-trail writes
- *  already follow. */
+ *  quantity/reason/category to group by. `reasons` (plural — a multi-select
+ *  against Settings > Data's admin-curated "Discard reasons" list, not free
+ *  text) is stored as-is in the `reason` array column: each entry counts
+ *  toward its own total in the report rather than the whole combination
+ *  becoming its own distinct bucket. Best-effort: a failure here shouldn't
+ *  undo or block the discard itself (which has already succeeded by the
+ *  time this is called), only leave that one event missing from the
+ *  aggregate report — same "logging must never block the action it's
+ *  describing" reasoning this app's other audit-trail writes already
+ *  follow. */
 export async function logInventoryItemDiscard(
   supabase: SupabaseClient<Database>,
   itemId: string,
   userId: string,
   quantity: number,
-  reason: string,
+  reasons: string[],
   containerId: string | null
 ): Promise<void> {
   await supabase.from('inventory_item_discards').insert({
     item_id: itemId,
     discarded_by: userId,
     quantity,
-    reason,
+    reason: reasons,
     container_id: containerId
   });
 }

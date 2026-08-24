@@ -179,7 +179,7 @@ export class ManageReportsComponent implements OnInit {
 
   private buildMovementAndLoss(
     items: InventoryItemReportRow[],
-    discards: { item_id: string; quantity: number; reason: string }[]
+    discards: { item_id: string; quantity: number; reason: string[] }[]
   ) {
     const categoryByItemId = new Map(items.map(item => [item.id, item.category || UNCATEGORIZED]));
 
@@ -189,10 +189,17 @@ export class ManageReportsComponent implements OnInit {
     const reasonRows = new Map<string, BreakdownRow>();
     const categoryRows = new Map<string, BreakdownRow>();
     for (const discard of discards) {
-      const reasonRow = reasonRows.get(discard.reason) ?? { label: discard.reason, primary: 0, itemCount: 0 };
-      reasonRow.primary += discard.quantity;
-      reasonRow.itemCount += 1;
-      reasonRows.set(discard.reason, reasonRow);
+      // A discard event can carry more than one reason at once (e.g. "Water
+      // damage" and "Wear and tear") — each selected reason gets full
+      // credit for the event's whole quantity, rather than splitting it
+      // between them, since every reason genuinely applied to the whole
+      // batch that was discarded, not just a fraction of it.
+      for (const reason of discard.reason) {
+        const reasonRow = reasonRows.get(reason) ?? { label: reason, primary: 0, itemCount: 0 };
+        reasonRow.primary += discard.quantity;
+        reasonRow.itemCount += 1;
+        reasonRows.set(reason, reasonRow);
+      }
 
       const category = categoryByItemId.get(discard.item_id) ?? UNCATEGORIZED;
       const categoryRow = categoryRows.get(category) ?? { label: category, primary: 0, itemCount: 0 };

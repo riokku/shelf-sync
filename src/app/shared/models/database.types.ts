@@ -249,7 +249,7 @@ export type Database = {
           id: string
           item_id: string
           quantity: number
-          reason: string
+          reason: string[]
         }
         Insert: {
           container_id?: string | null
@@ -258,7 +258,7 @@ export type Database = {
           id?: string
           item_id: string
           quantity: number
-          reason: string
+          reason: string[]
         }
         Update: {
           container_id?: string | null
@@ -267,7 +267,7 @@ export type Database = {
           id?: string
           item_id?: string
           quantity?: number
-          reason?: string
+          reason?: string[]
         }
         Relationships: [
           {

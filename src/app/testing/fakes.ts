@@ -128,7 +128,8 @@ export function createFakeInventoryFieldOptionsService(
 ): InventoryFieldOptionsService {
   const resolved: Record<InventoryFieldName, string[]> = {
     category: options.category ?? [],
-    physical_location: options.physical_location ?? []
+    physical_location: options.physical_location ?? [],
+    discard_reason: options.discard_reason ?? []
   };
   const fake = {
     optionsFor: (field: InventoryFieldName) => resolved[field],

@@ -27,13 +27,41 @@
   padding: 3rem 0;
 }
 
+// Inventory value & stock health (the org's overall stock position) sits on
+// its own on the left; Stock movement/loss and Task throughput — both more
+// "what's been happening" than "where things stand" — stack together on
+// the right, so the two are visually grouped as a pair rather than reading
+// as three equally-weighted cards in a row. align-items: flex-start (not
+// stretch) since there's no single "which side is taller" comparison the
+// way e.g. Customize > Workflow's two same-shape cards have — the right
+// column's own two cards already stack to roughly match the left card's
+// height without forcing it.
+.reports-columns{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1.5rem;
+
+  > .report-card,
+  > .reports-column-secondary{
+    flex: 1 1 22rem;
+  }
+}
+
+.reports-column-secondary{
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
 // Same shape as ManageBillingComponent's own .billing-card/.billing-section
-// pair — full-width cards stacked, not tabs (see this component's own doc
-// comment for why), each holding one section's stat tiles plus whichever
-// breakdown lists it has.
+// pair, each holding one section's stat tiles plus whichever breakdown
+// lists it has. Spacing between cards comes entirely from the flex `gap`s
+// above (both when a card sits directly in .reports-columns and when it's
+// one of the two stacked inside .reports-column-secondary), not a margin
+// on the card itself.
 .report-card{
   max-width: 48rem;
-  margin-bottom: 1.5rem;
   padding: 1.75rem 2rem;
   background: var(--mat-sys-surface-container-low);
   border: 1px solid var(--mat-sys-outline-variant);
