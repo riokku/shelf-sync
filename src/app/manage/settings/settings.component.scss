@@ -51,10 +51,14 @@
 // horizontal space a wide viewport already has. flex-basis (not a fixed
 // two-column grid) lets the second card wrap onto its own row once the
 // viewport gets too narrow for both at once, rather than squeezing.
+// align-items: stretch (the flex default, set explicitly here since it's
+// easy to assume flex-start from the rest of this file) is what keeps both
+// cards the same height regardless of which one's content happens to run
+// longer, rather than each sized to just its own content.
 .settings-workflow-columns{
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 1.5rem;
 
   .settings-card{
