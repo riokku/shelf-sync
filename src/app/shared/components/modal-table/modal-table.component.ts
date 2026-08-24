@@ -17,6 +17,7 @@ import { ImageGalleryComponent } from '../image-gallery/image-gallery.component'
 import { UserAvatarComponent } from '../user-avatar/user-avatar.component';
 import { CreateTaskModalComponent } from '../create-task-modal/create-task-modal.component';
 import { RequestRetirementModalComponent, RequestRetirementModalResult } from '../request-retirement-modal/request-retirement-modal.component';
+import { PlaceOrderModalComponent, PlaceOrderModalResult } from '../place-order-modal/place-order-modal.component';
 import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.component';
 import { AuthService, Profile } from '../../../core/auth.service';
 import { SupabaseService } from '../../../core/supabase.service';
@@ -37,6 +38,8 @@ import {
   uploadInventoryItemImages
 } from '../../utils/inventory-item-images';
 import { loadInventoryItemContainers, sumContainerQuantity } from '../../utils/inventory-item-containers';
+import { loadInventoryItemOrders } from '../../utils/inventory-item-orders';
+import { InventoryItemOrder } from '../../models/inventory-item-order.model';
 import { BARCODE_FEATURE_ENABLED } from '../../utils/barcode';
 
 /** Working copy of a container while the item is being edited — id: null
@@ -128,6 +131,129 @@ export class ModalTableComponent implements OnInit {
 
   async ngOnInit(){
     this.existingContainers = await loadInventoryItemContainers(this.supabase, this.data.id);
+    await this.loadOrders();
+  }
+
+  /** Placing an order is admin/manager only (same trust level as inventory
+   *  item creation — ordering has a real cost), and only possible once the
+   *  item actually has a linked supplier to order from. */
+  existingOrders: InventoryItemOrder[] = [];
+  isProcessingOrder = false;
+  orderError: string | null = null;
+
+  get canPlaceOrder(): boolean {
+    return this.authService.canManage() && !!this.data.supplierId;
+  }
+
+  private async loadOrders(){
+    const { data: profiles } = await this.supabase.from('profiles').select('*').order('full_name');
+    this.existingOrders = await loadInventoryItemOrders(this.supabase, this.data.id, profiles ?? []);
+  }
+
+  openPlaceOrder(){
+    if (!this.canPlaceOrder || this.isProcessingOrder) {
+      return;
+    }
+
+    const dialogRef = this.dialog.open(PlaceOrderModalComponent, {
+      data: { itemName: this.data.name, supplierName: this.data.supplierName },
+      width: 'clamp(26rem, 45vw, 32rem)',
+      maxWidth: '90vw'
+    });
+
+    dialogRef.afterClosed().subscribe((result: PlaceOrderModalResult | undefined) => {
+      if (result) {
+        void this.submitOrder(result);
+      }
+    });
+  }
+
+  private async submitOrder(result: PlaceOrderModalResult){
+    this.isProcessingOrder = true;
+    this.orderError = null;
+
+    const session = await this.authService.getSession();
+    if (!session) {
+      this.isProcessingOrder = false;
+      this.orderError = 'You must be signed in to place an order.';
+      return;
+    }
+
+    const { error } = await this.supabase.from('inventory_item_orders').insert({
+      item_id: this.data.id,
+      supplier_id: this.data.supplierId,
+      supplier_name: this.data.supplierName,
+      quantity: result.quantity,
+      note: result.note || null,
+      ordered_by: session.user.id
+    });
+
+    if (error) {
+      this.isProcessingOrder = false;
+      this.orderError = error.message;
+      return;
+    }
+
+    const message = `Ordered ${result.quantity} units from ${this.data.supplierName}`;
+    await logInventoryItemActivity(this.supabase, this.data.id, session.user.id, message);
+    await logActivity(this.supabase, session.user.id, 'inventory_item', this.data.id, `${this.data.name}: ${message}`);
+
+    await this.loadOrders();
+    await this.refreshActivityLog();
+    this.isProcessingOrder = false;
+    this.notification.success('Order placed');
+  }
+
+  async markReceived(order: InventoryItemOrder){
+    if (this.isProcessingOrder) {
+      return;
+    }
+    this.isProcessingOrder = true;
+    this.orderError = null;
+
+    const { error } = await this.supabase.rpc('receive_inventory_item_order', { order_id: order.id });
+
+    if (error) {
+      this.isProcessingOrder = false;
+      this.orderError = error.message;
+      return;
+    }
+
+    // Mirrors the RPC's own conditional restock: only bump the locally-held
+    // quantities when the item has no containers (the one case the RPC
+    // itself updates inventory_items for) — a container-tracked item's
+    // stock instead needs a container added/edited by hand, which the RPC
+    // deliberately leaves alone (see its own doc comment).
+    if (this.existingContainers.length === 0) {
+      this.data.quantityRemaining += order.quantity;
+      this.data.quantityTotal += order.quantity;
+    }
+
+    await this.loadOrders();
+    await this.refreshActivityLog();
+    this.isProcessingOrder = false;
+    this.notification.success('Order marked received');
+  }
+
+  async cancelOrder(order: InventoryItemOrder){
+    if (this.isProcessingOrder) {
+      return;
+    }
+    this.isProcessingOrder = true;
+    this.orderError = null;
+
+    const { error } = await this.supabase.rpc('cancel_inventory_item_order', { order_id: order.id });
+
+    if (error) {
+      this.isProcessingOrder = false;
+      this.orderError = error.message;
+      return;
+    }
+
+    await this.loadOrders();
+    await this.refreshActivityLog();
+    this.isProcessingOrder = false;
+    this.notification.success('Order cancelled');
   }
 
   containerSum(containers: { quantity: number }[]): number {

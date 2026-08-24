@@ -273,6 +273,77 @@ export type Database = {
           },
         ]
       }
+      inventory_item_orders: {
+        Row: {
+          id: string
+          item_id: string
+          note: string | null
+          ordered_at: string
+          ordered_by: string | null
+          quantity: number
+          received_at: string | null
+          received_by: string | null
+          status: string
+          supplier_id: string | null
+          supplier_name: string
+        }
+        Insert: {
+          id?: string
+          item_id: string
+          note?: string | null
+          ordered_at?: string
+          ordered_by?: string | null
+          quantity: number
+          received_at?: string | null
+          received_by?: string | null
+          status?: string
+          supplier_id?: string | null
+          supplier_name: string
+        }
+        Update: {
+          id?: string
+          item_id?: string
+          note?: string | null
+          ordered_at?: string
+          ordered_by?: string | null
+          quantity?: number
+          received_at?: string | null
+          received_by?: string | null
+          status?: string
+          supplier_id?: string | null
+          supplier_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_item_orders_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_item_orders_ordered_by_fkey"
+            columns: ["ordered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_item_orders_received_by_fkey"
+            columns: ["received_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_item_orders_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_items: {
         Row: {
           activity_log: string | null
@@ -694,6 +765,7 @@ export type Database = {
         Returns: undefined
       }
       approve_item_retirement: { Args: { item_id: string }; Returns: undefined }
+      cancel_inventory_item_order: { Args: { order_id: string }; Returns: undefined }
       cancel_item_retirement_request: {
         Args: { item_id: string }
         Returns: undefined
@@ -719,6 +791,7 @@ export type Database = {
       }
       profile_display_name: { Args: { target_id: string }; Returns: string }
       purge_expired_organizations: { Args: never; Returns: undefined }
+      receive_inventory_item_order: { Args: { order_id: string }; Returns: undefined }
       request_item_retirement: {
         Args: { item_id: string; note?: string }
         Returns: undefined

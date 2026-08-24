@@ -231,6 +231,8 @@ export function createTestInventoryItem(overrides: Partial<{
   barcode: string;
   category: string;
   physicalLocation: string;
+  supplierId: string | null;
+  supplierName: string;
   quantityRemaining: number;
   lowQuantityThreshold: number;
   isCheckedOut: boolean;
@@ -254,8 +256,8 @@ export function createTestInventoryItem(overrides: Partial<{
     '',
     '2024',
     '',
-    '',
-    null,
+    overrides.supplierName ?? '',
+    overrides.supplierId ?? null,
     '',
     '',
     100,

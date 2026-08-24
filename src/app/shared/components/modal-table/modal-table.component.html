@@ -555,6 +555,71 @@
         </div>
       </mat-tab>
 
+      <mat-tab label="Orders">
+        <div class="tab-panel">
+          @if (orderError) {
+            <p class="error-message save-error">{{ orderError }}</p>
+          }
+          @if (canPlaceOrder) {
+            <button
+                mat-stroked-button
+                type="button"
+                class="place-order-button"
+                [disabled]="isProcessingOrder"
+                (click)="openPlaceOrder()"
+              >
+              <mat-icon>local_shipping</mat-icon>
+              Reorder from {{ data.supplierName }}
+            </button>
+          } @else if (authService.canManage() && !data.supplierId) {
+            <p class="empty-hint container-empty-hint">
+              Link a supplier to this item (Edit &gt; Supplier information) to place an order.
+            </p>
+          }
+
+          @if (existingOrders.length === 0) {
+            <p class="empty-hint">No orders placed yet.</p>
+          } @else {
+            <ul class="order-list">
+              @for (order of existingOrders; track order.id) {
+                <li>
+                  <div class="order-row">
+                    <span class="status-pill" [class]="'order-' + order.status">
+                      <mat-icon>
+                        {{ order.status === 'received' ? 'check_circle' : order.status === 'cancelled' ? 'cancel' : 'hourglass_top' }}
+                      </mat-icon>
+                      {{ order.status === 'ordered' ? 'Ordered' : order.status === 'received' ? 'Received' : 'Cancelled' }}
+                    </span>
+                    <span class="order-quantity">{{ order.quantity }} units from {{ order.supplierName }}</span>
+                  </div>
+                  <div class="order-meta">
+                    Ordered by {{ order.orderedByLabel }} &middot; {{ order.orderedAt | date: 'M/d/yy, h:mm a' }}
+                    @if (order.status === 'received') {
+                      <br />
+                      Received by {{ order.receivedByLabel || '—' }} &middot; {{ order.receivedAt | date: 'M/d/yy, h:mm a' }}
+                    }
+                    @if (order.note) {
+                      <br />
+                      <span class="semibold">Note:</span> {{ order.note }}
+                    }
+                  </div>
+                  @if (order.status === 'ordered' && authService.canManage()) {
+                    <div class="order-actions">
+                      <button mat-button type="button" [disabled]="isProcessingOrder" (click)="cancelOrder(order)">
+                        Cancel
+                      </button>
+                      <button mat-flat-button color="primary" type="button" [disabled]="isProcessingOrder" (click)="markReceived(order)">
+                        Mark received
+                      </button>
+                    </div>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </mat-tab>
+
       <mat-tab label="Activity Log">
         <div class="tab-panel">
           @if (data.activityLog.length === 0) {

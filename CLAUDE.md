@@ -559,6 +559,30 @@ complete history into one newline-joined cell, rather than a second file to corr
 plus its images/activity maps, mapped through the same `toInventoryItem()` every other consumer of
 this page's data uses) rather than issuing a fresh query.
 
+Admins and managers can place a restock order against an item's linked supplier — a "Reorder" button
+in a new "Orders" tab on `ModalTableComponent` (alongside the existing "Info"/"Activity Log" tabs),
+disabled/hidden (`canPlaceOrder`) unless the signed-in user can manage *and* the item actually has a
+`supplierId`. One order is one item + one quantity (not a multi-line purchase order) — the simpler
+shape matches this app's other per-item action patterns (retirement requests, containers) rather than
+a cart-style PO. `PlaceOrderModalComponent` collects the quantity + an optional note; submitting is a
+plain client-side insert into the new `inventory_item_orders` table (admin/manager RLS-gated, same
+trust level as inventory item creation) plus the usual dual `inventory_item_activity`/`activity_log`
+writes, mirroring how container edits are already done from this same popup. An order's `supplierName`
+is a point-in-time text snapshot (captured from the item's current supplier at order time) alongside
+a nullable `supplierId` FK, so an order still reads correctly even if that supplier is later renamed
+or removed from the directory — same "outlive the thing it references" shape `checked_out_to` already
+has, just with an extra snapshot since the name itself (not just the row's existence) matters here.
+Every order then moves `ordered` -> `received`/`cancelled` through two `SECURITY DEFINER` RPCs
+(`receive_inventory_item_order()`/`cancel_inventory_item_order()`) rather than a raw table update —
+`inventory_item_orders` has no UPDATE grant for `authenticated` at all, since receiving an order has
+to atomically bump `inventory_items.quantity_remaining`/`quantity_total` too, which a plain RLS policy
+can't do. That auto-restock only happens for a flat-tracked item (no containers) — a container-tracked
+item's new stock needs a location assigned to a specific box, which the RPC can't safely guess, so
+those items just get the order marked received and a prompt in the item's activity log to add a
+container instead. `ModalTableComponent.markReceived()` mirrors that same containers-aware condition
+client-side (`existingContainers.length === 0`) so the popup's own displayed quantities update
+immediately without a full item refetch, in sync with whatever the RPC actually did server-side.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -686,8 +710,10 @@ shared/
   components/bulk-action-toolbar/ # shared "N selected / select all / clear" chrome for every page with bulk actions
   components/bulk-reassign-modal/ # Inventory's bulk category/physical-location reassignment dialog
   components/supplier-form-modal/ # add/edit dialog backing manage/suppliers' directory CRUD
+  components/place-order-modal/ # quantity + note dialog backing ModalTableComponent's "Reorder" action
   models/inventory-item.model.ts   # InventoryItem class (constructor-based, no defaults)
   models/supplier.model.ts   # Supplier — a directory entry inventory_items.supplier_id can point at
+  models/inventory-item-order.model.ts # InventoryItemOrder — one restock order against an item's linked supplier
   models/theme-preset.ts     # THEME_PRESETS — key must match a [data-theme] block in styles.scss
   models/inventory-table-column.ts # optional Inventory table-view columns admin can show/hide (Customize > Data)
   models/pricing-tier.ts     # PRICING_TIERS — shared by PricingComponent (/pricing) and ManageBillingComponent
@@ -695,6 +721,7 @@ shared/
   utils/inventory-item.mapper.ts   # toInventoryItem(row, images, checkedOutToLabel, activityLog?, ..., supplierLabel?) — DB row -> InventoryItem
   utils/inventory-item-images.ts   # loadInventoryImagesByItemId() / uploadInventoryItemImages() / deleteInventoryItemImage()
   utils/inventory-item-activity.ts # loadInventoryActivityByItemId() / logInventoryItemActivity() — inventory_item_activity
+  utils/inventory-item-orders.ts # loadInventoryItemOrders() — inventory_item_orders, backs ModalTableComponent's Orders tab
   utils/inventory-export.ts  # buildInventoryExportCsv() / downloadCsv() — backs manage/inventory's "Export" button
   utils/activity-log.ts      # loadActivityLog() / logActivity() — org-wide activity_log, backs Manage > Activity Log
   utils/profile-label.ts     # profileDisplayName()/resolveProfileName() — shared profiles-array lookup
@@ -960,6 +987,25 @@ yet on a hard refresh of `/inventory`.
   log entries folded into a single newline-joined cell — see `shared/utils/inventory-export.ts`'s own
   doc comment for why one file beats two correlated-by-id ones), reusing data this page already has
   loaded rather than a new query.
+- `add_inventory_item_orders` — adds `inventory_item_orders` (`item_id`, `supplier_id` nullable/`on
+  delete set null`, `supplier_name` — a required point-in-time text snapshot, so an order still reads
+  correctly if its supplier is later renamed or removed — `quantity`, `status`
+  `'ordered'|'received'|'cancelled'`, `note`, `ordered_by/at`, `received_by/at`), backing the
+  "Reorder" flow described above. One order = one item + one quantity, not a multi-line PO. SELECT is
+  any org member (joined through `item_id` -> `inventory_items.organization_id`, unlike
+  `inventory_item_containers`' original no-join `using (true)` — see
+  `add_inventory_item_locking`'s own retrofit of that gap — this table starts properly org-scoped from
+  day one); INSERT is admin/manager only (`with check (status = 'ordered')` too, so a row can't be
+  inserted pre-marked received/cancelled) — ordering has a real financial cost, the same trust level
+  `inventory_items`' own INSERT policy already has, not the wider any-authenticated-user reach
+  containers/images editing gets. No UPDATE/DELETE grant for `authenticated` at all: every status
+  transition goes through `cancel_inventory_item_order()`/`receive_inventory_item_order()`, both
+  `SECURITY DEFINER`, since receiving in particular has to atomically bump
+  `inventory_items.quantity_remaining`/`quantity_total` too (only when the item has no containers —
+  see the Project Overview paragraph above for why), and a raw RLS policy can't touch a second table
+  as a side effect of the first. `receive_inventory_item_order()` also logs to both
+  `inventory_item_activity` and the org-wide `activity_log`, matching how the retirement RPCs already
+  log to both from a single call.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power
