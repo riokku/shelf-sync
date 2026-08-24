@@ -583,7 +583,11 @@ per page: on the Inventory page it's in its own row above the search bar, right-
 tasks `mat-button-toggle-group` itself, in a shared `.tasks-header-row` (`justify-content:
 space-between`, the toggle group on the left and — only while `viewMode === 'all'`, via its own `@if`
 — Bulk edit on the right) rather than a row of its own, since this page already has a tab strip at
-the top for the toggle to sit beside. Table view's checkbox is a leading `matColumnDef="select"`
+the top for the toggle to sit beside. That right-hand side (Select all + Bulk edit — see below) is
+its own `.bulk-edit-controls` wrapper rather than two direct children of `.tasks-header-row`, since
+`space-between` on three direct children spreads all three evenly across the row instead of treating
+"tabs" and "everything else" as two sides — without the wrapper, Select all ends up stranded in the
+middle rather than glued to the toggle beside it. Table view's checkbox is a leading `matColumnDef="select"`
 column (present in `tableColumns` only while the toggle is on); card view's sits absolutely
 positioned in the bottom-right corner of the whole card (not the image — that corner's already
 claimed by `.quantity-badge`, which is confined to the image area above it); `ManageTasksComponent`'s

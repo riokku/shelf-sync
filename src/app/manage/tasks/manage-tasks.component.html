@@ -17,19 +17,21 @@
         </mat-button-toggle>
       </mat-button-toggle-group>
       @if (viewMode === 'all') {
-        @if (bulkEditEnabled) {
-          <mat-checkbox
-              class="select-all-checkbox"
-              [checked]="allVisibleTasksSelected"
-              [indeterminate]="someVisibleTasksSelected"
-              (change)="toggleSelectAllFiltered($event.checked)"
-            >
-            Select all
-          </mat-checkbox>
-        }
-        <mat-slide-toggle [checked]="bulkEditEnabled" (change)="toggleBulkEdit($event.checked)">
-          Bulk edit
-        </mat-slide-toggle>
+        <div class="bulk-edit-controls">
+          @if (bulkEditEnabled) {
+            <mat-checkbox
+                class="select-all-checkbox"
+                [checked]="allVisibleTasksSelected"
+                [indeterminate]="someVisibleTasksSelected"
+                (change)="toggleSelectAllFiltered($event.checked)"
+              >
+              Select all
+            </mat-checkbox>
+          }
+          <mat-slide-toggle [checked]="bulkEditEnabled" (change)="toggleBulkEdit($event.checked)">
+            Bulk edit
+          </mat-slide-toggle>
+        </div>
       }
     </div>
 
