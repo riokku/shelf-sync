@@ -5,16 +5,23 @@
     </div>
     <h2>Manage Tasks</h2>
 
-    <mat-button-toggle-group [ngModel]="viewMode" (ngModelChange)="setViewMode($event)" class="view-toggle">
-      <mat-button-toggle value="create">
-        <mat-icon>add_task</mat-icon>
-        Create task
-      </mat-button-toggle>
-      <mat-button-toggle value="all">
-        <mat-icon>checklist</mat-icon>
-        All tasks
-      </mat-button-toggle>
-    </mat-button-toggle-group>
+    <div class="tasks-header-row">
+      <mat-button-toggle-group [ngModel]="viewMode" (ngModelChange)="setViewMode($event)" class="view-toggle">
+        <mat-button-toggle value="create">
+          <mat-icon>add_task</mat-icon>
+          Create task
+        </mat-button-toggle>
+        <mat-button-toggle value="all">
+          <mat-icon>checklist</mat-icon>
+          All tasks
+        </mat-button-toggle>
+      </mat-button-toggle-group>
+      @if (viewMode === 'all') {
+        <mat-slide-toggle [checked]="bulkEditEnabled" (change)="toggleBulkEdit($event.checked)">
+          Bulk edit
+        </mat-slide-toggle>
+      }
+    </div>
 
     @if (viewMode === 'create') {
       <form [formGroup]="taskForm" #taskFormDirective="ngForm" (ngSubmit)="submitTask()" class="manage-form">
@@ -92,11 +99,6 @@
       </form>
     } @else {
       <div class="all-tasks-view">
-        <div class="bulk-edit-toggle-row">
-          <mat-slide-toggle [checked]="bulkEditEnabled" (change)="toggleBulkEdit($event.checked)">
-            Bulk edit
-          </mat-slide-toggle>
-        </div>
         <div class="task-filters">
           <mat-form-field appearance="outline" class="task-search-field">
             <mat-icon matPrefix>search</mat-icon>

@@ -17,8 +17,22 @@
   }
 }
 
-.view-toggle{
+// Holds the Create task/All tasks toggle group and (only in the All tasks
+// view — see the template's own @if) the Bulk edit toggle, inline on the
+// same row rather than stacked, so Bulk edit reads as a peer control next
+// to the tabs instead of a separate section of its own.
+.tasks-header-row{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
   margin-bottom: 1.5rem;
+}
+
+.view-toggle{
+  // .tasks-header-row above now carries this row's own bottom margin.
+  margin-bottom: 0;
 }
 
 .manage-form{
@@ -51,16 +65,6 @@
   max-width: none;
 }
 
-// Right-aligned, same placement/shape as InventoryComponent's own Bulk edit
-// toggle row above its search bar — off by default (see bulkEditEnabled's
-// own doc comment) so ordinary browsing isn't cluttered with a checkbox on
-// every row.
-.bulk-edit-toggle-row{
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 1rem;
-}
-
 .task-filters{
   display: flex;
   flex-wrap: wrap;
@@ -68,8 +72,10 @@
   gap: 1rem;
   margin-bottom: 1rem;
 
+  // flex-grow: 0 (not 1) — these three stay at their own comfortable width
+  // instead of competing with the search field for the row's free space.
   mat-form-field{
-    flex: 1 1 12rem;
+    flex: 0 1 14rem;
     max-width: 16rem;
   }
 
@@ -78,12 +84,18 @@
   }
 }
 
-// The only field in .task-filters with no max-width, so it's the one that
-// keeps growing once the assignee/status/due-date fields above have each
-// capped out at their own 16rem — the search field absorbs whatever width
-// the other filters don't need, rather than every field (search included)
-// stopping at the same 16rem and leaving empty space on a wide viewport.
-.task-search-field{
+// The one field in .task-filters that grows (flex-grow: 1, the other three
+// are 0) and has no max-width, so it alone absorbs whatever width the
+// assignee/status/due-date fields don't need, filling the row out to the
+// full page width instead of everything stopping at the same capped width
+// and leaving empty space to the right on a wide viewport. Doubly-scoped
+// under .task-filters (not just .task-search-field alone) so this actually
+// outweighs the "mat-form-field{ flex; max-width }" rule above by CSS
+// specificity — a bare .task-search-field selector has *lower* specificity
+// than ".task-filters mat-form-field" (one class vs. one class + one type
+// selector) and silently lost to it.
+.task-filters .task-search-field{
+  flex: 1 1 20rem;
   max-width: none;
 }
 
