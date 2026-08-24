@@ -204,12 +204,13 @@ resubmit one Supabase already consumed or rejected. `AuthService.signIn()`/`sign
 as `options.captchaToken` to the matching `supabase.auth.*` call — optional in the type sense only,
 since each of the three components already refuses to call them without a real one.
 `environment.ts`/`environment.prod.ts`'s `turnstileSiteKey` (the public half of the pair, safe to
-commit) is currently Cloudflare's own published "always passes" test key — real bot protection isn't
-active until that's swapped for a real Turnstile site's key (Cloudflare dashboard > Turnstile > Add
-site; one widget can list both the production hostname and `localhost`, so this app's shared dev/prod
-Supabase project can keep sharing one Turnstile site too) *and* the secret half is pasted into that
-same Attack Protection setting — until both of those manual, hosted-dashboard-only steps happen, the
-widget renders and gates the form correctly but provides no actual protection.
+commit) is a real Cloudflare Turnstile widget's site key, shared by dev and prod the same way they
+already share one Supabase project. Real bot protection still isn't active yet, though — that
+requires the matching *secret* key to be pasted into Supabase's own Auth > Attack Protection
+dashboard setting (hosted-project-dashboard-only, same as the site key's own widget creation was;
+neither step is something a migration or `config.toml` can do for the hosted project) — until that
+one remaining step happens, the widget renders and gates the form correctly but Supabase isn't
+actually checking the token against anything.
 
 `tasks.created_by` has been set on every task since creation (see `add_organization_deletion`'s FK
 note above) but was never actually surfaced anywhere — every task list/detail view now shows who

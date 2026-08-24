@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { TurnstileWidgetComponent } from './turnstile-widget.component';
+import { environment } from '../../../../environments/environment';
 
 describe('TurnstileWidgetComponent', () => {
   let component: TurnstileWidgetComponent;
@@ -52,7 +53,7 @@ describe('TurnstileWidgetComponent', () => {
   it('renders the widget against its own container with the configured site key', () => {
     expect(renderSpy).toHaveBeenCalledTimes(1);
     expect(renderSpy.calls.mostRecent().args[0]).toBeInstanceOf(HTMLElement);
-    expect(capturedOptions.sitekey).toBe('1x00000000000000000000AA');
+    expect(capturedOptions.sitekey).toBe(environment.turnstileSiteKey);
   });
 
   it('emits verified with the token once Turnstile calls its callback', () => {
