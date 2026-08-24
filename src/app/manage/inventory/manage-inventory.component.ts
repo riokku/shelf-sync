@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, ViewChild, inject } from '@angular/core';
+import { Component, DestroyRef, HostListener, OnInit, ViewChild, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule, FormControl, FormGroup, FormGroupDirective, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -34,6 +34,7 @@ import { loadInventoryActivityByItemId } from '../../shared/utils/inventory-item
 import { sumContainerQuantity } from '../../shared/utils/inventory-item-containers';
 import { logActivity } from '../../shared/utils/activity-log';
 import { BARCODE_FEATURE_ENABLED, parseItemQrValue } from '../../shared/utils/barcode';
+import { HasUnsavedChanges } from '../../core/guards/unsaved-changes.guard';
 import { subscribeToTableChanges } from '../../shared/utils/realtime';
 import { FlashTracker } from '../../shared/utils/flash-tracker';
 import { buildInventoryExportCsv, downloadCsv } from '../../shared/utils/inventory-export';
@@ -61,7 +62,7 @@ type InventoryItemRow = Database['public']['Tables']['inventory_items']['Row'];
   templateUrl: './manage-inventory.component.html',
   styleUrl: './manage-inventory.component.scss',
 })
-export class ManageInventoryComponent implements OnInit {
+export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
   private supabase = inject(SupabaseService).client;
   private authService = inject(AuthService);
   protected inventoryFieldOptions = inject(InventoryFieldOptionsService);
@@ -102,7 +103,43 @@ export class ManageInventoryComponent implements OnInit {
   // Mirrors SettingsComponent's own setViewMode()/?tab= handling — see its
   // doc comment for the full reasoning. replaceUrl avoids piling up a
   // history entry per tab click.
+  //
+  // Confirms first if leaving 'create' would lose real unsaved input — a
+  // tab switch is plain component state, not a route change, so
+  // unsavedChangesGuard (route-level) never sees it; this is that same
+  // protection's in-page counterpart. Split into this public gate +
+  // applyViewMode() below (rather than doing the mode switch inline in the
+  // dialog's subscribe callback) so applyViewMode() stays directly
+  // testable without faking the confirm dialog — same reasoning
+  // ManageTasksComponent.performBulkDelete()'s own doc comment gives for
+  // splitting a confirm-gated action out of its trigger.
   setViewMode(mode: 'create' | 'retirements') {
+    if (mode === this.viewMode) {
+      return;
+    }
+    if (!this.hasUnsavedChanges()) {
+      this.applyViewMode(mode);
+      return;
+    }
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Leave without saving?',
+        message: 'You have unsaved changes on the create form that will be lost if you leave it.',
+        confirmLabel: 'Leave',
+        danger: true
+      },
+      width: 'clamp(75%, 25rem, 60%)'
+    });
+
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (confirmed) {
+        this.applyViewMode(mode);
+      }
+    });
+  }
+
+  private applyViewMode(mode: 'create' | 'retirements') {
     this.viewMode = mode;
     this.router.navigate([], {
       relativeTo: this.route,
@@ -110,6 +147,32 @@ export class ManageInventoryComponent implements OnInit {
       queryParamsHandling: 'merge',
       replaceUrl: true
     });
+  }
+
+  /** Real, would-actually-lose-data input sitting in the create form right
+   *  now — a dirty field, a photo picked but not yet uploaded, or a
+   *  container/box added but not yet saved. Backs both the route-level
+   *  unsavedChangesGuard (navigating off this page entirely) and
+   *  setViewMode() above (switching to the Requests tab) — see
+   *  unsaved-changes.guard.ts's own doc comment for why this checks the
+   *  underlying state directly rather than also requiring `viewMode ===
+   *  'create'`: the data doesn't stop being unsaved just because a
+   *  different tab happens to be showing at the moment. */
+  hasUnsavedChanges(): boolean {
+    return this.inventoryForm.dirty || this.selectedImageFiles.length > 0 || this.newContainers.length > 0;
+  }
+
+  /** CanDeactivate guards never run for a tab close/refresh — only this
+   *  catches that case. Modern browsers ignore the custom message and show
+   *  their own generic "leave site?" wording; setting returnValue is what
+   *  actually triggers that prompt at all (an empty/unset handler does
+   *  nothing). */
+  @HostListener('window:beforeunload', ['$event'])
+  confirmBeforeUnload(event: BeforeUnloadEvent) {
+    if (this.hasUnsavedChanges()) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
   }
 
   // Still the full list, not just pending-retirement items — beyond

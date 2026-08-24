@@ -4,6 +4,7 @@ import { authGuard } from './core/guards/auth.guard';
 import { approvedGuard } from './core/guards/approved.guard';
 import { manageGuard } from './core/guards/manage.guard';
 import { adminGuard } from './core/guards/admin.guard';
+import { unsavedChangesGuard } from './core/guards/unsaved-changes.guard';
 import { BreadcrumbParent } from './shared/components/breadcrumbs/breadcrumbs.component';
 
 // Shared by every route nested under /manage below, so their breadcrumbs
@@ -114,6 +115,7 @@ const routes: Routes = [
     path: 'manage/inventory',
     loadComponent: () => import('./manage/inventory/manage-inventory.component').then(m => m.ManageInventoryComponent),
     canActivate: [approvedGuard, manageGuard],
+    canDeactivate: [unsavedChangesGuard],
     data: { breadcrumb: 'Inventory', breadcrumbParent: MANAGE_BREADCRUMB_PARENT },
     title: 'ShelfSync | Manage Inventory'
   },
@@ -121,6 +123,7 @@ const routes: Routes = [
     path: 'manage/tasks',
     loadComponent: () => import('./manage/tasks/manage-tasks.component').then(m => m.ManageTasksComponent),
     canActivate: [approvedGuard, manageGuard],
+    canDeactivate: [unsavedChangesGuard],
     data: { breadcrumb: 'Tasks', breadcrumbParent: MANAGE_BREADCRUMB_PARENT },
     title: 'ShelfSync | Manage Tasks'
   },

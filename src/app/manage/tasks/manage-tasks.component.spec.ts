@@ -50,6 +50,103 @@ describe('ManageTasksComponent', () => {
     }));
   });
 
+  describe('hasUnsavedChanges()', () => {
+    it('is false for an untouched create form', () => {
+      expect(component.hasUnsavedChanges()).toBeFalse();
+    });
+
+    it('is true once the form itself is dirty', () => {
+      component.taskForm.controls.title.setValue('New task');
+      component.taskForm.controls.title.markAsDirty();
+      expect(component.hasUnsavedChanges()).toBeTrue();
+    });
+
+    it('ignores typing in the related-item search box alone (not a submitted field)', () => {
+      component.relatedItemSearchControl.setValue('tent');
+      expect(component.hasUnsavedChanges()).toBeFalse();
+    });
+  });
+
+  describe('setViewMode() confirm-before-leaving-create gate', () => {
+    it('switches immediately, without opening a dialog, when the create form has nothing unsaved', () => {
+      const dialog = (component as unknown as { dialog: { open: jasmine.Spy } }).dialog;
+      const openSpy = spyOn(dialog, 'open');
+
+      component.setViewMode('all');
+
+      expect(component.viewMode).toBe('all');
+      expect(openSpy).not.toHaveBeenCalled();
+    });
+
+    it('is a no-op when the target mode already matches the current one', () => {
+      const dialog = (component as unknown as { dialog: { open: jasmine.Spy } }).dialog;
+      const openSpy = spyOn(dialog, 'open');
+
+      component.setViewMode('create');
+
+      expect(openSpy).not.toHaveBeenCalled();
+    });
+
+    it('opens a confirm dialog instead of switching immediately when the create form has unsaved changes', () => {
+      component.taskForm.controls.title.setValue('New task');
+      component.taskForm.controls.title.markAsDirty();
+      const dialog = (component as unknown as { dialog: { open: (...args: unknown[]) => { afterClosed: () => { subscribe: () => void } } } }).dialog;
+      const openSpy = spyOn(dialog, 'open').and.returnValue({ afterClosed: () => ({ subscribe: () => {} }) });
+
+      component.setViewMode('all');
+
+      expect(openSpy).toHaveBeenCalledWith(jasmine.any(Function), jasmine.objectContaining({
+        data: jasmine.objectContaining({ title: 'Leave without saving?', danger: true })
+      }));
+      expect(component.viewMode).toBe('create');
+    });
+
+    it('switches once the user confirms leaving', () => {
+      component.taskForm.controls.title.setValue('New task');
+      component.taskForm.controls.title.markAsDirty();
+      const dialog = (component as unknown as { dialog: { open: (...args: unknown[]) => { afterClosed: () => { subscribe: (cb: (v: boolean) => void) => void } } } }).dialog;
+      spyOn(dialog, 'open').and.returnValue({ afterClosed: () => ({ subscribe: cb => cb(true) }) });
+
+      component.setViewMode('all');
+
+      expect(component.viewMode).toBe('all');
+    });
+
+    it('stays put when the user cancels', () => {
+      component.taskForm.controls.title.setValue('New task');
+      component.taskForm.controls.title.markAsDirty();
+      const dialog = (component as unknown as { dialog: { open: (...args: unknown[]) => { afterClosed: () => { subscribe: (cb: (v: boolean) => void) => void } } } }).dialog;
+      spyOn(dialog, 'open').and.returnValue({ afterClosed: () => ({ subscribe: cb => cb(false) }) });
+
+      component.setViewMode('all');
+
+      expect(component.viewMode).toBe('create');
+    });
+  });
+
+  describe('confirmBeforeUnload()', () => {
+    function fakeBeforeUnloadEvent() {
+      return { preventDefault: jasmine.createSpy('preventDefault'), returnValue: '' } as unknown as BeforeUnloadEvent;
+    }
+
+    it('does nothing when there are no unsaved changes', () => {
+      const event = fakeBeforeUnloadEvent();
+      component.confirmBeforeUnload(event);
+      expect(event.preventDefault).not.toHaveBeenCalled();
+    });
+
+    it('prevents the default and sets returnValue when there are unsaved changes', () => {
+      component.taskForm.controls.title.setValue('New task');
+      component.taskForm.controls.title.markAsDirty();
+      const event = fakeBeforeUnloadEvent();
+
+      component.confirmBeforeUnload(event);
+
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(event.returnValue).toBe('');
+    });
+  });
+
   describe('filteredAllTasks', () => {
     beforeEach(() => {
       component.allTasks = [

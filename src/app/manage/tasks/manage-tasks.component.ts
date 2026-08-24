@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, ViewChild, inject } from '@angular/core';
+import { Component, DestroyRef, HostListener, OnInit, ViewChild, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule, FormControl, FormGroup, FormGroupDirective, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -31,6 +31,7 @@ import { logActivity } from '../../shared/utils/activity-log';
 import { subscribeToTableChanges } from '../../shared/utils/realtime';
 import { debounce } from '../../shared/utils/debounce';
 import { FlashTracker } from '../../shared/utils/flash-tracker';
+import { HasUnsavedChanges } from '../../core/guards/unsaved-changes.guard';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
 type RelatedItemOption = Pick<Database['public']['Tables']['inventory_items']['Row'], 'id' | 'name'>;
@@ -60,7 +61,7 @@ type RelatedItemOption = Pick<Database['public']['Tables']['inventory_items']['R
   templateUrl: './manage-tasks.component.html',
   styleUrl: './manage-tasks.component.scss',
 })
-export class ManageTasksComponent implements OnInit {
+export class ManageTasksComponent implements OnInit, HasUnsavedChanges {
   private supabase = inject(SupabaseService).client;
   private authService = inject(AuthService);
   private dialog = inject(MatDialog);
@@ -101,7 +102,44 @@ export class ManageTasksComponent implements OnInit {
   // Mirrors SettingsComponent's own setViewMode()/?tab= handling — see its
   // doc comment for the full reasoning. replaceUrl avoids piling up a
   // history entry per tab click.
+  //
+  // Confirms first if leaving 'create' would lose real unsaved input — a
+  // tab switch is plain component state, not a route change, so
+  // unsavedChangesGuard (route-level) never sees it; this is that same
+  // protection's in-page counterpart. Split into this public gate +
+  // applyViewMode() below so applyViewMode() stays directly testable
+  // without faking the confirm dialog — same reasoning
+  // performBulkDelete()'s own doc comment gives for splitting a
+  // confirm-gated action out of its trigger. Not reachable from the
+  // ?task= deep link in ngOnInit below, which sets viewMode directly — a
+  // freshly loaded page can't have a dirty create form yet.
   setViewMode(mode: 'create' | 'all') {
+    if (mode === this.viewMode) {
+      return;
+    }
+    if (!this.hasUnsavedChanges()) {
+      this.applyViewMode(mode);
+      return;
+    }
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Leave without saving?',
+        message: 'You have unsaved changes on the create form that will be lost if you leave it.',
+        confirmLabel: 'Leave',
+        danger: true
+      },
+      width: 'clamp(75%, 25rem, 60%)'
+    });
+
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (confirmed) {
+        this.applyViewMode(mode);
+      }
+    });
+  }
+
+  private applyViewMode(mode: 'create' | 'all') {
     this.viewMode = mode;
     this.router.navigate([], {
       relativeTo: this.route,
@@ -109,6 +147,33 @@ export class ManageTasksComponent implements OnInit {
       queryParamsHandling: 'merge',
       replaceUrl: true
     });
+  }
+
+  /** Real, would-actually-lose-data input sitting in the create form right
+   *  now. Backs both the route-level unsavedChangesGuard (navigating off
+   *  this page entirely) and setViewMode() above (switching to All tasks)
+   *  — see unsaved-changes.guard.ts's own doc comment for why this checks
+   *  the underlying state directly rather than also requiring `viewMode
+   *  === 'create'`: the data doesn't stop being unsaved just because a
+   *  different tab happens to be showing at the moment.
+   *  relatedItemSearchControl (the autocomplete's own search box, not a
+   *  submitted field) deliberately isn't checked — typing in it without
+   *  picking anything isn't real unsaved data. */
+  hasUnsavedChanges(): boolean {
+    return this.taskForm.dirty;
+  }
+
+  /** CanDeactivate guards never run for a tab close/refresh — only this
+   *  catches that case. Modern browsers ignore the custom message and show
+   *  their own generic "leave site?" wording; setting returnValue is what
+   *  actually triggers that prompt at all (an empty/unset handler does
+   *  nothing). */
+  @HostListener('window:beforeunload', ['$event'])
+  confirmBeforeUnload(event: BeforeUnloadEvent) {
+    if (this.hasUnsavedChanges()) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
   }
 
   taskFilterSearch = '';
