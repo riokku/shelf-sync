@@ -1,28 +1,30 @@
-import { loadInventoryItemOrders } from './inventory-item-orders';
+import { loadAllInventoryItemOrders } from './inventory-item-orders';
 import { createFakeProfile } from '../../testing/fakes';
 
 /** Minimal chainable stand-in scoped to exactly the query shape
- *  loadInventoryItemOrders uses (select/eq/order) — same reasoning as
+ *  loadAllInventoryItemOrders uses (select/order) — same reasoning as
  *  inventory-item-containers.spec.ts's own fake. */
 function createFakeSupabaseClient(rows: unknown[] = []) {
   const builder: Record<string, unknown> = {
     then: (resolve: (value: { data: unknown; error: unknown }) => void) => resolve({ data: rows, error: null }),
   };
-  for (const method of ['select', 'eq', 'order']) {
+  for (const method of ['select', 'order']) {
     builder[method] = () => builder;
   }
   return { from: () => builder } as unknown as { from: () => unknown };
 }
 
-describe('loadInventoryItemOrders', () => {
+describe('loadAllInventoryItemOrders', () => {
   const profiles = [
     createFakeProfile({ id: 'user-1', nickname: 'Jamie Lee' }),
     createFakeProfile({ id: 'user-2', nickname: 'Sam Rivera' })
   ];
+  const itemNamesById = new Map([['item-1', 'Chiavari Chairs']]);
 
-  it('maps a row to InventoryItemOrder, resolving ordered_by/received_by to display names', async () => {
+  it('maps a row to InventoryItemOrderWithItem, resolving item id to name and ordered_by/received_by to display names', async () => {
     const client = createFakeSupabaseClient([{
       id: 'order-1',
+      item_id: 'item-1',
       supplier_name: 'Gatherwell Event Furniture Co.',
       quantity: 20,
       status: 'received',
@@ -33,10 +35,12 @@ describe('loadInventoryItemOrders', () => {
       received_at: '2026-01-18T00:00:00.000Z'
     }]);
 
-    const orders = await loadInventoryItemOrders(client as never, 'item-1', profiles);
+    const orders = await loadAllInventoryItemOrders(client as never, profiles, itemNamesById);
 
     expect(orders).toEqual([{
       id: 'order-1',
+      itemId: 'item-1',
+      itemName: 'Chiavari Chairs',
       supplierName: 'Gatherwell Event Furniture Co.',
       quantity: 20,
       status: 'received',
@@ -48,31 +52,29 @@ describe('loadInventoryItemOrders', () => {
     }]);
   });
 
-  it('defaults a null note/received_by/received_at to empty rather than null, and an unresolvable orderer to "Unknown user"', async () => {
+  it('falls back to "Unknown item" when the order\'s item_id matches nothing in the provided map', async () => {
     const client = createFakeSupabaseClient([{
       id: 'order-2',
+      item_id: 'item-deleted',
       supplier_name: 'Linen & Lace Event Textiles',
       quantity: 5,
       status: 'ordered',
       note: null,
-      ordered_by: 'user-nonexistent',
+      ordered_by: 'user-1',
       ordered_at: '2026-01-20T00:00:00.000Z',
       received_by: null,
       received_at: null
     }]);
 
-    const orders = await loadInventoryItemOrders(client as never, 'item-1', profiles);
+    const orders = await loadAllInventoryItemOrders(client as never, profiles, itemNamesById);
 
-    expect(orders[0].note).toBe('');
-    expect(orders[0].orderedByLabel).toBe('Unknown user');
-    expect(orders[0].receivedByLabel).toBe('');
-    expect(orders[0].receivedAt).toBe('');
+    expect(orders[0].itemName).toBe('Unknown item');
   });
 
-  it('returns an empty array when the item has no orders', async () => {
+  it('returns an empty array when the org has no orders', async () => {
     const client = createFakeSupabaseClient([]);
 
-    const orders = await loadInventoryItemOrders(client as never, 'item-1', profiles);
+    const orders = await loadAllInventoryItemOrders(client as never, profiles, itemNamesById);
 
     expect(orders).toEqual([]);
   });

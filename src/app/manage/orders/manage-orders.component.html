@@ -1,0 +1,82 @@
+<div class="manage-orders-wrapper">
+  <div class="container">
+    <div class="page-toolbar">
+      <app-breadcrumbs />
+    </div>
+
+    <div class="page-header-row">
+      <div>
+        <h2>Orders</h2>
+        <p class="page-subtitle">Restock orders placed against your inventory's linked suppliers.</p>
+      </div>
+      <button mat-flat-button color="primary" type="button" (click)="openPlaceOrder()">
+        <mat-icon>local_shipping</mat-icon>
+        Place order
+      </button>
+    </div>
+
+    @if (orderError) {
+      <p class="error-message">{{ orderError }}</p>
+    }
+
+    @if (isLoading) {
+      <div class="loading-row">
+        <mat-spinner diameter="32"></mat-spinner>
+      </div>
+    } @else {
+      <mat-button-toggle-group [(ngModel)]="statusFilter" class="status-toggle">
+        <mat-button-toggle value="all">All</mat-button-toggle>
+        <mat-button-toggle value="ordered">Ordered</mat-button-toggle>
+        <mat-button-toggle value="received">Received</mat-button-toggle>
+        <mat-button-toggle value="cancelled">Cancelled</mat-button-toggle>
+      </mat-button-toggle-group>
+
+      @if (filteredOrders.length === 0) {
+        <app-empty-state
+            icon="local_shipping"
+            [message]="orders.length === 0 ? 'No orders placed yet.' : 'No orders match this filter.'"
+          />
+      } @else {
+        <ul class="order-list">
+          @for (order of filteredOrders; track order.id) {
+            <li>
+              <div class="order-row">
+                <span class="status-pill" [class]="'order-' + order.status">
+                  <mat-icon>
+                    {{ order.status === 'received' ? 'check_circle' : order.status === 'cancelled' ? 'cancel' : 'hourglass_top' }}
+                  </mat-icon>
+                  {{ order.status === 'ordered' ? 'Ordered' : order.status === 'received' ? 'Received' : 'Cancelled' }}
+                </span>
+                <a class="order-item-link" routerLink="/inventory" [queryParams]="{ item: order.itemId }">
+                  {{ order.itemName }}
+                </a>
+                <span class="order-quantity">{{ order.quantity }} units from {{ order.supplierName }}</span>
+              </div>
+              <div class="order-meta">
+                Ordered by {{ order.orderedByLabel }} &middot; {{ order.orderedAt | date: 'M/d/yy, h:mm a' }}
+                @if (order.status === 'received') {
+                  <br />
+                  Received by {{ order.receivedByLabel || '—' }} &middot; {{ order.receivedAt | date: 'M/d/yy, h:mm a' }}
+                }
+                @if (order.note) {
+                  <br />
+                  <span class="semibold">Note:</span> {{ order.note }}
+                }
+              </div>
+              @if (order.status === 'ordered') {
+                <div class="order-actions">
+                  <button mat-button type="button" [disabled]="isProcessingOrder" (click)="cancelOrder(order)">
+                    Cancel
+                  </button>
+                  <button mat-flat-button color="primary" type="button" [disabled]="isProcessingOrder" (click)="markReceived(order)">
+                    Mark received
+                  </button>
+                </div>
+              }
+            </li>
+          }
+        </ul>
+      }
+    }
+  </div>
+</div>

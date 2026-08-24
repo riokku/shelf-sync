@@ -22,3 +22,8 @@ form{
     font-weight: 600;
   }
 }
+
+.error-message{
+  color: var(--app-error-text);
+  margin: -0.5rem 0 1rem;
+}

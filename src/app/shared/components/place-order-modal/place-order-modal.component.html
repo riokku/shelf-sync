@@ -1,12 +1,32 @@
 <h2 mat-dialog-title>
   <mat-icon class="order-title-icon">local_shipping</mat-icon>
-  Reorder from {{ data.supplierName }}
+  Place order
 </h2>
-<form [formGroup]="orderForm" (ngSubmit)="submit()">
+<form [formGroup]="orderForm" (ngSubmit)="save()">
   <mat-dialog-content>
-    <p class="order-item-name">
-      <span class="semibold">{{ data.itemName }}</span>
-    </p>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Item</mat-label>
+      <mat-icon matPrefix>inventory_2</mat-icon>
+      <input
+          matInput
+          placeholder="Search inventory…"
+          [formControl]="itemSearchControl"
+          [matAutocomplete]="itemAuto"
+        />
+      <mat-autocomplete #itemAuto="matAutocomplete" (optionSelected)="onItemSelected($event)">
+        @for (item of filteredItems; track item.id) {
+          <mat-option [value]="item.id">{{ item.name }} &middot; {{ item.supplierName }}</mat-option>
+        } @empty {
+          <mat-option disabled>No orderable items match — link a supplier to an item first.</mat-option>
+        }
+      </mat-autocomplete>
+    </mat-form-field>
+
+    @if (selectedItem) {
+      <p class="order-item-name">
+        Ordering from <span class="semibold">{{ selectedItem.supplierName }}</span>
+      </p>
+    }
 
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Quantity</mat-label>
@@ -24,12 +44,22 @@
       <mat-icon matPrefix>notes</mat-icon>
       <textarea matInput placeholder="Anything worth noting about this order" formControlName="note" rows="2"></textarea>
     </mat-form-field>
+
+    @if (error) {
+      <p class="error-message">{{ error }}</p>
+    }
   </mat-dialog-content>
   <mat-dialog-actions align="end">
     <button mat-button type="button" (click)="cancel()">Cancel</button>
-    <button mat-flat-button color="primary" type="submit">
-      <mat-icon>local_shipping</mat-icon>
-      Place order
+    <button mat-flat-button color="primary" type="submit" [disabled]="isSaving">
+      @if (isSaving) {
+        <mat-spinner diameter="20"></mat-spinner>
+      } @else {
+        <ng-container>
+          <mat-icon>local_shipping</mat-icon>
+          Place order
+        </ng-container>
+      }
     </button>
   </mat-dialog-actions>
 </form>
