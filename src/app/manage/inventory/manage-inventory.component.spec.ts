@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { FormGroupDirective } from '@angular/forms';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 import { provideNativeDateAdapter } from '@angular/material/core';
 
 import { ManageInventoryComponent } from './manage-inventory.component';
@@ -8,7 +8,7 @@ import { AuthService } from '../../core/auth.service';
 import { SupabaseService } from '../../core/supabase.service';
 import { SiteSettingsService } from '../../core/site-settings.service';
 import { NotificationService } from '../../core/notification.service';
-import { createFakeAuthService, createFakeProfile, createFakeSiteSettingsService, createFakeSupabaseService, createTestInventoryItemRow } from '../../testing/fakes';
+import { createFakeActivatedRoute, createFakeAuthService, createFakeProfile, createFakeSiteSettingsService, createFakeSupabaseService, createTestInventoryItemRow } from '../../testing/fakes';
 
 describe('ManageInventoryComponent', () => {
   let component: ManageInventoryComponent;
@@ -36,6 +36,20 @@ describe('ManageInventoryComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('setViewMode() updates viewMode and reflects it in the URL as ?tab=, without adding a history entry', () => {
+    const router = TestBed.inject(Router);
+    const navigateSpy = spyOn(router, 'navigate');
+
+    component.setViewMode('retirements');
+
+    expect(component.viewMode).toBe('retirements');
+    expect(navigateSpy).toHaveBeenCalledWith([], jasmine.objectContaining({
+      queryParams: { tab: 'retirements' },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    }));
   });
 
   describe('pendingRetirementItems / pendingRetirementCount', () => {
@@ -161,6 +175,37 @@ function createInsertAwareFakeSupabaseService(singleResult: { data: unknown; err
     client: { from: () => builder(), rpc: () => builder(), channel: () => channel, removeChannel: async () => ({ status: 'ok' }) }
   } as unknown as SupabaseService;
 }
+
+/** Covers reading the active tab back out of ?tab= on load — mirrors
+ *  SettingsComponent's own ?tab= spec coverage. */
+describe('ManageInventoryComponent ?tab= handling', () => {
+  async function createWithTab(tab: string | undefined): Promise<ManageInventoryComponent> {
+    await TestBed.resetTestingModule().configureTestingModule({
+      imports: [ManageInventoryComponent],
+      providers: [
+        provideRouter([]),
+        provideNativeDateAdapter(),
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: SupabaseService, useValue: createFakeSupabaseService() },
+        { provide: ActivatedRoute, useValue: createFakeActivatedRoute(tab ? { tab } : {}) }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ManageInventoryComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    return fixture.componentInstance;
+  }
+
+  it('opens directly to the tab named in ?tab= when it names a real tab', async () => {
+    expect((await createWithTab('retirements')).viewMode).toBe('retirements');
+  });
+
+  it('falls back to the default tab when ?tab= is missing or not a real tab', async () => {
+    expect((await createWithTab(undefined)).viewMode).toBe('create');
+    expect((await createWithTab('bogus')).viewMode).toBe('create');
+  });
+});
 
 describe('ManageInventoryComponent submitInventoryItem() success', () => {
   // Regression test for the same class of bug covered in
