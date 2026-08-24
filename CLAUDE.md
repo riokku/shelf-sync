@@ -676,7 +676,8 @@ notifications in its own) sit side by side (`.settings-workflow-columns`, a `fle
 than a fixed two-column grid, so the second card drops to its own row once a narrow viewport can't
 fit both) rather than stacked top to bottom the way the Data tab's cards deliberately are — unlike
 Data's cards, neither of these holds a wide checkbox grid that benefits from the full row width, so
-there's no reason to waste the horizontal space a wide viewport already has.
+there's no reason to waste the horizontal space a wide viewport already has. `align-items: stretch`
+keeps both cards the same height regardless of which one's content happens to run longer.
 
 ## Tech Stack
 
