@@ -227,6 +227,42 @@ describe('ManageTasksComponent', () => {
         expect([...component.selectedVisibleTaskIds]).toEqual(['1']);
       });
     });
+
+    // Backs the compact "Select all" checkbox in .tasks-header-row, next to
+    // the Bulk edit toggle — same shape as InventoryComponent's own
+    // allSelectableItemsSelected/someSelectableItemsSelected.
+    describe('allVisibleTasksSelected / someVisibleTasksSelected', () => {
+      it('are both false with nothing selected', () => {
+        expect(component.allVisibleTasksSelected).toBeFalse();
+        expect(component.someVisibleTasksSelected).toBeFalse();
+      });
+
+      it('someVisibleTasksSelected is true, allVisibleTasksSelected false, when only some filtered tasks are selected', () => {
+        component.toggleTaskSelection('1', true);
+
+        expect(component.allVisibleTasksSelected).toBeFalse();
+        expect(component.someVisibleTasksSelected).toBeTrue();
+      });
+
+      it('allVisibleTasksSelected is true, someVisibleTasksSelected false, once every filtered task is selected', () => {
+        component.toggleSelectAllFiltered(true);
+
+        expect(component.allVisibleTasksSelected).toBeTrue();
+        expect(component.someVisibleTasksSelected).toBeFalse();
+      });
+
+      it('ignores a selected task a filter has since hidden, same as selectedVisibleTaskIds', () => {
+        component.toggleTaskSelection('1', true);
+        component.toggleTaskSelection('2', true);
+
+        component.taskFilterSearch = 'restock';
+
+        // Only task '1' matches the filter now — it alone is "every visible
+        // task," so this reads as fully (not partially) selected.
+        expect(component.allVisibleTasksSelected).toBeTrue();
+        expect(component.someVisibleTasksSelected).toBeFalse();
+      });
+    });
   });
 
 });

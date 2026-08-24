@@ -21,14 +21,16 @@ import { MatIconModule } from '@angular/material/icon';
  *  its underlying list is non-empty (same as every other conditional
  *  toolbar/empty-state block in this app) — it has no opinion on that.
  *
- *  `hideSelectAllCheckbox` (default false) is for InventoryComponent only —
- *  it has its own compact "Select all" checkbox up in its header row now
- *  (next to the Bulk edit toggle), so this component's own copy would just
- *  be a redundant second control doing the same thing. Manage Tasks/Manage
- *  Team have no such header-row checkbox, so they leave this false and keep
- *  the checkbox here exactly as before. When true, this component also
- *  stops rendering itself at all until something's actually selected — a
- *  bare "Select all" text label with no checkbox and no action buttons
+ *  `hideSelectAllCheckbox` (default false) is for pages with their own
+ *  compact "Select all" checkbox up in their header row, next to their Bulk
+ *  edit toggle (Inventory, Manage Tasks' "All tasks" list) — this
+ *  component's own copy would just be a redundant second control doing the
+ *  same thing. Manage Team's pending-join-requests list has no such
+ *  header-row checkbox (it has no Bulk edit toggle to sit next to at all —
+ *  bulk actions are always available there), so it leaves this false and
+ *  keeps the checkbox here exactly as before. When true, this component
+ *  also stops rendering itself at all until something's actually selected —
+ *  a bare "Select all" text label with no checkbox and no action buttons
  *  would be pure clutter once the header-row checkbox already covers it. */
 @Component({
   selector: 'app-bulk-action-toolbar',

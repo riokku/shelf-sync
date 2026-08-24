@@ -189,6 +189,20 @@ export class ManageTasksComponent implements OnInit {
     return new Set([...this.selectedTaskIds].filter(id => visibleIds.has(id)));
   }
 
+  /** Backs the compact "Select all" checkbox up in .tasks-header-row (next
+   *  to the Bulk edit toggle) — same shape as InventoryComponent's own
+   *  allSelectableItemsSelected/someSelectableItemsSelected, just without a
+   *  lock-style "can this row even be selected" filter (tasks have no
+   *  such concept), so every filtered task is fair game here. */
+  get allVisibleTasksSelected(): boolean {
+    return this.filteredAllTasks.length > 0
+      && this.filteredAllTasks.every(task => this.selectedTaskIds.has(task.id));
+  }
+
+  get someVisibleTasksSelected(): boolean {
+    return this.selectedVisibleTaskIds.size > 0 && !this.allVisibleTasksSelected;
+  }
+
   isTaskSelected(taskId: string): boolean {
     return this.selectedTaskIds.has(taskId);
   }
