@@ -1,11 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 
 import { SettingsComponent } from './settings.component';
 import { SiteSettingsService } from '../../core/site-settings.service';
 import { InventoryFieldOptionsService } from '../../core/inventory-field-options.service';
 import { NotificationService } from '../../core/notification.service';
-import { createFakeInventoryFieldOptionsService, createFakeSiteSettingsService } from '../../testing/fakes';
+import { createFakeActivatedRoute, createFakeInventoryFieldOptionsService, createFakeSiteSettingsService } from '../../testing/fakes';
 import { DEFAULT_INVENTORY_TABLE_COLUMNS } from '../../shared/models/inventory-table-column';
 import { DEFAULT_INVENTORY_FORM_FIELDS } from '../../shared/models/inventory-form-field';
 
@@ -54,6 +54,49 @@ describe('SettingsComponent', () => {
 
   it('defaults to the Data tab', () => {
     expect(component.viewMode).toBe('data');
+  });
+
+  it('setViewMode() updates viewMode and reflects it in the URL as ?tab=, without adding a history entry', () => {
+    const router = TestBed.inject(Router);
+    const navigateSpy = spyOn(router, 'navigate');
+
+    component.setViewMode('workflow');
+
+    expect(component.viewMode).toBe('workflow');
+    expect(navigateSpy).toHaveBeenCalledWith([], jasmine.objectContaining({
+      queryParams: { tab: 'workflow' },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    }));
+  });
+
+  describe('reading the initial tab from ?tab=', () => {
+    async function createWithTabParam(tab: string | undefined): Promise<SettingsComponent> {
+      await TestBed.resetTestingModule().configureTestingModule({
+        imports: [SettingsComponent],
+        providers: [
+          provideRouter([]),
+          { provide: SiteSettingsService, useValue: siteSettings },
+          { provide: InventoryFieldOptionsService, useValue: fieldOptionsService },
+          { provide: ActivatedRoute, useValue: createFakeActivatedRoute(tab ? { tab } : {}) }
+        ]
+      }).compileComponents();
+
+      const tabFixture = TestBed.createComponent(SettingsComponent);
+      tabFixture.detectChanges();
+      await tabFixture.whenStable();
+      return tabFixture.componentInstance;
+    }
+
+    it('opens directly to the tab named in ?tab= when it names a real tab', async () => {
+      const tabComponent = await createWithTabParam('workflow');
+      expect(tabComponent.viewMode).toBe('workflow');
+    });
+
+    it('falls back to the default tab when ?tab= is missing or not a real tab', async () => {
+      expect((await createWithTabParam(undefined)).viewMode).toBe('data');
+      expect((await createWithTabParam('bogus')).viewMode).toBe('data');
+    });
   });
 
   it('initializes selectedTheme, selectedTableColumns, and selectedFormFields from the persisted settings', () => {

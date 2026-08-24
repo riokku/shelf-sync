@@ -346,7 +346,13 @@ toggle (default `true`, so every existing org keeps the original behavior unchan
 third `settings` tab, **Workflow** (`SettingsComponent.viewMode` is now
 `'style' | 'data' | 'workflow'`), the intended home for future org-behavior toggles alongside this
 first one — a `mat-slide-toggle` (this app's first use of that Material module), same local-
-selection/save-button/error/saved-flag pattern the Data tab's other settings already use. Every
+selection/save-button/error/saved-flag pattern the Data tab's other settings already use. The
+active tab is reflected in the URL as `?tab=` (`setViewMode()`, reading the initial value back out
+of `ActivatedRoute`'s snapshot once in `ngOnInit()` — same "read once, this component is the only
+thing that ever changes it" reasoning `InventoryComponent`'s own `?item=` deep-link handling
+already uses) so refreshing, bookmarking, or sharing a link lands back on the same tab rather than
+always the Data tab default; `replaceUrl: true` keeps switching tabs from spamming browser history
+with an entry per click. Every
 section's Save button across the whole Settings page (Theme, Table presentation, Inventory data,
 Retirement approval, Bulk edit) is wrapped in `@if` on that section's own `xChanged` getter — hidden
 outright when the local selection matches what's persisted, rather than rendered-but-disabled, since
