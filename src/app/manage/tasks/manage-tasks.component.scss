@@ -51,6 +51,16 @@
   max-width: none;
 }
 
+// Right-aligned, same placement/shape as InventoryComponent's own Bulk edit
+// toggle row above its search bar — off by default (see bulkEditEnabled's
+// own doc comment) so ordinary browsing isn't cluttered with a checkbox on
+// every row.
+.bulk-edit-toggle-row{
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
 .task-filters{
   display: flex;
   flex-wrap: wrap;
@@ -68,6 +78,15 @@
   }
 }
 
+// The only field in .task-filters with no max-width, so it's the one that
+// keeps growing once the assignee/status/due-date fields above have each
+// capped out at their own 16rem — the search field absorbs whatever width
+// the other filters don't need, rather than every field (search included)
+// stopping at the same 16rem and leaving empty space on a wide viewport.
+.task-search-field{
+  max-width: none;
+}
+
 .task-rows{
   display: flex;
   flex-direction: column;
@@ -81,12 +100,19 @@
 // of what a given row's cells contain, so everything lines up.
 .task-row{
   display: grid;
-  grid-template-columns: 2rem minmax(10rem, 2fr) minmax(8rem, 1fr) minmax(8rem, 1fr) 7.5rem 2.5rem;
+  grid-template-columns: minmax(10rem, 2fr) minmax(8rem, 1fr) minmax(8rem, 1fr) 7.5rem 2.5rem;
   align-items: center;
   column-gap: 1.5rem;
   padding: 0.85rem 1.25rem;
   border-radius: 0.5rem;
   background: var(--mat-sys-surface-container-low);
+
+  // Only reserves a leading column for the checkbox once Bulk edit is on
+  // (see the template's own @if) — otherwise the row has no checkbox to
+  // lay out and this column would just sit empty.
+  &.bulk-edit-active{
+    grid-template-columns: 2rem minmax(10rem, 2fr) minmax(8rem, 1fr) minmax(8rem, 1fr) 7.5rem 2.5rem;
+  }
 
   &.overdue{
     border-left: 4px solid var(--app-overdue-text);

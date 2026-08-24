@@ -152,6 +152,33 @@ describe('ManageTasksComponent', () => {
       ];
     });
 
+    it('defaults to off', () => {
+      expect(component.bulkEditEnabled).toBeFalse();
+    });
+
+    it('toggleBulkEdit(true) turns it on without touching an existing selection', () => {
+      component.toggleTaskSelection('1', true);
+
+      component.toggleBulkEdit(true);
+
+      expect(component.bulkEditEnabled).toBeTrue();
+      expect(component.isTaskSelected('1')).toBeTrue();
+    });
+
+    it('toggleBulkEdit(false) turns it off and clears selection, status value, and any bulk error', () => {
+      component.toggleBulkEdit(true);
+      component.toggleTaskSelection('1', true);
+      component.bulkStatusValue = 'done';
+      component.bulkActionError = 'something went wrong';
+
+      component.toggleBulkEdit(false);
+
+      expect(component.bulkEditEnabled).toBeFalse();
+      expect(component.selectedTaskIds.size).toBe(0);
+      expect(component.bulkStatusValue).toBeNull();
+      expect(component.bulkActionError).toBeNull();
+    });
+
     it('toggleTaskSelection() adds and removes an id', () => {
       component.toggleTaskSelection('1', true);
       expect(component.isTaskSelected('1')).toBeTrue();

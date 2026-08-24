@@ -10,6 +10,7 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -49,6 +50,7 @@ type RelatedItemOption = Pick<Database['public']['Tables']['inventory_items']['R
     MatCheckboxModule,
     MatIconModule,
     MatProgressSpinnerModule,
+    MatSlideToggleModule,
     MatDatepickerModule,
     BreadcrumbsComponent,
     UserAvatarComponent,
@@ -148,6 +150,21 @@ export class ManageTasksComponent implements OnInit {
       }
       return true;
     });
+  }
+
+  // Off by default — an explicit "Bulk edit" toggle rather than always
+  // showing a checkbox on every row, so ordinary browsing of "All tasks"
+  // isn't cluttered with a control most visits never use, same reasoning
+  // InventoryComponent's own bulkEditEnabled has. Turning it off clears
+  // whatever was selected (see toggleBulkEdit() below) rather than leaving
+  // a stale selection sitting around unseen until it's turned back on.
+  bulkEditEnabled = false;
+
+  toggleBulkEdit(enabled: boolean) {
+    this.bulkEditEnabled = enabled;
+    if (!enabled) {
+      this.clearTaskSelection();
+    }
   }
 
   // Bulk selection — a plain Set of ids, not scoped to any particular
