@@ -1,0 +1,7 @@
+// Turnstile renders its own iframe at a fixed intrinsic size — this just
+// gives it consistent breathing room from whatever sits above/below it in
+// each of the three forms embedding it, rather than each of those three
+// components needing its own copy of the same spacing rule.
+.turnstile-container{
+  margin: 0.5rem 0 1rem;
+}

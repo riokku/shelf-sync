@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, ViewChild, inject, signal } from '@angular/core';
 import {
   AbstractControl,
   FormControl,
@@ -16,6 +16,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { SiteSettingsService } from '../core/site-settings.service';
 import { BrandLogoComponent } from '../shared/components/brand-logo/brand-logo.component';
+import { TurnstileWidgetComponent } from '../shared/components/turnstile-widget/turnstile-widget.component';
 
 function passwordsMatch(control: AbstractControl): ValidationErrors | null {
   const password = control.get('password')?.value;
@@ -33,7 +34,8 @@ function passwordsMatch(control: AbstractControl): ValidationErrors | null {
         MatIconModule,
         MatProgressSpinnerModule,
         RouterModule,
-        BrandLogoComponent
+        BrandLogoComponent,
+        TurnstileWidgetComponent
     ],
     templateUrl: './register.component.html',
     styleUrl: './register.component.scss'
@@ -43,6 +45,8 @@ export class RegisterComponent implements OnInit {
   private siteSettings = inject(SiteSettingsService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+
+  @ViewChild(TurnstileWidgetComponent) private turnstile?: TurnstileWidgetComponent;
 
   form = new FormGroup(
     {
@@ -59,6 +63,9 @@ export class RegisterComponent implements OnInit {
   isLoading = false;
   errorMessage: string | null = null;
   confirmationSent = false;
+  /** See LoginComponent's own field of the same name for why this exists
+   *  and gets cleared/reset after a failed submit. */
+  captchaToken: string | null = null;
   /** Set once an invite link's `?org=` slug resolves — locks the form into
    *  "join this organization" mode instead of creating a new one. */
   joiningOrganization: { id: string; name: string } | null = null;
@@ -108,6 +115,11 @@ export class RegisterComponent implements OnInit {
       this.form.markAllAsTouched();
       return;
     }
+    // See LoginComponent.attemptLogin()'s own comment on why this can't
+    // rely on the submit button's [disabled] binding alone.
+    if (!this.captchaToken) {
+      return;
+    }
 
     this.isLoading = true;
     this.errorMessage = null;
@@ -121,13 +133,16 @@ export class RegisterComponent implements OnInit {
       password,
       fullName,
       nickname,
-      organization
+      organization,
+      this.captchaToken ?? undefined
     );
 
     this.isLoading = false;
 
     if (error) {
       this.errorMessage = error.message;
+      this.captchaToken = null;
+      this.turnstile?.reset();
       return;
     }
 

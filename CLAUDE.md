@@ -183,6 +183,34 @@ Password recovery (`/forgot-password`, `/reset-password`), Supabase-native clien
 assigned to someone (both `TaskDetailModalComponent` and task-creation) are all covered in detail
 in the Supabase Schema section below, next to the migrations that back them.
 
+Login, Register, and Forgot Password all embed a shared `TurnstileWidgetComponent`
+(`shared/components/turnstile-widget`) — Cloudflare Turnstile, to stop scripted signup/credential-
+stuffing/password-reset abuse (found missing during a `/security-review` pass). Supabase's own
+captcha protection (Auth > Attack Protection, hosted-project-dashboard-only — no migration or
+`config.toml` setting can turn it on for the *hosted* project, only for a local `supabase start`
+instance nobody here runs) enforces it project-wide across sign-up, sign-in, *and* password
+recovery simultaneously the moment it's enabled — there's no way to require it on just Register —
+which is why the same widget sits on all three forms rather than only the one this was originally
+asked for. Each form's submit button stays `[disabled]` until the widget's `verified` output hands
+back a token (`captchaToken`, cleared again on `cleared` — Turnstile's own expired/error callbacks
+merged into one output, since the parent's response to both is identical: null out the token and
+wait for a fresh one); `(ngSubmit)` still fires on pressing Enter regardless of a disabled button,
+so `attemptLogin()`/`attemptRegister()`/`requestReset()` each also guard on `!this.captchaToken`
+directly, the same way they already guard on `this.form.invalid`. A token is single-use — a failed
+attempt nulls `captchaToken` back out and calls the widget's own `reset()` (fetches a fresh token
+from the same rendered instance rather than tearing down and re-rendering) so retrying doesn't
+resubmit one Supabase already consumed or rejected. `AuthService.signIn()`/`signUp()`/
+`requestPasswordReset()` all take an optional trailing `captchaToken` param, passed straight through
+as `options.captchaToken` to the matching `supabase.auth.*` call — optional in the type sense only,
+since each of the three components already refuses to call them without a real one.
+`environment.ts`/`environment.prod.ts`'s `turnstileSiteKey` (the public half of the pair, safe to
+commit) is currently Cloudflare's own published "always passes" test key — real bot protection isn't
+active until that's swapped for a real Turnstile site's key (Cloudflare dashboard > Turnstile > Add
+site; one widget can list both the production hostname and `localhost`, so this app's shared dev/prod
+Supabase project can keep sharing one Turnstile site too) *and* the secret half is pasted into that
+same Attack Protection setting — until both of those manual, hosted-dashboard-only steps happen, the
+widget renders and gates the form correctly but provides no actual protection.
+
 `tasks.created_by` has been set on every task since creation (see `add_organization_deletion`'s FK
 note above) but was never actually surfaced anywhere — every task list/detail view now shows who
 created it (`createdByLabel()`, resolved from the same already-loaded org profiles list each of
@@ -873,6 +901,7 @@ shared/
   components/supplier-form-modal/ # add/edit dialog backing manage/suppliers' directory CRUD
   components/place-order-modal/ # self-contained item picker + quantity/note dialog backing manage/orders' "Place order"
   components/discard-modal/ # quantity + mandatory-reason dialog backing ModalTableComponent's "Discard" button
+  components/turnstile-widget/ # Cloudflare Turnstile CAPTCHA, embedded on Login/Register/Forgot Password
   models/inventory-item.model.ts   # InventoryItem class (constructor-based, no defaults)
   models/supplier.model.ts   # Supplier — a directory entry inventory_items.supplier_id can point at
   models/inventory-item-order.model.ts # InventoryItemOrder — one restock order against an item's linked supplier
