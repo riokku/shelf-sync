@@ -205,12 +205,15 @@ as `options.captchaToken` to the matching `supabase.auth.*` call — optional in
 since each of the three components already refuses to call them without a real one.
 `environment.ts`/`environment.prod.ts`'s `turnstileSiteKey` (the public half of the pair, safe to
 commit) is a real Cloudflare Turnstile widget's site key, shared by dev and prod the same way they
-already share one Supabase project. Real bot protection still isn't active yet, though — that
-requires the matching *secret* key to be pasted into Supabase's own Auth > Attack Protection
-dashboard setting (hosted-project-dashboard-only, same as the site key's own widget creation was;
-neither step is something a migration or `config.toml` can do for the hosted project) — until that
-one remaining step happens, the widget renders and gates the form correctly but Supabase isn't
-actually checking the token against anything.
+already share one Supabase project. The matching *secret* key is pasted into Supabase's own Auth >
+Attack Protection dashboard setting (hosted-project-dashboard-only — neither half of this pairing is
+something a migration or `config.toml` can configure for the hosted project) with captcha protection
+turned on, so this is fully live: verified directly against the Auth API (`/auth/v1/token?grant_type=
+password`) — no token at all fails closed with `captcha_failed: no captcha_token found`, and a
+syntactically-present-but-fake token fails with `invalid-input-response` (Cloudflare correctly
+evaluating and rejecting it, as opposed to `invalid-input-secret`, which is what a misconfigured
+secret on Supabase's side looks like instead — worth knowing as the diagnostic signal if this ever
+needs re-checking).
 
 `tasks.created_by` has been set on every task since creation (see `add_organization_deletion`'s FK
 note above) but was never actually surfaced anywhere — every task list/detail view now shows who
