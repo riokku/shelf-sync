@@ -18,9 +18,10 @@
 }
 
 // Holds the Create task/All tasks toggle group and (only in the All tasks
-// view — see the template's own @if) the Bulk edit toggle, inline on the
-// same row rather than stacked, so Bulk edit reads as a peer control next
-// to the tabs instead of a separate section of its own.
+// view — see the template's own @if) the Select all checkbox + Bulk edit
+// toggle, inline on the same row rather than stacked, so Bulk edit reads
+// as a peer control next to the tabs instead of a separate section of its
+// own.
 .tasks-header-row{
   display: flex;
   flex-wrap: wrap;
@@ -33,6 +34,15 @@
 .view-toggle{
   // .tasks-header-row above now carries this row's own bottom margin.
   margin-bottom: 0;
+}
+
+// Same compact treatment InventoryComponent's own header-row "Select all"
+// checkbox uses next to its Bulk edit toggle — shrinks Material's oversized
+// invisible touch target via the same token .option-list already uses
+// elsewhere in this app, rather than reaching into MDC's internal DOM.
+.select-all-checkbox{
+  font-size: 0.8125rem;
+  --mat-checkbox-touch-target-display: none;
 }
 
 .manage-form{
