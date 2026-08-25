@@ -6,280 +6,51 @@
     <h2>Help &amp; FAQ</h2>
     <p class="page-subtitle">Answers to common "how do I..." questions about ShelfSync.</p>
 
-    <section class="help-section">
-      <h3>What's new</h3>
-      <ul class="changelog-list">
-        @for (entry of changelogEntries; track entry.title) {
-          <li class="changelog-row">
-            <span class="changelog-date">{{ entry.date | date: 'MMM d, y' }}</span>
-            <span class="changelog-body">
-              <span class="semibold">{{ entry.title }}</span>
-              <span class="changelog-description">{{ entry.description }}</span>
-            </span>
-          </li>
-        }
-      </ul>
-    </section>
+    <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
+      <mat-icon matPrefix>search</mat-icon>
+      <input matInput placeholder="Search for a question…" [(ngModel)]="searchTerm" />
+      @if (searchTerm) {
+        <button matSuffix mat-icon-button type="button" (click)="clearSearch()" aria-label="Clear search">
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+    </mat-form-field>
 
-    <section class="help-section">
-      <h3>Getting started</h3>
-      <mat-accordion multi>
-        <mat-expansion-panel>
-          <mat-expansion-panel-header>
-            <mat-panel-title>How do I invite my team?</mat-panel-title>
-          </mat-expansion-panel-header>
-          <p>
-            Go to <a routerLink="/manage/team">Manage &gt; Team</a> and copy the invite link near the
-            top of the page. Anyone who signs up with it joins your organization automatically, as a
-            pending request — an admin still needs to approve them under "Pending join requests"
-            before they can see or do anything.
-          </p>
-        </mat-expansion-panel>
-        <mat-expansion-panel>
-          <mat-expansion-panel-header>
-            <mat-panel-title>How do I add my first inventory item?</mat-panel-title>
-          </mat-expansion-panel-header>
-          <p>
-            Admins and managers can create items from <a routerLink="/manage/inventory">Manage &gt;
-            Inventory</a>'s "Create item" tab. Which fields show on that form (and which columns
-            show on the Inventory table) can be trimmed down by an admin under Manage &gt; Settings.
-          </p>
-        </mat-expansion-panel>
-        <mat-expansion-panel>
-          <mat-expansion-panel-header>
-            <mat-panel-title>How do I create a task?</mat-panel-title>
-          </mat-expansion-panel-header>
-          <p>
-            Admins and managers can create and assign tasks to anyone from
-            <a routerLink="/manage/tasks">Manage &gt; Tasks</a>. Everyone can see and update the
-            status of tasks assigned to them from the <a routerLink="/tasks">Tasks</a> page.
-          </p>
-        </mat-expansion-panel>
-      </mat-accordion>
-    </section>
-
-    <section class="help-section">
-      <h3>Inventory</h3>
-      <mat-accordion multi>
-        <mat-expansion-panel>
-          <mat-expansion-panel-header>
-            <mat-panel-title>What's the difference between card and table view?</mat-panel-title>
-          </mat-expansion-panel-header>
-          <p>
-            Both show the same items — card view is a browsable gallery, table view is a sortable
-            grid. Switch between them with the toggle above the item list on the
-            <a routerLink="/inventory">Inventory</a> page. An admin controls which optional columns
-            the table view shows under Manage &gt; Settings &gt; Data.
-          </p>
-        </mat-expansion-panel>
-        <mat-expansion-panel>
-          <mat-expansion-panel-header>
-            <mat-panel-title>What's the difference between a single quantity and tracking by container/box?</mat-panel-title>
-          </mat-expansion-panel-header>
-          <p>
-            A single-quantity item just tracks one number for how much is left. A container/box-
-            tracked item instead splits its stock into individually-editable boxes (e.g. 5 boxes of
-            20), each with its own location — useful when you need to know exactly which box or
-            pallet has stock. You choose which way to track an item when creating it.
-          </p>
-        </mat-expansion-panel>
-        <mat-expansion-panel>
-          <mat-expansion-panel-header>
-            <mat-panel-title>How do I discard damaged, lost, or expired stock?</mat-panel-title>
-          </mat-expansion-panel-header>
-          <p>
-            Open the item's detail popup and use the "Discard" button. You'll pick a quantity (and,
-            for a container-tracked item, which box) plus one or more reasons — discarding
-            permanently reduces the item's stock and is logged to its activity history.
-          </p>
-        </mat-expansion-panel>
-        <mat-expansion-panel>
-          <mat-expansion-panel-header>
-            <mat-panel-title>How do I retire an item?</mat-panel-title>
-          </mat-expansion-panel-header>
-          <p>
-            Once an item's remaining quantity hits zero, anyone can request retiring it from its
-            detail popup. Depending on your organization's Settings &gt; Workflow configuration, that
-            either needs an admin/manager's approval or takes effect immediately. A retired item is
-            hidden from the default Inventory view.
-          </p>
-        </mat-expansion-panel>
-        <mat-expansion-panel>
-          <mat-expansion-panel-header>
-            <mat-panel-title>What does locking an item do?</mat-panel-title>
-          </mat-expansion-panel-header>
-          <p>
-            Admins and managers can lock an item from its detail popup to stop anyone else from
-            editing it — useful while you're in the middle of correcting its data. Only an admin or
-            manager can unlock it again.
-          </p>
-        </mat-expansion-panel>
-        <mat-expansion-panel>
-          <mat-expansion-panel-header>
-            <mat-panel-title>Can I export my inventory data?</mat-panel-title>
-          </mat-expansion-panel-header>
-          <p>
-            Admins and managers can export a CSV of every item (active, pending, and retired) from
-            the "Export" button on <a routerLink="/manage/inventory">Manage &gt; Inventory</a>, with
-            each item's full activity history included.
-          </p>
-        </mat-expansion-panel>
-      </mat-accordion>
-    </section>
-
-    <section class="help-section">
-      <h3>Reservations &amp; orders</h3>
-      <mat-accordion multi>
-        <mat-expansion-panel>
-          <mat-expansion-panel-header>
-            <mat-panel-title>What's a reservation?</mat-panel-title>
-          </mat-expansion-panel-header>
-          <p>
-            A reservation books a quantity of an item's stock for a future date range (e.g. for an
-            upcoming event), so it doesn't get double-booked. It's separate from checking an item
-            out — nothing about its stock or checked-out status changes until someone actually
-            picks the reservation up. Manage reservations from
-            <a routerLink="/manage/reservations">Manage &gt; Reservations</a>.
-          </p>
-        </mat-expansion-panel>
-        <mat-expansion-panel>
-          <mat-expansion-panel-header>
-            <mat-panel-title>What's a restock order, and what happens when I mark one received?</mat-panel-title>
-          </mat-expansion-panel-header>
-          <p>
-            An order is a restock request placed against an item's linked supplier, managed from
-            <a routerLink="/manage/orders">Manage &gt; Orders</a>. Marking an order received
-            automatically adds its quantity back to a single-quantity item's stock — a
-            container/box-tracked item just gets marked received, since you'll still need to add or
-            update a box yourself with where the new stock actually is.
-          </p>
-        </mat-expansion-panel>
-      </mat-accordion>
-    </section>
-
-    <section class="help-section">
-      <h3>Tasks</h3>
-      <mat-accordion multi>
-        <mat-expansion-panel>
-          <mat-expansion-panel-header>
-            <mat-panel-title>How do I hand off a task to someone else?</mat-panel-title>
-          </mat-expansion-panel-header>
-          <p>
-            Open the task and offer a transfer to another approved team member — it stays in your
-            queue until they accept it. They can also decline it, which leaves it with you unchanged.
-          </p>
-        </mat-expansion-panel>
-        <mat-expansion-panel>
-          <mat-expansion-panel-header>
-            <mat-panel-title>What do the task statuses mean?</mat-panel-title>
-          </mat-expansion-panel-header>
-          <p>
-            To do, In Progress, and Done — the assignee (or an admin/manager) can move a task
-            between any of them from its detail popup.
-          </p>
-        </mat-expansion-panel>
-      </mat-accordion>
-    </section>
-
-    <section class="help-section">
-      <h3>Team &amp; roles</h3>
-      <mat-accordion multi>
-        <mat-expansion-panel>
-          <mat-expansion-panel-header>
-            <mat-panel-title>What can each role do?</mat-panel-title>
-          </mat-expansion-panel-header>
-          <p>
-            <span class="semibold">Staff</span> can browse inventory, manage their own tasks, and
-            request things like retirement or a task transfer. <span class="semibold">Managers</span>
-            get access to most of the Manage hub — inventory, tasks, team, orders, reservations,
-            reports. <span class="semibold">Admins</span> get everything managers do, plus billing,
-            the danger zone, and site-wide settings.
-          </p>
-        </mat-expansion-panel>
-        <mat-expansion-panel>
-          <mat-expansion-panel-header>
-            <mat-panel-title>How do I see who's online?</mat-panel-title>
-          </mat-expansion-panel-header>
-          <p>
-            <a routerLink="/manage/team">Manage &gt; Team</a> shows a small pulsing dot on anyone
-            currently online, or "Last seen..." otherwise. The header also shows a live count of how
-            many teammates are online right now, next to your organization's name.
-          </p>
-        </mat-expansion-panel>
-      </mat-accordion>
-    </section>
-
-    <section class="help-section">
-      <h3>Notifications</h3>
-      <mat-accordion multi>
-        <mat-expansion-panel>
-          <mat-expansion-panel-header>
-            <mat-panel-title>What shows up in the bell icon?</mat-panel-title>
-          </mat-expansion-panel-header>
-          <p>
-            A task assigned directly to you, a task transfer offered to you, an inventory
-            retirement request needing admin/manager approval, and a new join request needing
-            admin approval. The same four events can also send an email, unless an admin has turned
-            that category off under Manage &gt; Settings &gt; Workflow.
-          </p>
-        </mat-expansion-panel>
-      </mat-accordion>
-    </section>
-
-    <section class="help-section">
-      <h3>Settings &amp; branding <span class="section-audience">(admin only)</span></h3>
-      <mat-accordion multi>
-        <mat-expansion-panel>
-          <mat-expansion-panel-header>
-            <mat-panel-title>Where do I customize the theme and logo?</mat-panel-title>
-          </mat-expansion-panel-header>
-          <p>
-            <a routerLink="/manage/settings">Manage &gt; Settings</a>'s Style tab has a color theme
-            picker and a logo upload — both apply site-wide, even before signing in.
-          </p>
-        </mat-expansion-panel>
-        <mat-expansion-panel>
-          <mat-expansion-panel-header>
-            <mat-panel-title>Where do I control which fields and columns show?</mat-panel-title>
-          </mat-expansion-panel-header>
-          <p>
-            The Data tab lets you trim which optional fields appear on the "Create item" form and
-            which optional columns the Inventory page's table view shows, plus the approved
-            category/physical-location/discard-reason option lists.
-          </p>
-        </mat-expansion-panel>
-        <mat-expansion-panel>
-          <mat-expansion-panel-header>
-            <mat-panel-title>Where do I turn off retirement approval, bulk edit, or a specific email notification?</mat-panel-title>
-          </mat-expansion-panel-header>
-          <p>
-            All under the Workflow tab — retirement approval and bulk edit are each a single toggle,
-            and email notifications have their own toggle per event kind.
-          </p>
-        </mat-expansion-panel>
-      </mat-accordion>
-    </section>
-
-    <section class="help-section">
-      <h3>Account</h3>
-      <mat-accordion multi>
-        <mat-expansion-panel>
-          <mat-expansion-panel-header>
-            <mat-panel-title>How do I change my avatar or switch between light and dark mode?</mat-panel-title>
-          </mat-expansion-panel-header>
-          <p>
-            Both are on your <a routerLink="/account">Account</a> page.
-          </p>
-        </mat-expansion-panel>
-        <mat-expansion-panel>
-          <mat-expansion-panel-header>
-            <mat-panel-title>How do I reset my password?</mat-panel-title>
-          </mat-expansion-panel-header>
-          <p>
-            Use "Forgot password?" on the login screen to request a reset link by email.
-          </p>
-        </mat-expansion-panel>
-      </mat-accordion>
-    </section>
+    @if (hasNoResults) {
+      <app-empty-state icon="search_off" [message]="'No questions match \'' + searchTerm + '\'.'">
+        <button mat-stroked-button type="button" (click)="clearSearch()">
+          <mat-icon>clear</mat-icon>
+          Clear search
+        </button>
+      </app-empty-state>
+    } @else {
+      @for (section of filteredSections; track section.title) {
+        <section class="help-section">
+          <h3>
+            {{ section.title }}
+            @if (section.audience) {
+              <span class="section-audience">{{ section.audience }}</span>
+            }
+          </h3>
+          <mat-accordion multi>
+            @for (item of section.items; track item.question) {
+              <mat-expansion-panel [expanded]="searchTerm.trim().length > 0">
+                <mat-expansion-panel-header>
+                  <mat-panel-title>{{ item.question }}</mat-panel-title>
+                </mat-expansion-panel-header>
+                <p>{{ item.answer }}</p>
+                @if (item.links && item.links.length > 0) {
+                  <p class="help-item-links">
+                    @for (link of item.links; track link.path) {
+                      <a [routerLink]="link.path">{{ link.label }}</a>
+                    }
+                  </p>
+                }
+              </mat-expansion-panel>
+            }
+          </mat-accordion>
+        </section>
+      }
+    }
   </div>
 </div>

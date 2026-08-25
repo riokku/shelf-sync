@@ -8,16 +8,24 @@
     margin: 0 0 0.25rem;
   }
 
+  // No custom max-width here — this page uses the same container width
+  // every other page (Account, Manage, etc.) does, rather than the
+  // narrower reading-width column this used to be constrained to.
   .container{
     padding-left: 0;
     padding-right: 0;
-    max-width: 50rem;
   }
 }
 
 .page-subtitle{
   color: var(--mat-sys-on-surface-variant);
-  margin: 0 0 2rem;
+  margin: 0 0 1.5rem;
+}
+
+.search-field{
+  display: block;
+  max-width: 28rem;
+  margin-bottom: 1.5rem;
 }
 
 .help-section{
@@ -38,6 +46,13 @@
   }
 }
 
+.help-item-links{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin-top: 0.75rem !important;
+}
+
 .section-audience{
   color: var(--mat-sys-on-surface-variant);
   font-weight: 400;
@@ -46,39 +61,4 @@
 
 .semibold{
   font-weight: 600;
-}
-
-.changelog-list{
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.changelog-row{
-  display: flex;
-  gap: 1rem;
-  padding: 0.75rem 0;
-  border-bottom: 1px solid var(--mat-sys-outline-variant);
-
-  &:last-child{
-    border-bottom: none;
-  }
-}
-
-.changelog-date{
-  flex: 0 0 6.5rem;
-  color: var(--mat-sys-on-surface-variant);
-  font-size: 0.8125rem;
-}
-
-.changelog-body{
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-  min-width: 0;
-}
-
-.changelog-description{
-  color: var(--mat-sys-on-surface-variant);
-  font-size: 0.875rem;
 }

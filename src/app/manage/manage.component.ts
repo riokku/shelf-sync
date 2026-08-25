@@ -6,6 +6,7 @@ import { AuthService } from '../core/auth.service';
 import { SupabaseService } from '../core/supabase.service';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 import { PageIntroComponent } from '../shared/components/page-intro/page-intro.component';
+import { getUnseenChangelogCount } from '../shared/utils/changelog';
 
 @Component({
   selector: 'app-manage',
@@ -35,6 +36,14 @@ export class ManageComponent implements OnInit {
    *  pending section on the Team page itself, so this stays 0 (and the
    *  badge stays hidden) for a manager. */
   pendingJoinRequestCount = 0;
+  /** How many Release Notes entries this user hasn't seen yet (see
+   *  shared/utils/changelog.ts) — badged on this hub's own Release Notes
+   *  card, same treatment as the three approval-queue counts above even
+   *  though this isn't an approval queue itself; it's still "something new
+   *  worth a look" the same way those are. Purely local/static (no
+   *  Supabase query), so it's set directly rather than through the
+   *  Promise.all below. */
+  unseenReleaseNotesCount = 0;
 
   async ngOnInit() {
     // getProfile() rather than authService.role() — the profile signal
@@ -62,5 +71,9 @@ export class ManageComponent implements OnInit {
     this.pendingRetirementCount = retirementCount ?? 0;
     this.pendingTaskTransferCount = transferCount ?? 0;
     this.pendingJoinRequestCount = joinCount ?? 0;
+
+    if (profile) {
+      this.unseenReleaseNotesCount = getUnseenChangelogCount(profile.id);
+    }
   }
 }

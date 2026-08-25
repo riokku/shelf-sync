@@ -149,6 +149,13 @@ const routes: Routes = [
     title: 'ShelfSync | Activity Log'
   },
   {
+    path: 'manage/release-notes',
+    loadComponent: () => import('./manage/release-notes/manage-release-notes.component').then(m => m.ManageReleaseNotesComponent),
+    canActivate: [approvedGuard, manageGuard],
+    data: { breadcrumb: 'Release Notes', breadcrumbParent: MANAGE_BREADCRUMB_PARENT },
+    title: 'ShelfSync | Release Notes'
+  },
+  {
     path: 'manage/error-log',
     loadComponent: () => import('./manage/error-log/manage-error-log.component').then(m => m.ManageErrorLogComponent),
     // manageGuard (admin OR manager), not adminGuard — matches

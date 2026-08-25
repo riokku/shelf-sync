@@ -1,0 +1,21 @@
+<div class="manage-release-notes-wrapper">
+  <div class="container">
+    <div class="page-toolbar">
+      <app-breadcrumbs />
+    </div>
+    <h2>Release Notes</h2>
+    <p class="page-subtitle">What's shipped recently in ShelfSync.</p>
+
+    <ul class="changelog-list">
+      @for (entry of changelogEntries; track entry.title) {
+        <li class="changelog-row">
+          <span class="changelog-date">{{ entry.date | date: 'MMM d, y' }}</span>
+          <span class="changelog-body">
+            <span class="semibold">{{ entry.title }}</span>
+            <span class="changelog-description">{{ entry.description }}</span>
+          </span>
+        </li>
+      }
+    </ul>
+  </div>
+</div>
