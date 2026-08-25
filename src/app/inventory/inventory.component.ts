@@ -23,6 +23,7 @@ import { ModalTableComponent } from '../shared/components/modal-table/modal-tabl
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 import { EmptyStateComponent } from '../shared/components/empty-state/empty-state.component';
 import { BulkActionToolbarComponent } from '../shared/components/bulk-action-toolbar/bulk-action-toolbar.component';
+import { PageIntroComponent } from '../shared/components/page-intro/page-intro.component';
 import { BulkReassignModalComponent, BulkReassignModalResult } from '../shared/components/bulk-reassign-modal/bulk-reassign-modal.component';
 import { SupabaseService } from '../core/supabase.service';
 import { SiteSettingsService } from '../core/site-settings.service';
@@ -65,7 +66,8 @@ type StatusFilter = 'active' | 'include_retired' | 'retired_only';
         MatTooltipModule,
         BreadcrumbsComponent,
         EmptyStateComponent,
-        BulkActionToolbarComponent
+        BulkActionToolbarComponent,
+        PageIntroComponent
     ],
     templateUrl: './inventory.component.html',
     styleUrl: './inventory.component.scss'

@@ -1,0 +1,27 @@
+// Same neutral banner treatment ModalTableComponent's own .retired-notice
+// uses — a status/hint to state, not a warning to flag.
+.page-intro{
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--mat-sys-surface-variant);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.page-intro-icon{
+  flex-shrink: 0;
+}
+
+.page-intro-text{
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.page-intro-close{
+  flex-shrink: 0;
+}

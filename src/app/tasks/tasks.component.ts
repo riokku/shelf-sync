@@ -11,6 +11,7 @@ import { TaskDetailModalComponent } from '../shared/components/task-detail-modal
 import { TaskCardComponent } from './task-card/task-card.component';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 import { EmptyStateComponent } from '../shared/components/empty-state/empty-state.component';
+import { PageIntroComponent } from '../shared/components/page-intro/page-intro.component';
 import { resolveProfileName } from '../shared/utils/profile-label';
 import { subscribeToTableChanges } from '../shared/utils/realtime';
 import { debounce } from '../shared/utils/debounce';
@@ -20,7 +21,10 @@ type Task = Database['public']['Tables']['tasks']['Row'];
 
 @Component({
   selector: 'app-tasks',
-  imports: [MatProgressSpinnerModule, MatButtonModule, MatIconModule, TaskCardComponent, BreadcrumbsComponent, EmptyStateComponent],
+  imports: [
+    MatProgressSpinnerModule, MatButtonModule, MatIconModule, TaskCardComponent, BreadcrumbsComponent,
+    EmptyStateComponent, PageIntroComponent
+  ],
   templateUrl: './tasks.component.html',
   styleUrl: './tasks.component.scss',
 })

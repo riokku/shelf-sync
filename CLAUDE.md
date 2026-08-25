@@ -1025,6 +1025,17 @@ just written directly rather than templated. Linked from `HeaderComponent`'s nav
 `.header-actions` row and the mobile drawer) right next to Account, as a `help_outline`-icon "Help"
 link.
 
+A shared `PageIntroComponent` (`shared/components/page-intro`) gives Inventory, Tasks, and the
+Manage hub a one-time, dismissible orientation banner for a user (any role) who might be landing on
+that page for the first time — a short "here's what this page is" hint, distinct from
+`HomeComponent`'s own "Getting started" checklist (an org-wide, admin/manager-only setup task list
+gated on real data, not a purely-cosmetic hint any role gets). Dismissal is `localStorage`, same
+best-effort try/catch shape `HomeComponent.dismissGettingStarted()` already established, but keyed
+per *user* (`shelf-sync:page-intro-dismissed:<userId>:<pageKey>`) rather than per organization —
+this is about whether *this specific person* has already seen this page's orientation, so one
+teammate dismissing their own hint shouldn't hide it from someone else's first visit the way sharing
+the getting-started card's own org-wide progress legitimately should.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -1174,6 +1185,7 @@ shared/
   components/discard-modal/ # quantity ("Discard all" or a specific amount) + mandatory-reason dialog backing ModalTableComponent's "Discard" button
   components/turnstile-widget/ # Cloudflare Turnstile CAPTCHA, embedded on Login/Register/Forgot Password
   components/help-tooltip/ # small "?" matTooltip icon button explaining a non-obvious control inline
+  components/page-intro/ # one-time dismissible orientation banner for a page's first-time visitor (Inventory, Tasks, Manage hub)
   models/inventory-item.model.ts   # InventoryItem class (constructor-based, no defaults)
   models/supplier.model.ts   # Supplier — a directory entry inventory_items.supplier_id can point at
   models/inventory-item-order.model.ts # InventoryItemOrder — one restock order against an item's linked supplier
