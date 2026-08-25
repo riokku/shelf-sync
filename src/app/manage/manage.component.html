@@ -65,6 +65,17 @@
         <h3>Activity Log</h3>
         <p>See everything that's changed across inventory, tasks, and your team.</p>
       </a>
+      <a
+          class="manage-card"
+          routerLink="/manage/release-notes"
+          [matBadge]="unseenReleaseNotesCount"
+          [matBadgeHidden]="unseenReleaseNotesCount === 0"
+          matBadgeColor="warn"
+        >
+        <mat-icon>new_releases</mat-icon>
+        <h3>Release Notes</h3>
+        <p>See what's new in ShelfSync.</p>
+      </a>
       <a class="manage-card" routerLink="/manage/error-log">
         <mat-icon>bug_report</mat-icon>
         <h3>Error Log</h3>

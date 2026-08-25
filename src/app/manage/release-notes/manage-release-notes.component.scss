@@ -1,0 +1,62 @@
+@use '../../shared/styles/page-toolbar';
+
+.manage-release-notes-wrapper{
+  color: var(--mat-sys-on-surface);
+  padding: 3rem 1.5rem;
+  max-width: 100%;
+
+  h2{
+    text-transform: uppercase;
+    margin: 0 0 0.25rem;
+  }
+
+  .container{
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+.page-subtitle{
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0 0 2rem;
+}
+
+.semibold{
+  font-weight: 600;
+}
+
+.changelog-list{
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 50rem;
+}
+
+.changelog-row{
+  display: flex;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+
+  &:last-child{
+    border-bottom: none;
+  }
+}
+
+.changelog-date{
+  flex: 0 0 6.5rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8125rem;
+}
+
+.changelog-body{
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.changelog-description{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+}

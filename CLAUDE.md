@@ -1017,13 +1017,20 @@ A `/help` route (`HelpComponent`, `approvedGuard`) is a static in-app "how do I.
 distinct from `/privacy`/`/terms` in the same way `/pricing` is distinct from *those* — this is about
 *using the product* once signed in, so it lives inside the normal authenticated shell (header/footer
 chrome) like Account/Tasks rather than alongside the unguarded legal pages (which get their own
-top-bar layout precisely because a signed-out visitor can land on them). Content is a series of
-`mat-accordion` sections (Getting started, Inventory, Reservations & orders, Tasks, Team & roles,
-Notifications, Settings & branding, Account) — plain static markup rather than a data-driven array,
-since this never changes at runtime, matching how `PrivacyComponent`/`TermsComponent`'s own prose is
-just written directly rather than templated. Linked from `HeaderComponent`'s nav (both the desktop
-`.header-actions` row and the mobile drawer) right next to Account, as a `help_outline`-icon "Help"
-link.
+top-bar layout precisely because a signed-out visitor can land on them), and uses the same container
+width every other page does (no narrower reading-width override). Content lives in
+`HELP_FAQ_SECTIONS` (`shared/models/help-faq.ts`) as a plain data array — question, answer, and an
+optional list of `{ path, label }` links rendered as plain `routerLink`s below the answer — rather
+than inline markup the way `PrivacyComponent`/`TermsComponent`'s own static prose is, specifically so
+`HelpComponent.filteredSections` can search it: a `mat-form-field` search box filters every section's
+items down to whatever matches the term in either the question *or* the answer text (so e.g.
+searching "reservation" also surfaces the order-received question, which only mentions it in
+passing), dropping any section left with zero matches entirely; every visible `mat-expansion-panel`
+auto-expands while a search is active (`[expanded]="searchTerm.trim().length > 0"`) so a match is
+immediately visible without an extra click. `hasNoResults` swaps in `EmptyStateComponent` with a
+"Clear search" action once a term matches nothing. Linked from `HeaderComponent`'s nav (both the
+desktop `.header-actions` row and the mobile drawer) right next to Account, as a `help_outline`-icon
+"Help" link.
 
 A shared `PageIntroComponent` (`shared/components/page-intro`) gives Inventory, Tasks, and the
 Manage hub a one-time, dismissible orientation banner for a user (any role) who might be landing on
@@ -1036,19 +1043,23 @@ this is about whether *this specific person* has already seen this page's orient
 teammate dismissing their own hint shouldn't hide it from someone else's first visit the way sharing
 the getting-started card's own org-wide progress legitimately should.
 
-The Help page's own "What's new" section (`CHANGELOG_ENTRIES` in `shared/models/changelog.ts`) is a
-hand-maintained, newest-first list of shipped features — kept alongside CLAUDE.md's own running log,
-each entry's `date` matching when it actually shipped. `shared/utils/changelog.ts` builds an unseen-
-count badge on top of it (`getUnseenChangelogCount()`/`markChangelogSeen()`, both `localStorage`-
-backed and per-user like `PageIntroComponent`'s own dismissal, not per-organization) — the very first
-time this is ever checked for a user with no stored value at all, it bootstraps them as caught-up-
-as-of-now rather than surfacing every entry that ever shipped before they first looked, the same way
-a freshly-connected email inbox doesn't retroactively mark years of old mail unread. `HeaderComponent`
-badges this count on the "Help" nav link (both desktop and mobile), refreshed the same way as its
-other small counts (on auth change and navigation) — since this is purely local/static data with no
-Supabase query behind it, the refresh is synchronous, not an async load method. Visiting `/help` is
-what actually clears the badge: `HelpComponent.ngOnInit()` calls `markChangelogSeen()`, and the next
-navigation's refresh picks that up.
+Admins and managers get a `manage/release-notes` route (`ManageReleaseNotesComponent`, `manageGuard`)
+— a "What's new" list of shipped features (`CHANGELOG_ENTRIES` in `shared/models/changelog.ts`), a
+hand-maintained, newest-first array kept alongside CLAUDE.md's own running log, each entry's `date`
+matching when it actually shipped. This used to be a section on the Help page itself; it's now its
+own page, reachable only via a card on the Manage hub — admin/manager-only for now, since the Manage
+hub is the only place it's linked from (a natural future extension is surfacing it to every role once
+it has a home outside that hub). `shared/utils/changelog.ts` builds an unseen-count badge on top of
+the list (`getUnseenChangelogCount()`/`markChangelogSeen()`, both `localStorage`-backed and per-user
+like `PageIntroComponent`'s own dismissal, not per-organization) — the very first time this is ever
+checked for a user with no stored value at all, it bootstraps them as caught-up-as-of-now rather than
+surfacing every entry that ever shipped before they first looked, the same way a freshly-connected
+email inbox doesn't retroactively mark years of old mail unread. `ManageComponent` badges this count
+on its own Release Notes card, same treatment its Inventory/Tasks/Team cards already give their own
+pending-request counts even though this isn't an approval queue — set directly in `ngOnInit()`
+alongside those (synchronous, no Supabase query needed). Visiting `manage/release-notes` is what
+actually clears it: `ManageReleaseNotesComponent.ngOnInit()` calls `markChangelogSeen()`, and the
+Manage hub's own next load picks that up.
 
 ## Tech Stack
 
@@ -1139,10 +1150,11 @@ The app mixes two Angular module styles, which is important to know before addin
   `@Component({ imports: [...] })` array rather than through a shared `NgModule`.
 - Routing (`app-routing.module.ts`) is flat — `''` → `LandingComponent`, `'login'` →
   `LoginComponent`, `'register'` → `RegisterComponent`, `'inventory'` → `InventoryComponent`
-  guarded by `approvedGuard` (plus `home`, `tasks`, `account` — all similarly guarded). `manage` is
-  a card hub (`ManageComponent`) linking to eleven flat sibling routes — `manage/inventory`,
-  `manage/tasks`, `manage/team`, `manage/activity`, `manage/error-log`, `manage/suppliers`,
-  `manage/orders`, `manage/reservations`, `manage/reports` (all `manageGuard`: admin OR manager) and
+  guarded by `approvedGuard` (plus `home`, `tasks`, `account`, `help` — all similarly guarded).
+  `manage` is a card hub (`ManageComponent`) linking to twelve flat sibling routes —
+  `manage/inventory`, `manage/tasks`, `manage/team`, `manage/activity`, `manage/error-log`,
+  `manage/suppliers`, `manage/orders`, `manage/reservations`, `manage/release-notes`,
+  `manage/reports` (all `manageGuard`: admin OR manager) and
   `manage/billing`/`manage/danger-zone`/`manage/settings` (`adminGuard`, stricter — financial info,
   org export/delete, and site-wide branding respectively) — rather than nested child routes,
   matching the rest of the app's flat
@@ -1182,6 +1194,7 @@ tasks/                                                      # standalone persona
 manage/                                                     # card hub (ManageComponent) linking to the pages below
   inventory/, tasks/, team/, activity/, suppliers/, orders/ # admin/manager only: inventory (+ CSV export), tasks, team administration, the cross-entity activity feed, the supplier directory, and restock orders
   reservations/                                             # admin/manager only: date-ranged reservations of an item's stock
+  release-notes/                                            # admin/manager only: "What's new" list, see Project Overview above
   error-log/                                                # admin/manager only: client_error_log viewer, see Supabase Schema section
   reports/                                                  # admin/manager only: inventory value/stock health, stock movement/loss, task throughput
   billing/                                                  # admin only: pre-Stripe preview of the org's plan/usage, see Project Overview above
@@ -1208,7 +1221,8 @@ shared/
   models/inventory-table-column.ts # optional Inventory table-view columns admin can show/hide (Settings > Data)
   models/pricing-tier.ts     # PRICING_TIERS — shared by PricingComponent (/pricing) and ManageBillingComponent
   models/notification.model.ts # UserNotification / NotificationKind / notificationIcon() — backs HeaderComponent's bell dropdown
-  models/changelog.ts        # CHANGELOG_ENTRIES — hand-maintained "What's new" list, backs the Help page's own section
+  models/changelog.ts        # CHANGELOG_ENTRIES — hand-maintained "What's new" list, backs manage/release-notes
+  models/help-faq.ts         # HELP_FAQ_SECTIONS — question/answer/links data backing the searchable Help page
   models/database.types.ts   # generated via `npm run supabase:gen:types` — regenerate, don't hand-edit
   utils/inventory-item.mapper.ts   # toInventoryItem(row, images, checkedOutToLabel, activityLog?, ..., supplierLabel?) — DB row -> InventoryItem
   utils/inventory-item-images.ts   # loadInventoryImagesByItemId() / uploadInventoryItemImages() / deleteInventoryItemImage()
@@ -1222,7 +1236,7 @@ shared/
   utils/supplier-label.ts    # resolveSupplierName() — mirrors profile-label.ts for inventory_items.supplier_id
   utils/barcode.ts           # buildItemQrValue()/parseItemQrValue() — ShelfSync's own QR-label encoding
   utils/presence.ts          # isProfileOnline()/formatLastSeen() — reads profiles.last_active_at, backs Manage > Team's presence indicator
-  utils/changelog.ts         # getUnseenChangelogCount()/markChangelogSeen() — localStorage-backed, backs HeaderComponent's "Help" badge
+  utils/changelog.ts         # getUnseenChangelogCount()/markChangelogSeen() — localStorage-backed, backs ManageComponent's Release Notes card badge
   utils/realtime.ts          # subscribeToTableChanges() — Supabase Realtime postgres_changes wrapper, see Project Overview above
   utils/debounce.ts          # debounce() — plain setTimeout debounce with .cancel(), backs the task pages' realtime reload handlers
   utils/flash-tracker.ts     # FlashTracker — tracks which ids show the .realtime-flash "someone else just changed this" pulse
