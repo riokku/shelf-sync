@@ -1,0 +1,49 @@
+.help-wrapper{
+  color: var(--mat-sys-on-surface);
+  padding: 3rem 1.5rem;
+  max-width: 100%;
+
+  h2{
+    text-transform: uppercase;
+    margin: 0 0 0.25rem;
+  }
+
+  .container{
+    padding-left: 0;
+    padding-right: 0;
+    max-width: 50rem;
+  }
+}
+
+.page-subtitle{
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0 0 2rem;
+}
+
+.help-section{
+  margin-bottom: 2rem;
+
+  h3{
+    margin: 0 0 0.75rem;
+    color: var(--mat-sys-primary);
+  }
+
+  p{
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  a{
+    color: var(--mat-sys-primary);
+  }
+}
+
+.section-audience{
+  color: var(--mat-sys-on-surface-variant);
+  font-weight: 400;
+  text-transform: none;
+}
+
+.semibold{
+  font-weight: 600;
+}
