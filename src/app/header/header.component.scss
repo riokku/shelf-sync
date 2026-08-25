@@ -129,12 +129,6 @@
   display: inline-flex;
   align-items: center;
   gap: 0.1875rem;
-  // Material's own text-button height (--mdc-text-button-container-height,
-  // 36px by default) is a fixed height on this same element — stacking our
-  // own vertical padding on top of that fixed height left no room for a
-  // 24px icon plus its line-height, clipping it slightly top and bottom.
-  // auto lets the pill grow to fit its own content instead.
-  height: auto;
   padding: 0.375rem 0.75rem;
   border-radius: 999px;
   color: var(--mat-sys-on-surface-variant);
@@ -286,9 +280,6 @@
   button{
     justify-content: flex-start;
     width: 100%;
-    // Same fixed-height-vs-added-padding clipping fix as .main-nav a/
-    // .header-actions a above.
-    height: auto;
     padding: 0.625rem 0.75rem;
     border-radius: 0.5rem;
     color: var(--mat-sys-on-surface-variant);
