@@ -27,6 +27,14 @@
   }
 }
 
+// A failed data load rather than an ordinary "nothing here yet" — same
+// error color token this app's inline .error-message already uses, so a
+// load failure reads as a problem rather than blending into every other
+// empty state's neutral tone.
+.empty-state.error{
+  color: var(--app-error-text);
+}
+
 // Nested inside an already-populated page (e.g. a "Completed" section with
 // nothing in it yet) rather than a whole page/tab having nothing to show —
 // small and inline instead of the full centered treatment above.

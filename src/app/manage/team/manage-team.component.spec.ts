@@ -208,6 +208,53 @@ function memberOf(profile: Partial<Profile>) {
   return { profile: createFakeProfile(profile), tasks: [] };
 }
 
+describe('ManageTeamComponent load errors', () => {
+  // fakeAsync + tick()/discardPeriodicTasks(), not whenStable() — ngOnInit
+  // starts a persistent 30s presence-poll setInterval (see its own comment
+  // a few lines up), which under real time makes the zone permanently
+  // "unstable" and whenStable() never resolves; same reasoning
+  // refreshPresence()'s own describe block below already established.
+  function createComponent(supabaseService: SupabaseService): ManageTeamComponent {
+    TestBed.configureTestingModule({
+      imports: [ManageTeamComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: 'admin' })) },
+        { provide: SupabaseService, useValue: supabaseService }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(ManageTeamComponent);
+    fixture.detectChanges();
+    tick();
+    return fixture.componentInstance;
+  }
+
+  it('sets loadError instead of silently rendering an empty team when the profiles query fails', fakeAsync(() => {
+    const failingSupabase = createFakeSupabaseService({ data: null, error: { message: 'Network error' } });
+    const component = createComponent(failingSupabase);
+
+    expect(component.loadError).toBe('Network error');
+    expect(component.teamMembers).toEqual([]);
+    discardPeriodicTasks();
+  }));
+
+  it('retryLoad() clears loadError on a successful retry', fakeAsync(() => {
+    const failingSupabase = createFakeSupabaseService({ data: null, error: { message: 'Network error' } });
+    const component = createComponent(failingSupabase);
+    expect(component.loadError).toBe('Network error');
+
+    (component as unknown as { supabase: SupabaseService['client'] }).supabase =
+      createFakeSupabaseService({ data: [], error: null }).client;
+
+    component.retryLoad();
+    tick();
+
+    expect(component.loadError).toBeNull();
+    discardPeriodicTasks();
+  }));
+});
+
 describe('ManageTeamComponent refreshPresence()', () => {
   // Private — accessed the same way other specs in this app reach a
   // private method/field (see e.g. modal-table.component.spec.ts's

@@ -693,6 +693,57 @@ function createBulkReassignFakeSupabaseService(failingIds: Set<string> = new Set
   return { service, updateCalls, insertedTables };
 }
 
+describe('InventoryComponent load errors', () => {
+  async function createComponent(supabaseService: SupabaseService) {
+    await TestBed.configureTestingModule({
+      imports: [InventoryComponent],
+      providers: [
+        provideRouter([]),
+        { provide: SupabaseService, useValue: supabaseService },
+        { provide: SiteSettingsService, useValue: createFakeSiteSettingsService() },
+        { provide: AuthService, useValue: createFakeAuthService() }
+      ]
+    }).compileComponents();
+
+    const localFixture = TestBed.createComponent(InventoryComponent);
+    localFixture.detectChanges();
+    await localFixture.whenStable();
+    return localFixture.componentInstance;
+  }
+
+  it('sets loadError instead of silently rendering an empty list when the query fails', async () => {
+    const failingSupabase = createFakeSupabaseService({ data: null, error: { message: 'Network error' } });
+    const component = await createComponent(failingSupabase);
+
+    expect(component.loadError).toBe('Network error');
+    expect(component.isLoading).toBeFalse();
+    expect(component.inventoryList).toEqual([]);
+  });
+
+  it('retryLoad() clears loadError and repopulates the list on a successful retry', async () => {
+    const failingSupabase = createFakeSupabaseService({ data: null, error: { message: 'Network error' } });
+    const component = await createComponent(failingSupabase);
+    expect(component.loadError).toBe('Network error');
+
+    // Swap in a working fake for the retry — same "reconfigure the
+    // component's injected dependency mid-test" shape isn't available here,
+    // so this reaches into the component's own supabase field directly
+    // (mirroring how other specs in this app cast to access a private
+    // field when there's no other way to substitute behavior after
+    // construction).
+    (component as unknown as { supabase: SupabaseService['client'] }).supabase = createFakeSupabaseService({
+      data: [createTestInventoryItemRow()],
+      error: null
+    }).client;
+
+    component.retryLoad();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(component.loadError).toBeNull();
+  });
+});
+
 describe('InventoryComponent applyBulkReassign()', () => {
   async function createComponent(supabaseService: SupabaseService) {
     await TestBed.configureTestingModule({

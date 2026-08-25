@@ -110,7 +110,14 @@
           </mat-slide-toggle>
         </div>
       </div>
-      @if (isLoadingTeam) {
+      @if (loadError) {
+        <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load the team. ' + loadError">
+          <button mat-stroked-button type="button" (click)="retryLoad()">
+            <mat-icon>refresh</mat-icon>
+            Retry
+          </button>
+        </app-empty-state>
+      } @else if (isLoadingTeam) {
         <mat-spinner diameter="32"></mat-spinner>
       } @else if (teamMembers.length === 0) {
         <app-empty-state icon="group_off" message="No users found." />

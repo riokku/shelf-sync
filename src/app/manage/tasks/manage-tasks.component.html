@@ -151,7 +151,14 @@
         @if (deleteTaskError) {
           <p class="error-message">{{ deleteTaskError }}</p>
         }
-        @if (isLoadingTasks) {
+        @if (loadError) {
+          <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load tasks. ' + loadError">
+            <button mat-stroked-button type="button" (click)="retryLoad()">
+              <mat-icon>refresh</mat-icon>
+              Retry
+            </button>
+          </app-empty-state>
+        } @else if (isLoadingTasks) {
           <mat-spinner diameter="32"></mat-spinner>
         } @else if (filteredAllTasks.length === 0) {
           <app-empty-state icon="search_off" message="No tasks match these filters.">

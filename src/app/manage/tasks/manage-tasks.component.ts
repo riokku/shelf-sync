@@ -91,6 +91,12 @@ export class ManageTasksComponent implements OnInit, HasUnsavedChanges {
   readonly statusLabels = TASK_STATUS_LABELS;
   allTasks: Task[] = [];
   isLoadingTasks = true;
+  /** Set when loadTasks()'s own query fails — see InventoryComponent's
+   *  identical loadError field for the full reasoning. Left in place across
+   *  a failed background refresh (e.g. a realtime-triggered reload) rather
+   *  than clearing allTasks, so the page keeps showing its last
+   *  successfully loaded list instead of going blank. */
+  loadError: string | null = null;
   deleteTaskError: string | null = null;
 
   viewMode: 'create' | 'all' = 'create';
@@ -505,13 +511,26 @@ export class ManageTasksComponent implements OnInit, HasUnsavedChanges {
     this.relatedItemOptions = data ?? [];
   }
 
+  /** Re-runs loadTasks() after a failed load — the "All tasks" tab's Retry
+   *  button handler (see the template's loadError branch). */
+  retryLoad() {
+    void this.loadTasks();
+  }
+
   private async loadTasks() {
     this.isLoadingTasks = true;
 
-    const { data } = await this.supabase
+    const { data, error } = await this.supabase
       .from('tasks')
       .select('*')
       .order('due_date', { ascending: true, nullsFirst: false });
+
+    if (error) {
+      this.loadError = error.message;
+      this.isLoadingTasks = false;
+      return;
+    }
+    this.loadError = null;
     this.allTasks = data ?? [];
 
     this.isLoadingTasks = false;

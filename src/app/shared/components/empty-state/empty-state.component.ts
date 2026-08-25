@@ -11,7 +11,16 @@ import { MatIconModule } from '@angular/material/icon';
  *  `compact` swaps the centered icon-on-top layout for a smaller inline
  *  one, for empty states nested inside an otherwise-populated page (e.g. a
  *  "Completed" section with nothing in it yet) rather than a whole page/tab
- *  having nothing to show. */
+ *  having nothing to show.
+ *
+ *  `variant: 'error'` reuses this same icon-plus-message-plus-projected-
+ *  action shape for a failed data load (a "Retry" button projected in,
+ *  rather than "Clear filters") instead of introducing a second, near-
+ *  identical component — the only difference is tone: the icon/text pick up
+ *  `--app-error-text` (the same token this app's inline `.error-message`
+ *  already uses) instead of the neutral muted color, so a load failure
+ *  reads as a problem rather than as an ordinary "nothing here yet". See
+ *  each page's own `loadError` field for where this gets used. */
 @Component({
   selector: 'app-empty-state',
   imports: [MatIconModule],
@@ -22,4 +31,5 @@ export class EmptyStateComponent {
   @Input() icon = 'info';
   @Input() message = '';
   @Input() compact = false;
+  @Input() variant: 'neutral' | 'error' = 'neutral';
 }

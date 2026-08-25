@@ -186,6 +186,14 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
   // of which need every item, not just the ones with a pending request.
   allInventoryItems: InventoryItemRow[] = [];
   isLoadingInventoryList = true;
+  /** Set when loadInventoryItems()'s own query fails — see
+   *  InventoryComponent's identical loadError field for the full reasoning.
+   *  Left set (rather than cleared) across a later successful reload
+   *  attempt only via retryLoad(); a failed *background* refresh (e.g.
+   *  after approving a retirement) doesn't clear allInventoryItems, so the
+   *  page keeps showing whatever it last successfully loaded rather than
+   *  going blank. */
+  loadError: string | null = null;
   private inventoryImagesByItemId = new Map<string, string[]>();
   private inventoryActivityByItemId = new Map<string, ActivityLogEntry[]>();
   // Which rows should currently show the brief "someone else just changed
@@ -330,13 +338,26 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
     this.assignableProfiles = data ?? [];
   }
 
+  /** Re-runs loadInventoryItems() after a failed load — the Requests tab's
+   *  Retry button handler (see the template's loadError branch). */
+  retryLoad() {
+    void this.loadInventoryItems();
+  }
+
   private async loadInventoryItems() {
     this.isLoadingInventoryList = true;
 
-    const { data } = await this.supabase
+    const { data, error } = await this.supabase
       .from('inventory_items')
       .select('*')
       .order('name');
+
+    if (error) {
+      this.loadError = error.message;
+      this.isLoadingInventoryList = false;
+      return;
+    }
+    this.loadError = null;
 
     this.allInventoryItems = data ?? [];
     const itemIds = this.allInventoryItems.map(item => item.id);

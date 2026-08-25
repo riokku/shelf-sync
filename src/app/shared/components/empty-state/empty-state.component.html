@@ -1,4 +1,4 @@
-<div class="empty-state" [class.compact]="compact">
+<div class="empty-state" [class.compact]="compact" [class.error]="variant === 'error'">
   <mat-icon class="empty-state-icon">{{ icon }}</mat-icon>
   <p>{{ message }}</p>
   <ng-content></ng-content>

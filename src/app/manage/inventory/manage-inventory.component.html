@@ -322,7 +322,14 @@
         @if (retirementError) {
           <p class="error-message">{{ retirementError }}</p>
         }
-        @if (isLoadingInventoryList) {
+        @if (loadError) {
+          <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load retirement requests. ' + loadError">
+            <button mat-stroked-button type="button" (click)="retryLoad()">
+              <mat-icon>refresh</mat-icon>
+              Retry
+            </button>
+          </app-empty-state>
+        } @else if (isLoadingInventoryList) {
           <mat-spinner diameter="32"></mat-spinner>
         } @else if (pendingRetirementItems.length === 0) {
           <app-empty-state icon="inventory_2" message="No pending retirement requests." />
