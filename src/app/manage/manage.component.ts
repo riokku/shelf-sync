@@ -5,10 +5,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from '../core/auth.service';
 import { SupabaseService } from '../core/supabase.service';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
+import { PageIntroComponent } from '../shared/components/page-intro/page-intro.component';
 
 @Component({
   selector: 'app-manage',
-  imports: [RouterModule, MatBadgeModule, MatIconModule, BreadcrumbsComponent],
+  imports: [RouterModule, MatBadgeModule, MatIconModule, BreadcrumbsComponent, PageIntroComponent],
   templateUrl: './manage.component.html',
   styleUrl: './manage.component.scss',
 })
