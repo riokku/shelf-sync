@@ -16,6 +16,7 @@ import { EmptyStateComponent } from '../shared/components/empty-state/empty-stat
 import { notificationIcon, UserNotification } from '../shared/models/notification.model';
 import { needsRestockAttention } from '../shared/utils/inventory-stock';
 import { isProfileOnline } from '../shared/utils/presence';
+import { getUnseenChangelogCount } from '../shared/utils/changelog';
 
 @Component({
     selector: 'app-header',
@@ -120,6 +121,17 @@ export class HeaderComponent {
   private readonly _onlineTeamCount = signal(0);
   readonly onlineTeamCount = this._onlineTeamCount.asReadonly();
 
+  /** How many entries on the Help page's "What's new" section this user
+   *  hasn't seen yet (see shared/utils/changelog.ts) — badged on the "Help"
+   *  nav link, same treatment as the counts above. Purely local/static
+   *  (no Supabase query, no async), so it's refreshed synchronously
+   *  alongside the others rather than through its own load method. Visiting
+   *  /help is what actually clears it (HelpComponent's own ngOnInit calls
+   *  markChangelogSeen()) — the refresh on navigation below is what makes
+   *  the badge disappear right after, without needing a full page reload. */
+  private readonly _unseenChangelogCount = signal(0);
+  readonly unseenChangelogCount = this._unseenChangelogCount.asReadonly();
+
   constructor() {
     // Re-runs whenever the resolved profile changes (login, logout, role
     // change) — canManage()/role() both derive from it.
@@ -133,9 +145,11 @@ export class HeaderComponent {
       if (this.authService.isAuthenticated()) {
         void this.loadLowStockCount();
         void this.loadOnlineTeamCount();
+        this.refreshUnseenChangelogCount();
       } else {
         this._lowStockCount.set(0);
         this._onlineTeamCount.set(0);
+        this._unseenChangelogCount.set(0);
       }
     });
 
@@ -155,6 +169,7 @@ export class HeaderComponent {
         if (this.authService.isAuthenticated()) {
           void this.loadLowStockCount();
           void this.loadOnlineTeamCount();
+          this.refreshUnseenChangelogCount();
         }
       }
     });
@@ -204,6 +219,11 @@ export class HeaderComponent {
       .neq('status', 'retired');
 
     this._lowStockCount.set((data ?? []).filter(needsRestockAttention).length);
+  }
+
+  private refreshUnseenChangelogCount() {
+    const userId = this.authService.session()?.user.id;
+    this._unseenChangelogCount.set(userId ? getUnseenChangelogCount(userId) : 0);
   }
 
   private async loadOnlineTeamCount() {

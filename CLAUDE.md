@@ -1036,6 +1036,20 @@ this is about whether *this specific person* has already seen this page's orient
 teammate dismissing their own hint shouldn't hide it from someone else's first visit the way sharing
 the getting-started card's own org-wide progress legitimately should.
 
+The Help page's own "What's new" section (`CHANGELOG_ENTRIES` in `shared/models/changelog.ts`) is a
+hand-maintained, newest-first list of shipped features — kept alongside CLAUDE.md's own running log,
+each entry's `date` matching when it actually shipped. `shared/utils/changelog.ts` builds an unseen-
+count badge on top of it (`getUnseenChangelogCount()`/`markChangelogSeen()`, both `localStorage`-
+backed and per-user like `PageIntroComponent`'s own dismissal, not per-organization) — the very first
+time this is ever checked for a user with no stored value at all, it bootstraps them as caught-up-
+as-of-now rather than surfacing every entry that ever shipped before they first looked, the same way
+a freshly-connected email inbox doesn't retroactively mark years of old mail unread. `HeaderComponent`
+badges this count on the "Help" nav link (both desktop and mobile), refreshed the same way as its
+other small counts (on auth change and navigation) — since this is purely local/static data with no
+Supabase query behind it, the refresh is synchronous, not an async load method. Visiting `/help` is
+what actually clears the badge: `HelpComponent.ngOnInit()` calls `markChangelogSeen()`, and the next
+navigation's refresh picks that up.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -1194,6 +1208,7 @@ shared/
   models/inventory-table-column.ts # optional Inventory table-view columns admin can show/hide (Settings > Data)
   models/pricing-tier.ts     # PRICING_TIERS — shared by PricingComponent (/pricing) and ManageBillingComponent
   models/notification.model.ts # UserNotification / NotificationKind / notificationIcon() — backs HeaderComponent's bell dropdown
+  models/changelog.ts        # CHANGELOG_ENTRIES — hand-maintained "What's new" list, backs the Help page's own section
   models/database.types.ts   # generated via `npm run supabase:gen:types` — regenerate, don't hand-edit
   utils/inventory-item.mapper.ts   # toInventoryItem(row, images, checkedOutToLabel, activityLog?, ..., supplierLabel?) — DB row -> InventoryItem
   utils/inventory-item-images.ts   # loadInventoryImagesByItemId() / uploadInventoryItemImages() / deleteInventoryItemImage()
@@ -1207,6 +1222,7 @@ shared/
   utils/supplier-label.ts    # resolveSupplierName() — mirrors profile-label.ts for inventory_items.supplier_id
   utils/barcode.ts           # buildItemQrValue()/parseItemQrValue() — ShelfSync's own QR-label encoding
   utils/presence.ts          # isProfileOnline()/formatLastSeen() — reads profiles.last_active_at, backs Manage > Team's presence indicator
+  utils/changelog.ts         # getUnseenChangelogCount()/markChangelogSeen() — localStorage-backed, backs HeaderComponent's "Help" badge
   utils/realtime.ts          # subscribeToTableChanges() — Supabase Realtime postgres_changes wrapper, see Project Overview above
   utils/debounce.ts          # debounce() — plain setTimeout debounce with .cancel(), backs the task pages' realtime reload handlers
   utils/flash-tracker.ts     # FlashTracker — tracks which ids show the .realtime-flash "someone else just changed this" pulse

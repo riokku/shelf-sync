@@ -7,6 +7,21 @@
     <p class="page-subtitle">Answers to common "how do I..." questions about ShelfSync.</p>
 
     <section class="help-section">
+      <h3>What's new</h3>
+      <ul class="changelog-list">
+        @for (entry of changelogEntries; track entry.title) {
+          <li class="changelog-row">
+            <span class="changelog-date">{{ entry.date | date: 'MMM d, y' }}</span>
+            <span class="changelog-body">
+              <span class="semibold">{{ entry.title }}</span>
+              <span class="changelog-description">{{ entry.description }}</span>
+            </span>
+          </li>
+        }
+      </ul>
+    </section>
+
+    <section class="help-section">
       <h3>Getting started</h3>
       <mat-accordion multi>
         <mat-expansion-panel>

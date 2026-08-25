@@ -77,7 +77,15 @@
       >
       <mat-icon>{{ themeMode.mode() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
     </button>
-    <a mat-button routerLink="/help" routerLinkActive="active">
+    <a
+        mat-button
+        routerLink="/help"
+        routerLinkActive="active"
+        [matBadge]="unseenChangelogCount()"
+        [matBadgeHidden]="unseenChangelogCount() === 0"
+        matBadgeColor="warn"
+        [matTooltip]="unseenChangelogCount() > 0 ? unseenChangelogCount() + ' new since your last visit' : ''"
+      >
       <mat-icon>help_outline</mat-icon>
       Help
     </a>
@@ -192,7 +200,15 @@
       <mat-icon>{{ themeMode.mode() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
       {{ themeMode.mode() === 'dark' ? 'Light mode' : 'Dark mode' }}
     </button>
-    <a mat-button routerLink="/help" routerLinkActive="active">
+    <a
+        mat-button
+        routerLink="/help"
+        routerLinkActive="active"
+        class="mobile-menu-badge"
+        [matBadge]="unseenChangelogCount()"
+        [matBadgeHidden]="unseenChangelogCount() === 0"
+        matBadgeColor="warn"
+      >
       <mat-icon>help_outline</mat-icon>
       Help
     </a>
