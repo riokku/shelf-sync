@@ -1,11 +1,20 @@
 // Called by four Database Webhook triggers (see the
 // add_notification_email_webhooks migration) whenever a row this app cares
-// about changes in a way worth emailing someone about: a task gets directly
+// about changes in a way worth telling someone about: a task gets directly
 // assigned or a transfer gets offered, an item's retirement request needs
 // approval, or someone's join request needs approval. Each trigger has its
 // own `when (...)` clause scoping it to exactly that transition, so this
 // function can mostly trust that if it's been called, the payload is
 // relevant — it still re-checks defensively before sending anything.
+//
+// Two independent outputs per event: an email (gated by the org's own
+// Settings > Workflow "Email notifications" toggle, see
+// isNotificationEnabled() below) and an in-app row in the `notifications`
+// table (see add_notifications — always inserted regardless of that toggle,
+// since it's a different, no-cost channel — HeaderComponent's bell
+// dropdown). Both share the same recipient-resolution logic
+// (profileEmail()/orgEmailsByRole() below) so "who gets notified" is
+// computed once per event, not twice.
 //
 // Authenticated via a shared secret (Vault-stored on the Postgres side, an
 // Edge Function secret here) rather than the far more powerful
@@ -15,7 +24,10 @@
 // definition time, only a plain string literal, so embedding the
 // service_role key directly there would mean committing it to the repo.
 // This shared secret is deliberately low-privilege instead: its only power
-// is "can invoke this one function", not "can bypass every RLS policy".
+// is "can invoke this one function", not "can bypass every RLS policy". The
+// same service_role client is what lets this function insert into
+// `notifications` at all — that table has no INSERT policy for
+// `authenticated`/`anon`, see add_notifications' own doc comment for why.
 //
 // No custom domain verified with Resend yet — sends from Resend's own
 // onboarding@resend.dev test address, which works immediately but is
@@ -48,6 +60,24 @@ interface EmailToSend {
   html: string;
 }
 
+// Mirrors notifications.kind's check constraint (add_notifications) and
+// notifications.organization_id/user_id/message/link's own columns —
+// read_at/created_at/id are left for Postgres to default.
+interface NotificationToInsert {
+  organization_id: string;
+  user_id: string;
+  kind: 'task_assigned' | 'task_transfer' | 'retirement_request' | 'join_request';
+  message: string;
+  link: string;
+}
+
+interface EventResult {
+  emails: EmailToSend[];
+  notifications: NotificationToInsert[];
+}
+
+const EMPTY_RESULT: EventResult = { emails: [], notifications: [] };
+
 Deno.serve(async req => {
   if (req.headers.get('x-webhook-secret') !== WEBHOOK_SECRET) {
     return new Response('Unauthorized', { status: 401 });
@@ -55,25 +85,29 @@ Deno.serve(async req => {
 
   const payload = await req.json() as WebhookPayload;
 
-  let emails: EmailToSend[] = [];
+  let result: EventResult = EMPTY_RESULT;
   try {
     if (payload.table === 'tasks') {
-      emails = await emailsForTaskChange(payload);
+      result = await resultForTaskChange(payload);
     } else if (payload.table === 'inventory_items') {
-      emails = await emailsForRetirementRequest(payload);
+      result = await resultForRetirementRequest(payload);
     } else if (payload.table === 'profiles') {
-      emails = await emailsForJoinRequest(payload);
+      result = await resultForJoinRequest(payload);
     }
   } catch (error) {
-    // A bug building the email shouldn't turn into Supabase retrying the
-    // webhook delivery forever — log and return 200 either way, same
-    // "best effort, never block the thing that triggered it" reasoning
-    // this app's own client-side activity logging already follows.
-    console.error('Failed to build notification email(s):', error);
+    // A bug building the notification shouldn't turn into Supabase
+    // retrying the webhook delivery forever — log and return 200 either
+    // way, same "best effort, never block the thing that triggered it"
+    // reasoning this app's own client-side activity logging already
+    // follows.
+    console.error('Failed to build notification(s):', error);
     return new Response('OK', { status: 200 });
   }
 
-  await Promise.all(emails.map(sendEmail));
+  await Promise.all([
+    Promise.all(result.emails.map(sendEmail)),
+    insertNotifications(result.notifications)
+  ]);
 
   return new Response('OK', { status: 200 });
 });
@@ -101,6 +135,16 @@ async function sendEmail(email: EmailToSend) {
   }
 }
 
+async function insertNotifications(notifications: NotificationToInsert[]) {
+  if (notifications.length === 0) {
+    return;
+  }
+  const { error } = await supabase.from('notifications').insert(notifications);
+  if (error) {
+    console.error('Failed to insert notification(s):', error);
+  }
+}
+
 /** Escapes a plain-text value (a task title, item name, or signup name —
  *  every one of these is freely user-editable, and the join-request case is
  *  reachable by a completely unauthenticated visitor via the public signup
@@ -110,7 +154,10 @@ async function sendEmail(email: EmailToSend) {
  *  inbox (a phishing vector, e.g. `<a href="...">` styled as a legitimate
  *  CTA) took nothing more than naming a task or item, or signing up with a
  *  crafted display name. Every call below wraps its interpolated value in
- *  this — never the surrounding literal markup itself. */
+ *  this — never the surrounding literal markup itself. notifications.message
+ *  is plain text rendered by Angular templates (auto-escaped, see
+ *  NotificationCenterComponent), so it deliberately uses the raw,
+ *  unescaped label instead — only the HTML email body needs this. */
 function escapeHtml(value: string): string {
   return value
     .replaceAll('&', '&amp;')
@@ -131,15 +178,15 @@ function emailShell(heading: string, bodyHtml: string, ctaLabel: string, ctaHref
   `;
 }
 
-async function profileEmail(id: string | null | undefined): Promise<{ email: string; label: string } | null> {
+async function profileEmail(id: string | null | undefined): Promise<{ id: string; email: string; label: string } | null> {
   if (!id) {
     return null;
   }
-  const { data } = await supabase.from('profiles').select('email, full_name, nickname').eq('id', id).maybeSingle();
+  const { data } = await supabase.from('profiles').select('id, email, full_name, nickname').eq('id', id).maybeSingle();
   if (!data) {
     return null;
   }
-  return { email: data.email, label: data.nickname || data.full_name || data.email };
+  return { id: data.id, email: data.email, label: data.nickname || data.full_name || data.email };
 }
 
 /** Same nickname -> full_name -> email fallback profileDisplayName() uses
@@ -147,23 +194,26 @@ async function profileEmail(id: string | null | undefined): Promise<{ email: str
  *  needs — admin-only for join requests (admin_approve_member() is
  *  admin-only), admin-or-manager for retirement (either can
  *  approve/decline) — not every approved member of the org. */
-async function orgEmailsByRole(organizationId: string, roles: string[]): Promise<string[]> {
+async function orgProfilesByRole(organizationId: string, roles: string[]): Promise<{ id: string; email: string }[]> {
   const { data } = await supabase
     .from('profiles')
-    .select('email')
+    .select('id, email')
     .eq('organization_id', organizationId)
     .eq('membership_status', 'approved')
     .in('role', roles);
-  return (data ?? []).map(row => row.email as string);
+  return data ?? [];
 }
 
-/** Customize > Workflow's per-org "Email notifications" toggles — checked
+/** Settings > Workflow's per-org "Email notifications" toggles — checked
  *  here (not on the Postgres trigger side, which always fires regardless;
  *  see the add_site_settings_email_notification_toggles migration's own
  *  doc comment for why) right before each notification kind would
- *  otherwise send. Defaults to true (same as the column's own DB default)
- *  when there's no site_settings row yet for the org. */
-async function isNotificationEnabled(organizationId: string, column: string): Promise<boolean> {
+ *  otherwise send an email. Defaults to true (same as the column's own DB
+ *  default) when there's no site_settings row yet for the org. Deliberately
+ *  NOT consulted for the in-app notifications.insert() below — see
+ *  add_notifications' own doc comment for why that's a separate, always-on
+ *  channel. */
+async function isEmailNotificationEnabled(organizationId: string, column: string): Promise<boolean> {
   const { data } = await supabase
     .from('site_settings')
     .select(column)
@@ -173,98 +223,136 @@ async function isNotificationEnabled(organizationId: string, column: string): Pr
   return row?.[column] ?? true;
 }
 
-async function emailsForTaskChange(payload: WebhookPayload): Promise<EmailToSend[]> {
+async function resultForTaskChange(payload: WebhookPayload): Promise<EventResult> {
   const record = payload.record as
-    { title: string; assigned_to: string | null; pending_transfer_to: string | null; organization_id: string } | null;
+    { id: string; title: string; assigned_to: string | null; pending_transfer_to: string | null; organization_id: string } | null;
   const oldRecord = payload.old_record as { pending_transfer_to: string | null } | null;
   if (!record) {
-    return [];
+    return EMPTY_RESULT;
   }
 
   const emails: EmailToSend[] = [];
+  const notifications: NotificationToInsert[] = [];
 
-  if (payload.type === 'INSERT' && record.assigned_to && await isNotificationEnabled(record.organization_id, 'notify_task_assigned')) {
+  if (payload.type === 'INSERT' && record.assigned_to) {
     const assignee = await profileEmail(record.assigned_to);
     if (assignee) {
-      emails.push({
-        to: assignee.email,
-        subject: `You've been assigned a task: ${record.title}`,
-        html: emailShell(
-          'New task assigned to you',
-          `You've been assigned <strong>${escapeHtml(record.title)}</strong> in ShelfSync.`,
-          'View task',
-          `${APP_URL}/tasks`
-        )
+      notifications.push({
+        organization_id: record.organization_id,
+        user_id: assignee.id,
+        kind: 'task_assigned',
+        message: `You've been assigned "${record.title}"`,
+        link: '/tasks'
       });
+      if (await isEmailNotificationEnabled(record.organization_id, 'notify_task_assigned')) {
+        emails.push({
+          to: assignee.email,
+          subject: `You've been assigned a task: ${record.title}`,
+          html: emailShell(
+            'New task assigned to you',
+            `You've been assigned <strong>${escapeHtml(record.title)}</strong> in ShelfSync.`,
+            'View task',
+            `${APP_URL}/tasks`
+          )
+        });
+      }
     }
   }
 
   if (
     payload.type === 'UPDATE' &&
     record.pending_transfer_to &&
-    record.pending_transfer_to !== oldRecord?.pending_transfer_to &&
-    await isNotificationEnabled(record.organization_id, 'notify_task_transfer')
+    record.pending_transfer_to !== oldRecord?.pending_transfer_to
   ) {
     const target = await profileEmail(record.pending_transfer_to);
     if (target) {
-      emails.push({
-        to: target.email,
-        subject: `A task has been offered to you: ${record.title}`,
-        html: emailShell(
-          'Task transfer offered',
-          `You've been offered <strong>${escapeHtml(record.title)}</strong> in ShelfSync. Accept it to add it to your queue.`,
-          'View task',
-          `${APP_URL}/tasks`
-        )
+      notifications.push({
+        organization_id: record.organization_id,
+        user_id: target.id,
+        kind: 'task_transfer',
+        message: `You've been offered "${record.title}"`,
+        link: '/tasks'
       });
+      if (await isEmailNotificationEnabled(record.organization_id, 'notify_task_transfer')) {
+        emails.push({
+          to: target.email,
+          subject: `A task has been offered to you: ${record.title}`,
+          html: emailShell(
+            'Task transfer offered',
+            `You've been offered <strong>${escapeHtml(record.title)}</strong> in ShelfSync. Accept it to add it to your queue.`,
+            'View task',
+            `${APP_URL}/tasks`
+          )
+        });
+      }
     }
   }
 
-  return emails;
+  return { emails, notifications };
 }
 
-async function emailsForRetirementRequest(payload: WebhookPayload): Promise<EmailToSend[]> {
+async function resultForRetirementRequest(payload: WebhookPayload): Promise<EventResult> {
   const record = payload.record as { name: string; status: string; organization_id: string } | null;
   if (!record || payload.type !== 'UPDATE' || record.status !== 'retirement_pending') {
-    return [];
-  }
-  if (!await isNotificationEnabled(record.organization_id, 'notify_retirement_request')) {
-    return [];
+    return EMPTY_RESULT;
   }
 
-  const recipients = await orgEmailsByRole(record.organization_id, ['admin', 'manager']);
-  return recipients.map(email => ({
-    to: email,
-    subject: `Retirement request needs approval: ${record.name}`,
-    html: emailShell(
-      'Retirement request needs approval',
-      `<strong>${escapeHtml(record.name)}</strong> has a pending retirement request waiting for your review.`,
-      'Review request',
-      `${APP_URL}/manage/inventory`
-    )
+  const recipients = await orgProfilesByRole(record.organization_id, ['admin', 'manager']);
+  const notifications: NotificationToInsert[] = recipients.map(recipient => ({
+    organization_id: record.organization_id,
+    user_id: recipient.id,
+    kind: 'retirement_request',
+    message: `"${record.name}" has a pending retirement request`,
+    link: '/manage/inventory'
   }));
+
+  let emails: EmailToSend[] = [];
+  if (await isEmailNotificationEnabled(record.organization_id, 'notify_retirement_request')) {
+    emails = recipients.map(recipient => ({
+      to: recipient.email,
+      subject: `Retirement request needs approval: ${record.name}`,
+      html: emailShell(
+        'Retirement request needs approval',
+        `<strong>${escapeHtml(record.name)}</strong> has a pending retirement request waiting for your review.`,
+        'Review request',
+        `${APP_URL}/manage/inventory`
+      )
+    }));
+  }
+
+  return { emails, notifications };
 }
 
-async function emailsForJoinRequest(payload: WebhookPayload): Promise<EmailToSend[]> {
+async function resultForJoinRequest(payload: WebhookPayload): Promise<EventResult> {
   const record = payload.record as
     { email: string; full_name: string | null; nickname: string | null; membership_status: string; organization_id: string } | null;
   if (!record || payload.type !== 'INSERT' || record.membership_status !== 'pending') {
-    return [];
-  }
-  if (!await isNotificationEnabled(record.organization_id, 'notify_join_request')) {
-    return [];
+    return EMPTY_RESULT;
   }
 
-  const recipients = await orgEmailsByRole(record.organization_id, ['admin']);
+  const recipients = await orgProfilesByRole(record.organization_id, ['admin']);
   const requesterLabel = record.nickname || record.full_name || record.email;
-  return recipients.map(email => ({
-    to: email,
-    subject: `${requesterLabel} wants to join your organization`,
-    html: emailShell(
-      'New join request',
-      `<strong>${escapeHtml(requesterLabel)}</strong> (${escapeHtml(record.email)}) has requested to join your organization on ShelfSync.`,
-      'Review request',
-      `${APP_URL}/manage/team`
-    )
+  const notifications: NotificationToInsert[] = recipients.map(recipient => ({
+    organization_id: record.organization_id,
+    user_id: recipient.id,
+    kind: 'join_request',
+    message: `${requesterLabel} wants to join your organization`,
+    link: '/manage/team'
   }));
+
+  let emails: EmailToSend[] = [];
+  if (await isEmailNotificationEnabled(record.organization_id, 'notify_join_request')) {
+    emails = recipients.map(recipient => ({
+      to: recipient.email,
+      subject: `${requesterLabel} wants to join your organization`,
+      html: emailShell(
+        'New join request',
+        `<strong>${escapeHtml(requesterLabel)}</strong> (${escapeHtml(record.email)}) has requested to join your organization on ShelfSync.`,
+        'Review request',
+        `${APP_URL}/manage/team`
+      )
+    }));
+  }
+
+  return { emails, notifications };
 }

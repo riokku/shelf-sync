@@ -5,6 +5,7 @@ import { provideRouter } from '@angular/router';
 import { HeaderComponent } from './header.component';
 import { AuthService } from '../core/auth.service';
 import { SupabaseService } from '../core/supabase.service';
+import { NotificationCenterService } from '../core/notification-center.service';
 import { createFakeAuthService, createFakeProfile, createFakeSupabaseService } from '../testing/fakes';
 
 describe('HeaderComponent', () => {
@@ -69,6 +70,54 @@ describe('HeaderComponent low stock badge', () => {
     expect(fixture.componentInstance.lowStockCount()).toBe(2);
     discardPeriodicTasks();
   }));
+});
+
+describe('HeaderComponent notifications panel', () => {
+  function setup() {
+    TestBed.configureTestingModule({
+      imports: [HeaderComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: SupabaseService, useValue: createFakeSupabaseService() }
+      ]
+    });
+    const fixture = TestBed.createComponent(HeaderComponent);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  it('toggleNotifications() opens and closes the panel', () => {
+    const component = setup().componentInstance;
+
+    expect(component.isNotificationsOpen()).toBeFalse();
+    component.toggleNotifications();
+    expect(component.isNotificationsOpen()).toBeTrue();
+    component.toggleNotifications();
+    expect(component.isNotificationsOpen()).toBeFalse();
+  });
+
+  it('openNotificationsFromMobileMenu() closes the mobile drawer and opens the notifications panel instead', () => {
+    const component = setup().componentInstance;
+    component.openMobileMenu();
+
+    component.openNotificationsFromMobileMenu();
+
+    expect(component.isMobileMenuOpen()).toBeFalse();
+    expect(component.isNotificationsOpen()).toBeTrue();
+  });
+
+  it('onNotificationRowClick() marks the notification read and closes the panel', () => {
+    const component = setup().componentInstance;
+    const notificationCenter = (component as unknown as { notificationCenter: NotificationCenterService }).notificationCenter;
+    const markAsReadSpy = spyOn(notificationCenter, 'markAsRead').and.returnValue(Promise.resolve());
+    component.toggleNotifications();
+
+    component.onNotificationRowClick({ id: 'notif-1', kind: 'task_assigned', message: 'x', link: '/tasks', readAt: null, createdAt: '2026-01-01T00:00:00.000Z' });
+
+    expect(markAsReadSpy).toHaveBeenCalledWith('notif-1');
+    expect(component.isNotificationsOpen()).toBeFalse();
+  });
 });
 
 describe('HeaderComponent organization name', () => {
@@ -188,7 +237,13 @@ describe('HeaderComponent online team count', () => {
           }
           profilesQueryCount++;
           return { select: () => ({ eq: () => Promise.resolve({ data: [{ last_active_at: agoIso(0) }], error: null }) }) };
-        }
+        },
+        // NotificationCenterService also subscribes to realtime changes
+        // while authenticated (see its own doc comment) — inert stand-ins
+        // so that doesn't throw here, same shape createFakeSupabaseService's
+        // own createFakeRealtimeChannel() uses.
+        channel: () => ({ on: function (this: unknown) { return this; }, subscribe: function (this: unknown) { return this; } }),
+        removeChannel: async () => ({ status: 'ok' })
       }
     } as unknown as SupabaseService;
 

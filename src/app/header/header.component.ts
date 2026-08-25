@@ -1,4 +1,5 @@
 import { Component, DestroyRef, effect, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { A11yModule } from '@angular/cdk/a11y';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,12 +11,18 @@ import { AuthService } from '../core/auth.service';
 import { SiteSettingsService } from '../core/site-settings.service';
 import { SupabaseService } from '../core/supabase.service';
 import { ThemeModeService } from '../core/theme-mode.service';
+import { NotificationCenterService } from '../core/notification-center.service';
+import { EmptyStateComponent } from '../shared/components/empty-state/empty-state.component';
+import { notificationIcon, UserNotification } from '../shared/models/notification.model';
 import { needsRestockAttention } from '../shared/utils/inventory-stock';
 import { isProfileOnline } from '../shared/utils/presence';
 
 @Component({
     selector: 'app-header',
-    imports: [A11yModule, MatBadgeModule, MatButtonModule, MatDividerModule, MatIconModule, MatTooltipModule, RouterModule],
+    imports: [
+      A11yModule, DatePipe, MatBadgeModule, MatButtonModule, MatDividerModule, MatIconModule, MatTooltipModule,
+      RouterModule, EmptyStateComponent
+    ],
     templateUrl: './header.component.html',
     styleUrl: './header.component.scss'
 })
@@ -23,6 +30,8 @@ export class HeaderComponent {
   protected authService = inject(AuthService);
   protected siteSettings = inject(SiteSettingsService);
   protected themeMode = inject(ThemeModeService);
+  protected notificationCenter = inject(NotificationCenterService);
+  protected readonly notificationIcon = notificationIcon;
   private supabase = inject(SupabaseService).client;
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
@@ -42,6 +51,44 @@ export class HeaderComponent {
 
   closeMobileMenu() {
     this._isMobileMenuOpen.set(false);
+  }
+
+  /** Same "own fixed-position panel rather than MatMenu" shape as the
+   *  mobile drawer above, for the same width-overflow-risk reasoning — but
+   *  positioned as a small top-right dropdown near the bell rather than a
+   *  full-height edge-to-edge drawer, since a short notification list
+   *  doesn't need that much room. Always in the DOM (see the template's own
+   *  [attr.inert]) so both open and close get the panel's transition.
+   *  Reachable from two different triggers (the desktop bell in
+   *  .header-actions, and a mobile-drawer nav entry — see
+   *  openNotificationsFromMobileMenu() below) since .header-actions itself
+   *  is display:none below the same breakpoint the mobile drawer takes
+   *  over at. */
+  private readonly _isNotificationsOpen = signal(false);
+  readonly isNotificationsOpen = this._isNotificationsOpen.asReadonly();
+
+  toggleNotifications() {
+    this._isNotificationsOpen.update(open => !open);
+  }
+
+  closeNotifications() {
+    this._isNotificationsOpen.set(false);
+  }
+
+  /** The mobile drawer's own "Notifications" entry — closes the drawer
+   *  first rather than leaving both open at once, since the notifications
+   *  panel would otherwise render on top of (part of) the still-open drawer. */
+  openNotificationsFromMobileMenu() {
+    this.closeMobileMenu();
+    this._isNotificationsOpen.set(true);
+  }
+
+  /** Marks the clicked row read and closes the panel — navigation itself is
+   *  handled by the row's own [routerLink], not here, so ctrl/cmd-click
+   *  (open in new tab) still works normally. */
+  onNotificationRowClick(notification: UserNotification) {
+    void this.notificationCenter.markAsRead(notification.id);
+    this.closeNotifications();
   }
 
   /** Pending inventory retirement requests and pending task transfers (any
@@ -101,6 +148,7 @@ export class HeaderComponent {
     this.router.events.subscribe(event => {
       if (event instanceof NavigationEnd) {
         this.closeMobileMenu();
+        this.closeNotifications();
         if (this.authService.canManage()) {
           void this.loadPendingManageCount();
         }
