@@ -77,6 +77,10 @@
       >
       <mat-icon>{{ themeMode.mode() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
     </button>
+    <a mat-button routerLink="/help" routerLinkActive="active">
+      <mat-icon>help_outline</mat-icon>
+      Help
+    </a>
     <a mat-button routerLink="/account" routerLinkActive="active">
       <mat-icon>account_circle</mat-icon>
       Account
@@ -188,6 +192,10 @@
       <mat-icon>{{ themeMode.mode() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
       {{ themeMode.mode() === 'dark' ? 'Light mode' : 'Dark mode' }}
     </button>
+    <a mat-button routerLink="/help" routerLinkActive="active">
+      <mat-icon>help_outline</mat-icon>
+      Help
+    </a>
     <a mat-button routerLink="/account" routerLinkActive="active">
       <mat-icon>account_circle</mat-icon>
       Account

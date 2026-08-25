@@ -98,6 +98,13 @@ const routes: Routes = [
     title: 'ShelfSync | Account'
   },
   {
+    path: 'help',
+    loadComponent: () => import('./help/help.component').then(m => m.HelpComponent),
+    canActivate: [approvedGuard],
+    data: { breadcrumb: 'Help' },
+    title: 'ShelfSync | Help'
+  },
+  {
     path: 'tasks',
     loadComponent: () => import('./tasks/tasks.component').then(m => m.TasksComponent),
     canActivate: [approvedGuard],

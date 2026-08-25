@@ -1013,6 +1013,18 @@ item but not a container-tracked one — see that page's own paragraph above). N
 exhaustively across every dialog/toggle in the app; a natural extension of the same component to
 whatever the next confusing control turns out to be.
 
+A `/help` route (`HelpComponent`, `approvedGuard`) is a static in-app "how do I..." reference,
+distinct from `/privacy`/`/terms` in the same way `/pricing` is distinct from *those* — this is about
+*using the product* once signed in, so it lives inside the normal authenticated shell (header/footer
+chrome) like Account/Tasks rather than alongside the unguarded legal pages (which get their own
+top-bar layout precisely because a signed-out visitor can land on them). Content is a series of
+`mat-accordion` sections (Getting started, Inventory, Reservations & orders, Tasks, Team & roles,
+Notifications, Settings & branding, Account) — plain static markup rather than a data-driven array,
+since this never changes at runtime, matching how `PrivacyComponent`/`TermsComponent`'s own prose is
+just written directly rather than templated. Linked from `HeaderComponent`'s nav (both the desktop
+`.header-actions` row and the mobile drawer) right next to Account, as a `help_outline`-icon "Help"
+link.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -1151,6 +1163,7 @@ manage/                                                     # card hub (ManageCo
   danger-zone/                                              # admin only: org data export + soft-delete (organizations.deleted_at)
   settings/                                                # admin-only: theme picker + logo upload (site_settings) — see Project Overview above
 account/                                                    # profile info, avatar picker, light/dark mode toggle
+help/                                                        # static in-app "how do I..." reference (see Project Overview above)
 shared/
   components/modal-table/    # standalone Material dialog showing InventoryItem details
   components/bulk-action-toolbar/ # shared "N selected / select all / clear" chrome for every page with bulk actions
