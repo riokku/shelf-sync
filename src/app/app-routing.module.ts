@@ -165,6 +165,13 @@ const routes: Routes = [
     title: 'ShelfSync | Orders'
   },
   {
+    path: 'manage/reservations',
+    loadComponent: () => import('./manage/reservations/manage-reservations.component').then(m => m.ManageReservationsComponent),
+    canActivate: [approvedGuard, manageGuard],
+    data: { breadcrumb: 'Reservations', breadcrumbParent: MANAGE_BREADCRUMB_PARENT },
+    title: 'ShelfSync | Reservations'
+  },
+  {
     path: 'manage/reports',
     loadComponent: () => import('./manage/reports/manage-reports.component').then(m => m.ManageReportsComponent),
     canActivate: [approvedGuard, manageGuard],

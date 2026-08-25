@@ -379,6 +379,29 @@
             }
           </section>
 
+          @if (upcomingReservations.length > 0) {
+            <section class="info-section">
+              <header class="info-section-header">
+                <mat-icon class="me-2">event</mat-icon>
+                Upcoming reservations
+              </header>
+              <ul class="reservation-summary-list">
+                @for (reservation of upcomingReservations; track reservation.id) {
+                  <li class="reservation-summary-row">
+                    <span class="semibold">{{ reservation.quantity }}</span>
+                    for {{ reservation.reservedFor }}
+                    <span class="reservation-summary-dates">
+                      {{ reservation.startDate | date: 'M/d/yy' }} – {{ reservation.endDate | date: 'M/d/yy' }}
+                    </span>
+                    @if (reservation.status === 'picked_up') {
+                      <span class="reservation-summary-badge">Picked up</span>
+                    }
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+
           <section class="info-section">
             <header class="info-section-header">
               <mat-icon class="me-2">shopping_cart</mat-icon>

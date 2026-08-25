@@ -1,0 +1,83 @@
+import { SupabaseClient } from '@supabase/supabase-js';
+import { Database } from '../models/database.types';
+import { InventoryItemReservation, InventoryItemReservationStatus } from '../models/inventory-item-reservation.model';
+import { Profile } from '../../core/auth.service';
+import { resolveProfileName } from './profile-label';
+import { getTodayIsoDate } from './date';
+
+type InventoryItemReservationRow = Database['public']['Tables']['inventory_item_reservations']['Row'];
+
+/** A reservation plus the name of the item it was placed against —
+ *  manage/reservations is org-wide (not scoped to one item's popup), so
+ *  every row needs to say which item it's about. itemNamesById is a plain
+ *  client-side join, matching every other multi-entity list in this app
+ *  (e.g. InventoryItemOrderWithItem in inventory-item-orders.ts) rather
+ *  than a PostgREST embedded-resource select. */
+export interface InventoryItemReservationWithItem extends InventoryItemReservation {
+  itemId: string;
+  itemName: string;
+}
+
+function toInventoryItemReservation(row: InventoryItemReservationRow, profiles: Profile[]): InventoryItemReservation {
+  return {
+    id: row.id,
+    startDate: row.start_date,
+    endDate: row.end_date,
+    quantity: row.quantity,
+    reservedFor: row.reserved_for,
+    note: row.note ?? '',
+    status: row.status as InventoryItemReservationStatus,
+    reservedByLabel: resolveProfileName(row.reserved_by, profiles) || 'Unknown user',
+    reservedAt: row.reserved_at,
+    pickedUpByLabel: resolveProfileName(row.picked_up_by, profiles),
+    pickedUpAt: row.picked_up_at ?? '',
+    returnedByLabel: resolveProfileName(row.returned_by, profiles),
+    returnedAt: row.returned_at ?? '',
+    cancelledByLabel: resolveProfileName(row.cancelled_by, profiles),
+    cancelledAt: row.cancelled_at ?? ''
+  };
+}
+
+/** Every reservation across the org, most recently reserved first — backs
+ *  manage/reservations. RLS (inventory_item_reservations' own SELECT
+ *  policy, joined through item_id to inventory_items.organization_id) is
+ *  what actually scopes this to the caller's org, same "no explicit
+ *  organization_id filter, RLS alone does the scoping" convention every
+ *  other unfiltered .from(...) query in this app already follows. */
+export async function loadAllInventoryItemReservations(
+  supabase: SupabaseClient<Database>,
+  profiles: Profile[],
+  itemNamesById: Map<string, string>
+): Promise<InventoryItemReservationWithItem[]> {
+  const { data } = await supabase
+    .from('inventory_item_reservations')
+    .select('*')
+    .order('reserved_at', { ascending: false });
+
+  return (data ?? []).map(row => ({
+    ...toInventoryItemReservation(row, profiles),
+    itemId: row.item_id,
+    itemName: itemNamesById.get(row.item_id) ?? 'Unknown item'
+  }));
+}
+
+/** Lighter-weight than loadAllInventoryItemReservations() above — just this
+ *  one item's still-relevant bookings (not yet returned/cancelled, and not
+ *  already in the past), oldest start date first. Backs
+ *  ModalTableComponent's read-only "Upcoming reservations" summary, which
+ *  has no need for actor-name resolution the way the full manage page does
+ *  — it's a glance, not an audit trail. */
+export async function loadUpcomingReservationsForItem(
+  supabase: SupabaseClient<Database>,
+  itemId: string
+): Promise<InventoryItemReservation[]> {
+  const { data } = await supabase
+    .from('inventory_item_reservations')
+    .select('*')
+    .eq('item_id', itemId)
+    .in('status', ['reserved', 'picked_up'])
+    .gte('end_date', getTodayIsoDate())
+    .order('start_date', { ascending: true });
+
+  return (data ?? []).map(row => toInventoryItemReservation(row, []));
+}

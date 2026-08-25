@@ -716,6 +716,44 @@ a PostgREST embedded-resource select — this app doesn't use those anywhere, ev
 list here correlates separately-queried rows by id instead (e.g. `ManageInventoryComponent`'s images/
 activity maps), and this follows the same convention rather than introducing a new one.
 
+Admins and managers get a `manage/reservations` route (`ManageReservationsComponent`, `manageGuard`)
+— date-ranged bookings of an item's stock (e.g. "50 of our 100 chairs for the Smith wedding, June
+1–3"), for the event/rental use case this app's own seed data represents. A reservation books a
+*quantity*, not the whole item, and is fully separate from `is_checked_out`/`checked_out_to` — that
+flag still means "someone has this in hand right now"; a reservation means "this is spoken for on
+these dates," with no automatic interaction between the two. Same overall shape as `manage/orders`
+(a "New reservation" button opening `PlaceReservationModalComponent`, an item-autocomplete picker,
+then a running org-wide list with status-driven row actions), but every item is reservable (no
+supplier prerequisite the way an order needs), and creation itself — unlike an order's direct
+admin/manager `INSERT` — goes through a `SECURITY DEFINER` RPC too, because it needs a *capacity*
+check (is there enough stock left unreserved across the requested date range?) that a plain RLS
+`with check` can't express: `create_reservation()` sums the `quantity` of every other
+`reserved`/`picked_up` row whose date range overlaps (`daterange(...) && daterange(...)`) and
+rejects if the new quantity would exceed what's left. `PlaceReservationModalComponent` shows a live
+"N available for these dates" hint computed the same way client-side against reservations already
+loaded by the page that opened it — a UX preview only, since the RPC stays the actual source of
+truth on submit. Lifecycle is linear with one branch: `reserved` → `picked_up` → `returned`, or
+`reserved` → `cancelled` (only before pickup — once picked up, the only forward state is
+`returned`), each transition its own RPC
+(`mark_reservation_picked_up()`/`mark_reservation_returned()`/`cancel_reservation()`), all logging
+to both `inventory_item_activity` and `activity_log` (`entity_type` `'inventory_item'`, reused
+rather than adding a new entity type, same as how `receive_inventory_item_order()` already logs
+order events under that type). Unlike Orders — which dropped per-item visibility entirely once
+`manage/orders` existed — `ModalTableComponent` also shows a small **read-only** "Upcoming
+reservations" summary for its own item (`loadUpcomingReservationsForItem()`, self-loaded in
+`ngOnInit()` the same way this component already self-loads other supplementary data rather than
+threading it through `InventoryItem`/`toInventoryItem()`) — knowing an item is already booked is
+genuinely relevant context while deciding whether to check it out right now, which is why this one
+case differs from Orders' own precedent.
+
+`DiscardModalComponent`'s quantity field also has a "Discard all (N)" / "Discard a specific
+quantity" mode toggle (`mode: 'all' | 'partial'`, defaulting to `'all'`) — a restoration of the
+original (pre-container-tracking) `DiscardInventoryModalComponent`'s own radio-group UX, which the
+unified container-aware rebuild had dropped down to typing the full quantity by hand every time.
+`'all'` resolves against `maxQuantity` (already reactive to whichever box is picked for a
+container-tracked item, or the item's flat `quantityRemaining` otherwise) — no schema/RPC changes,
+this is purely a `DiscardModalComponent` UI change.
+
 Four in-app events now also send an email, via a new `send-notification-email` Edge Function
 (`supabase/functions/send-notification-email/`) backed by Resend: a task directly assigned to you on
 creation, a task transfer offered to you, an inventory item's retirement request needing admin/manager
@@ -1050,9 +1088,9 @@ The app mixes two Angular module styles, which is important to know before addin
 - Routing (`app-routing.module.ts`) is flat — `''` → `LandingComponent`, `'login'` →
   `LoginComponent`, `'register'` → `RegisterComponent`, `'inventory'` → `InventoryComponent`
   guarded by `approvedGuard` (plus `home`, `tasks`, `account` — all similarly guarded). `manage` is
-  a card hub (`ManageComponent`) linking to ten flat sibling routes — `manage/inventory`,
+  a card hub (`ManageComponent`) linking to eleven flat sibling routes — `manage/inventory`,
   `manage/tasks`, `manage/team`, `manage/activity`, `manage/error-log`, `manage/suppliers`,
-  `manage/orders`, `manage/reports` (all `manageGuard`: admin OR manager) and
+  `manage/orders`, `manage/reservations`, `manage/reports` (all `manageGuard`: admin OR manager) and
   `manage/billing`/`manage/danger-zone`/`manage/settings` (`adminGuard`, stricter — financial info,
   org export/delete, and site-wide branding respectively) — rather than nested child routes,
   matching the rest of the app's flat
@@ -1091,6 +1129,7 @@ inventory/                                                  # standalone invento
 tasks/                                                      # standalone personal "My Tasks" list (row-styled task-card)
 manage/                                                     # card hub (ManageComponent) linking to the pages below
   inventory/, tasks/, team/, activity/, suppliers/, orders/ # admin/manager only: inventory (+ CSV export), tasks, team administration, the cross-entity activity feed, the supplier directory, and restock orders
+  reservations/                                             # admin/manager only: date-ranged reservations of an item's stock
   error-log/                                                # admin/manager only: client_error_log viewer, see Supabase Schema section
   reports/                                                  # admin/manager only: inventory value/stock health, stock movement/loss, task throughput
   billing/                                                  # admin only: pre-Stripe preview of the org's plan/usage, see Project Overview above
@@ -1103,11 +1142,13 @@ shared/
   components/bulk-reassign-modal/ # Inventory's bulk category/physical-location reassignment dialog
   components/supplier-form-modal/ # add/edit dialog backing manage/suppliers' directory CRUD
   components/place-order-modal/ # self-contained item picker + quantity/note dialog backing manage/orders' "Place order"
-  components/discard-modal/ # quantity + mandatory-reason dialog backing ModalTableComponent's "Discard" button
+  components/place-reservation-modal/ # self-contained item picker + date-range/quantity dialog backing manage/reservations' "New reservation"
+  components/discard-modal/ # quantity ("Discard all" or a specific amount) + mandatory-reason dialog backing ModalTableComponent's "Discard" button
   components/turnstile-widget/ # Cloudflare Turnstile CAPTCHA, embedded on Login/Register/Forgot Password
   models/inventory-item.model.ts   # InventoryItem class (constructor-based, no defaults)
   models/supplier.model.ts   # Supplier — a directory entry inventory_items.supplier_id can point at
   models/inventory-item-order.model.ts # InventoryItemOrder — one restock order against an item's linked supplier
+  models/inventory-item-reservation.model.ts # InventoryItemReservation — a date-ranged booking of some quantity of an item's stock
   models/theme-preset.ts     # THEME_PRESETS — key must match a [data-theme] block in styles.scss
   models/inventory-table-column.ts # optional Inventory table-view columns admin can show/hide (Settings > Data)
   models/pricing-tier.ts     # PRICING_TIERS — shared by PricingComponent (/pricing) and ManageBillingComponent
@@ -1118,6 +1159,7 @@ shared/
   utils/inventory-item-activity.ts # loadInventoryActivityByItemId() / logInventoryItemActivity() — inventory_item_activity
   utils/inventory-item-discards.ts # logInventoryItemDiscard() / loadAllInventoryItemDiscards() — structured counterpart to the free-text discard activity line, backs manage/reports
   utils/inventory-item-orders.ts # loadAllInventoryItemOrders() — every org order, backs manage/orders
+  utils/inventory-item-reservations.ts # loadAllInventoryItemReservations() / loadUpcomingReservationsForItem() — backs manage/reservations and ModalTableComponent's read-only summary
   utils/inventory-export.ts  # buildInventoryExportCsv() / downloadCsv() — backs manage/inventory's "Export" button
   utils/activity-log.ts      # loadActivityLog() / logActivity() — org-wide activity_log, backs Manage > Activity Log
   utils/profile-label.ts     # profileDisplayName()/resolveProfileName() — shared profiles-array lookup
@@ -1456,6 +1498,22 @@ yet on a hard refresh of `/inventory`.
   self-service shape `profiles.last_active_at` already has — marking a notification read is the only
   client-side write this table ever needs. Realtime-enabled the same two-part way (publication
   membership + `replica identity full`) `enable_realtime_for_inventory_and_tasks` already established.
+- `add_inventory_item_reservations` — adds `inventory_item_reservations` (`item_id`, `start_date`,
+  `end_date`, `quantity`, `reserved_for` — free text, not a profiles FK, since this books stock for
+  an external customer/event, not an org member — `note`, `status`
+  `'reserved'|'picked_up'|'returned'|'cancelled'`, plus `reserved/picked_up/returned/cancelled_by/at`
+  pairs for each transition), backing `manage/reservations` (see the Project Overview section
+  above). Same child-table shape as `inventory_item_orders`/`inventory_item_discards` (no
+  `organization_id` of its own; org isolation via the `item_id` join) and the same day-one-correct
+  join-based SELECT policy those two established. **No INSERT/UPDATE/DELETE grant for
+  `authenticated` at all** — stricter than `inventory_item_orders` (which does grant a direct
+  admin/manager INSERT), because even *creating* a reservation needs a capacity check (summing
+  every other overlapping `reserved`/`picked_up` row's quantity via `daterange(...) && daterange(...)`)
+  that a plain RLS `with check` can't express, so creation goes through `create_reservation()`
+  (`SECURITY DEFINER`, admin/manager only) alongside the three transition RPCs
+  (`mark_reservation_picked_up()`/`mark_reservation_returned()`/`cancel_reservation()`), all four
+  logging to both `inventory_item_activity` and `activity_log` the same way the retirement/order
+  RPCs already do.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

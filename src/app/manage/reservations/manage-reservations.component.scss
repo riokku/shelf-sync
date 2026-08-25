@@ -1,0 +1,147 @@
+@use '../../shared/styles/page-toolbar';
+
+.manage-reservations-wrapper{
+  color: var(--mat-sys-on-surface);
+  padding: 3rem 1.5rem;
+  max-width: 100%;
+
+  h2{
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+  }
+
+  .container{
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+.page-header-row{
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.page-subtitle{
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0;
+}
+
+.error-message{
+  color: var(--app-error-text);
+  margin: 0 0 1rem;
+}
+
+.loading-row{
+  display: flex;
+  justify-content: center;
+  padding: 3rem 0;
+}
+
+.status-toggle{
+  margin-bottom: 1.5rem;
+}
+
+.status-pill{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+
+  mat-icon{
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+
+  // Same status-color vocabulary the Inventory page's own table status pills
+  // use (tertiary-container = booked/neutral-active, warning = currently
+  // out and needs following up on, success = a good/complete outcome,
+  // surface-variant = inactive/muted) rather than inventing a new palette.
+  &.reservation-reserved{
+    background: var(--mat-sys-tertiary-container);
+    color: var(--mat-sys-on-tertiary-container);
+  }
+
+  &.reservation-picked_up{
+    background: var(--app-warning-bg);
+    color: var(--app-warning-on-bg);
+  }
+
+  &.reservation-returned{
+    background: var(--app-success-bg);
+    color: var(--app-success-on-bg);
+  }
+
+  &.reservation-cancelled{
+    background: var(--mat-sys-surface-variant);
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.reservation-list{
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.reservation-card{
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 0.75rem;
+}
+
+.reservation-info{
+  min-width: 0;
+}
+
+.reservation-row{
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.375rem;
+}
+
+.reservation-item-link{
+  font-weight: 600;
+  color: var(--mat-sys-primary);
+}
+
+.reservation-quantity{
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.reservation-dates{
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.reservation-meta{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8125rem;
+
+  .semibold{
+    font-weight: 600;
+  }
+}
+
+.reservation-actions{
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.5rem;
+}

@@ -396,6 +396,99 @@ export type Database = {
           },
         ]
       }
+      inventory_item_reservations: {
+        Row: {
+          cancelled_at: string | null
+          cancelled_by: string | null
+          end_date: string
+          id: string
+          item_id: string
+          note: string | null
+          picked_up_at: string | null
+          picked_up_by: string | null
+          quantity: number
+          reserved_at: string
+          reserved_by: string | null
+          reserved_for: string
+          returned_at: string | null
+          returned_by: string | null
+          start_date: string
+          status: string
+        }
+        Insert: {
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          end_date: string
+          id?: string
+          item_id: string
+          note?: string | null
+          picked_up_at?: string | null
+          picked_up_by?: string | null
+          quantity: number
+          reserved_at?: string
+          reserved_by?: string | null
+          reserved_for: string
+          returned_at?: string | null
+          returned_by?: string | null
+          start_date: string
+          status?: string
+        }
+        Update: {
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          end_date?: string
+          id?: string
+          item_id?: string
+          note?: string | null
+          picked_up_at?: string | null
+          picked_up_by?: string | null
+          quantity?: number
+          reserved_at?: string
+          reserved_by?: string | null
+          reserved_for?: string
+          returned_at?: string | null
+          returned_by?: string | null
+          start_date?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_item_reservations_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_item_reservations_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_item_reservations_picked_up_by_fkey"
+            columns: ["picked_up_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_item_reservations_reserved_by_fkey"
+            columns: ["reserved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_item_reservations_returned_by_fkey"
+            columns: ["returned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_items: {
         Row: {
           activity_log: string | null
@@ -885,7 +978,22 @@ export type Database = {
         Args: { item_id: string }
         Returns: undefined
       }
+      cancel_reservation: {
+        Args: { reservation_id: string }
+        Returns: undefined
+      }
       cancel_task_transfer: { Args: { task_id: string }; Returns: undefined }
+      create_reservation: {
+        Args: {
+          end_date: string
+          item_id: string
+          note?: string
+          quantity: number
+          reserved_for: string
+          start_date: string
+        }
+        Returns: string
+      }
       current_user_org_id: { Args: never; Returns: string }
       current_user_role: {
         Args: never
@@ -902,6 +1010,14 @@ export type Database = {
           p_url?: string
           p_user_agent?: string
         }
+        Returns: undefined
+      }
+      mark_reservation_picked_up: {
+        Args: { reservation_id: string }
+        Returns: undefined
+      }
+      mark_reservation_returned: {
+        Args: { reservation_id: string }
         Returns: undefined
       }
       profile_display_name: { Args: { target_id: string }; Returns: string }

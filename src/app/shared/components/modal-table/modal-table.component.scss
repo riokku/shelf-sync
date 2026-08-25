@@ -423,3 +423,34 @@
 .container-total{
   margin: 0 0.75rem 0.75rem;
 }
+
+.reservation-summary-list{
+  list-style: none;
+  margin: 0;
+  padding: 0 0.75rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.reservation-summary-row{
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.reservation-summary-dates{
+  margin-left: auto;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.reservation-summary-badge{
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  background: var(--app-warning-bg);
+  color: var(--app-warning-on-bg);
+  font-size: 0.75rem;
+  font-weight: 600;
+}

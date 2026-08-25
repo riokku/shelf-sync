@@ -40,6 +40,8 @@ import {
 } from '../../utils/inventory-item-images';
 import { loadInventoryItemContainers, sumContainerQuantity } from '../../utils/inventory-item-containers';
 import { BARCODE_FEATURE_ENABLED } from '../../utils/barcode';
+import { loadUpcomingReservationsForItem } from '../../utils/inventory-item-reservations';
+import { InventoryItemReservation } from '../../models/inventory-item-reservation.model';
 
 /** Working copy of a container while the item is being edited — id: null
  *  marks a box that doesn't exist in inventory_item_containers yet. */
@@ -128,8 +130,20 @@ export class ModalTableComponent implements OnInit {
   editableContainers: EditableContainer[] = [];
   removedContainerIds = new Set<string>();
 
+  /** Read-only — self-loaded here rather than threaded through InventoryItem/
+   *  toInventoryItem() by every caller, same "this popup fetches its own
+   *  supplementary data" precedent its own profiles queries elsewhere in
+   *  this file already follow. Only reserved/picked_up bookings whose end
+   *  date hasn't passed — a glance at "is this already spoken for," not an
+   *  audit trail (that's what manage/reservations, the page that actually
+   *  creates/actions these, is for). */
+  upcomingReservations: InventoryItemReservation[] = [];
+
   async ngOnInit(){
-    this.existingContainers = await loadInventoryItemContainers(this.supabase, this.data.id);
+    [this.existingContainers, this.upcomingReservations] = await Promise.all([
+      loadInventoryItemContainers(this.supabase, this.data.id),
+      loadUpcomingReservationsForItem(this.supabase, this.data.id)
+    ]);
   }
 
   containerSum(containers: { quantity: number }[]): number {
