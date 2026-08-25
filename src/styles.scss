@@ -243,6 +243,23 @@ mat-icon{
   justify-content: center;
 }
 
+// Material's own base .mat-icon rule sets a hard `overflow: hidden` against
+// a fixed 24px (or, inside a button, 18px — see `.mat-mdc-button > .mat-icon`
+// further down) box. Several ligature glyphs whose ink runs right up to
+// their own em-square edges — the circle in `help_outline`/`account_circle`
+// in particular — render very slightly outside that box at the smaller
+// 18px in-button size, so this clipped a hair off their top and bottom
+// (most visible on HeaderComponent's "Help"/"Account" nav links). `.mat-icon`
+// is a *class* selector (MatIcon adds it to its own host), which always
+// beats the bare-element `mat-icon` selector above regardless of source
+// order — hence targeting the same class here, with `!important` since
+// Material's own generated stylesheet wins same-specificity ties anyway
+// (see the next rule's own comment for the identical, already-established
+// reasoning).
+.mat-icon{
+  overflow: visible !important;
+}
+
 // Material's own button theme styles set a direct-child rule like
 // `.mat-mdc-outlined-button > .mat-icon { display: inline-block }` (one per
 // button variant), injected in a way that wins cascade ties against the
