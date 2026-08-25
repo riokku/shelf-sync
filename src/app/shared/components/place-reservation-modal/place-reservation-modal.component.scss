@@ -8,9 +8,13 @@ form{
   width: 100%;
 }
 
+.reservation-title{
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
 .reservation-title-icon{
-  vertical-align: middle;
-  margin-right: 0.375rem;
   color: var(--mat-sys-primary);
 }
 

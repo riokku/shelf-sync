@@ -998,6 +998,21 @@ mid-session. This pass deliberately covers the five highest-value pages rather t
 `.select()` call in the app; other pages' load paths remain a natural future extension of the same
 `loadError`/`retryLoad()`/`variant="error"` shape.
 
+A shared `HelpTooltipComponent` (`shared/components/help-tooltip`) — a small keyboard-focusable "?"
+icon button wired to `matTooltip` (this app's existing tooltip mechanism, already used by
+`HeaderComponent`'s bell/mode-toggle buttons) rather than a hand-rolled popover — gives a handful of
+genuinely non-obvious controls an inline explanation without permanently occupying page space the
+way a `<p class="section-hint">` does. Deliberately narrow: only added where nothing nearby already
+explains the control (Settings > Workflow's toggles already have their own full-sentence
+`.section-hint` paragraphs and don't get one) — `ManageInventoryComponent`'s create-form "Single
+quantity" vs "By container/box" tracking-mode toggle, `DiscardModalComponent`'s title (discarding is
+permanent and distinct from checkout/retirement), `PlaceReservationModalComponent`'s title
+(a reservation books stock for a date range without touching `is_checked_out`/`checked_out_to`), and
+`ManageOrdersComponent`'s "Orders" heading (marking an order received auto-restocks a flat-tracked
+item but not a container-tracked one — see that page's own paragraph above). Not applied
+exhaustively across every dialog/toggle in the app; a natural extension of the same component to
+whatever the next confusing control turns out to be.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -1145,6 +1160,7 @@ shared/
   components/place-reservation-modal/ # self-contained item picker + date-range/quantity dialog backing manage/reservations' "New reservation"
   components/discard-modal/ # quantity ("Discard all" or a specific amount) + mandatory-reason dialog backing ModalTableComponent's "Discard" button
   components/turnstile-widget/ # Cloudflare Turnstile CAPTCHA, embedded on Login/Register/Forgot Password
+  components/help-tooltip/ # small "?" matTooltip icon button explaining a non-obvious control inline
   models/inventory-item.model.ts   # InventoryItem class (constructor-based, no defaults)
   models/supplier.model.ts   # Supplier — a directory entry inventory_items.supplier_id can point at
   models/inventory-item-order.model.ts # InventoryItemOrder — one restock order against an item's linked supplier

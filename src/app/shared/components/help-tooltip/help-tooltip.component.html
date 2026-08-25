@@ -1,0 +1,10 @@
+<button
+    type="button"
+    class="help-tooltip-trigger"
+    [matTooltip]="text"
+    matTooltipPosition="above"
+    [attr.aria-label]="text"
+    (click)="$event.stopPropagation()"
+  >
+  <mat-icon>help_outline</mat-icon>
+</button>

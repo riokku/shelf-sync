@@ -175,8 +175,15 @@
   }
 }
 
-.tracking-mode-toggle{
+.tracking-mode-row{
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin-bottom: 1rem;
+}
+
+.tracking-mode-toggle{
+  margin-bottom: 0;
 }
 
 .empty-hint{

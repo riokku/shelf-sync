@@ -195,16 +195,19 @@
 
         <div class="form-section">
           <h3>Quantity &amp; price</h3>
-          <mat-button-toggle-group [(ngModel)]="trackingMode" [ngModelOptions]="{ standalone: true }" class="tracking-mode-toggle">
-            <mat-button-toggle value="single">
-              <mat-icon>numbers</mat-icon>
-              Single quantity
-            </mat-button-toggle>
-            <mat-button-toggle value="containers">
-              <mat-icon>view_in_ar</mat-icon>
-              By container/box
-            </mat-button-toggle>
-          </mat-button-toggle-group>
+          <div class="tracking-mode-row">
+            <mat-button-toggle-group [(ngModel)]="trackingMode" [ngModelOptions]="{ standalone: true }" class="tracking-mode-toggle">
+              <mat-button-toggle value="single">
+                <mat-icon>numbers</mat-icon>
+                Single quantity
+              </mat-button-toggle>
+              <mat-button-toggle value="containers">
+                <mat-icon>view_in_ar</mat-icon>
+                By container/box
+              </mat-button-toggle>
+            </mat-button-toggle-group>
+            <app-help-tooltip text="Single quantity tracks stock as one number. By container/box splits it into individually-editable boxes (e.g. 5 boxes of 20), each with its own location — use this if you need to know exactly which box or pallet has stock." />
+          </div>
           <div class="field-row">
             @if (trackingMode === 'single') {
               <mat-form-field appearance="outline">

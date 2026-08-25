@@ -9,6 +9,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { InventoryFieldOptionsService } from '../../../core/inventory-field-options.service';
 import { InventoryItemContainer } from '../../models/inventory-item-container.model';
+import { HelpTooltipComponent } from '../help-tooltip/help-tooltip.component';
 
 export interface DiscardModalData {
   itemName: string;
@@ -50,7 +51,8 @@ export interface DiscardModalResult {
     MatSelectModule,
     MatRadioModule,
     MatButtonModule,
-    MatIconModule
+    MatIconModule,
+    HelpTooltipComponent
   ],
   templateUrl: './discard-modal.component.html',
   styleUrl: './discard-modal.component.scss',

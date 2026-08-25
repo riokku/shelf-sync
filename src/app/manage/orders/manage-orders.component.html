@@ -6,7 +6,10 @@
 
     <div class="page-header-row">
       <div>
-        <h2>Orders</h2>
+        <h2 class="page-title-with-help">
+          Orders
+          <app-help-tooltip text="Marking an order received automatically adds its quantity back to the item's stock — but only for items tracked as a single quantity. A container/box-tracked item just gets marked received; you'll still need to add or update a box yourself with where the new stock actually is." />
+        </h2>
         <p class="page-subtitle">Restock orders placed against your inventory's linked suppliers.</p>
       </div>
       <button mat-flat-button color="primary" type="button" (click)="openPlaceOrder()">

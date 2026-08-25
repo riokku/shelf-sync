@@ -11,6 +11,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SupabaseService } from '../../../core/supabase.service';
 import { InventoryItemReservationWithItem } from '../../utils/inventory-item-reservations';
 import { toIsoDateString } from '../../utils/date';
+import { HelpTooltipComponent } from '../help-tooltip/help-tooltip.component';
 
 /** Every item is reservable (unlike PlaceOrderModalComponent's items, which
  *  need a linked supplier first) — quantityRemaining is carried along so
@@ -39,7 +40,8 @@ export interface PlaceReservationModalData {
     MatDatepickerModule,
     MatButtonModule,
     MatIconModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    HelpTooltipComponent
   ],
   templateUrl: './place-reservation-modal.component.html',
   styleUrl: './place-reservation-modal.component.scss',
