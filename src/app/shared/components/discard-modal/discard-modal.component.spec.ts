@@ -43,7 +43,51 @@ describe('DiscardModalComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  describe('flat item (no containers)', () => {
+  it('defaults to "Discard all" mode', async () => {
+    await setup({ itemName: 'Frame Tent', quantityRemaining: 8, containers: [] });
+    expect(component.isPartial).toBeFalse();
+  });
+
+  describe('"Discard all" mode', () => {
+    it('closes with the item\'s full quantityRemaining for a flat item', async () => {
+      await setup({ itemName: 'Frame Tent', quantityRemaining: 8, containers: [] });
+      const closeSpy = spyOn(dialogRef, 'close');
+      component.discardForm.setValue({ containerId: null, mode: 'all', quantity: null, reasons: ['Water damage'] });
+
+      component.submit();
+
+      expect(closeSpy).toHaveBeenCalledWith({ quantity: 8, reasons: ['Water damage'], containerId: null });
+    });
+
+    it('closes with the picked box\'s full quantity for a container-tracked item', async () => {
+      await setup({ itemName: 'Chiavari Chairs', quantityRemaining: 15, containers: CONTAINERS });
+      const closeSpy = spyOn(dialogRef, 'close');
+      component.discardForm.setValue({ containerId: 'box-3', mode: 'all', quantity: null, reasons: ['Damaged in transit'] });
+
+      component.submit();
+
+      expect(closeSpy).toHaveBeenCalledWith({ quantity: 5, reasons: ['Damaged in transit'], containerId: 'box-3' });
+    });
+
+    it('still requires a box to be picked first for a container-tracked item', async () => {
+      await setup({ itemName: 'Chiavari Chairs', quantityRemaining: 15, containers: CONTAINERS });
+      component.discardForm.controls.reasons.setValue(['Damaged in transit']);
+
+      component.submit();
+
+      expect(component.error).toBe('Pick which box to discard from.');
+    });
+
+    it('still requires at least one reason', async () => {
+      await setup({ itemName: 'Frame Tent', quantityRemaining: 8, containers: [] });
+
+      component.submit();
+
+      expect(component.discardForm.controls.reasons.hasError('required')).toBeTrue();
+    });
+  });
+
+  describe('flat item, "Discard a specific quantity" mode', () => {
     it('caps maxQuantity at quantityRemaining', async () => {
       await setup({ itemName: 'Frame Tent', quantityRemaining: 8, containers: [] });
       expect(component.maxQuantity).toBe(8);
@@ -51,15 +95,25 @@ describe('DiscardModalComponent', () => {
 
     it('rejects a quantity above what remains', async () => {
       await setup({ itemName: 'Frame Tent', quantityRemaining: 8, containers: [] });
-      component.discardForm.setValue({ containerId: null, quantity: 9, reasons: ['Water damage'] });
+      component.discardForm.setValue({ containerId: null, mode: 'partial', quantity: 9, reasons: ['Water damage'] });
 
       component.submit();
 
       expect(component.error).toBe('Only 8 available to discard.');
     });
 
+    it('rejects a blank/zero quantity rather than falling back to "all"', async () => {
+      await setup({ itemName: 'Frame Tent', quantityRemaining: 8, containers: [] });
+      component.discardForm.setValue({ containerId: null, mode: 'partial', quantity: null, reasons: ['Water damage'] });
+
+      component.submit();
+
+      expect(component.error).toBe('Enter a quantity to discard.');
+    });
+
     it('requires at least one reason', async () => {
       await setup({ itemName: 'Frame Tent', quantityRemaining: 8, containers: [] });
+      component.discardForm.controls.mode.setValue('partial');
       component.discardForm.controls.quantity.setValue(2);
 
       component.submit();
@@ -70,7 +124,7 @@ describe('DiscardModalComponent', () => {
     it('closes with the discarded quantity/reasons and a null containerId on success', async () => {
       await setup({ itemName: 'Frame Tent', quantityRemaining: 8, containers: [] });
       const closeSpy = spyOn(dialogRef, 'close');
-      component.discardForm.setValue({ containerId: null, quantity: 3, reasons: ['Water damage'] });
+      component.discardForm.setValue({ containerId: null, mode: 'partial', quantity: 3, reasons: ['Water damage'] });
 
       component.submit();
 
@@ -80,7 +134,12 @@ describe('DiscardModalComponent', () => {
     it('closes with every reason picked, for a multi-select', async () => {
       await setup({ itemName: 'Frame Tent', quantityRemaining: 8, containers: [] });
       const closeSpy = spyOn(dialogRef, 'close');
-      component.discardForm.setValue({ containerId: null, quantity: 3, reasons: ['Water damage', 'Damaged in transit'] });
+      component.discardForm.setValue({
+        containerId: null,
+        mode: 'partial',
+        quantity: 3,
+        reasons: ['Water damage', 'Damaged in transit']
+      });
 
       component.submit();
 
@@ -88,7 +147,7 @@ describe('DiscardModalComponent', () => {
     });
   });
 
-  describe('container-tracked item', () => {
+  describe('container-tracked item, "Discard a specific quantity" mode', () => {
     it('excludes already-empty boxes from availableContainers', async () => {
       await setup({ itemName: 'Chiavari Chairs', quantityRemaining: 15, containers: CONTAINERS });
       expect(component.availableContainers).toEqual([CONTAINERS[0], CONTAINERS[2]]);
@@ -96,6 +155,7 @@ describe('DiscardModalComponent', () => {
 
     it('requires a box to be picked first', async () => {
       await setup({ itemName: 'Chiavari Chairs', quantityRemaining: 15, containers: CONTAINERS });
+      component.discardForm.controls.mode.setValue('partial');
       component.discardForm.controls.quantity.setValue(2);
       component.discardForm.controls.reasons.setValue(['Damaged in transit']);
 
@@ -112,7 +172,7 @@ describe('DiscardModalComponent', () => {
 
     it('rejects a quantity above the picked box\'s own quantity', async () => {
       await setup({ itemName: 'Chiavari Chairs', quantityRemaining: 15, containers: CONTAINERS });
-      component.discardForm.setValue({ containerId: 'box-3', quantity: 6, reasons: ['Damaged in transit'] });
+      component.discardForm.setValue({ containerId: 'box-3', mode: 'partial', quantity: 6, reasons: ['Damaged in transit'] });
 
       component.submit();
 
@@ -122,7 +182,7 @@ describe('DiscardModalComponent', () => {
     it('closes with the picked box\'s id on success', async () => {
       await setup({ itemName: 'Chiavari Chairs', quantityRemaining: 15, containers: CONTAINERS });
       const closeSpy = spyOn(dialogRef, 'close');
-      component.discardForm.setValue({ containerId: 'box-1', quantity: 4, reasons: ['Damaged in transit'] });
+      component.discardForm.setValue({ containerId: 'box-1', mode: 'partial', quantity: 4, reasons: ['Damaged in transit'] });
 
       component.submit();
 

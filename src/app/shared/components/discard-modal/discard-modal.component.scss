@@ -24,6 +24,12 @@ form{
   }
 }
 
+.discard-mode-group{
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 .error-message{
   color: var(--app-error-text);
   margin: -0.5rem 0 1rem;

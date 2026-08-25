@@ -4,6 +4,7 @@ import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/materia
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatRadioModule } from '@angular/material/radio';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { InventoryFieldOptionsService } from '../../../core/inventory-field-options.service';
@@ -47,6 +48,7 @@ export interface DiscardModalResult {
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
+    MatRadioModule,
     MatButtonModule,
     MatIconModule
   ],
@@ -73,7 +75,17 @@ export class DiscardModalComponent implements OnInit {
 
   discardForm = new FormGroup({
     containerId: new FormControl<string | null>(null),
-    quantity: new FormControl<number | null>(null, { validators: [Validators.required, Validators.min(1)] }),
+    // 'all' (the original DiscardInventoryModalComponent's own default —
+    // see this component's own doc comment) covers the common case of
+    // clearing out an item/box entirely in one click, rather than making
+    // every discard require typing the full remaining count by hand.
+    // Quantity's own required/min validators are deliberately left off the
+    // control itself (unlike containerId's requiredness, which is also
+    // checked manually in submit() below) — they'd otherwise mark the form
+    // invalid while in 'all' mode, where the quantity field isn't even
+    // shown. Enforced manually in submit() only when isPartial.
+    mode: new FormControl<'all' | 'partial'>('all', { nonNullable: true }),
+    quantity: new FormControl<number | null>(null),
     // Validators.required treats an empty array as invalid too (not just
     // null/''), so "pick at least one reason" needs nothing more than this.
     reasons: new FormControl<string[]>([], { nonNullable: true, validators: [Validators.required] })
@@ -92,6 +104,10 @@ export class DiscardModalComponent implements OnInit {
     return this.availableContainers.find(container => container.id === containerId)?.quantity ?? 0;
   }
 
+  get isPartial(): boolean {
+    return this.discardForm.controls.mode.value === 'partial';
+  }
+
   containerLabel(container: InventoryItemContainer): string {
     const boxNumber = this.data.containers.indexOf(container) + 1;
     return `Box ${boxNumber} (${container.quantity} remaining)${container.location ? ` — ${container.location}` : ''}`;
@@ -104,21 +120,29 @@ export class DiscardModalComponent implements OnInit {
       this.error = 'Pick which box to discard from.';
       return;
     }
-    if (this.discardForm.invalid) {
-      this.discardForm.markAllAsTouched();
+    if (this.discardForm.controls.reasons.invalid) {
+      this.discardForm.controls.reasons.markAsTouched();
       return;
     }
 
-    const value = this.discardForm.getRawValue();
-    if (value.quantity! > this.maxQuantity) {
-      this.error = `Only ${this.maxQuantity} available to discard.`;
-      return;
+    let quantity = this.maxQuantity;
+    if (this.isPartial) {
+      quantity = this.discardForm.controls.quantity.value ?? 0;
+      if (quantity < 1) {
+        this.error = 'Enter a quantity to discard.';
+        this.discardForm.controls.quantity.markAsTouched();
+        return;
+      }
+      if (quantity > this.maxQuantity) {
+        this.error = `Only ${this.maxQuantity} available to discard.`;
+        return;
+      }
     }
 
     this.dialogRef.close({
-      quantity: value.quantity!,
-      reasons: value.reasons,
-      containerId: value.containerId
+      quantity,
+      reasons: this.discardForm.controls.reasons.value,
+      containerId: this.discardForm.controls.containerId.value
     });
   }
 
