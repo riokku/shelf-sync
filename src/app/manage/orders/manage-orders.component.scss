@@ -16,6 +16,12 @@
   }
 }
 
+.page-title-with-help{
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
 .page-header-row{
   display: flex;
   align-items: flex-start;

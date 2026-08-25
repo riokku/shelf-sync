@@ -13,6 +13,7 @@ import { NotificationService } from '../../core/notification.service';
 import { Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
+import { HelpTooltipComponent } from '../../shared/components/help-tooltip/help-tooltip.component';
 import { PlaceOrderModalComponent, OrderableItem } from '../../shared/components/place-order-modal/place-order-modal.component';
 import { InventoryItemOrderWithItem, loadAllInventoryItemOrders } from '../../shared/utils/inventory-item-orders';
 import { resolveSupplierName } from '../../shared/utils/supplier-label';
@@ -41,7 +42,8 @@ type OrderStatusFilter = 'all' | 'ordered' | 'received' | 'cancelled';
     MatProgressSpinnerModule,
     RouterLink,
     BreadcrumbsComponent,
-    EmptyStateComponent
+    EmptyStateComponent,
+    HelpTooltipComponent
   ],
   templateUrl: './manage-orders.component.html',
   styleUrl: './manage-orders.component.scss',

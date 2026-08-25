@@ -25,6 +25,7 @@ import { ModalTableComponent } from '../../shared/components/modal-table/modal-t
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { BulkActionToolbarComponent } from '../../shared/components/bulk-action-toolbar/bulk-action-toolbar.component';
+import { HelpTooltipComponent } from '../../shared/components/help-tooltip/help-tooltip.component';
 import { Database } from '../../shared/models/database.types';
 import { ActivityLogEntry, MAX_INVENTORY_ITEM_IMAGES } from '../../shared/models/inventory-item.model';
 import { toIsoDateString } from '../../shared/utils/date';
@@ -61,7 +62,8 @@ type InventoryItemRow = Database['public']['Tables']['inventory_items']['Row'];
     MatCheckboxModule,
     BreadcrumbsComponent,
     EmptyStateComponent,
-    BulkActionToolbarComponent
+    BulkActionToolbarComponent,
+    HelpTooltipComponent
   ],
   templateUrl: './manage-inventory.component.html',
   styleUrl: './manage-inventory.component.scss',

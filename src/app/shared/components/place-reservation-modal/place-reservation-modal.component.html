@@ -1,6 +1,7 @@
-<h2 mat-dialog-title>
+<h2 mat-dialog-title class="reservation-title">
   <mat-icon class="reservation-title-icon">event</mat-icon>
   New reservation
+  <app-help-tooltip text="Books a quantity of this item for a future date range (e.g. for an upcoming event), so it doesn't get double-booked — separate from checking the item out. Nothing happens to its stock or checked-out status until someone actually picks it up." />
 </h2>
 <form [formGroup]="reservationForm" (ngSubmit)="save()">
   <mat-dialog-content>

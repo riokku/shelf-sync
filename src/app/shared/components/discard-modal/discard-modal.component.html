@@ -1,6 +1,7 @@
-<h2 mat-dialog-title>
+<h2 mat-dialog-title class="discard-title">
   <mat-icon class="discard-title-icon">delete_sweep</mat-icon>
   Discard stock
+  <app-help-tooltip text="Permanently reduces this item's stock (e.g. damaged, lost, or expired units) and logs why. This isn't checking the item out or retiring it — the stock is simply gone and can't be recovered here." />
 </h2>
 <form [formGroup]="discardForm" (ngSubmit)="submit()">
   <mat-dialog-content>
