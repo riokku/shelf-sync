@@ -411,6 +411,49 @@ describe('ManageTasksComponent submitTask() success', () => {
 
 /** Covers reading the active tab back out of ?tab= on load — mirrors
  *  SettingsComponent's own ?tab= spec coverage. */
+describe('ManageTasksComponent load errors', () => {
+  async function createComponent(supabaseService: SupabaseService): Promise<ManageTasksComponent> {
+    await TestBed.resetTestingModule().configureTestingModule({
+      imports: [ManageTasksComponent],
+      providers: [
+        provideRouter([]),
+        provideNativeDateAdapter(),
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: SupabaseService, useValue: supabaseService }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ManageTasksComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    return fixture.componentInstance;
+  }
+
+  it('sets loadError instead of silently rendering an empty list when the query fails', async () => {
+    const failingSupabase = createFakeSupabaseService({ data: null, error: { message: 'Network error' } });
+    const component = await createComponent(failingSupabase);
+
+    expect(component.loadError).toBe('Network error');
+    expect(component.isLoadingTasks).toBeFalse();
+    expect(component.allTasks).toEqual([]);
+  });
+
+  it('retryLoad() clears loadError on a successful retry', async () => {
+    const failingSupabase = createFakeSupabaseService({ data: null, error: { message: 'Network error' } });
+    const component = await createComponent(failingSupabase);
+    expect(component.loadError).toBe('Network error');
+
+    (component as unknown as { supabase: SupabaseService['client'] }).supabase =
+      createFakeSupabaseService({ data: [], error: null }).client;
+
+    component.retryLoad();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(component.loadError).toBeNull();
+  });
+});
+
 describe('ManageTasksComponent ?tab= handling', () => {
   async function createWithTab(tab: string | undefined): Promise<ManageTasksComponent> {
     await TestBed.resetTestingModule().configureTestingModule({

@@ -153,7 +153,18 @@
       </div>
     </div>
     <div class="col-12 col-md-8 col-lg-9">
-      @if (isLoading) {
+      @if (loadError) {
+        <div class="row">
+          <div class="col-12">
+            <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load inventory. ' + loadError">
+              <button mat-stroked-button type="button" (click)="retryLoad()">
+                <mat-icon>refresh</mat-icon>
+                Retry
+              </button>
+            </app-empty-state>
+          </div>
+        </div>
+      } @else if (isLoading) {
         <div class="row">
           <div class="col-12 loading-row">
             <mat-spinner diameter="32"></mat-spinner>

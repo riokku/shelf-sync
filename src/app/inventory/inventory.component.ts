@@ -84,6 +84,13 @@ export class InventoryComponent implements OnInit{
 
   inventoryList: InventoryItem[] = [];
   isLoading = true;
+  /** Set when loadInventory()'s own query fails — distinct from
+   *  inventoryList simply being empty (an org with genuinely no items yet),
+   *  so the template can show a "couldn't load, try again" state with a
+   *  Retry button (see EmptyStateComponent's variant="error") instead of
+   *  the misleading "No inventory items yet." empty state a bare error swap
+   *  would otherwise fall through to. */
+  loadError: string | null = null;
   // Set alongside inventoryList by loadInventory() — kept around so a
   // single-row realtime refresh (refreshInventoryListItem() below) can
   // resolve checked-out-to/retirement/lock labels the same way, without
@@ -480,8 +487,18 @@ export class InventoryComponent implements OnInit{
     }
   }
 
+  /** Re-runs loadInventory() after a failed load — the Retry button's own
+   *  handler (see the template's loadError branch). A thin public wrapper
+   *  rather than exposing loadInventory() itself, matching this app's
+   *  existing "keep the loader private, expose a purpose-named entry point"
+   *  shape. */
+  retryLoad() {
+    void this.loadInventory();
+  }
+
   private async loadInventory() {
     this.isLoading = true;
+    this.loadError = null;
 
     // supplierService.load() runs alongside the two queries below (not in
     // ngOnInit's own Promise.all one level up) specifically so it's
@@ -489,11 +506,17 @@ export class InventoryComponent implements OnInit{
     // down reads supplierService.suppliers() — sitting in the outer
     // Promise.all instead would race this method's own query/mapping steps,
     // with no guarantee suppliers finish loading first.
-    const [{ data: items }, { data: profiles }] = await Promise.all([
+    const [{ data: items, error: itemsError }, { data: profiles }] = await Promise.all([
       this.supabase.from('inventory_items').select('*').order('name'),
       this.supabase.from('profiles').select('*').order('full_name'),
       this.supplierService.load()
     ]);
+
+    if (itemsError) {
+      this.loadError = itemsError.message;
+      this.isLoading = false;
+      return;
+    }
 
     const profileList = profiles ?? [];
     this.profiles = profileList;

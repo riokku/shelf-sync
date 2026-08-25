@@ -89,6 +89,9 @@ export class ManageTeamComponent implements OnInit {
 
   teamMembers: TeamMember[] = [];
   isLoadingTeam = true;
+  /** Set when loadProfiles()'s own query fails — see InventoryComponent's
+   *  identical loadError field for the full reasoning. */
+  loadError: string | null = null;
 
   teamSearchTerm = '';
   showOnlineOnly = false;
@@ -249,8 +252,24 @@ export class ManageTeamComponent implements OnInit {
     return this.isOnline(profile) ? 'Online' : this.lastSeenLabel(profile);
   }
 
+  /** Re-runs both loadProfiles() and loadTeamTasks() after a failed load —
+   *  the "Current team" section's Retry button handler (see the template's
+   *  loadError branch). Both, not just loadProfiles(), since teamMembers is
+   *  itself derived from assignableProfiles inside loadTeamTasks(). */
+  retryLoad() {
+    void (async () => {
+      await this.loadProfiles();
+      await this.loadTeamTasks();
+    })();
+  }
+
   private async loadProfiles() {
-    const { data } = await this.supabase.from('profiles').select('*').order('full_name');
+    const { data, error } = await this.supabase.from('profiles').select('*').order('full_name');
+    if (error) {
+      this.loadError = error.message;
+      return;
+    }
+    this.loadError = null;
     const profiles = data ?? [];
     this.assignableProfiles = profiles.filter(profile => profile.membership_status === 'approved');
     this.pendingMembers = profiles.filter(profile => profile.membership_status === 'pending');

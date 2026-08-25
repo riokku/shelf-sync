@@ -428,6 +428,49 @@ describe('ManageInventoryComponent ?tab= handling', () => {
   });
 });
 
+describe('ManageInventoryComponent load errors', () => {
+  async function createComponent(supabaseService: SupabaseService): Promise<ManageInventoryComponent> {
+    await TestBed.resetTestingModule().configureTestingModule({
+      imports: [ManageInventoryComponent],
+      providers: [
+        provideRouter([]),
+        provideNativeDateAdapter(),
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: SupabaseService, useValue: supabaseService }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ManageInventoryComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    return fixture.componentInstance;
+  }
+
+  it('sets loadError instead of silently rendering an empty list when the query fails', async () => {
+    const failingSupabase = createFakeSupabaseService({ data: null, error: { message: 'Network error' } });
+    const component = await createComponent(failingSupabase);
+
+    expect(component.loadError).toBe('Network error');
+    expect(component.isLoadingInventoryList).toBeFalse();
+    expect(component.allInventoryItems).toEqual([]);
+  });
+
+  it('retryLoad() clears loadError on a successful retry', async () => {
+    const failingSupabase = createFakeSupabaseService({ data: null, error: { message: 'Network error' } });
+    const component = await createComponent(failingSupabase);
+    expect(component.loadError).toBe('Network error');
+
+    (component as unknown as { supabase: SupabaseService['client'] }).supabase =
+      createFakeSupabaseService({ data: [], error: null }).client;
+
+    component.retryLoad();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(component.loadError).toBeNull();
+  });
+});
+
 describe('ManageInventoryComponent submitInventoryItem() success', () => {
   // Regression test for the same class of bug covered in
   // manage-tasks.component.spec.ts's submitTask() success test: after a

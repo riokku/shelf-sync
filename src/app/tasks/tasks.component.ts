@@ -1,5 +1,7 @@
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SupabaseService } from '../core/supabase.service';
@@ -18,7 +20,7 @@ type Task = Database['public']['Tables']['tasks']['Row'];
 
 @Component({
   selector: 'app-tasks',
-  imports: [MatProgressSpinnerModule, TaskCardComponent, BreadcrumbsComponent, EmptyStateComponent],
+  imports: [MatProgressSpinnerModule, MatButtonModule, MatIconModule, TaskCardComponent, BreadcrumbsComponent, EmptyStateComponent],
   templateUrl: './tasks.component.html',
   styleUrl: './tasks.component.scss',
 })
@@ -54,6 +56,11 @@ export class TasksComponent implements OnInit {
    *  (and don't count toward assigned_to) until accepted. */
   incomingTransfers: Task[] = [];
   isLoading = true;
+  /** Set when loadTasks()'s own query fails — see InventoryComponent's
+   *  identical loadError field for the full reasoning (distinct from an
+   *  empty list, backs a Retry button via EmptyStateComponent's
+   *  variant="error"). */
+  loadError: string | null = null;
 
   get incompleteTasks(): Task[] {
     return this.tasks.filter(task => task.status !== 'done');
@@ -138,14 +145,21 @@ export class TasksComponent implements OnInit {
     this.pendingFlashIds.clear();
   }
 
+  /** Re-runs loadTasks() after a failed load — the Retry button's own
+   *  handler (see the template's loadError branch). */
+  retryLoad() {
+    void this.loadTasks();
+  }
+
   private async loadTasks() {
     if (!this.currentUserId) {
       return;
     }
 
     this.isLoading = true;
+    this.loadError = null;
 
-    const [{ data: myTasks }, { data: incoming }] = await Promise.all([
+    const [{ data: myTasks, error: myTasksError }, { data: incoming }] = await Promise.all([
       this.supabase
         .from('tasks')
         .select('*')
@@ -157,6 +171,12 @@ export class TasksComponent implements OnInit {
         .eq('pending_transfer_to', this.currentUserId)
         .order('created_at', { ascending: false })
     ]);
+
+    if (myTasksError) {
+      this.loadError = myTasksError.message;
+      this.isLoading = false;
+      return;
+    }
 
     this.tasks = myTasks ?? [];
     this.incomingTransfers = incoming ?? [];

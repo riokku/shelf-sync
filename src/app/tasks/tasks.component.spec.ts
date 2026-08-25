@@ -36,6 +36,48 @@ describe('TasksComponent', () => {
   });
 });
 
+describe('TasksComponent load errors', () => {
+  async function createComponent(supabaseService: SupabaseService) {
+    await TestBed.configureTestingModule({
+      imports: [TasksComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile()) },
+        { provide: SupabaseService, useValue: supabaseService }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(TasksComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    return fixture.componentInstance;
+  }
+
+  it('sets loadError instead of silently rendering an empty list when the query fails', async () => {
+    const failingSupabase = createFakeSupabaseService({ data: null, error: { message: 'Network error' } });
+    const component = await createComponent(failingSupabase);
+
+    expect(component.loadError).toBe('Network error');
+    expect(component.isLoading).toBeFalse();
+    expect(component.tasks).toEqual([]);
+  });
+
+  it('retryLoad() clears loadError on a successful retry', async () => {
+    const failingSupabase = createFakeSupabaseService({ data: null, error: { message: 'Network error' } });
+    const component = await createComponent(failingSupabase);
+    expect(component.loadError).toBe('Network error');
+
+    (component as unknown as { supabase: SupabaseService['client'] }).supabase =
+      createFakeSupabaseService({ data: [], error: null }).client;
+
+    component.retryLoad();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(component.loadError).toBeNull();
+  });
+});
+
 /** Covers the ?task=<id> deep link (from TaskDetailModalComponent's "Copy
  *  link" button) — always /tasks first since it's reachable by any
  *  approved member, falling back to /manage/tasks only for a viewer who

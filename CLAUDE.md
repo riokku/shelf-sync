@@ -935,6 +935,31 @@ to be visible. Clicking a notification row (`onNotificationRowClick()`) marks it
 panel; navigation itself is a plain `[routerLink]` on the row so ctrl/cmd-click still opens a new tab
 normally.
 
+Five of this app's highest-traffic data-fetch paths — `InventoryComponent`, `TasksComponent`,
+`ManageInventoryComponent`'s Requests tab, `ManageTasksComponent`'s "All tasks" tab, and
+`ManageTeamComponent`'s "Current team" section — now surface a failed initial load instead of
+silently falling through to an empty-list state. Every one of these previously destructured only
+`{ data }` off its Supabase query and ignored `error` entirely, so a genuine fetch failure (a dropped
+connection, an RLS misconfiguration, etc.) rendered exactly the same as "this org just has nothing
+here yet" — a misleading, hard-to-diagnose dead end for a user who'd have no way to tell "empty" from
+"broken." Each of the five gets a `loadError: string | null` field (set from the query's own
+`error.message`, cleared on success) checked *before* that page's existing `isLoading`/empty-list
+branches, and a `retryLoad()` method (a thin public wrapper around the existing private load method)
+wired to a Retry button. `EmptyStateComponent` — already this app's shared icon+message(+projected-
+action) treatment for "nothing here" — gained a `variant: 'neutral' | 'error'` input rather than a
+second, near-identical component; `'error'` swaps the icon/text to `--app-error-text` (the same token
+`.error-message` already uses) so a load failure reads as a problem, not as an ordinary empty state,
+with a projected "Retry" button (icon `refresh`) standing in for `'neutral'`'s usual "Clear filters"
+in that same content-projection slot. For the three pages whose load method also gets called for a
+background refresh after a local mutation (approving a retirement, a realtime-triggered reload,
+etc.) — `ManageInventoryComponent`/`ManageTasksComponent`/`ManageTeamComponent` — a failed *background*
+refresh leaves the already-loaded list in place rather than clearing it out from under the user;
+`loadError` still gets set, so the very next render still shows the retry state instead of stale data
+silently going unrefreshed forever, but the user doesn't lose what they were already looking at
+mid-session. This pass deliberately covers the five highest-value pages rather than every
+`.select()` call in the app; other pages' load paths remain a natural future extension of the same
+`loadError`/`retryLoad()`/`variant="error"` shape.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
