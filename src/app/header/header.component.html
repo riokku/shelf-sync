@@ -56,6 +56,21 @@
     <button
         mat-icon-button
         type="button"
+        class="notifications-trigger"
+        (click)="toggleNotifications()"
+        [attr.aria-expanded]="isNotificationsOpen()"
+        aria-haspopup="true"
+        [matBadge]="notificationCenter.unreadCount()"
+        [matBadgeHidden]="notificationCenter.unreadCount() === 0"
+        matBadgeColor="warn"
+        [matTooltip]="notificationCenter.unreadCount() > 0 ? notificationCenter.unreadCount() + ' unread notification(s)' : 'Notifications'"
+        aria-label="Notifications"
+      >
+      <mat-icon>notifications</mat-icon>
+    </button>
+    <button
+        mat-icon-button
+        type="button"
         class="mode-toggle"
         (click)="themeMode.toggle()"
         [attr.aria-label]="themeMode.mode() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
@@ -156,6 +171,18 @@
         Manage
       </a>
     }
+    <button
+        mat-button
+        type="button"
+        class="mobile-menu-badge"
+        (click)="openNotificationsFromMobileMenu()"
+        [matBadge]="notificationCenter.unreadCount()"
+        [matBadgeHidden]="notificationCenter.unreadCount() === 0"
+        matBadgeColor="warn"
+      >
+      <mat-icon>notifications</mat-icon>
+      Notifications
+    </button>
     <mat-divider></mat-divider>
     <button mat-button type="button" (click)="themeMode.toggle()">
       <mat-icon>{{ themeMode.mode() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
@@ -170,4 +197,60 @@
       Logout
     </button>
   </nav>
+</div>
+
+<!-- Own fixed-position panel, same reasoning/shape as .mobile-nav-drawer
+     above — see HeaderComponent.isNotificationsOpen's own doc comment.
+     Click-to-dismiss backdrop only (transparent, covers the whole
+     viewport) — Escape and the panel's own close button are the
+     accessible way to close it. -->
+<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
+<div class="notifications-backdrop" [class.open]="isNotificationsOpen()" (click)="closeNotifications()"></div>
+<div
+    class="notifications-panel"
+    [class.open]="isNotificationsOpen()"
+    [attr.inert]="isNotificationsOpen() ? null : ''"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Notifications"
+    cdkTrapFocus
+    [cdkTrapFocusAutoCapture]="isNotificationsOpen()"
+    (keydown.escape)="closeNotifications()"
+  >
+  <div class="notifications-panel-header">
+    <span class="notifications-panel-title">Notifications</span>
+    <div class="notifications-panel-header-actions">
+      @if (notificationCenter.unreadCount() > 0) {
+        <button mat-button type="button" (click)="notificationCenter.markAllAsRead()">
+          Mark all read
+        </button>
+      }
+      <button mat-icon-button type="button" (click)="closeNotifications()" aria-label="Close notifications">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  </div>
+  @if (notificationCenter.notifications().length === 0) {
+    <app-empty-state icon="notifications_none" message="You're all caught up." />
+  } @else {
+    <div class="notifications-list">
+      @for (notification of notificationCenter.notifications(); track notification.id) {
+        <a
+            class="notification-row"
+            [class.unread]="!notification.readAt"
+            [routerLink]="notification.link"
+            (click)="onNotificationRowClick(notification)"
+          >
+          <mat-icon>{{ notificationIcon(notification.kind) }}</mat-icon>
+          <span class="notification-row-body">
+            <span class="notification-row-message">{{ notification.message }}</span>
+            <span class="notification-row-time">{{ notification.createdAt | date: 'short' }}</span>
+          </span>
+          @if (!notification.readAt) {
+            <span class="notification-row-dot" aria-hidden="true"></span>
+          }
+        </a>
+      }
+    </div>
+  }
 </div>

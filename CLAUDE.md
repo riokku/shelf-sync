@@ -886,6 +886,55 @@ the dialog, private method does the work" way `ManageTeamComponent`'s own
 `applyBulkDeny()`/`performBulkDeny()` pair already does, so the actual approve logic stays directly
 testable without faking `MatDialog.open()`.
 
+A bell icon in `HeaderComponent` gives every authenticated user an in-app notification center — a
+persistent, browsable record of the same four events `send-notification-email` already emails
+about (see that Edge Function's own section above): a task directly assigned to you, a task
+transfer offered to you, an inventory item's retirement request needing admin/manager approval, and
+a new member's join request needing admin approval. Backed by a new `notifications` table
+(`add_notifications` migration — `organization_id`, `user_id`, `kind`, `message`, `link`, `read_at`)
+with realtime enabled the same two-part way `inventory_items`/`tasks` already are. Deliberately
+**no INSERT policy for `authenticated`/`anon`** — every row is inserted by
+`send-notification-email` itself, using the `service_role` key it already holds (see that
+function's own doc comment), so recipient resolution (who exactly gets notified — a single
+assignee/transfer target, or every admin/manager/admin in the org) stays in exactly one place
+rather than being duplicated a second time in PL/pgSQL triggers. That function's four
+`emailsForX()` handlers were rewritten as `resultForX()`, each now returning both an `EmailToSend[]`
+*and* a `NotificationToInsert[]` from one shared recipient-resolution pass; the notifications insert
+is unconditional while the email send stays gated behind Settings > Workflow's existing per-org
+"Email notifications" toggles (`isEmailNotificationEnabled()`, renamed from `isNotificationEnabled()`
+to make that distinction explicit in the code itself) — those toggles only ever meant "should this
+send an email," not "should this happen at all," and an in-app notification costs a viewer nothing
+the way an unwanted email does.
+
+`NotificationCenterService` (`core/notification-center.service.ts`, root-provided like
+`AuthService`/`SiteSettingsService`) owns the client-side state — a `notifications` signal (newest
+30) and a derived `unreadCount`. Reacts purely to `authService.isAuthenticated()` via `effect()` to
+load/subscribe or clear/unsubscribe, the same reactive-to-session shape `HeaderComponent`'s own
+constructor already uses for its badge counts, rather than `DestroyRef` — this is a root singleton
+with no real "destroy" during the app's lifetime, unlike a routed page component. It subscribes to
+the `notifications` table via the shared `subscribeToTableChanges()` — the one deliberate exception
+to that helper's own "one channel per routed page component" precedent, since a root service needs
+to stay subscribed for as long as a session exists, independent of whatever page happens to be
+mounted; no client-side `user_id` filter, same "trust RLS alone" reasoning every other subscription
+in this app already follows. `markAsRead()`/`markAllAsRead()` update optimistically (local state
+first, persisted write after) — `notifications.read_at` is the one column granted to
+`authenticated` at all (RLS-scoped to `user_id = auth.uid()`, same narrow self-service shape
+`profiles.last_active_at` already has).
+
+The bell itself lives in `.header-actions`, badged with `unreadCount()`, opening a small fixed-
+position top-right dropdown (`.notifications-panel`) — **own panel, not `MatMenu`**, the same
+"width could overflow a narrow viewport" reasoning `HeaderComponent`'s mobile nav drawer already
+gives for the identical choice, just sized as a short dropdown rather than a full-height drawer.
+Since `.header-actions` itself is `display:none` below the mobile breakpoint, the mobile nav drawer
+gets its own "Notifications" entry (`openNotificationsFromMobileMenu()` — closes the drawer first,
+then opens the panel, rather than layering both) so the feature isn't desktop-only; both triggers
+share the one panel, which is positioned independently of either (a top-level, always-in-DOM
+sibling, same "transform/opacity-toggled via a signal, not `@if`, so both open and close animate"
+technique the mobile drawer already established) rather than anchored to whichever trigger happens
+to be visible. Clicking a notification row (`onNotificationRowClick()`) marks it read and closes the
+panel; navigation itself is a plain `[routerLink]` on the row so ctrl/cmd-click still opens a new tab
+normally.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -1002,6 +1051,7 @@ core/
   auth.service.ts        # session signal (isAuthenticated), signIn/signUp/signOut/getSession
   site-settings.service.ts # theme/logo signals; load() on app start, updateTheme()/uploadLogo()/removeLogo()
   supplier.service.ts     # SupplierService — org's supplier directory; load()/create()/update()/remove()
+  notification-center.service.ts # NotificationCenterService — HeaderComponent's bell dropdown; notifications signal + unreadCount, markAsRead()/markAllAsRead()
   guards/auth.guard.ts    # CanActivateFn — awaits authService.getSession() directly
   guards/manage.guard.ts  # admin OR manager
   guards/admin.guard.ts   # admin only (manage/settings, manage/billing, manage/danger-zone)
@@ -1036,6 +1086,7 @@ shared/
   models/theme-preset.ts     # THEME_PRESETS — key must match a [data-theme] block in styles.scss
   models/inventory-table-column.ts # optional Inventory table-view columns admin can show/hide (Settings > Data)
   models/pricing-tier.ts     # PRICING_TIERS — shared by PricingComponent (/pricing) and ManageBillingComponent
+  models/notification.model.ts # UserNotification / NotificationKind / notificationIcon() — backs HeaderComponent's bell dropdown
   models/database.types.ts   # generated via `npm run supabase:gen:types` — regenerate, don't hand-edit
   utils/inventory-item.mapper.ts   # toInventoryItem(row, images, checkedOutToLabel, activityLog?, ..., supplierLabel?) — DB row -> InventoryItem
   utils/inventory-item-images.ts   # loadInventoryImagesByItemId() / uploadInventoryItemImages() / deleteInventoryItemImage()
@@ -1369,6 +1420,17 @@ yet on a hard refresh of `/inventory`.
   same list for a newly created org going forward — without either, discarding stock (previously
   always possible via free text) would suddenly require an admin to curate a list first, or nobody
   could discard anything at all.
+- `add_notifications` — adds `notifications` (`organization_id`, `user_id`, `kind` — a plain checked
+  `text` column, not a real Postgres enum, same shape `activity_log.entity_type` already has —
+  `message`, `link`, `read_at`), backing `HeaderComponent`'s in-app notification bell (see the Project
+  Overview paragraph above for the full client-side mechanism). Deliberately **no INSERT policy for
+  `authenticated`/`anon`** — every row is inserted by `send-notification-email` itself via the
+  `service_role` key it already holds, keeping recipient resolution in exactly one place rather than
+  duplicating it in a PL/pgSQL trigger. SELECT is self-only (`user_id = auth.uid()`); UPDATE is
+  self-only *and* column-scoped to just `read_at` (`grant update (read_at)`), the same narrow
+  self-service shape `profiles.last_active_at` already has — marking a notification read is the only
+  client-side write this table ever needs. Realtime-enabled the same two-part way (publication
+  membership + `replica identity full`) `enable_realtime_for_inventory_and_tasks` already established.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power
