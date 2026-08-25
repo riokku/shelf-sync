@@ -1,0 +1,56 @@
+/** One shipped feature worth telling a returning user about — shown on the
+ *  Help page's "What's new" section (see `shared/utils/changelog.ts` for
+ *  the unseen-count/badge logic built on top of this list). Hand-maintained
+ *  alongside CLAUDE.md's own running log of shipped features — `date` is
+ *  the date it actually shipped (see git history), used both for display
+ *  and to compute how many entries a given user hasn't seen yet, so new
+ *  entries must always be inserted at the front (newest first) with a date
+ *  later than everything already here. */
+export interface ChangelogEntry {
+  date: string;
+  title: string;
+  description: string;
+}
+
+export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  {
+    date: '2026-08-25',
+    title: 'First-run page guidance',
+    description: 'Inventory, Tasks, and the Manage hub now show a one-time, dismissible orientation hint the first time you visit.'
+  },
+  {
+    date: '2026-08-25',
+    title: 'In-app Help & FAQ page',
+    description: 'This page! Answers to common "how do I..." questions about ShelfSync, linked from the header.'
+  },
+  {
+    date: '2026-08-25',
+    title: 'Contextual help tooltips',
+    description: 'Small "?" icons now explain a handful of non-obvious controls, like container tracking and reservations, right where you need them.'
+  },
+  {
+    date: '2026-08-24',
+    title: 'Reservations',
+    description: 'Book a quantity of an item for a future date range without checking it out, from the new Manage > Reservations page.'
+  },
+  {
+    date: '2026-08-24',
+    title: 'Retry failed data loads',
+    description: 'Inventory, Tasks, and a few Manage pages now show a Retry button instead of an empty list when a page fails to load.'
+  },
+  {
+    date: '2026-08-24',
+    title: 'In-app notification center',
+    description: 'A new bell icon in the header keeps a running list of task assignments, transfer offers, and approval requests.'
+  },
+  {
+    date: '2026-08-24',
+    title: 'Bulk actions on retirement requests',
+    description: 'Approve or decline multiple pending retirement requests at once from Manage > Inventory\'s Requests tab.'
+  },
+  {
+    date: '2026-08-24',
+    title: 'Unsaved-changes protection',
+    description: 'Manage > Inventory and Manage > Tasks now warn you before losing an in-progress, unsaved item or task.'
+  }
+];
