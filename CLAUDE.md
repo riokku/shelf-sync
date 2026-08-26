@@ -1299,6 +1299,20 @@ ones. `HomeComponent` also dropped its `<app-breadcrumbs>` row entirely (and the
 `page-toolbar` style import) — as the very first thing after signing in, "Home" was the only crumb
 it ever showed, with nowhere to actually go back to.
 
+The same severity-coded-left-rule idea extended from Home's own "What's on your plate" ledger to
+the real task lists it was modeled on: `TaskCardComponent`'s `.task-row` (backing both
+`TasksComponent`'s personal queue and `ManageTeamComponent`'s per-member lists) and
+`ManageTasksComponent`'s own `.task-row` (the "All tasks" table) both replaced their old, differently-
+shaped overdue treatments — a solid red pill around the due-date text on the former, a flat 4px
+overdue-only border plus colored due-date text on the latter — with the identical 3-tier convention
+Home uses: `TaskCardComponent.severity()`/`ManageTasksComponent.taskSeverity()`, both mirroring
+`HomeComponent.taskRowSeverity()`'s own overdue-outranks-due-today-outranks-'ok' logic exactly (the
+same calm tertiary tone for a future or unset due date, or an already-done task). Both rows also
+picked up the app-wide `1px solid outline-variant` card border. The due-date text itself stays a
+plain, uncolored `on-surface-variant` in both places now — the left rule alone carries the signal,
+same as Home's own rows — so the previously-shown overdue `<mat-icon>error</mat-icon>` was dropped
+along with it.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
