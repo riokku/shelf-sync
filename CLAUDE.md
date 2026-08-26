@@ -1198,8 +1198,15 @@ The app mixes two Angular module styles, which is important to know before addin
   just admin/manager; see the Project Overview section above) and
   `manage/billing`/`manage/danger-zone`/`manage/settings` (`adminGuard`, stricter — financial info,
   org export/delete, and site-wide branding respectively) — rather than nested child routes,
-  matching the rest of the app's flat
-  routing. `manage/settings` lives under `manage` (not its own top-level `settings` route) for
+  matching the rest of the app's flat routing. The hub itself (`ManageComponent`) groups these
+  into four labeled sections — Inventory (Inventory/Suppliers/Orders/Reservations), Team & tasks
+  (Tasks/Team), Insights (Activity Log/Release Notes/Reports/Error Log), and Admin
+  (Billing/Settings/Danger Zone, Danger Zone deliberately last) — rather than one flat grid; with a
+  dozen-plus cards, grouping by what they're actually for keeps the page scannable. The three Admin
+  cards dropped their old individual "Admin" `permission-badge` pill once grouped under its own
+  section header — redundant once the section itself already only renders for
+  `authService.role() === 'admin'`.
+  `manage/settings` lives under `manage` (not its own top-level `settings` route) for
   the same reason as every other admin/manager tool here — it's reachable only via the Manage hub's
   own Settings card, not a direct header nav link or Home card, matching Billing/Danger Zone's own
   precedent of being Manage-hub-only rather than duplicated elsewhere. Every route uses

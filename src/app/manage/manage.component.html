@@ -11,110 +11,119 @@
         text="This is the Manage hub — inventory, tasks, your team, and more, all in one place. Pick a card below to get started."
       />
 
-    <div class="manage-grid">
-      <a
-          class="manage-card"
-          routerLink="/manage/inventory"
-          [matBadge]="pendingRetirementCount"
-          [matBadgeHidden]="pendingRetirementCount === 0"
-          matBadgeColor="warn"
-        >
-        <mat-icon>inventory_2</mat-icon>
-        <h3>Inventory</h3>
-        <p>Create new items and browse everything in stock.</p>
-      </a>
-      <a
-          class="manage-card"
-          routerLink="/manage/tasks"
-          [matBadge]="pendingTaskTransferCount"
-          [matBadgeHidden]="pendingTaskTransferCount === 0"
-          matBadgeColor="warn"
-        >
-        <mat-icon>checklist</mat-icon>
-        <h3>Tasks</h3>
-        <p>Create tasks and see everything assigned across your team.</p>
-      </a>
-      <a
-          class="manage-card"
-          routerLink="/manage/team"
-          [matBadge]="pendingJoinRequestCount"
-          [matBadgeHidden]="pendingJoinRequestCount === 0"
-          matBadgeColor="warn"
-        >
-        <mat-icon>group</mat-icon>
-        <h3>Team</h3>
-        <p>Invite teammates, edit roles, and remove members.</p>
-      </a>
-      <a class="manage-card" routerLink="/manage/suppliers">
-        <mat-icon>storefront</mat-icon>
-        <h3>Suppliers</h3>
-        <p>Keep a directory of who you order inventory from.</p>
-      </a>
-      <a class="manage-card" routerLink="/manage/orders">
-        <mat-icon>local_shipping</mat-icon>
-        <h3>Orders</h3>
-        <p>Place restock orders and track them through to received.</p>
-      </a>
-      <a class="manage-card" routerLink="/manage/reservations">
-        <mat-icon>event</mat-icon>
-        <h3>Reservations</h3>
-        <p>Book inventory out for a date range and track pickup and return.</p>
-      </a>
-      <a class="manage-card" routerLink="/manage/activity">
-        <mat-icon>history</mat-icon>
-        <h3>Activity Log</h3>
-        <p>See everything that's changed across inventory, tasks, and your team.</p>
-      </a>
-      <a
-          class="manage-card"
-          routerLink="/manage/release-notes"
-          [matBadge]="unseenReleaseNotesCount"
-          [matBadgeHidden]="unseenReleaseNotesCount === 0"
-          matBadgeColor="warn"
-        >
-        <mat-icon>new_releases</mat-icon>
-        <h3>Release Notes</h3>
-        <p>See what's new in ShelfSync.</p>
-      </a>
-      <a class="manage-card" routerLink="/manage/error-log">
-        <mat-icon>bug_report</mat-icon>
-        <h3>Error Log</h3>
-        <p>Review errors your team has run into recently.</p>
-      </a>
-      <a class="manage-card" routerLink="/manage/reports">
-        <mat-icon>bar_chart</mat-icon>
-        <h3>Reports</h3>
-        <p>Inventory value, stock movement, and task throughput.</p>
-      </a>
-      @if (authService.role() === 'admin') {
-        <a class="manage-card" routerLink="/manage/billing">
-          <span class="permission-badge">
-            <mat-icon>shield</mat-icon>
-            Admin
-          </span>
-          <mat-icon>credit_card</mat-icon>
-          <h3>Billing</h3>
-          <p>Your plan, usage, and billing details.</p>
+    <div class="manage-section">
+      <h3 class="manage-section-title">Inventory</h3>
+      <div class="manage-grid">
+        <a
+            class="manage-card"
+            routerLink="/manage/inventory"
+            [matBadge]="pendingRetirementCount"
+            [matBadgeHidden]="pendingRetirementCount === 0"
+            matBadgeColor="warn"
+          >
+          <mat-icon>inventory_2</mat-icon>
+          <h3>Inventory</h3>
+          <p>Create new items and browse everything in stock.</p>
         </a>
-        <a class="manage-card manage-card-danger" routerLink="/manage/danger-zone">
-          <span class="permission-badge">
-            <mat-icon>shield</mat-icon>
-            Admin
-          </span>
-          <mat-icon class="manage-card-danger-icon">warning</mat-icon>
-          <h3>Danger Zone</h3>
-          <p>Export your organization's data, or delete it entirely.</p>
+        <a class="manage-card" routerLink="/manage/suppliers">
+          <mat-icon>storefront</mat-icon>
+          <h3>Suppliers</h3>
+          <p>Keep a directory of who you order inventory from.</p>
         </a>
-        <a class="manage-card" routerLink="/manage/settings">
-          <span class="permission-badge">
-            <mat-icon>shield</mat-icon>
-            Admin
-          </span>
-          <mat-icon>palette</mat-icon>
-          <h3>Settings</h3>
-          <p>Branding and site settings.</p>
+        <a class="manage-card" routerLink="/manage/orders">
+          <mat-icon>local_shipping</mat-icon>
+          <h3>Orders</h3>
+          <p>Place restock orders and track them through to received.</p>
         </a>
-      }
+        <a class="manage-card" routerLink="/manage/reservations">
+          <mat-icon>event</mat-icon>
+          <h3>Reservations</h3>
+          <p>Book inventory out for a date range and track pickup and return.</p>
+        </a>
+      </div>
     </div>
+
+    <div class="manage-section">
+      <h3 class="manage-section-title">Team &amp; tasks</h3>
+      <div class="manage-grid">
+        <a
+            class="manage-card"
+            routerLink="/manage/tasks"
+            [matBadge]="pendingTaskTransferCount"
+            [matBadgeHidden]="pendingTaskTransferCount === 0"
+            matBadgeColor="warn"
+          >
+          <mat-icon>checklist</mat-icon>
+          <h3>Tasks</h3>
+          <p>Create tasks and see everything assigned across your team.</p>
+        </a>
+        <a
+            class="manage-card"
+            routerLink="/manage/team"
+            [matBadge]="pendingJoinRequestCount"
+            [matBadgeHidden]="pendingJoinRequestCount === 0"
+            matBadgeColor="warn"
+          >
+          <mat-icon>group</mat-icon>
+          <h3>Team</h3>
+          <p>Invite teammates, edit roles, and remove members.</p>
+        </a>
+      </div>
+    </div>
+
+    <div class="manage-section">
+      <h3 class="manage-section-title">Insights</h3>
+      <div class="manage-grid">
+        <a class="manage-card" routerLink="/manage/activity">
+          <mat-icon>history</mat-icon>
+          <h3>Activity Log</h3>
+          <p>See everything that's changed across inventory, tasks, and your team.</p>
+        </a>
+        <a
+            class="manage-card"
+            routerLink="/manage/release-notes"
+            [matBadge]="unseenReleaseNotesCount"
+            [matBadgeHidden]="unseenReleaseNotesCount === 0"
+            matBadgeColor="warn"
+          >
+          <mat-icon>new_releases</mat-icon>
+          <h3>Release Notes</h3>
+          <p>See what's new in ShelfSync.</p>
+        </a>
+        <a class="manage-card" routerLink="/manage/reports">
+          <mat-icon>bar_chart</mat-icon>
+          <h3>Reports</h3>
+          <p>Inventory value, stock movement, and task throughput.</p>
+        </a>
+        <a class="manage-card" routerLink="/manage/error-log">
+          <mat-icon>bug_report</mat-icon>
+          <h3>Error Log</h3>
+          <p>Review errors your team has run into recently.</p>
+        </a>
+      </div>
+    </div>
+
+    @if (authService.role() === 'admin') {
+      <div class="manage-section">
+        <h3 class="manage-section-title">Admin</h3>
+        <div class="manage-grid">
+          <a class="manage-card" routerLink="/manage/billing">
+            <mat-icon>credit_card</mat-icon>
+            <h3>Billing</h3>
+            <p>Your plan, usage, and billing details.</p>
+          </a>
+          <a class="manage-card" routerLink="/manage/settings">
+            <mat-icon>palette</mat-icon>
+            <h3>Settings</h3>
+            <p>Branding and site settings.</p>
+          </a>
+          <a class="manage-card manage-card-danger" routerLink="/manage/danger-zone">
+            <mat-icon class="manage-card-danger-icon">warning</mat-icon>
+            <h3>Danger Zone</h3>
+            <p>Export your organization's data, or delete it entirely.</p>
+          </a>
+        </div>
+      </div>
+    }
   </div>
 </div>

@@ -21,6 +21,25 @@
   margin: 0 0 2rem;
 }
 
+// Cards grouped into labeled sections (Inventory, Team & tasks, Insights,
+// Admin) rather than one flat grid — with a dozen-plus cards now, grouping
+// by what they're actually for makes the hub scannable instead of just a
+// wall of equally-weighted tiles.
+.manage-section{
+  margin-bottom: 2.5rem;
+
+  &:last-child{
+    margin-bottom: 0;
+  }
+}
+
+// Same "small primary-colored label above its own content" convention
+// SettingsComponent's own .settings-section h3 already uses.
+.manage-section-title{
+  color: var(--mat-sys-primary);
+  margin: 0 0 1rem;
+}
+
 .manage-grid{
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
@@ -28,7 +47,6 @@
 }
 
 .manage-card{
-  position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -94,28 +112,5 @@
 
   h3{
     color: var(--app-error-text);
-  }
-}
-
-.permission-badge{
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.2rem 0.625rem;
-  border-radius: 999px;
-  background: var(--mat-sys-tertiary-container);
-  color: var(--mat-sys-on-tertiary-container);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-
-  mat-icon{
-    font-size: 0.875rem;
-    width: 0.875rem;
-    height: 0.875rem;
-    color: inherit;
   }
 }
