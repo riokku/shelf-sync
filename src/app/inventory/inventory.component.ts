@@ -86,6 +86,20 @@ export class InventoryComponent implements OnInit{
 
   inventoryList: InventoryItem[] = [];
   isLoading = true;
+  /** Just a repeat-count for the loading-state skeleton grid's @for — the
+   *  values themselves are never read, only the array length (6 fills a
+   *  typical viewport's first screenful at the card grid's own 3-up
+   *  desktop breakpoint without padding out the DOM for rows a visitor
+   *  would need to scroll to see anyway). */
+  readonly skeletonCards = [1, 2, 3, 4, 5, 6];
+
+  /** Per-card entrance delay for .cascade-in (see shared/styles/_stagger.scss)
+   *  — capped past a point so paging through a full 12-item grid doesn't
+   *  leave the last couple cards waiting on a delay a visitor would
+   *  perceive as sluggish rather than a deliberate cascade. */
+  staggerDelay(index: number): number {
+    return Math.min(index, 8) * 40;
+  }
   /** Set when loadInventory()'s own query fails — distinct from
    *  inventoryList simply being empty (an org with genuinely no items yet),
    *  so the template can show a "couldn't load, try again" state with a

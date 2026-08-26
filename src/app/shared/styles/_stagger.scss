@@ -1,0 +1,22 @@
+// A brief fade+rise for each item in a freshly-loaded list/grid, staggered
+// by index (see each consumer's own staggerDelay() helper for the actual
+// per-item delay value, bound via [style.animation-delay.ms] the same way
+// landing.component.html's own .reveal cards bind [style.transition-delay.ms]
+// from their index) — items cascade in one after another rather than all
+// popping in at once. `backwards` fill-mode keeps an item invisible for its
+// own delay window instead of flashing visible-then-hidden while it waits
+// its turn.
+.cascade-in{
+  animation: cascade-in 0.3s ease-out backwards;
+}
+
+@keyframes cascade-in{
+  from{ opacity: 0; transform: translateY(0.75rem); }
+  to{ opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .cascade-in{
+    animation: none;
+  }
+}

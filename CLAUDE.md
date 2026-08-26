@@ -1083,6 +1083,31 @@ mid-session. This pass deliberately covers the five highest-value pages rather t
 `.select()` call in the app; other pages' load paths remain a natural future extension of the same
 `loadError`/`retryLoad()`/`variant="error"` shape.
 
+A first motion-polish pass touches three things app-wide/on the two highest-traffic pages. Route
+changes now get a brief fade+rise (`router-outlet + *` in `src/styles.scss`, deliberately global
+rather than component-scoped — Angular's emulated view encapsulation appends a per-component
+attribute hash to every compound selector segment, including plain element selectors, but the
+routed component landing as `router-outlet`'s sibling carries its *own* component's hash, never
+`AppComponent`'s, so a scoped version of this rule would silently never match; global CSS has no
+such hash to fail against). Inventory and Tasks — the two busiest pages — replace their bare
+`mat-spinner` loading state with shape-matching shimmer placeholders instead
+(`shared/styles/_skeleton.scss`'s `.skeleton-line`/`-block`/`-circle`, composed into a card-grid or
+`.task-row`-shaped skeleton by each page's own loading-state template) — a placeholder that already
+hints at the real layout reads as "almost there" in a way a generic spinner doesn't. Once real data
+lands, both pages also cascade their cards/rows in one after another
+(`shared/styles/_stagger.scss`'s `.cascade-in`, delay bound per-item via
+`[style.animation-delay.ms]="staggerDelay(i)"` — the same inline-style-from-`$index` technique
+`LandingComponent`'s own `.reveal` cards already use for their scroll-triggered stagger, just
+driving a CSS `animation` instead of a `transition` since this needs to autoplay on data arrival
+rather than wait on an `IntersectionObserver`) — capped at a per-page `Math.min(index, 8) * 40`ms
+so paging through a full grid doesn't leave the last couple items waiting on a delay that reads as
+sluggish rather than deliberate. Tasks' own "Completed" section is deliberately left out of the
+cascade — those are already-done items, and animating them in draws attention away from the two
+sections above it a visitor actually needs to act on. All three respect
+`prefers-reduced-motion` the same way every other animation in this app already does. This is a
+first pass on the two busiest pages, not an app-wide sweep — every other page's own bare
+`mat-spinner` loading state remains a natural future extension of the same skeleton shape.
+
 A shared `HelpTooltipComponent` (`shared/components/help-tooltip`) — a small keyboard-focusable "?"
 icon button wired to `matTooltip` (this app's existing tooltip mechanism, already used by
 `HeaderComponent`'s bell/mode-toggle buttons) rather than a hand-rolled popover — gives a handful of
@@ -1377,6 +1402,8 @@ shared/
   styles/_realtime-flash.scss # shared .realtime-flash keyframes, backing FlashTracker above
   styles/_legal-page.scss   # shared top-bar + prose layout for privacy/ and terms/ (see Project Overview above);
                              # login/register no longer share a partial like this — each owns its own layout now
+  styles/_skeleton.scss     # .skeleton-line/-block/-circle shimmer placeholders, backing Inventory/Tasks' loading states
+  styles/_stagger.scss      # .cascade-in fade+rise, staggered per-item via [style.animation-delay.ms] — Inventory cards, Tasks rows
 ```
 `src/environments/environment.ts` and `environment.prod.ts` hold `supabaseUrl` and
 `supabaseAnonKey` (the publishable key — safe to commit, it's constrained by RLS).

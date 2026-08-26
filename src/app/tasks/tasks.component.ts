@@ -60,6 +60,17 @@ export class TasksComponent implements OnInit {
    *  (and don't count toward assigned_to) until accepted. */
   incomingTransfers: Task[] = [];
   isLoading = true;
+  /** Repeat-count for the loading-state skeleton rows — see
+   *  InventoryComponent.skeletonCards' own identical doc comment. */
+  readonly skeletonRows = [1, 2, 3, 4];
+
+  /** See InventoryComponent.staggerDelay's own doc comment — same cap,
+   *  same reasoning. Not applied to the Completed section below: those are
+   *  already-done items, and cascading them in too draws attention away
+   *  from the two sections a visitor actually needs to act on. */
+  staggerDelay(index: number): number {
+    return Math.min(index, 8) * 40;
+  }
   /** Set when loadTasks()'s own query fails — see InventoryComponent's
    *  identical loadError field for the full reasoning (distinct from an
    *  empty list, backs a Retry button via EmptyStateComponent's

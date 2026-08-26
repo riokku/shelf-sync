@@ -1,0 +1,67 @@
+// Shared shimmering placeholder ("skeleton") building blocks — a page's own
+// loading-state template composes these into shapes that roughly match its
+// real content (a card, a table row, a list row), rather than the single
+// bare mat-spinner every loading state in this app previously showed
+// regardless of what's about to appear. Perceived-performance polish: a
+// skeleton that already hints at the real layout reads as "almost there"
+// in a way a generic spinner doesn't.
+//
+// .skeleton-shimmer is the base: a plain muted block with a lighter
+// highlight band sweeping across it on a loop. Compose it with a shape
+// class (line/circle/block, or a page's own bespoke element) rather than
+// this alone, since a bare shimmering rectangle with no size doesn't read
+// as a placeholder for anything in particular.
+@mixin skeleton-shimmer{
+  position: relative;
+  overflow: hidden;
+  background: var(--mat-sys-surface-container-high);
+
+  &::after{
+    content: '';
+    position: absolute;
+    inset: 0;
+    // The moving highlight itself — transparent everywhere except a thin
+    // bright band, swept left-to-right by animating its own background
+    // position rather than the element's transform, so a page with many
+    // skeleton pieces still only needs the one keyframe definition below.
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--mat-sys-on-surface) 8%, transparent),
+      transparent
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer-sweep 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes skeleton-shimmer-sweep{
+  0%{ background-position: 150% 0; }
+  100%{ background-position: -50% 0; }
+}
+
+.skeleton-line{
+  @include skeleton-shimmer;
+  height: 0.875rem;
+  border-radius: 0.25rem;
+}
+
+.skeleton-block{
+  @include skeleton-shimmer;
+  border-radius: 0.5rem;
+}
+
+.skeleton-circle{
+  @include skeleton-shimmer;
+  border-radius: 50%;
+}
+
+@media (prefers-reduced-motion: reduce){
+  .skeleton-line,
+  .skeleton-block,
+  .skeleton-circle{
+    &::after{
+      animation: none;
+    }
+  }
+}

@@ -448,3 +448,43 @@ mat-icon{
     overflow-y: visible;
   }
 }
+
+// A brief fade+rise on every routed page — route changes were previously a
+// hard cut. This lives here (global styles, not app.component.scss) on
+// purpose: Angular's emulated view encapsulation appends a per-component
+// attribute hash to every compound selector segment, including plain
+// element selectors like `router-outlet` — but the routed component that
+// lands as `router-outlet`'s sibling carries *its own* component's hash
+// (or none), never AppComponent's, so a component-scoped version of this
+// rule would silently never match. Global, unscoped CSS has no such hash
+// to fail to match against.
+//
+// `router-outlet + *` targets whatever Angular just inserted as the
+// activated route's host element — Angular always places it as the very
+// next sibling of the `<router-outlet>` element itself, a stable,
+// well-established (if implementation-detail-flavored) DOM fact this kind
+// of route-transition CSS trick has long relied on across the Angular
+// ecosystem. `display: block` is added defensively (a routed component's
+// own host tag has no display rule of its own, so it's technically
+// `inline` by default) rather than assumed, since a transform on a
+// strictly inline box has inconsistent geometry across browsers.
+//
+// Fires once per real navigation (Angular destroys and recreates the
+// component), not on a same-route query-param-only change (e.g. opening
+// an item's detail popup via ?item=<id>) — no new sibling element gets
+// inserted for that, so nothing here re-triggers.
+router-outlet + *{
+  display: block;
+  animation: route-fade-in 0.25s ease-out;
+}
+
+@keyframes route-fade-in{
+  from{ opacity: 0; transform: translateY(0.5rem); }
+  to{ opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce){
+  router-outlet + *{
+    animation: none;
+  }
+}
