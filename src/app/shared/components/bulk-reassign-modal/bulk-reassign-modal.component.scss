@@ -13,6 +13,13 @@ form{
   color: var(--mat-sys-primary);
 }
 
+// Material's own mat-dialog-title has only 6px of top padding by default,
+// reading as the title sitting almost flush against the dialog's top edge —
+// see DiscardModalComponent's own identical fix for the full reasoning.
+[mat-dialog-title]{
+  padding-top: 1.5rem;
+}
+
 .reassign-hint{
   margin: 0 0 1rem;
   color: var(--mat-sys-on-surface-variant);
