@@ -2,10 +2,11 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { SupabaseService } from '../../core/supabase.service';
 import { Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
+import { DonutChartComponent } from '../../shared/components/donut-chart/donut-chart.component';
+import { RingStatComponent } from '../../shared/components/ring-stat/ring-stat.component';
 import { Database } from '../../shared/models/database.types';
 import { isRowLowStock, isRowOutOfStock } from '../../shared/utils/inventory-stock';
 import { loadAllInventoryItemDiscards } from '../../shared/utils/inventory-item-discards';
@@ -66,7 +67,7 @@ interface AssigneeWorkloadRow {
  *  need one. */
 @Component({
   selector: 'app-manage-reports',
-  imports: [CurrencyPipe, DecimalPipe, MatIconModule, MatProgressSpinnerModule, MatProgressBarModule, BreadcrumbsComponent],
+  imports: [CurrencyPipe, DecimalPipe, MatIconModule, MatProgressSpinnerModule, BreadcrumbsComponent, DonutChartComponent, RingStatComponent],
   templateUrl: './manage-reports.component.html',
   styleUrl: './manage-reports.component.scss',
 })
@@ -109,13 +110,25 @@ export class ManageReportsComponent implements OnInit {
 
   /** Every breakdown list on this page shares the same BreakdownRow shape
    *  (see topDiscardReasons' own comment on why reasons fit this too), so
-   *  one method scales every mat-progress-bar the same way: relative to
+   *  one method scales every .bar-fill width the same way: relative to
    *  the largest `primary` value in *that* list, not some page-wide
    *  maximum. Falls back to 1 to avoid a divide by zero when a section is
    *  empty. */
   barWidth(rows: BreakdownRow[], value: number): number {
     const max = Math.max(1, ...rows.map(row => row.primary));
     return (value / max) * 100;
+  }
+
+  /** Feeds DonutChartComponent — capped to the top 5 categories plus one
+   *  "Other" slice folding in the rest, since a donut with a dozen-plus
+   *  thin slices reads as noise rather than a shape. The breakdown list
+   *  right below it is unaffected by this cap and still lists every
+   *  category with its exact dollar value; this is purely the chart's own
+   *  at-a-glance view, not the source of truth for what's actually there. */
+  get valueByCategoryChartData(): { label: string; value: number }[] {
+    const top = this.valueByCategory.slice(0, 5).map(row => ({ label: row.label, value: row.primary }));
+    const rest = this.valueByCategory.slice(5).reduce((sum, row) => sum + row.primary, 0);
+    return rest > 0 ? [...top, { label: 'Other', value: rest }] : top;
   }
 
   async ngOnInit() {
@@ -273,6 +286,16 @@ export class ManageReportsComponent implements OnInit {
 
   readonly taskStatuses = TASK_STATUSES;
   readonly taskStatusLabels = TASK_STATUS_LABELS;
+
+  /** Width of one status segment within an assignee's stacked bar, scaled
+   *  against the *page-wide* busiest assignee's own total (not against
+   *  100% of this row alone) — so the bar's overall length also reads as
+   *  "how much this person has on their plate" relative to the rest of
+   *  the team, not just the mix of statuses within their own workload. */
+  workloadSegmentWidth(row: AssigneeWorkloadRow, status: TaskStatus): number {
+    const maxTotal = Math.max(1, ...this.workloadByAssignee.map(r => r.todo + r.inProgress + r.done));
+    return (this.statusCount(row, status) / maxTotal) * 100;
+  }
 
   statusCount(row: AssigneeWorkloadRow, status: TaskStatus): number {
     if (status === 'todo') {

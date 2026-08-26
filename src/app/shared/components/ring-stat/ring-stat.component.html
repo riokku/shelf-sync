@@ -1,0 +1,19 @@
+<div class="ring-stat">
+  <svg class="ring-svg" viewBox="0 0 42 42" role="img" [attr.aria-label]="label + ': ' + clampedPercent() + '%'">
+    <circle class="ring-track" cx="21" cy="21" r="15.9155" />
+    <circle
+        class="ring-fill"
+        cx="21"
+        cy="21"
+        r="15.9155"
+        [style.stroke]="'var(' + colorToken + ')'"
+        [attr.stroke-dasharray]="dashArray()"
+      />
+  </svg>
+  <div class="ring-center">
+    <span class="ring-center-value">{{ clampedPercent() }}%</span>
+  </div>
+</div>
+@if (label) {
+  <span class="ring-label">{{ label }}</span>
+}

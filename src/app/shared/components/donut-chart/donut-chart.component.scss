@@ -1,0 +1,106 @@
+:host{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.donut-chart{
+  position: relative;
+  flex: 0 0 auto;
+  width: 9rem;
+  height: 9rem;
+}
+
+.donut-svg{
+  width: 100%;
+  height: 100%;
+  // The circle-stack trick (see this component's own doc comment) always
+  // starts a stroked circle's dash pattern at the 3 o'clock position —
+  // rotating the whole SVG -90deg moves that start point to 12 o'clock,
+  // where a pie/donut chart's first slice conventionally begins.
+  transform: rotate(-90deg);
+}
+
+.donut-track{
+  fill: none;
+  stroke: var(--mat-sys-surface-container-high);
+  stroke-width: 3.5;
+}
+
+.donut-slice{
+  fill: none;
+  stroke-width: 3.5;
+  stroke-linecap: butt;
+  // Animates in from "no arc drawn" up to its real length whenever the
+  // underlying data changes (including on first load) — a plain CSS
+  // transition on the SVG attribute driving the arc length, no JS
+  // animation loop needed.
+  transition: stroke-dasharray 0.6s ease-out, stroke-dashoffset 0.6s ease-out;
+}
+
+.donut-center{
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0.5rem;
+}
+
+.donut-center-label{
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.donut-center-sublabel{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.75rem;
+}
+
+.donut-legend{
+  flex: 1 1 12rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li{
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+  }
+}
+
+.donut-legend-swatch{
+  flex: 0 0 auto;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+}
+
+.donut-legend-label{
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.donut-legend-percent{
+  flex: 0 0 auto;
+  color: var(--mat-sys-on-surface-variant);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce){
+  .donut-slice{
+    transition: none;
+  }
+}
