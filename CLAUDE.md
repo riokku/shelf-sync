@@ -1331,6 +1331,24 @@ verification.) Every quantity/price column in both card view (`.quantity-badge`)
 `.mono` — the same "any figure that's actually counted gets the mono treatment" convention from
 Home, applied here for the first time to a page that's mostly *made of* such figures.
 
+A follow-up pass swept the same `.mono` convention across the rest of the app's headline-figure
+spots. `manage/reports`' own `.stat-value`/`.stat-detail`/`.breakdown-value`/`.workload-total`
+classes get `font-family: var(--font-mono)` directly (rather than tagging every individual template
+interpolation with the `.mono` class) since none of these classes is ever used for anything but a
+counted figure — including the mixed number-plus-word cases like "3 of 8 done" or "13 units", which
+already had `font-variant-numeric: tabular-nums` applied to the whole string before this, so mono-
+ing the whole span rather than just its digits matches a precedent this file already established
+for itself. `RingStatComponent`'s own center percentage and `DonutChartComponent`'s center label and
+legend percentages — both shared components, so this reaches every page that uses them, Home's own
+getting-started ring included — also picked it up directly in their templates via the `.mono` class.
+`manage/billing`'s three countable usage stats (team members, inventory items, photo storage) got
+`.mono` too; the fourth usage stat on that same row (account-created date) deliberately didn't, same
+"figures, not dates" line Home's own ledger rows already drew. Deliberately *not* swept onto every
+number anywhere in the app — `HeaderComponent`'s "N online" presence text and
+`BulkActionToolbarComponent`'s "N selected" are both incidental counts inside a sentence, not a
+headline stat display, and reads as inconsistent overreach rather than a real "counted figure"
+context the way a stat tile or a ledger row's quantity does.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)

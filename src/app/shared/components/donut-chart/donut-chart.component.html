@@ -15,7 +15,7 @@
       }
     </svg>
     <div class="donut-center">
-      <span class="donut-center-label">{{ centerLabel }}</span>
+      <span class="donut-center-label mono">{{ centerLabel }}</span>
       @if (centerSublabel) {
         <span class="donut-center-sublabel">{{ centerSublabel }}</span>
       }
@@ -26,7 +26,7 @@
       <li>
         <span class="donut-legend-swatch" [style.background]="slice.color"></span>
         <span class="donut-legend-label">{{ slice.label }}</span>
-        <span class="donut-legend-percent">{{ slice.percent | number: '1.0-0' }}%</span>
+        <span class="donut-legend-percent mono">{{ slice.percent | number: '1.0-0' }}%</span>
       </li>
     }
   </ul>
