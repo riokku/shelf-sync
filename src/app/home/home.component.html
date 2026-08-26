@@ -3,8 +3,11 @@
     <div class="page-toolbar">
       <app-breadcrumbs />
     </div>
-    <h2>Welcome back{{ greetingName ? ', ' + greetingName + '!': '' }}</h2>
-    <p class="home-subtitle">Where do you want to go?</p>
+    <div class="home-hero">
+      <span class="home-hero-glow" aria-hidden="true"></span>
+      <h2>Welcome back{{ greetingName ? ', ' + greetingName + '!': '' }}</h2>
+      <p class="home-subtitle">Where do you want to go?</p>
+    </div>
 
     @if (showGettingStarted) {
       <div class="getting-started-card">
@@ -21,6 +24,11 @@
         <p class="getting-started-subtitle">
           {{ gettingStartedCompleteCount }} of {{ gettingStartedSteps.length }} done — a few things to set up your organization.
         </p>
+        <mat-progress-bar
+            class="getting-started-progress"
+            mode="determinate"
+            [value]="gettingStartedProgressPercent"
+          />
         <ul class="getting-started-steps">
           @for (step of gettingStartedSteps; track step.label) {
             <li [class.done]="step.done">
@@ -48,14 +56,25 @@
             {{ restockCount }} low or out of stock
           </span>
         }
-        <mat-icon>inventory_2</mat-icon>
+        <span class="home-card-icon home-card-icon-primary">
+          <mat-icon>inventory_2</mat-icon>
+        </span>
         <h3>Inventory</h3>
         <p>Browse and manage your inventory.</p>
       </a>
       <a class="home-card" routerLink="/tasks">
-        <mat-icon>checklist</mat-icon>
+        <span class="home-card-icon home-card-icon-tertiary">
+          <mat-icon>checklist</mat-icon>
+        </span>
         <h3>Tasks</h3>
         <p>See what's assigned to you.</p>
+      </a>
+      <a class="home-card" routerLink="/account">
+        <span class="home-card-icon home-card-icon-primary">
+          <mat-icon>account_circle</mat-icon>
+        </span>
+        <h3>Account</h3>
+        <p>Your profile and organization.</p>
       </a>
       @if (authService.canManage()) {
         <a class="home-card" routerLink="/manage">
@@ -63,16 +82,109 @@
             <mat-icon>shield</mat-icon>
             Manager+
           </span>
-          <mat-icon>admin_panel_settings</mat-icon>
+          <span class="home-card-icon home-card-icon-secondary">
+            <mat-icon>admin_panel_settings</mat-icon>
+          </span>
           <h3>Manage</h3>
           <p>Administer inventory, tasks, and your team.</p>
         </a>
       }
-      <a class="home-card" routerLink="/account">
-        <mat-icon>account_circle</mat-icon>
-        <h3>Account</h3>
-        <p>Your profile and organization.</p>
-      </a>
+    </div>
+
+    <span class="home-lists-kicker">For you</span>
+    <h3 class="home-lists-heading">What's on your plate</h3>
+    <div class="home-lists">
+      <div class="home-list-card">
+        <div class="home-list-header">
+          <span class="home-list-icon home-list-icon-tertiary">
+            <mat-icon>checklist</mat-icon>
+          </span>
+          <span class="home-list-title">
+            <span class="home-list-label">Tasks outstanding</span>
+            <span class="home-list-count">{{ outstandingTasks.length }}</span>
+          </span>
+        </div>
+        @if (outstandingTasks.length === 0) {
+          <p class="home-list-empty">Nothing assigned to you right now.</p>
+        } @else {
+          <ul class="home-list-items">
+            @for (task of visibleOutstandingTasks; track task.id) {
+              <li>
+                <a [routerLink]="['/tasks']" [queryParams]="{ task: task.id }">
+                  <span class="home-list-item-primary">{{ task.title }}</span>
+                  <span class="home-list-item-secondary">
+                    {{ task.dueDate ? 'Due ' + (task.dueDate | date: 'M/d/yy') : 'No due date' }}
+                  </span>
+                </a>
+              </li>
+            }
+          </ul>
+          @if (outstandingTasksOverflowCount > 0) {
+            <a class="home-list-more" routerLink="/tasks">+{{ outstandingTasksOverflowCount }} more</a>
+          }
+        }
+      </div>
+
+      <div class="home-list-card">
+        <div class="home-list-header">
+          <span class="home-list-icon home-list-icon-primary">
+            <mat-icon>inventory_2</mat-icon>
+          </span>
+          <span class="home-list-title">
+            <span class="home-list-label">Items checked out to you</span>
+            <span class="home-list-count">{{ checkedOutItems.length }}</span>
+          </span>
+        </div>
+        @if (checkedOutItems.length === 0) {
+          <p class="home-list-empty">Nothing checked out to you right now.</p>
+        } @else {
+          <ul class="home-list-items">
+            @for (item of visibleCheckedOutItems; track item.id) {
+              <li>
+                <a [routerLink]="['/inventory']" [queryParams]="{ item: item.id }">
+                  <span class="home-list-item-primary">{{ item.name }}</span>
+                </a>
+              </li>
+            }
+          </ul>
+          @if (checkedOutItemsOverflowCount > 0) {
+            <a class="home-list-more" routerLink="/inventory">+{{ checkedOutItemsOverflowCount }} more</a>
+          }
+        }
+      </div>
+
+      <div class="home-list-card">
+        <div class="home-list-header">
+          <span class="home-list-icon home-list-icon-secondary">
+            <mat-icon>event</mat-icon>
+          </span>
+          <span class="home-list-title">
+            <span class="home-list-label">Your upcoming reservations</span>
+            <span class="home-list-count">{{ upcomingReservations.length }}</span>
+          </span>
+        </div>
+        @if (upcomingReservations.length === 0) {
+          <p class="home-list-empty">You have no upcoming reservations.</p>
+        } @else {
+          <ul class="home-list-items">
+            @for (reservation of visibleUpcomingReservations; track reservation.id) {
+              <li>
+                <a [routerLink]="['/inventory']" [queryParams]="{ item: reservation.itemId }">
+                  <span class="home-list-item-primary">
+                    {{ reservation.quantity }}&times; {{ reservation.itemName }} for {{ reservation.reservedFor }}
+                  </span>
+                  <span class="home-list-item-secondary">
+                    {{ reservation.startDate | date: 'M/d/yy' }} – {{ reservation.endDate | date: 'M/d/yy' }}
+                  </span>
+                </a>
+              </li>
+            }
+          </ul>
+          @if (upcomingReservationsOverflowCount > 0) {
+            <a class="home-list-more" routerLink="/manage/reservations">+{{ upcomingReservationsOverflowCount }} more</a>
+          }
+        }
+      </div>
     </div>
   </div>
 </div>

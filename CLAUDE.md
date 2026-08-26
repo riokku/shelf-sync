@@ -377,6 +377,32 @@ id, defensively — this app has no notion of one profile belonging to more than
 collide on) means anyone who can see the card can also dismiss it, at the acceptable cost of a
 different teammate or device seeing it again until they do too.
 
+Below the nav-card grid, `HomeComponent` also shows a small personal "what's on your plate" section
+— three list cards (tasks outstanding, items checked out to you, your own upcoming reservations) —
+for every signed-in user regardless of role, unlike the admin/manager-only getting-started card
+above: everyone can have tasks assigned to them, something checked out, or a reservation they
+placed themselves (see `manage/reservations`' own staff-visibility widening elsewhere in this
+file). Each list is scoped to the signed-in user specifically (`assigned_to`/`checked_out_to`/
+`reserved_by` = `auth.uid()`, via three parallel row queries in `loadPersonalStats()`), not
+org-wide like `restockCount`/`pendingManageCount` above — different data than those, not just a
+different count. Each card lists up to 4 entries (task title + due date, item name, or a
+reservation's item/quantity/reserved-for/date-range — everything `manage/reservations`' own list
+shows for a row, minus the actor/audit fields, since this is a glance not a management view) with a
+"+N more" link to the full page once there are more; every entry itself links out to where it can
+actually be acted on — a task deep-links to `/tasks?task=<id>` (the same `TasksComponent` deep link
+`TaskDetailModalComponent`'s own "Copy link" button already produces), a checked-out item and a
+reservation both deep-link to `/inventory?item=<id>` (a reservation's own item, specifically — its
+row itself has no per-reservation deep link anywhere in the app, but the item's detail popup
+already shows a read-only "Upcoming reservations" summary, which is the more useful landing spot
+than the reservation itself). The reservation list resolves each entry's item name with a second,
+small `inventory_items` lookup keyed by the distinct item ids on the fetched reservations — a plain
+client-side id->name map, same convention as `inventory-item-orders.ts`'s own `itemNamesById`,
+rather than a PostgREST embedded-resource select. Skipped outright for a signed-out session, same
+as `loadGettingStarted()`'s own guard. `.home-grid`'s card order is Inventory, Tasks, Account, then
+Manage last (admin/manager-only, so it's the one card that can be absent) — Manage used to sit
+third, but as the "administer everything" destination it reads better as the final, most-privileged
+stop rather than interrupting the everyday Inventory/Tasks/Account row.
+
 Inventory items can carry a `barcode` (manufacturer UPC/EAN scanned off a retail product, or a
 ShelfSync-generated QR label for an internal asset that never had one — see
 `shared/utils/barcode.ts`'s `buildItemQrValue()`/`parseItemQrValue()` for the encoding). The shared
