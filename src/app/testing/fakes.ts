@@ -90,6 +90,7 @@ export function createFakeSiteSettingsService(overrides: Partial<{
   inventoryFormFields: InventoryFormFieldKey[];
   requireRetirementApproval: boolean;
   bulkEditFeatureEnabled: boolean;
+  restrictPriceSupplierEdits: boolean;
   notifyTaskAssigned: boolean;
   notifyTaskTransfer: boolean;
   notifyRetirementRequest: boolean;
@@ -102,6 +103,7 @@ export function createFakeSiteSettingsService(overrides: Partial<{
     inventoryFormFields: signal(overrides.inventoryFormFields ?? DEFAULT_INVENTORY_FORM_FIELDS).asReadonly(),
     requireRetirementApproval: signal(overrides.requireRetirementApproval ?? true).asReadonly(),
     bulkEditFeatureEnabled: signal(overrides.bulkEditFeatureEnabled ?? true).asReadonly(),
+    restrictPriceSupplierEdits: signal(overrides.restrictPriceSupplierEdits ?? false).asReadonly(),
     notifyTaskAssigned: signal(overrides.notifyTaskAssigned ?? true).asReadonly(),
     notifyTaskTransfer: signal(overrides.notifyTaskTransfer ?? true).asReadonly(),
     notifyRetirementRequest: signal(overrides.notifyRetirementRequest ?? true).asReadonly(),
@@ -115,6 +117,7 @@ export function createFakeSiteSettingsService(overrides: Partial<{
     updateInventoryFormFields: async () => null,
     updateRequireRetirementApproval: async () => null,
     updateBulkEditFeatureEnabled: async () => null,
+    updateRestrictPriceSupplierEdits: async () => null,
     updateEmailNotifications: async () => null,
     loadLogoUrlForOrganization: async () => null,
   };

@@ -39,6 +39,16 @@ export class SiteSettingsService {
   private readonly _bulkEditFeatureEnabled = signal(true);
   readonly bulkEditFeatureEnabled = this._bulkEditFeatureEnabled.asReadonly();
 
+  // Off by default (preserves every existing org's current behavior: any
+  // signed-in user can edit any inventory field) — see Settings > Workflow's
+  // "Price & supplier edits" section. Enforced server-side by a trigger on
+  // inventory_items (add_restrict_price_supplier_edits migration), not by
+  // this flag alone — this signal only drives what the UI *offers*/warns
+  // about, the same "client is advisory, the database is the real gate"
+  // split every other role-sensitive toggle in this app already has.
+  private readonly _restrictPriceSupplierEdits = signal(false);
+  readonly restrictPriceSupplierEdits = this._restrictPriceSupplierEdits.asReadonly();
+
   // Per-org kill switches for each of the four email notification kinds
   // (see Settings > Workflow's "Email notifications" section) — checked
   // by the send-notification-email Edge Function itself, not read
@@ -67,6 +77,7 @@ export class SiteSettingsService {
       this._inventoryFormFields.set(DEFAULT_INVENTORY_FORM_FIELDS);
       this._requireRetirementApproval.set(true);
       this._bulkEditFeatureEnabled.set(true);
+      this._restrictPriceSupplierEdits.set(false);
       this._notifyTaskAssigned.set(true);
       this._notifyTaskTransfer.set(true);
       this._notifyRetirementRequest.set(true);
@@ -91,6 +102,7 @@ export class SiteSettingsService {
     );
     this._requireRetirementApproval.set(data?.require_retirement_approval ?? true);
     this._bulkEditFeatureEnabled.set(data?.bulk_edit_enabled ?? true);
+    this._restrictPriceSupplierEdits.set(data?.restrict_price_supplier_edits ?? false);
     this._notifyTaskAssigned.set(data?.notify_task_assigned ?? true);
     this._notifyTaskTransfer.set(data?.notify_task_transfer ?? true);
     this._notifyRetirementRequest.set(data?.notify_retirement_request ?? true);
@@ -233,6 +245,28 @@ export class SiteSettingsService {
     }
 
     this._bulkEditFeatureEnabled.set(enabled);
+    return null;
+  }
+
+  async updateRestrictPriceSupplierEdits(restricted: boolean): Promise<string | null> {
+    const session = await this.authService.getSession();
+    const organizationId = this.authService.organizationId();
+    if (!session || !organizationId) {
+      return 'You must be signed in to update this setting.';
+    }
+
+    const { error } = await this.supabase
+      .from('site_settings')
+      .upsert(
+        { organization_id: organizationId, restrict_price_supplier_edits: restricted, updated_by: session.user.id },
+        { onConflict: 'organization_id' }
+      );
+
+    if (error) {
+      return error.message;
+    }
+
+    this._restrictPriceSupplierEdits.set(restricted);
     return null;
   }
 

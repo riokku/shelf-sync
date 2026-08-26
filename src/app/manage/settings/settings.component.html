@@ -292,6 +292,42 @@
                 </button>
               }
             </section>
+            <section class="settings-section">
+              <h3>Price &amp; supplier edits</h3>
+              <p class="section-hint">
+                When on, only admins and managers can change an item's price or supplier — staff
+                can still edit every other field (quantity, category, photos, etc.). Off by
+                default, so every existing org keeps today's behavior of any signed-in user being
+                able to edit any field.
+              </p>
+              <mat-slide-toggle
+                  [checked]="selectedRestrictPriceSupplierEdits"
+                  (change)="toggleRestrictPriceSupplierEdits($event.checked)"
+                >
+                Restrict price and supplier edits to admins and managers
+              </mat-slide-toggle>
+              @if (restrictPriceSupplierEditsError) {
+                <p class="error-message">{{ restrictPriceSupplierEditsError }}</p>
+              }
+              @if (restrictPriceSupplierEditsChanged) {
+                <button
+                    mat-flat-button
+                    color="primary"
+                    type="button"
+                    (click)="saveRestrictPriceSupplierEdits()"
+                    [disabled]="isSavingRestrictPriceSupplierEdits"
+                  >
+                  @if (isSavingRestrictPriceSupplierEdits) {
+                    <mat-spinner diameter="20"></mat-spinner>
+                  } @else {
+                    <ng-container>
+                      <mat-icon>check</mat-icon>
+                      Save
+                    </ng-container>
+                  }
+                </button>
+              }
+            </section>
           </div>
 
           <div class="settings-card">

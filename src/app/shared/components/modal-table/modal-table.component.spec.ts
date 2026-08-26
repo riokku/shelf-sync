@@ -4,12 +4,14 @@ import { provideNativeDateAdapter } from '@angular/material/core';
 
 import { ModalTableComponent } from './modal-table.component';
 import { AuthService } from '../../../core/auth.service';
+import { SiteSettingsService } from '../../../core/site-settings.service';
 import { SupabaseService } from '../../../core/supabase.service';
 import {
   createFakeAuthService,
   createFakeMatDialogRef,
   createFakeProfile,
   createFakeQueryBuilder,
+  createFakeSiteSettingsService,
   createFakeSupabaseService,
   createTestInventoryItem
 } from '../../../testing/fakes';
@@ -207,6 +209,62 @@ describe('ModalTableComponent', () => {
 
     it('is false for staff on a locked item, matching the Edit button\'s own gate', async () => {
       expect((await setup({ quantityRemaining: 5, isLocked: true })).canDiscard).toBeFalse();
+    });
+  });
+
+  describe('canEditPriceSupplier / price-supplier edit restriction', () => {
+    async function setup(options: { restrictPriceSupplierEdits: boolean; role: 'admin' | 'manager' | 'staff' }) {
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [ModalTableComponent],
+        providers: [
+          provideNativeDateAdapter(),
+          { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: options.role })) },
+          { provide: SupabaseService, useValue: createFakeSupabaseService() },
+          {
+            provide: SiteSettingsService,
+            useValue: createFakeSiteSettingsService({ restrictPriceSupplierEdits: options.restrictPriceSupplierEdits })
+          },
+          { provide: MatDialogRef, useValue: createFakeMatDialogRef() },
+          { provide: MAT_DIALOG_DATA, useValue: createTestInventoryItem() }
+        ]
+      }).compileComponents();
+
+      const localFixture = TestBed.createComponent(ModalTableComponent);
+      localFixture.detectChanges();
+      return localFixture.componentInstance;
+    }
+
+    it('is true when the org has not restricted price/supplier edits, regardless of role', async () => {
+      expect((await setup({ restrictPriceSupplierEdits: false, role: 'staff' })).canEditPriceSupplier).toBeTrue();
+    });
+
+    it('is true for a manager even when the org has restricted price/supplier edits', async () => {
+      expect((await setup({ restrictPriceSupplierEdits: true, role: 'manager' })).canEditPriceSupplier).toBeTrue();
+    });
+
+    it('is false for staff when the org has restricted price/supplier edits', async () => {
+      expect((await setup({ restrictPriceSupplierEdits: true, role: 'staff' })).canEditPriceSupplier).toBeFalse();
+    });
+
+    it('startEdit() disables the supplier/price controls for a restricted staff member', async () => {
+      const component = await setup({ restrictPriceSupplierEdits: true, role: 'staff' });
+
+      await component.startEdit();
+
+      expect(component.editForm.get('supplierId')?.disabled).toBeTrue();
+      expect(component.editForm.get('pricePerUnit')?.disabled).toBeTrue();
+      expect(component.editForm.get('pricePerContainer')?.disabled).toBeTrue();
+    });
+
+    it('startEdit() leaves the supplier/price controls enabled for a manager even when restricted', async () => {
+      const component = await setup({ restrictPriceSupplierEdits: true, role: 'manager' });
+
+      await component.startEdit();
+
+      expect(component.editForm.get('supplierId')?.disabled).toBeFalse();
+      expect(component.editForm.get('pricePerUnit')?.disabled).toBeFalse();
+      expect(component.editForm.get('pricePerContainer')?.disabled).toBeFalse();
     });
   });
 

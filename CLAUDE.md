@@ -495,6 +495,25 @@ back to the parent item at all — a real lock-bypass vector, since a locked ite
 `inventory_item_images`' policies already join through to the parent item for their own checks
 (which, on inspection, turned out to already be admin/manager-only and needed no change here).
 
+An admin can also restrict who's allowed to change an item's *price or supplier* specifically —
+Settings > Workflow's "Price & supplier edits" section (a third section alongside Retirement
+approval/Bulk edit in that same card), a `site_settings.restrict_price_supplier_edits` toggle
+(default `false`, preserving every existing org's today-any-authenticated-user-can-edit-anything
+behavior). Unlike `is_locked` above — a single boolean the RLS `with check` clause can test
+directly — this needs an *old-vs-new value comparison* ("did price/supplier actually change,"
+not just "what's the new value"), which a plain RLS policy expression can't do without a fragile
+self-referencing subquery, so this is enforced by a `before update` trigger on `inventory_items`
+(`enforce_price_supplier_edit_restriction()`) instead: admin/manager writes always pass; a
+staff write only passes if `price_per_unit`/`price_per_container`/`supplier_id` are unchanged
+from their stored values. `price_per_unit`/`price_per_container`/`supplier_id` stay in the
+existing any-authenticated-user column grant either way — this toggle changes whether a write
+is *allowed to go through*, not who's granted to *attempt* it. `ModalTableComponent` mirrors the
+same check client-side (`canEditPriceSupplier`, disabling those three controls and showing a
+"Manager/admin only" `mat-hint` for a restricted staff member during edit) purely as a UX
+nicety — getRawValue() still round-trips a disabled control's unchanged value at save time, so
+disabling can't accidentally null out an existing price/supplier, and the trigger is what
+actually protects the columns regardless of what the client renders.
+
 Every brief "it worked" confirmation across the app (task/item created, a Settings page setting
 saved) is a toast via `NotificationService.success()` (`core/notification.service.ts`, thin
 wrapper around `MatSnackBar` rendering `SuccessToastComponent`) rather than a `<p>` left sitting
@@ -1717,6 +1736,13 @@ yet on a hard refresh of `/inventory`.
   Project Overview above). Same self-service shape `last_active_at` already established: purely
   cosmetic, no privilege distinction to protect, so widening the existing column grant is enough —
   no RLS/RPC changes needed beyond that.
+- `add_restrict_price_supplier_edits` — adds `site_settings.restrict_price_supplier_edits`
+  (`boolean not null default false`) and `enforce_price_supplier_edit_restriction()`, a
+  `before update` trigger on `inventory_items` (see Project Overview above for the full
+  reasoning on why this needs a trigger rather than a plain RLS `with check`, unlike
+  `is_locked`). `price_per_unit`/`price_per_container`/`supplier_id` stay in the existing
+  any-authenticated-user column grant unchanged — this only gates whether a write actually
+  commits, not who's granted to attempt it.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

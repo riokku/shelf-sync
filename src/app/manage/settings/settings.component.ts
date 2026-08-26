@@ -104,6 +104,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
   isSavingBulkEditFeatureEnabled = false;
   bulkEditFeatureEnabledError: string | null = null;
 
+  selectedRestrictPriceSupplierEdits = this.siteSettings.restrictPriceSupplierEdits();
+  isSavingRestrictPriceSupplierEdits = false;
+  restrictPriceSupplierEditsError: string | null = null;
+
   // One group, one Save button — same reasoning SiteSettingsService's own
   // updateEmailNotifications() doc comment gives for bundling these four
   // into a single upsert.
@@ -150,6 +154,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   get bulkEditFeatureEnabledChanged(): boolean {
     return this.selectedBulkEditFeatureEnabled !== this.siteSettings.bulkEditFeatureEnabled();
+  }
+
+  get restrictPriceSupplierEditsChanged(): boolean {
+    return this.selectedRestrictPriceSupplierEdits !== this.siteSettings.restrictPriceSupplierEdits();
   }
 
   get emailNotificationsChanged(): boolean {
@@ -278,6 +286,28 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
     if (error) {
       this.bulkEditFeatureEnabledError = error;
+      return;
+    }
+    this.notification.success('Saved for everyone');
+  }
+
+  toggleRestrictPriceSupplierEdits(restricted: boolean) {
+    this.selectedRestrictPriceSupplierEdits = restricted;
+  }
+
+  async saveRestrictPriceSupplierEdits() {
+    if (this.isSavingRestrictPriceSupplierEdits) {
+      return;
+    }
+
+    this.isSavingRestrictPriceSupplierEdits = true;
+    this.restrictPriceSupplierEditsError = null;
+
+    const error = await this.siteSettings.updateRestrictPriceSupplierEdits(this.selectedRestrictPriceSupplierEdits);
+    this.isSavingRestrictPriceSupplierEdits = false;
+
+    if (error) {
+      this.restrictPriceSupplierEditsError = error;
       return;
     }
     this.notification.success('Saved for everyone');
