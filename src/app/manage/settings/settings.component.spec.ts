@@ -394,6 +394,58 @@ describe('SettingsComponent', () => {
     });
   });
 
+  describe('workflow (restrict price/supplier edits)', () => {
+    it('initializes selectedRestrictPriceSupplierEdits from the persisted setting', () => {
+      expect(component.selectedRestrictPriceSupplierEdits).toBe(false);
+    });
+
+    it('toggleRestrictPriceSupplierEdits() updates the local selection', () => {
+      component.toggleRestrictPriceSupplierEdits(true);
+
+      expect(component.selectedRestrictPriceSupplierEdits).toBe(true);
+    });
+
+    describe('restrictPriceSupplierEditsChanged', () => {
+      it('is false when the selection matches the persisted setting', () => {
+        expect(component.restrictPriceSupplierEditsChanged).toBe(false);
+      });
+
+      it('is true once toggled', () => {
+        component.toggleRestrictPriceSupplierEdits(true);
+        expect(component.restrictPriceSupplierEditsChanged).toBe(true);
+      });
+    });
+
+    it('saveRestrictPriceSupplierEdits() persists the selection and shows a success toast', async () => {
+      const updateSpy = spyOn(siteSettings, 'updateRestrictPriceSupplierEdits').and.returnValue(Promise.resolve(null));
+      component.selectedRestrictPriceSupplierEdits = true;
+
+      await component.saveRestrictPriceSupplierEdits();
+
+      expect(updateSpy).toHaveBeenCalledWith(true);
+      expect(notificationSuccessSpy).toHaveBeenCalledWith('Saved for everyone');
+      expect(component.restrictPriceSupplierEditsError).toBeNull();
+    });
+
+    it('saveRestrictPriceSupplierEdits() surfaces the error and shows no toast on failure', async () => {
+      spyOn(siteSettings, 'updateRestrictPriceSupplierEdits').and.returnValue(Promise.resolve('nope'));
+
+      await component.saveRestrictPriceSupplierEdits();
+
+      expect(component.restrictPriceSupplierEditsError).toBe('nope');
+      expect(notificationSuccessSpy).not.toHaveBeenCalled();
+    });
+
+    it('saveRestrictPriceSupplierEdits() is a no-op while already saving', async () => {
+      const updateSpy = spyOn(siteSettings, 'updateRestrictPriceSupplierEdits').and.returnValue(Promise.resolve(null));
+      component.isSavingRestrictPriceSupplierEdits = true;
+
+      await component.saveRestrictPriceSupplierEdits();
+
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe('workflow (email notifications)', () => {
     it('initializes all four selections from the persisted settings', () => {
       expect(component.selectedNotifyTaskAssigned).toBe(true);

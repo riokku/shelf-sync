@@ -787,6 +787,7 @@ export type Database = {
           notify_task_transfer: boolean
           organization_id: string
           require_retirement_approval: boolean
+          restrict_price_supplier_edits: boolean
           theme: string
           updated_at: string
           updated_by: string | null
@@ -803,6 +804,7 @@ export type Database = {
           notify_task_transfer?: boolean
           organization_id: string
           require_retirement_approval?: boolean
+          restrict_price_supplier_edits?: boolean
           theme?: string
           updated_at?: string
           updated_by?: string | null
@@ -819,6 +821,7 @@ export type Database = {
           notify_task_transfer?: boolean
           organization_id?: string
           require_retirement_approval?: boolean
+          restrict_price_supplier_edits?: boolean
           theme?: string
           updated_at?: string
           updated_by?: string | null

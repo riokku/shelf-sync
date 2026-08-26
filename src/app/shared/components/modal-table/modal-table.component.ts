@@ -446,6 +446,17 @@ export class ModalTableComponent implements OnInit {
       && this.data.quantityRemaining > 0;
   }
 
+  /** Mirrors the enforce_price_supplier_edit_restriction() trigger's own
+   *  check (Settings > Workflow's "Price & supplier edits" toggle) —
+   *  disabling these three controls client-side when this is false is a
+   *  UX nicety, not the actual enforcement, so there's no point showing an
+   *  editable field that would just bounce off a database exception. The
+   *  database is what actually protects these columns regardless of what
+   *  this getter returns. */
+  get canEditPriceSupplier(): boolean {
+    return !this.siteSettings.restrictPriceSupplierEdits() || this.authService.canManage();
+  }
+
   openDiscard(){
     if (!this.canDiscard || this.isDiscarding) {
       return;
@@ -686,6 +697,18 @@ export class ModalTableComponent implements OnInit {
       pricePerUnit: this.data.pricePerUnit,
       pricePerContainer: this.data.pricePerContainer
     });
+    // Disabled (not omitted) controls still round-trip their current value
+    // via getRawValue() at save time, so this can't accidentally null out
+    // an existing price/supplier for someone who isn't allowed to change
+    // it — the database trigger is the actual enforcement either way.
+    const priceSupplierControls = ['supplierId', 'pricePerUnit', 'pricePerContainer'] as const;
+    for (const key of priceSupplierControls) {
+      if (this.canEditPriceSupplier) {
+        this.editForm.get(key)?.enable();
+      } else {
+        this.editForm.get(key)?.disable();
+      }
+    }
     this.removedImageIds.clear();
     this.clearNewImages();
     this.editableContainers = this.existingContainers.map(container => ({ ...container }));
