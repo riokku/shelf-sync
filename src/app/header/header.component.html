@@ -105,17 +105,22 @@
       <mat-icon>home</mat-icon>
       Home
     </a>
-    <a
-        mat-button
-        routerLink="/inventory"
-        routerLinkActive="active"
-        class="nav-drawer-badge"
-        [matBadge]="lowStockCount()"
-        [matBadgeHidden]="lowStockCount() === 0"
-        matBadgeColor="warn"
-      >
+    <a mat-button routerLink="/inventory" routerLinkActive="active">
       <mat-icon>inventory_2</mat-icon>
-      Inventory
+      <!-- matBadge sits on this span (just the text), not the whole
+           full-width row — anchored to the row itself, the badge's default
+           "above after" position would land at the row's own right edge,
+           floating well away from "Inventory" instead of sitting right
+           next to it. matBadgeOverlap="false" keeps it from sinking onto
+           (and covering part of) the last letter, Material's own default
+           for a badge anchored to a small piece of text rather than an icon. -->
+      <span
+          class="nav-drawer-badge"
+          [matBadge]="lowStockCount()"
+          [matBadgeHidden]="lowStockCount() === 0"
+          [matBadgeOverlap]="false"
+          matBadgeColor="warn"
+        >Inventory</span>
     </a>
     <a mat-button routerLink="/tasks" routerLinkActive="active">
       <mat-icon>checklist</mat-icon>
@@ -131,17 +136,18 @@
       Reservations
     </a>
     @if (authService.canManage()) {
-      <a
-          mat-button
-          routerLink="/manage"
-          routerLinkActive="active"
-          class="nav-drawer-badge"
-          [matBadge]="pendingManageCount()"
-          [matBadgeHidden]="pendingManageCount() === 0"
-          matBadgeColor="warn"
-        >
+      <a mat-button routerLink="/manage" routerLinkActive="active">
         <mat-icon>admin_panel_settings</mat-icon>
-        Manage
+        <!-- Same "badge on the text span, not the whole row, without
+             overlapping the last letter" reasoning as the Inventory link
+             above. -->
+        <span
+            class="nav-drawer-badge"
+            [matBadge]="pendingManageCount()"
+            [matBadgeHidden]="pendingManageCount() === 0"
+            [matBadgeOverlap]="false"
+            matBadgeColor="warn"
+          >Manage</span>
       </a>
     }
     <mat-divider></mat-divider>
