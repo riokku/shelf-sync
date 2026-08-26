@@ -5,6 +5,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SupabaseService } from '../../core/supabase.service';
 import { Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { DonutChartComponent } from '../../shared/components/donut-chart/donut-chart.component';
 import { RingStatComponent } from '../../shared/components/ring-stat/ring-stat.component';
 import { Database } from '../../shared/models/database.types';
@@ -67,7 +68,7 @@ interface AssigneeWorkloadRow {
  *  need one. */
 @Component({
   selector: 'app-manage-reports',
-  imports: [CurrencyPipe, DecimalPipe, MatIconModule, MatProgressSpinnerModule, BreadcrumbsComponent, DonutChartComponent, RingStatComponent],
+  imports: [CurrencyPipe, DecimalPipe, MatIconModule, MatProgressSpinnerModule, BreadcrumbsComponent, PageHeaderComponent, DonutChartComponent, RingStatComponent],
   templateUrl: './manage-reports.component.html',
   styleUrl: './manage-reports.component.scss',
 })

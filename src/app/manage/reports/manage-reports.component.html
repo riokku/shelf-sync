@@ -3,8 +3,11 @@
     <div class="page-toolbar">
       <app-breadcrumbs />
     </div>
-    <h2>Reports</h2>
-    <p class="reports-subtitle">A snapshot of where things stand right now — not a trend over time yet.</p>
+    <app-page-header
+        icon="bar_chart"
+        title="Reports"
+        subtitle="A snapshot of where things stand right now — not a trend over time yet."
+      />
 
     @if (isLoading) {
       <div class="loading-row">

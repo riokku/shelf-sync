@@ -8,6 +8,7 @@ import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { SupabaseService } from '../../core/supabase.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { PricingTier, pricingTierByKey } from '../../shared/models/pricing-tier';
 
 /** Admin-only preview of what the Billing page will show once Stripe is
@@ -35,7 +36,8 @@ import { PricingTier, pricingTierByKey } from '../../shared/models/pricing-tier'
     MatProgressBarModule,
     MatProgressSpinnerModule,
     RouterLink,
-    BreadcrumbsComponent
+    BreadcrumbsComponent,
+    PageHeaderComponent
   ],
   templateUrl: './manage-billing.component.html',
   styleUrl: './manage-billing.component.scss',

@@ -1,0 +1,80 @@
+:host{
+  display: block;
+  margin-bottom: 1.5rem;
+}
+
+.page-header{
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+// Same two-tone gradient-of-container-tokens chip Home's own nav cards and
+// the Manage hub's own cards use (see HomeComponent's own doc comment for
+// why *-container tokens specifically, not the bare primary/tertiary
+// roles) — one fixed combo here rather than the a/b/c/d cycle those pages
+// need, since a page header is a single one-off identity, not several
+// destinations sitting side by side that need to read as distinct from
+// each other.
+.page-header-icon{
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, var(--mat-sys-primary-container), var(--mat-sys-tertiary-container));
+
+  mat-icon{
+    font-size: 1.5rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    color: var(--mat-sys-on-primary-container);
+  }
+}
+
+// Danger Zone's own outlier treatment — see PageHeaderComponent.variant's
+// own doc comment.
+.page-header-icon-danger{
+  background: color-mix(in srgb, var(--app-error-text) 18%, var(--mat-sys-surface-container-low));
+
+  mat-icon{
+    color: var(--app-error-text);
+  }
+}
+
+.page-header-text{
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+h2{
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.page-header-subtitle{
+  margin: 0.25rem 0 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+// Empty and takes up no space when a page projects nothing into the
+// default slot (most of them) — flex:0 0 auto with no content just
+// collapses to zero width, so this never reserves dead space.
+.page-header-actions{
+  flex: 0 0 auto;
+}
+
+@media (max-width: 600px){
+  .page-header{
+    flex-wrap: wrap;
+  }
+
+  .page-header-actions{
+    flex-basis: 100%;
+  }
+}

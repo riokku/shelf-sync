@@ -3,8 +3,7 @@
     <div class="page-toolbar">
       <app-breadcrumbs />
     </div>
-    <h2>Release Notes</h2>
-    <p class="page-subtitle">What's shipped recently in ShelfSync.</p>
+    <app-page-header icon="new_releases" title="Release Notes" subtitle="What's shipped recently in ShelfSync." />
 
     <ul class="changelog-list">
       @for (entry of changelogEntries; track entry.title) {

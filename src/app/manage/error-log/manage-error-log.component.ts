@@ -8,6 +8,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SupabaseService } from '../../core/supabase.service';
 import { Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { Database } from '../../shared/models/database.types';
 import { resolveProfileName } from '../../shared/utils/profile-label';
@@ -32,6 +33,7 @@ type ClientErrorLogRow = Database['public']['Tables']['client_error_log']['Row']
     MatPaginatorModule,
     MatProgressSpinnerModule,
     BreadcrumbsComponent,
+    PageHeaderComponent,
     EmptyStateComponent
   ],
   templateUrl: './manage-error-log.component.html',

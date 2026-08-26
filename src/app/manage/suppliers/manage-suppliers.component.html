@@ -4,16 +4,16 @@
       <app-breadcrumbs />
     </div>
 
-    <div class="page-header-row">
-      <div>
-        <h2>Suppliers</h2>
-        <p class="page-subtitle">Who you order inventory from — pick from this list when creating or editing an item.</p>
-      </div>
+    <app-page-header
+        icon="storefront"
+        title="Suppliers"
+        subtitle="Who you order inventory from — pick from this list when creating or editing an item."
+      >
       <button mat-flat-button color="primary" type="button" (click)="addSupplier()">
         <mat-icon>add</mat-icon>
         Add supplier
       </button>
-    </div>
+    </app-page-header>
 
     @if (removeError) {
       <p class="error-message">{{ removeError }}</p>

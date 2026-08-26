@@ -1349,6 +1349,28 @@ number anywhere in the app — `HeaderComponent`'s "N online" presence text and
 headline stat display, and reads as inconsistent overreach rather than a real "counted figure"
 context the way a stat tile or a ledger row's quantity does.
 
+The last piece of this design pass gave most of Manage's sub-pages a consistent identity of their
+own, via a new shared `PageHeaderComponent` (icon chip + title + optional subtitle) replacing each
+page's own bare `<h2>` — some paired with a `.page-subtitle` paragraph, some with a whole
+`.page-header-row` flex wrapper for an action button — that had been duplicated near-verbatim
+across seven-plus component stylesheets before this. Two content-projection slots cover the shapes
+those duplicated headers needed: `[headerTitleExtra]` renders inline right after the title text
+(Orders' own help tooltip, previously inline inside its `<h2>`), and the default slot renders
+trailing action content (Suppliers'/Orders'/Reservations' "Add"/"Place order"/"New reservation"
+buttons, previously a flex sibling in `.page-header-row`). A page with a role-conditional subtitle
+(Reservations, whose copy differs for a plain staff viewer vs. admin/manager — see that page's own
+route comment) computes it as a plain getter rather than inline template logic, since the
+component's own `subtitle` input is just a string. Danger Zone gets a `variant="danger"` input that
+swaps the icon chip for the same flat red treatment its own Manage-hub card already uses (see
+`ManageComponent`'s own `.manage-card-icon-danger` comment) rather than the shared gradient — this
+page is a deliberate outlier meant to read as riskier than every other page, not another
+destination in the same set. Applied to Reports, Suppliers, Orders, Team, Activity, Release Notes,
+Error Log, Reservations, Billing, and Danger Zone — deliberately not `manage/settings` (tabbed, a
+more involved layout), `manage/inventory`/`manage/tasks` (each already has its own more intricate
+header row with a tab toggle and bulk-edit controls), or the Manage hub itself (already has its own
+distinct treatment paired with its own page-intro banner) — a natural extension of the same
+component to whichever of those needs it next.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -1511,6 +1533,7 @@ shared/
   components/page-intro/ # one-time dismissible orientation banner for a page's first-time visitor (Inventory, Tasks, Manage hub)
   components/donut-chart/ # hand-rolled SVG donut chart (no charting library) — backs manage/reports' "Value by category"
   components/ring-stat/ # hand-rolled SVG percentage ring gauge — backs manage/reports' completion-rate stat
+  components/page-header/ # icon-chip + title/subtitle header, shared across most manage/* sub-pages
   models/inventory-item.model.ts   # InventoryItem class (constructor-based, no defaults)
   models/supplier.model.ts   # Supplier — a directory entry inventory_items.supplier_id can point at
   models/inventory-item-order.model.ts # InventoryItemOrder — one restock order against an item's linked supplier

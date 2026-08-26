@@ -8,6 +8,7 @@ import { SupplierService } from '../../core/supplier.service';
 import { NotificationService } from '../../core/notification.service';
 import { Supplier } from '../../shared/models/supplier.model';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { SupplierFormModalComponent, SupplierFormModalData } from '../../shared/components/supplier-form-modal/supplier-form-modal.component';
@@ -27,6 +28,7 @@ import { SupplierFormModalComponent, SupplierFormModalData } from '../../shared/
     MatTooltipModule,
     MatProgressSpinnerModule,
     BreadcrumbsComponent,
+    PageHeaderComponent,
     EmptyStateComponent
   ],
   templateUrl: './manage-suppliers.component.html',

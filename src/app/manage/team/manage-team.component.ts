@@ -13,6 +13,7 @@ import { SupabaseService } from '../../core/supabase.service';
 import { NotificationService } from '../../core/notification.service';
 import { AuthService, Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { UserAvatarComponent } from '../../shared/components/user-avatar/user-avatar.component';
 import { TaskCardComponent } from '../../tasks/task-card/task-card.component';
 import { TaskDetailModalComponent } from '../../shared/components/task-detail-modal/task-detail-modal.component';
@@ -52,6 +53,7 @@ interface TeamMember {
     MatSlideToggleModule,
     MatCheckboxModule,
     BreadcrumbsComponent,
+    PageHeaderComponent,
     UserAvatarComponent,
     TaskCardComponent,
     EmptyStateComponent,

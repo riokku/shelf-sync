@@ -3,8 +3,7 @@
     <div class="page-toolbar">
       <app-breadcrumbs />
     </div>
-    <h2>Error Log</h2>
-    <p class="page-subtitle">Uncaught errors your team has run into recently, most recent first.</p>
+    <app-page-header icon="bug_report" title="Error Log" subtitle="Uncaught errors your team has run into recently, most recent first." />
 
     @if (isLoading) {
       <div class="loading-row">
