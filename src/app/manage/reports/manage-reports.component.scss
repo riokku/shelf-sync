@@ -151,38 +151,159 @@
   font-variant-numeric: tabular-nums;
 }
 
-mat-progress-bar{
+// Replaces the old <mat-progress-bar> in every breakdown list — a plain
+// two-`<span>` track/fill pair rather than pulling in Material's own
+// progress-bar component just for a static, never-indeterminate bar. Full
+// control over the fill's animation and color this way, and one fewer
+// Material module import for a page that otherwise doesn't need it.
+.bar-track{
+  display: block;
+  height: 0.5rem;
   border-radius: 999px;
+  background: var(--mat-sys-surface-container-high);
   overflow: hidden;
 }
 
-.workload-table{
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 0.5rem;
+.bar-fill{
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--mat-sys-primary);
+  // Animates in from 0 on first render (and on any later change) rather
+  // than snapping straight to its final width — width is set as an inline
+  // style bound to a *changing* Angular expression, so unlike
+  // DonutChartComponent's own dasharray transition (which has nothing to
+  // animate *from* on first paint), this one always has a real 0-to-value
+  // transition to play, since the bound style starts undefined/0 before
+  // Angular's first change detection pass sets it.
+  transition: width 0.6s ease-out;
+}
 
-  th, td{
-    padding: 0.5rem 0.75rem;
-    text-align: left;
-    font-size: 0.875rem;
+.retirement-bar{
+  background: var(--app-warning-bg);
+}
+
+@media (prefers-reduced-motion: reduce){
+  .bar-fill{
+    transition: none;
   }
+}
 
-  th{
-    color: var(--mat-sys-on-surface-variant);
-    font-weight: 500;
-    border-bottom: 1px solid var(--mat-sys-outline-variant);
+// The ring gauge sits beside the section's remaining plain stat tiles
+// (Overdue, Avg. time to close) as the visual anchor for this card, rather
+// than one more text tile in the same grid the way it briefly straddled —
+// row on wide viewports so the ring genuinely reads as beside the numbers,
+// wrapping to stack on narrow ones.
+.throughput-summary{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: 1.25rem;
+}
+
+.throughput-stat-grid{
+  flex: 1 1 16rem;
+  margin-top: 0;
+}
+
+.workload-legend{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.workload-legend-item{
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8125rem;
+}
+
+.workload-swatch{
+  display: inline-block;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 0.1875rem;
+}
+
+// Same status palette as ManageTasksComponent's own status-* badge colors
+// (todo/in_progress/done), reused here so a color means the same thing in
+// both places rather than this chart inventing a second, unrelated scheme.
+.workload-swatch-todo{
+  background: var(--mat-sys-tertiary);
+}
+
+.workload-swatch-in_progress{
+  background: var(--mat-sys-secondary);
+}
+
+.workload-swatch-done{
+  background: var(--app-success-text);
+}
+
+.workload-chart{
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li{
+    display: grid;
+    grid-template-columns: minmax(6rem, 10rem) 1fr auto;
+    align-items: center;
+    gap: 0.75rem;
   }
+}
 
-  td{
-    border-bottom: 1px solid var(--mat-sys-outline-variant);
+.workload-assignee{
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+}
+
+// Stacked segments, not a single fill — each assignee's own bar is scaled
+// against the page-wide busiest assignee's total (see
+// workloadSegmentWidth()'s own doc comment), so an empty remainder simply
+// leaves the track's own background showing through as unused space.
+.workload-bar{
+  display: flex;
+  height: 0.875rem;
+  border-radius: 999px;
+  background: var(--mat-sys-surface-container-high);
+  overflow: hidden;
+}
+
+.workload-segment{
+  height: 100%;
+  transition: width 0.6s ease-out;
+
+  &:first-child{
+    border-top-left-radius: inherit;
+    border-bottom-left-radius: inherit;
   }
+}
 
-  tr:last-child td{
-    border-bottom: none;
-  }
+.workload-total{
+  flex-shrink: 0;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 
-  td.overdue{
-    color: var(--app-error-text);
-    font-weight: 600;
+.workload-overdue{
+  color: var(--app-error-text);
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce){
+  .workload-segment{
+    transition: none;
   }
 }

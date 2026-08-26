@@ -36,11 +36,16 @@
 
             @if (valueByCategory.length > 0) {
               <h4>Value by category</h4>
+              <app-donut-chart
+                  [data]="valueByCategoryChartData"
+                  [centerLabel]="(totalValue | currency: 'USD' : 'symbol' : '1.0-0') ?? ''"
+                  centerSublabel="total"
+                />
               <ul class="breakdown-list">
                 @for (row of valueByCategory; track row.label) {
                   <li>
                     <span class="breakdown-label">{{ row.label }}</span>
-                    <mat-progress-bar mode="determinate" [value]="barWidth(valueByCategory, row.primary)" />
+                    <span class="bar-track"><span class="bar-fill" [style.width.%]="barWidth(valueByCategory, row.primary)"></span></span>
                     <span class="breakdown-value">{{ row.primary | currency }}</span>
                   </li>
                 }
@@ -51,7 +56,7 @@
                 @for (row of valueByLocation; track row.label) {
                   <li>
                     <span class="breakdown-label">{{ row.label }}</span>
-                    <mat-progress-bar mode="determinate" [value]="barWidth(valueByLocation, row.primary)" />
+                    <span class="bar-track"><span class="bar-fill" [style.width.%]="barWidth(valueByLocation, row.primary)"></span></span>
                     <span class="breakdown-value">{{ row.primary | currency }}</span>
                   </li>
                 }
@@ -85,7 +90,7 @@
                   @for (row of topDiscardReasons; track row.label) {
                     <li>
                       <span class="breakdown-label" [title]="row.label">{{ row.label }}</span>
-                      <mat-progress-bar mode="determinate" [value]="barWidth(topDiscardReasons, row.primary)" />
+                      <span class="bar-track"><span class="bar-fill" [style.width.%]="barWidth(topDiscardReasons, row.primary)"></span></span>
                       <span class="breakdown-value">{{ row.primary | number }} units</span>
                     </li>
                   }
@@ -98,7 +103,7 @@
                   @for (row of discardsByCategory; track row.label) {
                     <li>
                       <span class="breakdown-label">{{ row.label }}</span>
-                      <mat-progress-bar mode="determinate" [value]="barWidth(discardsByCategory, row.primary)" />
+                      <span class="bar-track"><span class="bar-fill" [style.width.%]="barWidth(discardsByCategory, row.primary)"></span></span>
                       <span class="breakdown-value">{{ row.primary | number }} units</span>
                     </li>
                   }
@@ -111,7 +116,7 @@
                   @for (row of retirementRateByCategory; track row.category) {
                     <li>
                       <span class="breakdown-label">{{ row.category }}</span>
-                      <mat-progress-bar mode="determinate" [value]="row.rate * 100" />
+                      <span class="bar-track"><span class="bar-fill retirement-bar" [style.width.%]="row.rate * 100"></span></span>
                       <span class="breakdown-value">{{ row.retiredCount }} of {{ row.totalCount }}</span>
                     </li>
                   }
@@ -123,48 +128,61 @@
           <div class="report-card">
             <section class="report-section">
               <h3>Task throughput</h3>
-              <div class="stat-grid">
-                <div class="stat-tile">
-                  <span class="stat-label">Completion rate</span>
-                  <span class="stat-value">{{ completionRatePercent }}%</span>
-                  <span class="stat-detail">{{ completedTaskCount }} of {{ totalTasks }} done</span>
-                </div>
-                <div class="stat-tile">
-                  <span class="stat-label">Overdue</span>
-                  <span class="stat-value">{{ overdueTaskCount | number }}</span>
-                </div>
-                <div class="stat-tile">
-                  <span class="stat-label">Avg. time to close</span>
-                  <span class="stat-value">
-                    {{ averageDaysToClose === null ? '—' : (averageDaysToClose | number: '1.0-1') + ' days' }}
-                  </span>
+              <div class="throughput-summary">
+                <app-ring-stat [percent]="completionRatePercent" label="Completion rate" />
+                <div class="stat-grid throughput-stat-grid">
+                  <div class="stat-tile">
+                    <span class="stat-label">Completion rate</span>
+                    <span class="stat-detail">{{ completedTaskCount }} of {{ totalTasks }} done</span>
+                  </div>
+                  <div class="stat-tile">
+                    <span class="stat-label">Overdue</span>
+                    <span class="stat-value">{{ overdueTaskCount | number }}</span>
+                  </div>
+                  <div class="stat-tile">
+                    <span class="stat-label">Avg. time to close</span>
+                    <span class="stat-value">
+                      {{ averageDaysToClose === null ? '—' : (averageDaysToClose | number: '1.0-1') + ' days' }}
+                    </span>
+                  </div>
                 </div>
               </div>
 
               @if (workloadByAssignee.length > 0) {
                 <h4>Workload by assignee</h4>
-                <table class="workload-table">
-                  <thead>
-                    <tr>
-                      <th>Assignee</th>
-                      @for (status of taskStatuses; track status) {
-                        <th>{{ taskStatusLabels[status] }}</th>
-                      }
-                      <th>Overdue</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (row of workloadByAssignee; track row.label) {
-                      <tr>
-                        <td>{{ row.label }}</td>
+                <div class="workload-legend">
+                  @for (status of taskStatuses; track status) {
+                    <span class="workload-legend-item">
+                      <span class="workload-swatch" [class]="'workload-swatch-' + status"></span>
+                      {{ taskStatusLabels[status] }}
+                    </span>
+                  }
+                </div>
+                <ul class="workload-chart">
+                  @for (row of workloadByAssignee; track row.label) {
+                    <li>
+                      <span class="workload-assignee" [title]="row.label">{{ row.label }}</span>
+                      <span class="workload-bar">
                         @for (status of taskStatuses; track status) {
-                          <td>{{ statusCount(row, status) }}</td>
+                          @if (statusCount(row, status) > 0) {
+                            <span
+                                class="workload-segment"
+                                [class]="'workload-swatch-' + status"
+                                [style.width.%]="workloadSegmentWidth(row, status)"
+                                [title]="taskStatusLabels[status] + ': ' + statusCount(row, status)"
+                              ></span>
+                          }
                         }
-                        <td [class.overdue]="row.overdue > 0">{{ row.overdue }}</td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
+                      </span>
+                      <span class="workload-total">
+                        {{ row.todo + row.inProgress + row.done }}
+                        @if (row.overdue > 0) {
+                          <span class="workload-overdue">· {{ row.overdue }} overdue</span>
+                        }
+                      </span>
+                    </li>
+                  }
+                </ul>
               }
             </section>
           </div>

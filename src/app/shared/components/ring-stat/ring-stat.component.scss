@@ -1,0 +1,58 @@
+:host{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ring-stat{
+  position: relative;
+  width: 6rem;
+  height: 6rem;
+}
+
+.ring-svg{
+  width: 100%;
+  height: 100%;
+  // Starts the arc at 12 o'clock instead of a stroked circle's default 3
+  // o'clock — same reasoning as DonutChartComponent's identical rule.
+  transform: rotate(-90deg);
+}
+
+.ring-track{
+  fill: none;
+  stroke: var(--mat-sys-surface-container-high);
+  stroke-width: 3.5;
+}
+
+.ring-fill{
+  fill: none;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.6s ease-out;
+}
+
+.ring-center{
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ring-center-value{
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.ring-label{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce){
+  .ring-fill{
+    transition: none;
+  }
+}

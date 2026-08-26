@@ -938,8 +938,39 @@ accurate for a plain assignee (who can only ever change `status` via `update_tas
 approximate for an admin/manager who edited a done task's other fields afterward, since that also
 bumps `updated_at`. Every breakdown list (category, location, reason) shares one `BreakdownRow` shape
 (`label`/`primary`/`itemCount`) so a single `barWidth()` method can scale every list's own
-`mat-progress-bar`s relative to that list's own largest value — the closest thing this page has to an
-actual bar chart, without pulling in a charting library for it.
+`.bar-fill` width (a plain `<span>` pair, `.bar-track`/`.bar-fill`, replacing an original
+`mat-progress-bar` per row — see below) relative to that list's own largest value.
+
+The page's charts were later upgraded from those flat progress-bar-style rows to two small
+hand-rolled SVG components — `shared/components/donut-chart` and `shared/components/ring-stat` —
+rather than adding a charting library dependency: this app has no existing charting dependency, a
+handful of slices/one gauge doesn't need one, and an earlier attempt at richer visuals elsewhere in
+the app (a three.js treatment, since reverted) already established that a new runtime dependency is
+the wrong tradeoff for this codebase's size. Both are drawn with the standard "stroked circle with a
+partial `stroke-dasharray`" SVG technique — a radius of `15.9155` makes a circle's circumference
+exactly 100, so percentage values map 1:1 to arc length — rather than computing real `<path>` arc
+commands, and both pull their slice/fill colors from the live theme's own CSS custom properties
+(`--mat-sys-primary` etc., cycling through a fixed token list for however many slices a chart has)
+so a chart drawn under a different color preset (see `THEME_PRESETS` above) recolors itself
+automatically, the same "themed, not hardcoded" convention every other visual element in this app
+already follows. `DonutChartComponent` takes plain `{label, value}` slices (already sorted/capped by
+the caller — it doesn't re-sort or limit its input) plus a caller-formatted `centerLabel`/
+`centerSublabel` pair (a string, not a raw number — what the center should actually say varies by
+caller), and owns both the ring itself and its legend so every consumer gets identical
+palette-cycling and legend layout for free; "Value by category" feeds it via a `valueByCategoryChartData`
+getter that caps the chart at the top 5 categories plus one folded-in "Other" slice (a dozen-plus
+thin slices reads as noise, not a shape) — the breakdown list right below the chart is unaffected by
+that cap and still lists every category with its exact dollar value, since the chart is purely an
+at-a-glance view, not the source of truth for what's there. `RingStatComponent` is the same
+technique reduced to a single arc against a full track (clamped 0–100, since a completion rate can't
+sensibly exceed that) for "Task throughput"'s headline completion-rate stat, which a plain "38%" text
+tile read flatter than a gauge that visually fills in proportional to the number. "Workload by
+assignee" itself moved off a plain HTML `<table>` onto a stacked horizontal bar per assignee
+(`.workload-chart`, `.workload-bar` holding one `.workload-segment` `<span>` per status with a shared
+`.workload-legend` above naming the three status colors) — `workloadSegmentWidth()` scales each
+segment against the *page-wide* busiest assignee's own total, not 100% of that one row, so a bar's
+overall length also reads as "how loaded is this person relative to the rest of the team," not just
+the status mix within their own workload alone.
 
 `DiscardModalComponent`'s reason field is a multi-select (`mat-select multiple`) drawing from an
 admin-curated list rather than free text, so "Top reasons" above groups on a real controlled
@@ -1371,6 +1402,8 @@ shared/
   components/turnstile-widget/ # Cloudflare Turnstile CAPTCHA, embedded on Login/Register/Forgot Password
   components/help-tooltip/ # small "?" matTooltip icon button explaining a non-obvious control inline
   components/page-intro/ # one-time dismissible orientation banner for a page's first-time visitor (Inventory, Tasks, Manage hub)
+  components/donut-chart/ # hand-rolled SVG donut chart (no charting library) — backs manage/reports' "Value by category"
+  components/ring-stat/ # hand-rolled SVG percentage ring gauge — backs manage/reports' completion-rate stat
   models/inventory-item.model.ts   # InventoryItem class (constructor-based, no defaults)
   models/supplier.model.ts   # Supplier — a directory entry inventory_items.supplier_id can point at
   models/inventory-item-order.model.ts # InventoryItemOrder — one restock order against an item's linked supplier

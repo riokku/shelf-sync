@@ -1,0 +1,33 @@
+@if (hasData()) {
+  <div class="donut-chart">
+    <svg class="donut-svg" viewBox="0 0 42 42" role="img" [attr.aria-label]="centerLabel">
+      <circle class="donut-track" cx="21" cy="21" r="15.9155" />
+      @for (slice of slices(); track slice.label) {
+        <circle
+            class="donut-slice"
+            cx="21"
+            cy="21"
+            r="15.9155"
+            [attr.stroke]="slice.color"
+            [attr.stroke-dasharray]="slice.dashArray"
+            [attr.stroke-dashoffset]="slice.dashOffset"
+          />
+      }
+    </svg>
+    <div class="donut-center">
+      <span class="donut-center-label">{{ centerLabel }}</span>
+      @if (centerSublabel) {
+        <span class="donut-center-sublabel">{{ centerSublabel }}</span>
+      }
+    </div>
+  </div>
+  <ul class="donut-legend">
+    @for (slice of slices(); track slice.label) {
+      <li>
+        <span class="donut-legend-swatch" [style.background]="slice.color"></span>
+        <span class="donut-legend-label">{{ slice.label }}</span>
+        <span class="donut-legend-percent">{{ slice.percent | number: '1.0-0' }}%</span>
+      </li>
+    }
+  </ul>
+}

@@ -333,4 +333,65 @@ describe('ManageReportsComponent', () => {
       expect(component.barWidth([], 0)).toBe(0);
     });
   });
+
+  describe('valueByCategoryChartData', () => {
+    it('passes every category through unchanged when there are 5 or fewer', async () => {
+      const component = await createComponent({
+        items: [
+          item({ id: '1', category: 'Furniture', quantity_remaining: 1, price_per_unit: 10 }),
+          item({ id: '2', category: 'Tents', quantity_remaining: 1, price_per_unit: 5 })
+        ]
+      });
+
+      expect(component.valueByCategoryChartData).toEqual([
+        { label: 'Furniture', value: 10 },
+        { label: 'Tents', value: 5 }
+      ]);
+    });
+
+    it('caps the chart at the top 5 categories plus one folded-in "Other" slice', async () => {
+      const component = await createComponent({
+        items: Array.from({ length: 7 }, (_, i) =>
+          item({ id: `item-${i}`, category: `Category ${i}`, quantity_remaining: 1, price_per_unit: 7 - i })
+        )
+      });
+
+      expect(component.valueByCategoryChartData.length).toBe(6);
+      expect(component.valueByCategoryChartData[5]).toEqual({ label: 'Other', value: 1 + 2 }); // Category 5 ($2) + Category 6 ($1)
+    });
+
+    it('omits the "Other" slice entirely when there are exactly 5 categories', async () => {
+      const component = await createComponent({
+        items: Array.from({ length: 5 }, (_, i) =>
+          item({ id: `item-${i}`, category: `Category ${i}`, quantity_remaining: 1, price_per_unit: 1 })
+        )
+      });
+
+      expect(component.valueByCategoryChartData.length).toBe(5);
+      expect(component.valueByCategoryChartData.some(slice => slice.label === 'Other')).toBeFalse();
+    });
+  });
+
+  describe('workloadSegmentWidth()', () => {
+    function reportsTask(assignedTo: string) {
+      return { status: 'todo' as const, due_date: null, created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z', assigned_to: assignedTo };
+    }
+
+    it('scales a status segment against the page-wide busiest assignee\'s total, not the row\'s own total', async () => {
+      const alice = createFakeProfile({ id: 'alice', full_name: 'Alice' });
+      const bob = createFakeProfile({ id: 'bob', full_name: 'Bob' });
+      const component = await createComponent({
+        profiles: [alice, bob],
+        tasks: [
+          ...Array.from({ length: 8 }, () => reportsTask('alice')),
+          reportsTask('bob')
+        ]
+      });
+
+      const bobRow = component.workloadByAssignee.find(row => row.label === 'Bob')!;
+      // Bob has 1 of 1 own task, but only 1 of the page-wide max of 8 —
+      // a naive per-row 100% scale would read this as a full-width bar.
+      expect(component.workloadSegmentWidth(bobRow, 'todo')).toBe(1 / 8 * 100);
+    });
+  });
 });
