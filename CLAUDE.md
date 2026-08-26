@@ -1127,6 +1127,32 @@ alongside those (synchronous, no Supabase query needed). Visiting `manage/releas
 actually clears it: `ManageReleaseNotesComponent.ngOnInit()` calls `markChangelogSeen()`, and the
 Manage hub's own next load picks that up.
 
+Every user can build their own "Quick menu" from the Account page — an opt-in toggle plus a
+checkbox picker (up to `MAX_QUICK_MENU_ITEMS`, currently 5) choosing which destinations appear in a
+small shortcut dropdown centered in `HeaderComponent`'s top bar, opened from a `bolt`-icon button.
+`shared/models/quick-menu.ts`'s `QUICK_MENU_OPTIONS` is a flat list mirroring the nav drawer's own
+top-level links exactly (Home/Inventory/Tasks/Reservations/Manage/Help/Account, same icons/routes) —
+deliberately not a broader set of app destinations, since "quick access to what's already one tap
+away in the drawer" is the whole value proposition. Backed by two new self-service `profiles`
+columns (`quick_menu_enabled`/`quick_menu_items`, a plain `text[]` of option keys rather than
+labels/routes directly, so a later rename/reorder of the option list needs no data migration) —
+same "no privilege distinction to protect, so just widen the column grant" reasoning
+`avatar_key`/`last_active_at` already have, no RPC needed. `HeaderComponent.quickMenuItems()`
+resolves the stored keys back to full options in `QUICK_MENU_OPTIONS`' own fixed canonical order
+(not the order they were selected in — simpler than supporting drag-to-reorder for a first pass,
+and means unchecking then rechecking an item can't scramble the menu), filtering out
+`requiresManage` options (just the Manage link) for a caller who can't reach them — the same
+fail-closed shape the drawer's own `@if (canManage())` gate around that link already has, so a
+manager who added it and was later demoted simply stops seeing it. The trigger button itself is
+absolutely centered against `.header-wrapper` (`position:relative` + `left:50%` +
+`translate(-50%,-50%)`) rather than a third flex child alongside `.brand`/`.header-actions` — those
+two siblings' widths differ (the org name/online-count vs. a fixed few icons), so a plain flex
+child would sit off-center, biased toward whichever side is narrower. Its own dropdown panel is a
+third "own fixed-position panel, not MatMenu" instance alongside the notifications panel and nav
+drawer, just anchored top-center instead of top-right/right-edge. Hidden entirely (not
+disabled/shown-empty) whenever it resolves to zero items, whether because the toggle is off or
+every selected item has since become unreachable.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -1274,7 +1300,7 @@ manage/                                                     # card hub (ManageCo
   billing/                                                  # admin only: pre-Stripe preview of the org's plan/usage, see Project Overview above
   danger-zone/                                              # admin only: org data export + soft-delete (organizations.deleted_at)
   settings/                                                # admin-only: theme picker + logo upload (site_settings) — see Project Overview above
-account/                                                    # profile info, avatar picker, light/dark mode toggle
+account/                                                    # profile info, avatar picker, light/dark mode toggle, quick-menu picker
 help/                                                        # static in-app "how do I..." reference (see Project Overview above)
 shared/
   components/modal-table/    # standalone Material dialog showing InventoryItem details
@@ -1297,6 +1323,7 @@ shared/
   models/notification.model.ts # UserNotification / NotificationKind / notificationIcon() — backs HeaderComponent's bell dropdown
   models/changelog.ts        # CHANGELOG_ENTRIES — hand-maintained "What's new" list, backs manage/release-notes
   models/help-faq.ts         # HELP_FAQ_SECTIONS — question/answer/links data backing the searchable Help page
+  models/quick-menu.ts       # QUICK_MENU_OPTIONS / MAX_QUICK_MENU_ITEMS — backs AccountComponent's picker and HeaderComponent's own dropdown
   models/database.types.ts   # generated via `npm run supabase:gen:types` — regenerate, don't hand-edit
   utils/inventory-item.mapper.ts   # toInventoryItem(row, images, checkedOutToLabel, activityLog?, ..., supplierLabel?) — DB row -> InventoryItem
   utils/inventory-item-images.ts   # loadInventoryImagesByItemId() / uploadInventoryItemImages() / deleteInventoryItemImage()
@@ -1671,6 +1698,11 @@ yet on a hard refresh of `/inventory`.
   bookings, which should stay visible to everyone. `SECURITY DEFINER`, scoped by `item_id` (not
   `reserved_by`) so it bypasses that restriction on purpose — see the Project Overview section
   above for the full reasoning.
+- `add_quick_menu_to_profiles` — adds `profiles.quick_menu_enabled`/`quick_menu_items`, backing
+  the Account page's "Quick menu" picker and `HeaderComponent`'s own centered dropdown (see Project
+  Overview above). Same self-service shape `last_active_at` already established: purely cosmetic,
+  no privilege distinction to protect, so widening the existing column grant is enough — no RLS/RPC
+  changes needed beyond that.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

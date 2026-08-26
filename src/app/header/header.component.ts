@@ -1,4 +1,4 @@
-import { Component, DestroyRef, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { A11yModule } from '@angular/cdk/a11y';
 import { MatBadgeModule } from '@angular/material/badge';
@@ -15,6 +15,7 @@ import { NotificationCenterService } from '../core/notification-center.service';
 import { EmptyStateComponent } from '../shared/components/empty-state/empty-state.component';
 import { UserAvatarComponent } from '../shared/components/user-avatar/user-avatar.component';
 import { notificationIcon, UserNotification } from '../shared/models/notification.model';
+import { QUICK_MENU_OPTIONS } from '../shared/models/quick-menu';
 import { needsRestockAttention } from '../shared/utils/inventory-stock';
 import { isProfileOnline } from '../shared/utils/presence';
 
@@ -84,6 +85,49 @@ export class HeaderComponent {
     this.closeNotifications();
   }
 
+  /** Same "own fixed-position panel rather than MatMenu" shape as the nav
+   *  drawer/notifications panel above, but anchored to a button centered in
+   *  the top bar (see header.component.scss's own .quick-menu-trigger) —
+   *  "the center of the navigation" is where this feature was asked to
+   *  live, and every real nav destination already sits either there or in
+   *  the drawer, so a third position wouldn't read as consistent with
+   *  either. */
+  private readonly _isQuickMenuOpen = signal(false);
+  readonly isQuickMenuOpen = this._isQuickMenuOpen.asReadonly();
+
+  toggleQuickMenu() {
+    this._isQuickMenuOpen.update(open => !open);
+  }
+
+  closeQuickMenu() {
+    this._isQuickMenuOpen.set(false);
+  }
+
+  /** Resolves the signed-in user's own Account-page selection
+   *  (profile.quick_menu_items, a plain array of QuickMenuOption keys) back
+   *  into full options, in QUICK_MENU_OPTIONS' own fixed order rather than
+   *  whatever order they were originally checked in — simpler than
+   *  supporting drag-to-reorder for a first pass, and means unchecking then
+   *  rechecking an item can't scramble the menu. requiresManage options are
+   *  filtered out here (not just hidden by AccountComponent's own picker)
+   *  so a manager who added "Manage" and was later demoted to staff simply
+   *  stops seeing it, the same fail-closed shape the nav drawer's own
+   *  @if (canManage()) already has around that same link. */
+  readonly quickMenuItems = computed(() => {
+    const profile = this.authService.profile();
+    if (!profile?.quick_menu_enabled) {
+      return [];
+    }
+    const canManage = this.authService.canManage();
+    const selected = new Set(profile.quick_menu_items ?? []);
+    return QUICK_MENU_OPTIONS.filter(option => selected.has(option.key) && (!option.requiresManage || canManage));
+  });
+
+  /** Hides the trigger entirely rather than showing a button that opens an
+   *  empty panel — true when enabled *and* at least one still-reachable
+   *  item resolved above. */
+  readonly showQuickMenu = computed(() => this.quickMenuItems().length > 0);
+
   /** Pending inventory retirement requests and pending task transfers (any
    *  Manager+ can act on both) plus, for admins only, pending team join
    *  requests — the three "kinds" of admin-facing approval queue this app
@@ -142,6 +186,7 @@ export class HeaderComponent {
       if (event instanceof NavigationEnd) {
         this.closeNavMenu();
         this.closeNotifications();
+        this.closeQuickMenu();
         if (this.authService.canManage()) {
           void this.loadPendingManageCount();
         }
