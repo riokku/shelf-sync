@@ -110,6 +110,79 @@ describe('HeaderComponent notifications panel', () => {
   });
 });
 
+describe('HeaderComponent quick menu', () => {
+  function setup(profile = createFakeProfile()) {
+    TestBed.configureTestingModule({
+      imports: [HeaderComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService(profile) },
+        { provide: SupabaseService, useValue: createFakeSupabaseService() }
+      ]
+    });
+    const fixture = TestBed.createComponent(HeaderComponent);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  it('resolves nothing (and hides the trigger) when quick_menu_enabled is false', () => {
+    const component = setup(createFakeProfile({ quick_menu_enabled: false, quick_menu_items: ['inventory'] })).componentInstance;
+
+    expect(component.quickMenuItems()).toEqual([]);
+    expect(component.showQuickMenu()).toBeFalse();
+  });
+
+  it('resolves selected items, in QUICK_MENU_OPTIONS\' own canonical order rather than selection order', () => {
+    const component = setup(createFakeProfile({
+      quick_menu_enabled: true,
+      quick_menu_items: ['tasks', 'home']
+    })).componentInstance;
+
+    expect(component.quickMenuItems().map(option => option.key)).toEqual(['home', 'tasks']);
+    expect(component.showQuickMenu()).toBeTrue();
+  });
+
+  it('drops a requiresManage option (e.g. Manage) for a non-manager, even if it was previously selected', () => {
+    const component = setup(createFakeProfile({
+      role: 'staff',
+      quick_menu_enabled: true,
+      quick_menu_items: ['manage', 'help']
+    })).componentInstance;
+
+    expect(component.quickMenuItems().map(option => option.key)).toEqual(['help']);
+  });
+
+  it('keeps requiresManage options for a manager', () => {
+    const component = setup(createFakeProfile({
+      role: 'manager',
+      quick_menu_enabled: true,
+      quick_menu_items: ['manage']
+    })).componentInstance;
+
+    expect(component.quickMenuItems().map(option => option.key)).toEqual(['manage']);
+  });
+
+  it('hides the trigger when enabled but every selected key is unresolvable/ungranted', () => {
+    const component = setup(createFakeProfile({
+      role: 'staff',
+      quick_menu_enabled: true,
+      quick_menu_items: ['manage']
+    })).componentInstance;
+
+    expect(component.showQuickMenu()).toBeFalse();
+  });
+
+  it('toggleQuickMenu()/closeQuickMenu() open and close the panel', () => {
+    const component = setup().componentInstance;
+
+    expect(component.isQuickMenuOpen()).toBeFalse();
+    component.toggleQuickMenu();
+    expect(component.isQuickMenuOpen()).toBeTrue();
+    component.closeQuickMenu();
+    expect(component.isQuickMenuOpen()).toBeFalse();
+  });
+});
+
 describe('HeaderComponent nav drawer', () => {
   function setup() {
     TestBed.configureTestingModule({

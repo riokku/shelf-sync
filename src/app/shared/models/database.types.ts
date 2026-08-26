@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   graphql_public: {
     Tables: {
@@ -729,6 +729,8 @@ export type Database = {
           membership_status: Database["public"]["Enums"]["membership_status"]
           nickname: string | null
           organization_id: string
+          quick_menu_enabled: boolean
+          quick_menu_items: string[]
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
         }
@@ -742,6 +744,8 @@ export type Database = {
           membership_status?: Database["public"]["Enums"]["membership_status"]
           nickname?: string | null
           organization_id: string
+          quick_menu_enabled?: boolean
+          quick_menu_items?: string[]
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
@@ -755,6 +759,8 @@ export type Database = {
           membership_status?: Database["public"]["Enums"]["membership_status"]
           nickname?: string | null
           organization_id?: string
+          quick_menu_enabled?: boolean
+          quick_menu_items?: string[]
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }

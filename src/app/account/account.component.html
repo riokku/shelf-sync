@@ -56,6 +56,59 @@
         }
       </mat-card-content>
     </mat-card>
+    <mat-card class="quick-menu-card">
+      <mat-card-content>
+        <h3>Quick menu</h3>
+        <p class="section-hint">
+          A shortcut menu in the center of the navigation bar, just for you — pick up to
+          {{ maxQuickMenuItems }} destinations you use most.
+        </p>
+        <mat-slide-toggle
+            [checked]="selectedQuickMenuEnabled"
+            (change)="selectedQuickMenuEnabled = $event.checked"
+          >Enable quick menu</mat-slide-toggle>
+
+        @if (selectedQuickMenuEnabled) {
+          <div class="quick-menu-options">
+            @for (option of availableQuickMenuOptions; track option.key) {
+              <mat-checkbox
+                  [checked]="selectedQuickMenuItems.includes(option.key)"
+                  [disabled]="!selectedQuickMenuItems.includes(option.key) && selectedQuickMenuItems.length >= maxQuickMenuItems"
+                  (change)="toggleQuickMenuItem(option.key, $event.checked)"
+                >
+                <mat-icon class="quick-menu-option-icon">{{ option.icon }}</mat-icon>
+                {{ option.label }}
+              </mat-checkbox>
+            }
+          </div>
+          @if (selectedQuickMenuItems.length >= maxQuickMenuItems) {
+            <p class="section-hint">You've reached the {{ maxQuickMenuItems }}-item limit — remove one to add another.</p>
+          }
+        }
+
+        @if (quickMenuError) {
+          <p class="error-message">{{ quickMenuError }}</p>
+        }
+        @if (quickMenuChanged) {
+          <button
+              mat-flat-button
+              color="primary"
+              type="button"
+              (click)="saveQuickMenu()"
+              [disabled]="isSavingQuickMenu"
+            >
+            @if (isSavingQuickMenu) {
+              <mat-spinner diameter="20"></mat-spinner>
+            } @else {
+              <ng-container>
+                <mat-icon>check</mat-icon>
+                Save quick menu
+              </ng-container>
+            }
+          </button>
+        }
+      </mat-card-content>
+    </mat-card>
   } @else {
     <p>Unable to load account details.</p>
   }
