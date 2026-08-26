@@ -13,6 +13,7 @@ import { SupabaseService } from '../core/supabase.service';
 import { ThemeModeService } from '../core/theme-mode.service';
 import { NotificationCenterService } from '../core/notification-center.service';
 import { EmptyStateComponent } from '../shared/components/empty-state/empty-state.component';
+import { UserAvatarComponent } from '../shared/components/user-avatar/user-avatar.component';
 import { notificationIcon, UserNotification } from '../shared/models/notification.model';
 import { needsRestockAttention } from '../shared/utils/inventory-stock';
 import { isProfileOnline } from '../shared/utils/presence';
@@ -21,7 +22,7 @@ import { isProfileOnline } from '../shared/utils/presence';
     selector: 'app-header',
     imports: [
       A11yModule, DatePipe, MatBadgeModule, MatButtonModule, MatDividerModule, MatIconModule, MatTooltipModule,
-      RouterModule, EmptyStateComponent
+      RouterModule, EmptyStateComponent, UserAvatarComponent
     ],
     templateUrl: './header.component.html',
     styleUrl: './header.component.scss'

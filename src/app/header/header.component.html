@@ -53,6 +53,17 @@
           matBadgeColor="warn"
         >notifications</mat-icon>
     </button>
+    <!-- No text, just the avatar itself — Account is already one tap away
+         in the drawer for anyone who wants the label alongside it. -->
+    <a
+        class="header-avatar-link"
+        routerLink="/account"
+        routerLinkActive="active"
+        matTooltip="Account"
+        aria-label="Account"
+      >
+      <app-user-avatar [avatarKey]="authService.profile()?.avatar_key" size="md" />
+    </a>
     <button
         mat-icon-button
         type="button"
