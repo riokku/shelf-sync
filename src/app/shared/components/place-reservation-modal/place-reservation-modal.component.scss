@@ -1,7 +1,10 @@
 form{
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  // Loosened from 0.5rem to match discard-modal's own fix — the dialog read
+  // as quite tight, with barely any breathing room between fields, and
+  // between a field and its own mat-error once one showed up.
+  gap: 1.25rem;
 }
 
 .full-width{
@@ -12,6 +15,12 @@ form{
   display: flex;
   align-items: center;
   gap: 0.375rem;
+  // Material's own mat-dialog-title has no top padding by default (it
+  // assumes the surrounding surface padding alone provides it, which reads
+  // as the title sitting flush against the top edge) — matches
+  // .confirm-dialog's own explicit top-padding override in styles.scss for
+  // the same reason.
+  padding-top: 1.5rem;
 }
 
 .reservation-title-icon{
@@ -22,7 +31,9 @@ form{
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  margin: -0.5rem 0 0.5rem;
+  // No longer needs a negative top margin to compensate for the old
+  // tighter form gap above.
+  margin: 0;
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.875rem;
 
@@ -42,5 +53,5 @@ form{
 
 .error-message{
   color: var(--app-error-text);
-  margin: -0.5rem 0 1rem;
+  margin: 0;
 }
