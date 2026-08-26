@@ -21,73 +21,20 @@
   margin: 0;
 }
 
-// Wraps just the greeting/subtitle (not the whole page) so the glow below
-// is sized/contained to this block's own content box rather than needing
-// to manage overflow across a grid that can run arbitrarily tall.
+// Wraps just the greeting/subtitle (not the whole page) so the crates scene
+// below is sized/contained to this block's own content box rather than
+// needing to manage overflow across a grid that can run arbitrarily tall.
 .home-hero{
   position: relative;
   // position:relative alone doesn't establish a stacking context, so the
-  // glow's negative z-index (below) would escape past this element and
-  // lose to an ancestor's own background — same fix landing.component.scss's
-  // .hero-region/.features-region/.bottom-region already needed for the
-  // identical reason.
+  // scene's negative z-index (see HeroCratesSceneComponent's own :host
+  // rule) would escape past this element and lose to an ancestor's own
+  // background — same fix landing.component.scss's .hero-region/
+  // .features-region/.bottom-region already needed for the identical
+  // reason.
   isolation: isolate;
   padding-bottom: 1.5rem;
   margin-bottom: 0.5rem;
-}
-
-// A single, subdued echo of the landing page's own drifting glow blobs —
-// calmer for a utility dashboard someone lands on every session, not a
-// marketing page: one blob, low opacity — but with clearly noticeable
-// motion (home-glow-float below: a loose meander around its starting
-// corner, breathing in size and drifting in hue as it goes, not just a
-// single-axis pulse in place), so it reads as a deliberate bit of life
-// rather than something you'd have to stare at to notice. Built from the
-// live theme's own tokens (--mat-sys-primary/tertiary), not a fixed color,
-// so it recolors itself per-organization the same way landing's hero
-// gradient does, and reads correctly in both light and dark mode since
-// it's just a soft tint over whatever --mat-sys-surface already resolves
-// to underneath it. .home-hero has no overflow:hidden of its own, so the
-// float is free to wander past the hero block's own box without being
-// clipped mid-travel.
-.home-hero-glow{
-  position: absolute;
-  top: -3rem;
-  left: -2.5rem;
-  width: 20rem;
-  height: 20rem;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--mat-sys-primary) 30%, transparent),
-    color-mix(in srgb, var(--mat-sys-tertiary) 20%, transparent) 55%,
-    transparent 75%
-  );
-  filter: blur(50px);
-  z-index: -1;
-  pointer-events: none;
-  animation: home-glow-float 18s ease-in-out infinite;
-}
-
-// Translate, scale, and hue-rotate each hit their own peak at a different
-// keyframe percentage (25/50/75) rather than moving in lockstep, so the
-// blob reads as ambling rather than mechanically breathing in place; 0%
-// and 100% share the same resting state (position, size, hue, opacity) so
-// the loop has no visible seam. hue-rotate stays modest (±20deg) — "change
-// color slightly," a tint shift, not a rainbow cycle — layered onto the
-// existing blur rather than replacing it.
-@keyframes home-glow-float{
-  0%{ transform: translate(0, 0) scale(1); filter: blur(50px) hue-rotate(0deg); opacity: 0.75; }
-  25%{ transform: translate(3rem, 1.5rem) scale(1.25); filter: blur(55px) hue-rotate(20deg); opacity: 0.9; }
-  50%{ transform: translate(1rem, 3.5rem) scale(1.4); filter: blur(60px) hue-rotate(-15deg); opacity: 1; }
-  75%{ transform: translate(-2rem, 1rem) scale(1.15); filter: blur(55px) hue-rotate(10deg); opacity: 0.85; }
-  100%{ transform: translate(0, 0) scale(1); filter: blur(50px) hue-rotate(0deg); opacity: 0.75; }
-}
-
-@media (prefers-reduced-motion: reduce){
-  .home-hero-glow{
-    animation: none;
-  }
 }
 
 // A personal "what's on your plate" section — see HomeComponent's own doc

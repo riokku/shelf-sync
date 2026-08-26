@@ -7,6 +7,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { AuthService } from '../core/auth.service';
 import { SupabaseService } from '../core/supabase.service';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
+import { HeroCratesSceneComponent } from './hero-crates-scene/hero-crates-scene.component';
 import { needsRestockAttention } from '../shared/utils/inventory-stock';
 import { getTodayIsoDate } from '../shared/utils/date';
 
@@ -46,7 +47,7 @@ const HOME_LIST_VISIBLE_CAP = 4;
 
 @Component({
   selector: 'app-home',
-  imports: [RouterModule, MatIconModule, MatButtonModule, MatProgressBarModule, DatePipe, BreadcrumbsComponent],
+  imports: [RouterModule, MatIconModule, MatButtonModule, MatProgressBarModule, DatePipe, BreadcrumbsComponent, HeroCratesSceneComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
 })
