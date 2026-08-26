@@ -1242,6 +1242,50 @@ split across the column break. Sized by `column-width` (same technique Settings'
 `.table-column-groups` already established) so a narrow/mobile viewport collapses to a single
 column automatically rather than needing a matching breakpoint here.
 
+A visual pass brought some of the landing page's own confidence — gradient light, a more
+characterful display face, motion — inside the authenticated shell, starting with `HomeComponent`
+and `ManageComponent`'s hub. Two new typefaces load alongside Roboto (`index.html`'s Google Fonts
+link): `--font-display` (Bricolage Grotesque), applied globally to every `h1`-`h4` in `styles.scss`
+so it reaches page headings and dialog titles alike without any template opting in individually,
+and `--font-mono` (JetBrains Mono, paired with a `.mono` utility class using
+`font-variant-numeric: tabular-nums`) for any figure that's actually counted — a quantity, a date,
+a stat. Neither touches Material's own component-internal typography (buttons, chips, table
+headers, form labels), which stays on Roboto's tuned metrics throughout. `HomeComponent`'s hero
+(`.home-hero`) is now a pinned-dark gradient band — `color-scheme: dark` plus the same
+`color-mix(primary/tertiary, black)` gradient formula and drifting glow-blob technique
+`landing.component.scss`'s own `.hero-backdrop`/`.hero-glow` already established, deliberately
+reused rather than reinvented — replacing the single subdued glow blob it used to have. Below the
+greeting, a 3-stat "pulse row" (tasks due today, low/out-of-stock count, reservations starting
+within 7 days) is computed entirely from data `HomeComponent` already loads for its "what's on your
+plate" lists and getting-started card — no new queries — and `heroSubtitle()` turns that same
+count into a real one-liner ("3 things need your attention today" / "Nothing urgent right now") in
+place of a static "Where do you want to go?" that never changed regardless of what was actually
+going on. The getting-started card's flat `mat-progress-bar` is replaced by `RingStatComponent` —
+the same gauge `manage/reports` already uses for its completion-rate stat — sitting beside the
+heading/subtitle in a `.getting-started-header` flex row rather than stacked above the step list;
+this is also what caught a real bug in `RingStatComponent` itself, since `gettingStartedProgressPercent`
+passes a raw fraction (`2/3 * 100 = 66.66666666666666`) rather than Reports' own pre-rounded
+integer — `RingStatComponent` now rounds internally (`Math.round`, not just clamp) so no caller has
+to remember to round before passing a percent in. The four nav cards' icon chips
+(`.home-card-icon-a/-b/-c/-d`) move from a single flat `*-container` fill to a two-tone gradient
+mixing two of the org's three theme-role containers — deliberately built from the `-container` tokens
+specifically, not the bare `--mat-sys-primary`/`-tertiary`/`-secondary` roles, which resolve to pale
+tones in dark mode unsuited to a white/light icon glyph on top; a `-container`-to-`-container`
+gradient keeps contrast against the matching `on-*-container` foreground correct in both themes
+regardless of which two are mixed. The "What's on your plate" list rows drop the old one-top-bar-
+per-card color coding in favor of a colored left rule *per row*, reused from
+`HomeComponent.taskRowSeverity()`: overdue (red) outranks due-today (amber), which outranks 'ok' (a
+calm tertiary tone shared by every checked-out-item/reservation row too, and a task with no due
+date, since a future or unset date isn't actually a status worth flagging) — a more useful signal
+than "which of the three cards is this" once a row's own urgency varies row-to-row. A reservation
+row's quantity also moved out of its run-on primary text line ("50× Folding Chairs for Smith
+Wedding") into its own trailing `.mono` figure, matching the counted-figure convention above.
+`ManageComponent`'s hub picked up the same two-tone icon-chip treatment, one gradient per *section*
+(Inventory/Team & tasks/Insights/Admin) rather than per card — with 14+ cards, section-level is
+enough variety without inventing a fifth/sixth combo — except Danger Zone, which keeps its own
+distinct flat red chip rather than joining the Admin section's shared gradient, the same
+"deliberately reads as riskier than its siblings" reasoning its h3 color override already had.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)

@@ -21,22 +21,22 @@
             [matBadgeHidden]="pendingRetirementCount === 0"
             matBadgeColor="warn"
           >
-          <mat-icon>inventory_2</mat-icon>
+          <span class="manage-card-icon manage-card-icon-a"><mat-icon>inventory_2</mat-icon></span>
           <h3>Inventory</h3>
           <p>Create new items and browse everything in stock.</p>
         </a>
         <a class="manage-card" routerLink="/manage/suppliers">
-          <mat-icon>storefront</mat-icon>
+          <span class="manage-card-icon manage-card-icon-a"><mat-icon>storefront</mat-icon></span>
           <h3>Suppliers</h3>
           <p>Keep a directory of who you order inventory from.</p>
         </a>
         <a class="manage-card" routerLink="/manage/orders">
-          <mat-icon>local_shipping</mat-icon>
+          <span class="manage-card-icon manage-card-icon-a"><mat-icon>local_shipping</mat-icon></span>
           <h3>Orders</h3>
           <p>Place restock orders and track them through to received.</p>
         </a>
         <a class="manage-card" routerLink="/manage/reservations">
-          <mat-icon>event</mat-icon>
+          <span class="manage-card-icon manage-card-icon-a"><mat-icon>event</mat-icon></span>
           <h3>Reservations</h3>
           <p>Book inventory out for a date range and track pickup and return.</p>
         </a>
@@ -53,7 +53,7 @@
             [matBadgeHidden]="pendingTaskTransferCount === 0"
             matBadgeColor="warn"
           >
-          <mat-icon>checklist</mat-icon>
+          <span class="manage-card-icon manage-card-icon-b"><mat-icon>checklist</mat-icon></span>
           <h3>Tasks</h3>
           <p>Create tasks and see everything assigned across your team.</p>
         </a>
@@ -64,7 +64,7 @@
             [matBadgeHidden]="pendingJoinRequestCount === 0"
             matBadgeColor="warn"
           >
-          <mat-icon>group</mat-icon>
+          <span class="manage-card-icon manage-card-icon-b"><mat-icon>group</mat-icon></span>
           <h3>Team</h3>
           <p>Invite teammates, edit roles, and remove members.</p>
         </a>
@@ -75,7 +75,7 @@
       <h3 class="manage-section-title">Insights</h3>
       <div class="manage-grid">
         <a class="manage-card" routerLink="/manage/activity">
-          <mat-icon>history</mat-icon>
+          <span class="manage-card-icon manage-card-icon-c"><mat-icon>history</mat-icon></span>
           <h3>Activity Log</h3>
           <p>See everything that's changed across inventory, tasks, and your team.</p>
         </a>
@@ -86,17 +86,17 @@
             [matBadgeHidden]="unseenReleaseNotesCount === 0"
             matBadgeColor="warn"
           >
-          <mat-icon>new_releases</mat-icon>
+          <span class="manage-card-icon manage-card-icon-c"><mat-icon>new_releases</mat-icon></span>
           <h3>Release Notes</h3>
           <p>See what's new in ShelfSync.</p>
         </a>
         <a class="manage-card" routerLink="/manage/reports">
-          <mat-icon>bar_chart</mat-icon>
+          <span class="manage-card-icon manage-card-icon-c"><mat-icon>bar_chart</mat-icon></span>
           <h3>Reports</h3>
           <p>Inventory value, stock movement, and task throughput.</p>
         </a>
         <a class="manage-card" routerLink="/manage/error-log">
-          <mat-icon>bug_report</mat-icon>
+          <span class="manage-card-icon manage-card-icon-c"><mat-icon>bug_report</mat-icon></span>
           <h3>Error Log</h3>
           <p>Review errors your team has run into recently.</p>
         </a>
@@ -108,17 +108,17 @@
         <h3 class="manage-section-title">Admin</h3>
         <div class="manage-grid">
           <a class="manage-card" routerLink="/manage/billing">
-            <mat-icon>credit_card</mat-icon>
+            <span class="manage-card-icon manage-card-icon-d"><mat-icon>credit_card</mat-icon></span>
             <h3>Billing</h3>
             <p>Your plan, usage, and billing details.</p>
           </a>
           <a class="manage-card" routerLink="/manage/settings">
-            <mat-icon>palette</mat-icon>
+            <span class="manage-card-icon manage-card-icon-d"><mat-icon>palette</mat-icon></span>
             <h3>Settings</h3>
             <p>Branding and site settings.</p>
           </a>
           <a class="manage-card manage-card-danger" routerLink="/manage/danger-zone">
-            <mat-icon class="manage-card-danger-icon">warning</mat-icon>
+            <span class="manage-card-icon manage-card-icon-danger"><mat-icon>warning</mat-icon></span>
             <h3>Danger Zone</h3>
             <p>Export your organization's data, or delete it entirely.</p>
           </a>

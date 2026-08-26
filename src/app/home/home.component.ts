@@ -3,12 +3,12 @@ import { DatePipe } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { AuthService } from '../core/auth.service';
 import { SupabaseService } from '../core/supabase.service';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
+import { RingStatComponent } from '../shared/components/ring-stat/ring-stat.component';
 import { needsRestockAttention } from '../shared/utils/inventory-stock';
-import { getTodayIsoDate } from '../shared/utils/date';
+import { getTodayIsoDate, parseIsoDate, toIsoDateString } from '../shared/utils/date';
 
 interface GettingStartedStep {
   icon: string;
@@ -46,7 +46,7 @@ const HOME_LIST_VISIBLE_CAP = 4;
 
 @Component({
   selector: 'app-home',
-  imports: [RouterModule, MatIconModule, MatButtonModule, MatProgressBarModule, DatePipe, BreadcrumbsComponent],
+  imports: [RouterModule, MatIconModule, MatButtonModule, DatePipe, BreadcrumbsComponent, RingStatComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
 })
@@ -74,6 +74,13 @@ export class HomeComponent implements OnInit {
    *  self-sufficient rather than wired through a shared service, for a
    *  query this cheap. */
   restockCount = 0;
+
+  /** "Today" formatted for the hero's small date kicker, e.g. "Tuesday,
+   *  September 9" — local time, same as every other date rendered in this
+   *  app. */
+  get todayLabel(): string {
+    return new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  }
 
   /** A small personal "what's on your plate" section — shown to every
    *  signed-in user regardless of role, unlike the admin/manager-only
@@ -110,6 +117,63 @@ export class HomeComponent implements OnInit {
   }
   get upcomingReservationsOverflowCount(): number {
     return Math.max(0, this.upcomingReservations.length - HOME_LIST_VISIBLE_CAP);
+  }
+
+  /** How many of outstandingTasks are due *today* specifically — a
+   *  tighter, more urgent signal than the full outstanding count already
+   *  listed below, surfaced instead in the hero's own at-a-glance pulse
+   *  row alongside restockCount/reservationsStartingSoonCount. */
+  get tasksDueTodayCount(): number {
+    const today = getTodayIsoDate();
+    return this.outstandingTasks.filter(task => task.dueDate === today).length;
+  }
+
+  /** How many of upcomingReservations start within the next 7 days —
+   *  upcomingReservations itself is already scoped to "hasn't ended yet"
+   *  (see loadPersonalStats()'s own query), so this narrows further to
+   *  "starting soon" for the hero's pulse row. */
+  get reservationsStartingSoonCount(): number {
+    const cutoff = this.addDaysIso(getTodayIsoDate(), 7);
+    return this.upcomingReservations.filter(reservation => reservation.startDate <= cutoff).length;
+  }
+
+  private addDaysIso(iso: string, days: number): string {
+    const date = parseIsoDate(iso) ?? new Date();
+    return toIsoDateString(new Date(date.getTime() + days * 86400000)) ?? iso;
+  }
+
+  /** The hero's operational one-liner — a real count of what actually
+   *  needs attention today (the same three figures as the pulse row
+   *  above) rather than a fixed "Where do you want to go?" that never
+   *  changed regardless of what was actually going on. */
+  get heroSubtitle(): string {
+    const urgentCount = this.tasksDueTodayCount + this.restockCount + this.reservationsStartingSoonCount;
+    if (urgentCount === 0) {
+      return 'Nothing urgent right now — a good day to get ahead on something.';
+    }
+    return `${urgentCount} ${urgentCount === 1 ? 'thing needs' : 'things need'} your attention today.`;
+  }
+
+  /** Which colored left-rule a "What's on your plate" task row gets in the
+   *  template — overdue (red) outranks due-today (amber), which outranks
+   *  everything else ('ok', the same calm tertiary tone the checked-out-
+   *  items/reservations rows always use, since a future or unset due date
+   *  isn't actually a status worth calling out). Doesn't need a
+   *  `status !== 'done'` check the way ManageTasksComponent.isTaskOverdue()
+   *  does, since outstandingTasks itself is already scoped to non-done
+   *  tasks (see loadPersonalStats()'s own query). */
+  taskRowSeverity(task: HomeTaskSummary): 'danger' | 'warn' | 'ok' {
+    if (!task.dueDate) {
+      return 'ok';
+    }
+    const today = getTodayIsoDate();
+    if (task.dueDate < today) {
+      return 'danger';
+    }
+    if (task.dueDate === today) {
+      return 'warn';
+    }
+    return 'ok';
   }
 
   /** Guards rendering the getting-started card until its own three counts
