@@ -125,7 +125,7 @@ describe('HeaderComponent quick menu', () => {
     return fixture;
   }
 
-  it('resolves nothing (and hides the trigger) when quick_menu_enabled is false', () => {
+  it('resolves nothing (and hides the row of links) when quick_menu_enabled is false', () => {
     const component = setup(createFakeProfile({ quick_menu_enabled: false, quick_menu_items: ['inventory'] })).componentInstance;
 
     expect(component.quickMenuItems()).toEqual([]);
@@ -162,7 +162,7 @@ describe('HeaderComponent quick menu', () => {
     expect(component.quickMenuItems().map(option => option.key)).toEqual(['manage']);
   });
 
-  it('hides the trigger when enabled but every selected key is unresolvable/ungranted', () => {
+  it('hides the row of links when enabled but every selected key is unresolvable/ungranted', () => {
     const component = setup(createFakeProfile({
       role: 'staff',
       quick_menu_enabled: true,
@@ -170,16 +170,6 @@ describe('HeaderComponent quick menu', () => {
     })).componentInstance;
 
     expect(component.showQuickMenu()).toBeFalse();
-  });
-
-  it('toggleQuickMenu()/closeQuickMenu() open and close the panel', () => {
-    const component = setup().componentInstance;
-
-    expect(component.isQuickMenuOpen()).toBeFalse();
-    component.toggleQuickMenu();
-    expect(component.isQuickMenuOpen()).toBeTrue();
-    component.closeQuickMenu();
-    expect(component.isQuickMenuOpen()).toBeFalse();
   });
 });
 

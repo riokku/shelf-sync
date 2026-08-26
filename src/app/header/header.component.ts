@@ -85,24 +85,6 @@ export class HeaderComponent {
     this.closeNotifications();
   }
 
-  /** Same "own fixed-position panel rather than MatMenu" shape as the nav
-   *  drawer/notifications panel above, but anchored to a button centered in
-   *  the top bar (see header.component.scss's own .quick-menu-trigger) —
-   *  "the center of the navigation" is where this feature was asked to
-   *  live, and every real nav destination already sits either there or in
-   *  the drawer, so a third position wouldn't read as consistent with
-   *  either. */
-  private readonly _isQuickMenuOpen = signal(false);
-  readonly isQuickMenuOpen = this._isQuickMenuOpen.asReadonly();
-
-  toggleQuickMenu() {
-    this._isQuickMenuOpen.update(open => !open);
-  }
-
-  closeQuickMenu() {
-    this._isQuickMenuOpen.set(false);
-  }
-
   /** Resolves the signed-in user's own Account-page selection
    *  (profile.quick_menu_items, a plain array of QuickMenuOption keys) back
    *  into full options, in QUICK_MENU_OPTIONS' own fixed order rather than
@@ -123,9 +105,9 @@ export class HeaderComponent {
     return QUICK_MENU_OPTIONS.filter(option => selected.has(option.key) && (!option.requiresManage || canManage));
   });
 
-  /** Hides the trigger entirely rather than showing a button that opens an
-   *  empty panel — true when enabled *and* at least one still-reachable
-   *  item resolved above. */
+  /** Hides the row of links entirely rather than reserving an empty patch
+   *  of header — true when enabled *and* at least one still-reachable item
+   *  resolved above. */
   readonly showQuickMenu = computed(() => this.quickMenuItems().length > 0);
 
   /** Pending inventory retirement requests and pending task transfers (any
@@ -186,7 +168,6 @@ export class HeaderComponent {
       if (event instanceof NavigationEnd) {
         this.closeNavMenu();
         this.closeNotifications();
-        this.closeQuickMenu();
         if (this.authService.canManage()) {
           void this.loadPendingManageCount();
         }

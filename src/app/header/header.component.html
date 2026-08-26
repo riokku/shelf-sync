@@ -17,35 +17,39 @@
       </span>
     }
   </a>
-  <!-- A personal, opt-in shortcut menu (Account page: enable it, pick which
-       destinations show up) — centered in the bar rather than living beside
-       the brand/actions on either edge, since "the center of the
-       navigation" is specifically where this was asked to sit. Absent
-       entirely for a signed-in user who hasn't turned it on, and for a
-       signed-out visitor (quickMenuItems() only ever resolves once a
+  <!-- A personal, opt-in set of shortcuts (Account page: enable it, pick
+       which destinations show up) — centered in the bar rather than living
+       beside the brand/actions on either edge, since "the center of the
+       navigation" is specifically where this was asked to sit. Every chosen
+       item renders directly as its own icon link, not behind a further
+       click — the whole point is glancing at (and reaching) it in one tap.
+       Absent entirely for a signed-in user who hasn't turned it on, and for
+       a signed-out visitor (quickMenuItems() only ever resolves once a
        profile has loaded). -->
   @if (showQuickMenu()) {
-    <button
-        mat-icon-button
-        type="button"
-        class="quick-menu-trigger"
-        (click)="toggleQuickMenu()"
-        [attr.aria-expanded]="isQuickMenuOpen()"
-        aria-haspopup="true"
-        matTooltip="Quick menu"
-        aria-label="Quick menu"
-      >
-      <mat-icon>bolt</mat-icon>
-    </button>
+    <div class="quick-menu-links">
+      @for (option of quickMenuItems(); track option.key) {
+        <a
+            mat-icon-button
+            class="quick-menu-link"
+            [routerLink]="option.routerLink"
+            routerLinkActive="active"
+            [matTooltip]="option.label"
+            [attr.aria-label]="option.label"
+          >
+          <mat-icon>{{ option.icon }}</mat-icon>
+        </a>
+      }
+    </div>
   }
   <!-- Every nav link, plus account/theme/help/logout, lives in the slide-out
        drawer below at every screen width — a classic hamburger menu rather
        than a row of links that only collapses down to one on a narrow
-       viewport. The bell (and, when enabled, the quick menu above) are the
-       exceptions: both stay persistent, glanceable top-bar icons (their own
-       panels are either unrelated to nav, or a deliberately opt-in shortcut
-       to nav already one tap away in the drawer) rather than living buried
-       a click deeper. -->
+       viewport. The bell (and, when enabled, the quick-menu links above) are
+       the exceptions: both stay persistent, glanceable top-bar icons (the
+       bell's own panel is unrelated to nav; the quick-menu links are a
+       deliberately opt-in shortcut to nav already one tap away in the
+       drawer) rather than living buried a click deeper. -->
   <div class="header-actions">
     <button
         mat-icon-button
@@ -257,38 +261,4 @@
       }
     </div>
   }
-</div>
-
-<!-- Own fixed-position panel, same reasoning/shape as .notifications-panel
-     above — anchored top-center under the trigger button rather than
-     top-right, matching that button's own centered position in the bar.
-     Click-to-dismiss backdrop only; Escape and the panel's own close
-     button are the accessible way to close it. -->
-<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
-<div class="quick-menu-backdrop" [class.open]="isQuickMenuOpen()" (click)="closeQuickMenu()"></div>
-<div
-    class="quick-menu-panel"
-    [class.open]="isQuickMenuOpen()"
-    [attr.inert]="isQuickMenuOpen() ? null : ''"
-    role="dialog"
-    aria-modal="true"
-    aria-label="Quick menu"
-    cdkTrapFocus
-    [cdkTrapFocusAutoCapture]="isQuickMenuOpen()"
-    (keydown.escape)="closeQuickMenu()"
-  >
-  <div class="quick-menu-panel-header">
-    <span class="quick-menu-panel-title">Quick menu</span>
-    <button mat-icon-button type="button" (click)="closeQuickMenu()" aria-label="Close quick menu">
-      <mat-icon>close</mat-icon>
-    </button>
-  </div>
-  <nav class="quick-menu-links">
-    @for (option of quickMenuItems(); track option.key) {
-      <a mat-button [routerLink]="option.routerLink" routerLinkActive="active" (click)="closeQuickMenu()">
-        <mat-icon>{{ option.icon }}</mat-icon>
-        {{ option.label }}
-      </a>
-    }
-  </nav>
 </div>
