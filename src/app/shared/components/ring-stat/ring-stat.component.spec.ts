@@ -34,6 +34,15 @@ describe('RingStatComponent', () => {
     expect(fixture.componentInstance.clampedPercent()).toBe(0);
   });
 
+  it('rounds a raw fraction rather than rendering its repeating decimal', async () => {
+    const fixture = await createComponent();
+    fixture.componentInstance.percent = 2 / 3 * 100; // 66.66666666666666
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.clampedPercent()).toBe(67);
+    expect(fixture.nativeElement.querySelector('.ring-center-value')?.textContent).toContain('67%');
+  });
+
   it('renders the clamped percent as the center value and the label below it', async () => {
     const fixture = await createComponent();
     fixture.componentInstance.percent = 42;

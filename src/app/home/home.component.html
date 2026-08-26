@@ -4,9 +4,38 @@
       <app-breadcrumbs />
     </div>
     <div class="home-hero">
-      <span class="home-hero-glow" aria-hidden="true"></span>
-      <h2>Welcome back{{ greetingName ? ', ' + greetingName + '!': '' }}</h2>
-      <p class="home-subtitle">Where do you want to go?</p>
+      <span class="home-hero-backdrop" aria-hidden="true"></span>
+      <span class="home-hero-glow home-hero-glow-1" aria-hidden="true"></span>
+      <span class="home-hero-glow home-hero-glow-2" aria-hidden="true"></span>
+      <span class="home-hero-kicker">
+        <mat-icon>wb_sunny</mat-icon>
+        {{ todayLabel }}
+      </span>
+      <h2>Welcome back{{ greetingName ? ', ' + greetingName : '' }}.</h2>
+      <p class="home-subtitle">{{ heroSubtitle }}</p>
+      <div class="home-pulse-row">
+        <div class="home-pulse-chip">
+          <mat-icon>checklist</mat-icon>
+          <span>
+            <span class="home-pulse-value mono">{{ tasksDueTodayCount }}</span>
+            <span class="home-pulse-label">Tasks due today</span>
+          </span>
+        </div>
+        <div class="home-pulse-chip">
+          <mat-icon>warning</mat-icon>
+          <span>
+            <span class="home-pulse-value mono">{{ restockCount }}</span>
+            <span class="home-pulse-label">Low or out of stock</span>
+          </span>
+        </div>
+        <div class="home-pulse-chip">
+          <mat-icon>event</mat-icon>
+          <span>
+            <span class="home-pulse-value mono">{{ reservationsStartingSoonCount }}</span>
+            <span class="home-pulse-label">Reservations this week</span>
+          </span>
+        </div>
+      </div>
     </div>
 
     @if (showGettingStarted) {
@@ -20,15 +49,15 @@
           >
           <mat-icon>close</mat-icon>
         </button>
-        <h3>Getting started</h3>
-        <p class="getting-started-subtitle">
-          {{ gettingStartedCompleteCount }} of {{ gettingStartedSteps.length }} done — a few things to set up your organization.
-        </p>
-        <mat-progress-bar
-            class="getting-started-progress"
-            mode="determinate"
-            [value]="gettingStartedProgressPercent"
-          />
+        <div class="getting-started-header">
+          <app-ring-stat [percent]="gettingStartedProgressPercent" colorToken="--mat-sys-tertiary" />
+          <div class="getting-started-header-text">
+            <h3>Getting started</h3>
+            <p class="getting-started-subtitle">
+              {{ gettingStartedCompleteCount }} of {{ gettingStartedSteps.length }} done — a few things to set up your organization.
+            </p>
+          </div>
+        </div>
         <ul class="getting-started-steps">
           @for (step of gettingStartedSteps; track step.label) {
             <li [class.done]="step.done">
@@ -48,6 +77,7 @@
       </div>
     }
 
+    <span class="home-kicker">Where to</span>
     <div class="home-grid">
       <a class="home-card" routerLink="/inventory">
         @if (restockCount > 0) {
@@ -56,21 +86,21 @@
             {{ restockCount }} low or out of stock
           </span>
         }
-        <span class="home-card-icon home-card-icon-primary">
+        <span class="home-card-icon home-card-icon-a">
           <mat-icon>inventory_2</mat-icon>
         </span>
         <h3>Inventory</h3>
         <p>Browse and manage your inventory.</p>
       </a>
       <a class="home-card" routerLink="/tasks">
-        <span class="home-card-icon home-card-icon-tertiary">
+        <span class="home-card-icon home-card-icon-b">
           <mat-icon>checklist</mat-icon>
         </span>
         <h3>Tasks</h3>
         <p>See what's assigned to you.</p>
       </a>
       <a class="home-card" routerLink="/account">
-        <span class="home-card-icon home-card-icon-primary">
+        <span class="home-card-icon home-card-icon-c">
           <mat-icon>account_circle</mat-icon>
         </span>
         <h3>Account</h3>
@@ -82,7 +112,7 @@
             <mat-icon>shield</mat-icon>
             Manager+
           </span>
-          <span class="home-card-icon home-card-icon-secondary">
+          <span class="home-card-icon home-card-icon-d">
             <mat-icon>admin_panel_settings</mat-icon>
           </span>
           <h3>Manage</h3>
@@ -91,17 +121,17 @@
       }
     </div>
 
-    <span class="home-lists-kicker">For you</span>
+    <span class="home-kicker">For you</span>
     <h3 class="home-lists-heading">What's on your plate</h3>
     <div class="home-lists">
       <div class="home-list-card">
         <div class="home-list-header">
-          <span class="home-list-icon home-list-icon-tertiary">
+          <span class="home-list-icon home-list-icon-b">
             <mat-icon>checklist</mat-icon>
           </span>
           <span class="home-list-title">
             <span class="home-list-label">Tasks outstanding</span>
-            <span class="home-list-count">{{ outstandingTasks.length }}</span>
+            <span class="home-list-count mono">{{ outstandingTasks.length }}</span>
           </span>
         </div>
         @if (outstandingTasks.length === 0) {
@@ -110,7 +140,7 @@
           <ul class="home-list-items">
             @for (task of visibleOutstandingTasks; track task.id) {
               <li>
-                <a [routerLink]="['/tasks']" [queryParams]="{ task: task.id }">
+                <a [routerLink]="['/tasks']" [queryParams]="{ task: task.id }" [class]="'severity-' + taskRowSeverity(task)">
                   <span class="home-list-item-text">
                     <span class="home-list-item-primary">{{ task.title }}</span>
                     <span class="home-list-item-secondary">
@@ -130,12 +160,12 @@
 
       <div class="home-list-card">
         <div class="home-list-header">
-          <span class="home-list-icon home-list-icon-primary">
+          <span class="home-list-icon home-list-icon-a">
             <mat-icon>inventory_2</mat-icon>
           </span>
           <span class="home-list-title">
             <span class="home-list-label">Items checked out to you</span>
-            <span class="home-list-count">{{ checkedOutItems.length }}</span>
+            <span class="home-list-count mono">{{ checkedOutItems.length }}</span>
           </span>
         </div>
         @if (checkedOutItems.length === 0) {
@@ -144,7 +174,7 @@
           <ul class="home-list-items">
             @for (item of visibleCheckedOutItems; track item.id) {
               <li>
-                <a [routerLink]="['/inventory']" [queryParams]="{ item: item.id }">
+                <a [routerLink]="['/inventory']" [queryParams]="{ item: item.id }" class="severity-ok">
                   <span class="home-list-item-text">
                     <span class="home-list-item-primary">{{ item.name }}</span>
                   </span>
@@ -161,12 +191,12 @@
 
       <div class="home-list-card">
         <div class="home-list-header">
-          <span class="home-list-icon home-list-icon-secondary">
+          <span class="home-list-icon home-list-icon-c">
             <mat-icon>event</mat-icon>
           </span>
           <span class="home-list-title">
             <span class="home-list-label">Your upcoming reservations</span>
-            <span class="home-list-count">{{ upcomingReservations.length }}</span>
+            <span class="home-list-count mono">{{ upcomingReservations.length }}</span>
           </span>
         </div>
         @if (upcomingReservations.length === 0) {
@@ -175,15 +205,16 @@
           <ul class="home-list-items">
             @for (reservation of visibleUpcomingReservations; track reservation.id) {
               <li>
-                <a [routerLink]="['/inventory']" [queryParams]="{ item: reservation.itemId }">
+                <a [routerLink]="['/inventory']" [queryParams]="{ item: reservation.itemId }" class="severity-ok">
                   <span class="home-list-item-text">
                     <span class="home-list-item-primary">
-                      {{ reservation.quantity }}&times; {{ reservation.itemName }} for {{ reservation.reservedFor }}
+                      {{ reservation.itemName }} for {{ reservation.reservedFor }}
                     </span>
                     <span class="home-list-item-secondary">
                       {{ reservation.startDate | date: 'M/d/yy' }} – {{ reservation.endDate | date: 'M/d/yy' }}
                     </span>
                   </span>
+                  <span class="home-list-item-figure mono">{{ reservation.quantity }}&times;</span>
                   <mat-icon class="home-list-item-arrow" aria-hidden="true">chevron_right</mat-icon>
                 </a>
               </li>

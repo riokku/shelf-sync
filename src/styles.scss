@@ -216,6 +216,42 @@ html {
   --app-danger-on-bg: #ffffff;
   --app-success-bg: #2b8a3e;
   --app-success-on-bg: #ffffff;
+
+  // Two extra typefaces alongside mat.theme()'s own Roboto (index.html's
+  // Google Fonts link loads both) — independent of the [data-theme] color
+  // preset above, so defined once here rather than duplicated per preset,
+  // same reasoning the --app-* semantic tokens just above already use.
+  // --font-display is used only for page-level headings/hero moments (the
+  // h1-h4 rule below, plus a handful of hero-specific classes like
+  // .home-hero h2) — everything else Material renders (buttons, chips,
+  // table headers, form labels) stays on its own Roboto-tuned typography
+  // roles untouched. --font-mono is used wherever a figure is actually
+  // counted (quantities, dates, stat callouts) via the .mono utility below,
+  // for a bit of operational precision that a proportional face doesn't
+  // give tabular digits.
+  --font-display: 'Bricolage Grotesque', 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+}
+
+// Every page-level heading gets the display face — a plain element
+// selector, not a class, so this reaches every h1-h4 across the app
+// (including a dialog's own `<h2 mat-dialog-title>`) without each template
+// needing to opt in individually. Material's own component-internal
+// typography (button labels, mat-table headers, form field labels, chip
+// text) is never rendered as one of these four tags, so this can't
+// collide with or override any of that.
+h1, h2, h3, h4{
+  font-family: var(--font-display);
+}
+
+// Pairs with --font-mono above — apply wherever a figure is actually
+// counted (a quantity, a stat, a date in a dense list) rather than plain
+// body copy. font-variant-numeric keeps multi-digit figures lining up in a
+// column even though this isn't strictly a monospace context everywhere
+// it's used.
+.mono{
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 body {

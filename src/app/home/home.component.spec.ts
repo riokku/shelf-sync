@@ -210,6 +210,61 @@ describe('HomeComponent personal lists', () => {
     expect(component.upcomingReservations).toEqual([]);
   });
 
+  it('tasksDueTodayCount counts only tasks due exactly today', async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const fixture = await createComponent({
+      tasks: [
+        { id: 't1', title: 'Due today', due_date: today },
+        { id: 't2', title: 'Due later', due_date: '2099-01-01' },
+        { id: 't3', title: 'No due date', due_date: null }
+      ]
+    });
+
+    expect(fixture.componentInstance.tasksDueTodayCount).toBe(1);
+  });
+
+  it('reservationsStartingSoonCount counts reservations starting within the next 7 days', async () => {
+    const today = new Date();
+    const iso = (daysOffset: number) => {
+      const d = new Date(today.getTime() + daysOffset * 86400000);
+      return d.toISOString().slice(0, 10);
+    };
+    const fixture = await createComponent({
+      reservations: [
+        { id: 'r1', item_id: 'item-1', start_date: iso(2), end_date: iso(10), quantity: 5, reserved_for: 'Soon' },
+        { id: 'r2', item_id: 'item-2', start_date: iso(30), end_date: iso(31), quantity: 2, reserved_for: 'Later' }
+      ],
+      itemNames: [{ id: 'item-1', name: 'A' }, { id: 'item-2', name: 'B' }]
+    });
+
+    expect(fixture.componentInstance.reservationsStartingSoonCount).toBe(1);
+  });
+
+  it('taskRowSeverity ranks overdue above due-today above everything else', async () => {
+    const fixture = await createComponent({});
+    const { componentInstance: component } = fixture;
+    const today = new Date().toISOString().slice(0, 10);
+
+    expect(component.taskRowSeverity({ id: '1', title: '', dueDate: '2000-01-01' })).toBe('danger');
+    expect(component.taskRowSeverity({ id: '2', title: '', dueDate: today })).toBe('warn');
+    expect(component.taskRowSeverity({ id: '3', title: '', dueDate: '2099-01-01' })).toBe('ok');
+    expect(component.taskRowSeverity({ id: '4', title: '', dueDate: null })).toBe('ok');
+  });
+
+  it('heroSubtitle reflects a real count of what needs attention today, not fixed text', async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const fixture = await createComponent({
+      tasks: [{ id: 't1', title: 'Due today', due_date: today }]
+    });
+
+    expect(fixture.componentInstance.heroSubtitle).toContain('1 thing needs');
+  });
+
+  it('heroSubtitle reports nothing urgent when every count is zero', async () => {
+    const fixture = await createComponent({});
+    expect(fixture.componentInstance.heroSubtitle).toContain('Nothing urgent');
+  });
+
   it('skips personal lists entirely for a signed-out session', async () => {
     await TestBed.resetTestingModule().configureTestingModule({
       imports: [HomeComponent],

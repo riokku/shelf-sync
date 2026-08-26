@@ -13,8 +13,15 @@ import { Component, Input, computed, signal } from '@angular/core';
 })
 export class RingStatComponent {
   private readonly _percent = signal(0);
+  // Rounded here (not just clamped) — a caller passing a raw fraction
+  // (e.g. HomeComponent's gettingStartedProgressPercent, 2/3 * 100 =
+  // 66.66666666666666) would otherwise render that exact repeating decimal
+  // as the center label text, which every existing caller (Reports'
+  // already-rounded completionRatePercent) happened to avoid only by
+  // rounding before passing it in. Rounding once here protects every
+  // caller instead of relying on each one to remember to.
   @Input() set percent(value: number) {
-    this._percent.set(Math.max(0, Math.min(100, value)));
+    this._percent.set(Math.max(0, Math.min(100, Math.round(value))));
   }
 
   @Input() label = '';
