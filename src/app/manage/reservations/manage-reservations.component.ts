@@ -10,6 +10,7 @@ import { RouterLink } from '@angular/router';
 import { SupabaseService } from '../../core/supabase.service';
 import { AuthService, Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { NotificationService } from '../../core/notification.service';
 import {
@@ -51,6 +52,7 @@ type ReservationStatusFilter = 'all' | 'reserved' | 'picked_up' | 'returned' | '
     MatProgressSpinnerModule,
     RouterLink,
     BreadcrumbsComponent,
+    PageHeaderComponent,
     EmptyStateComponent
   ],
   templateUrl: './manage-reservations.component.html',
@@ -65,6 +67,16 @@ export class ManageReservationsComponent implements OnInit {
   isLoading = true;
   isProcessingReservation = false;
   reservationError: string | null = null;
+
+  /** Backs app-page-header's own subtitle — the one role-conditional bit of
+   *  copy on this page (see this component's own route comment for why:
+   *  every actual access check lives in the database, this just explains to
+   *  a staff viewer why their list is shorter than an admin/manager's). */
+  get pageSubtitle(): string {
+    return this.authService.canManage()
+      ? "Date-ranged bookings against your inventory's stock."
+      : "Your own date-ranged bookings against the org's inventory — admins and managers see everyone's.";
+  }
 
   statusFilter: ReservationStatusFilter = 'all';
 

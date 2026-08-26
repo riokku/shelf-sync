@@ -2,6 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { AuthService } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { CHANGELOG_ENTRIES } from '../../shared/models/changelog';
 import { markChangelogSeen } from '../../shared/utils/changelog';
 
@@ -14,7 +15,7 @@ import { markChangelogSeen } from '../../shared/utils/changelog';
  *  for the unseen-count badge logic this page clears on visit. */
 @Component({
   selector: 'app-manage-release-notes',
-  imports: [DatePipe, BreadcrumbsComponent],
+  imports: [DatePipe, BreadcrumbsComponent, PageHeaderComponent],
   templateUrl: './manage-release-notes.component.html',
   styleUrl: './manage-release-notes.component.scss',
 })

@@ -7,13 +7,14 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../../core/auth.service';
 import { SupabaseService } from '../../core/supabase.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { DeleteOrganizationModalComponent } from '../../shared/components/delete-organization-modal/delete-organization-modal.component';
 
 const INVENTORY_IMAGES_BUCKET = 'inventory-images';
 
 @Component({
   selector: 'app-manage-danger-zone',
-  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, BreadcrumbsComponent],
+  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, BreadcrumbsComponent, PageHeaderComponent],
   templateUrl: './manage-danger-zone.component.html',
   styleUrl: './manage-danger-zone.component.scss',
 })

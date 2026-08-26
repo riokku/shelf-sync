@@ -6,6 +6,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SupabaseService } from '../../core/supabase.service';
 import { Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { UserAvatarComponent } from '../../shared/components/user-avatar/user-avatar.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { ActivityEntityType, OrgActivityLogEntry, loadActivityLog } from '../../shared/utils/activity-log';
@@ -21,7 +22,7 @@ const ENTITY_ICONS: Record<ActivityEntityType, string> = {
 
 @Component({
   selector: 'app-manage-activity',
-  imports: [DatePipe, MatButtonModule, MatIconModule, MatProgressSpinnerModule, BreadcrumbsComponent, UserAvatarComponent, EmptyStateComponent],
+  imports: [DatePipe, MatButtonModule, MatIconModule, MatProgressSpinnerModule, BreadcrumbsComponent, PageHeaderComponent, UserAvatarComponent, EmptyStateComponent],
   templateUrl: './manage-activity.component.html',
   styleUrl: './manage-activity.component.scss',
 })

@@ -5,29 +5,10 @@
   padding: 3rem 1.5rem;
   max-width: 100%;
 
-  h2{
-    text-transform: uppercase;
-    margin-bottom: 0.25rem;
-  }
-
   .container{
     padding-left: 0;
     padding-right: 0;
   }
-}
-
-.page-header-row{
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-  margin-bottom: 1.5rem;
-}
-
-.page-subtitle{
-  color: var(--mat-sys-on-surface-variant);
-  margin: 0;
 }
 
 .error-message{

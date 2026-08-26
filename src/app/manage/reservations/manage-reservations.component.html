@@ -4,22 +4,12 @@
       <app-breadcrumbs />
     </div>
 
-    <div class="page-header-row">
-      <div>
-        <h2>Reservations</h2>
-        <p class="page-subtitle">
-          @if (authService.canManage()) {
-            Date-ranged bookings against your inventory's stock.
-          } @else {
-            Your own date-ranged bookings against the org's inventory — admins and managers see everyone's.
-          }
-        </p>
-      </div>
+    <app-page-header icon="event" title="Reservations" [subtitle]="pageSubtitle">
       <button mat-flat-button color="primary" type="button" (click)="openPlaceReservation()">
         <mat-icon>event</mat-icon>
         New reservation
       </button>
-    </div>
+    </app-page-header>
 
     @if (reservationError) {
       <p class="error-message">{{ reservationError }}</p>
