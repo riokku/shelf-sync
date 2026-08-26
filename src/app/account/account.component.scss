@@ -51,10 +51,27 @@ mat-card{
   }
 }
 
+.quick-menu-card{
+  // mat-slide-toggle has no block-level display of its own, so with
+  // nothing else between it and the Save button (e.g. the toggle off, no
+  // checkbox list rendered) the two sat side by side on the same line
+  // instead of stacking — block-level plus its own bottom margin keeps
+  // whatever comes next (checkboxes, error text, or the Save button
+  // directly) on its own line below the toggle regardless of what's
+  // actually rendered in between.
+  mat-slide-toggle{
+    display: block;
+    margin-bottom: 1rem;
+  }
+
+  button{
+    margin-top: 0.5rem;
+  }
+}
+
 .quick-menu-options{
   display: flex;
   flex-direction: column;
-  margin-top: 1rem;
   gap: 0.5rem;
 }
 
