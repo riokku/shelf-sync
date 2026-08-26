@@ -94,9 +94,11 @@
 // comment on outstandingTasks for why these three lists are user-scoped
 // rather than org-wide. Sits below .home-grid (the nav cards stay the
 // primary "where do I go" decision; this is supplementary detail once
-// that's been taken in), same auto-fill/wrap shape as .home-grid itself —
-// unlike the tile row this replaced, a list card's height varies with how
-// many entries it has, so a fixed 3-up split isn't the right fit here.
+// that's been taken in). Stacked full-width rather than .home-grid's own
+// auto-fill/wrap shape (see .home-lists below) — a narrow, side-by-side
+// column left a task title/reservation line wrapping to 2-3 lines even at
+// a reasonable length, since each card only had a third of the row to
+// work with; full width gives each entry the room to sit on one line.
 
 // A small pill "kicker" above .home-lists-heading below — same rounded-chip
 // shape landing.component.scss's own .eyebrow uses above its hero heading,
@@ -128,9 +130,13 @@
   margin: 0 0 0.75rem;
 }
 
+// One full-width card per row, stacked, rather than a side-by-side grid —
+// see the section comment above for why: a narrow card wrapped even
+// moderately long task/item/reservation lines across 2-3 lines, which a
+// single-column, full-width layout gives far more room to avoid.
 .home-lists{
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 1.5rem;
   margin-top: 1.5rem;
 }
