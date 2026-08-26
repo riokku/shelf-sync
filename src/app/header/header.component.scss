@@ -134,33 +134,40 @@
 }
 
 // Pending-count badge styling for .nav-drawer-badge (the Inventory/Manage
-// links inside .nav-drawer below) and the bell's own unread-count badge.
+// links inside .nav-drawer below) and the bell's own unread-count badge —
+// shared regardless of which element matBadge actually sits on, since these
+// are genuine CSS custom properties (not a selector match), so they reach
+// MatBadge's internal DOM via ordinary inheritance without needing
+// ::ng-deep.
 .notifications-trigger,
 .nav-drawer-badge{
-  // A tad larger than Material's 16px default, and bold. These two are
-  // genuine CSS custom properties, not a selector match, so they reach
-  // MatBadge's internal DOM via ordinary inheritance without needing
-  // ::ng-deep.
+  // A tad larger than Material's 16px default, and bold.
   --mat-badge-container-size: 20px;
   --mat-badge-line-height: 20px;
   --mat-badge-text-size: 0.75rem;
   --mat-badge-text-weight: 700;
+}
 
-  // Material centers the badge number via text-align + a line-height that
-  // matches the container height — close, but not pixel-exact once the
-  // badge is enlarged. Real flex centering instead, which does need
-  // ::ng-deep since .mat-badge-content is DOM MatBadge's own template
-  // renders, not this component's.
-  //
-  // :not(.mat-badge-hidden) matters: this selector's specificity would
-  // otherwise beat Material's own `.mat-badge-hidden .mat-badge-content
-  // {display: none}` rule (two classes) and force the badge to stay
-  // visible — as an empty flex box — even when matBadgeHidden is true.
-  &:not(.mat-badge-hidden) ::ng-deep .mat-badge-content{
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+// Material centers the badge number via text-align + a line-height that
+// matches the container height — close, but not pixel-exact once the
+// badge is enlarged. Real flex centering instead, which does need
+// ::ng-deep since .mat-badge-content is DOM MatBadge's own template
+// renders, not this component's.
+//
+// Two variants of the same fix: .nav-drawer-badge has matBadge directly on
+// itself, while the bell's own badge sits on its inner mat-icon instead of
+// the button (tight against the bell glyph rather than the button's larger
+// touch-target box — see the template's own comment).
+//
+// :not(.mat-badge-hidden) matters in both: this selector's specificity
+// would otherwise beat Material's own `.mat-badge-hidden .mat-badge-content
+// {display: none}` rule (two classes) and force the badge to stay visible —
+// as an empty flex box — even when matBadgeHidden is true.
+.nav-drawer-badge:not(.mat-badge-hidden) ::ng-deep .mat-badge-content,
+.notifications-trigger mat-icon:not(.mat-badge-hidden) ::ng-deep .mat-badge-content{
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 // Narrower cap on the narrowest viewports so a long org name/online count

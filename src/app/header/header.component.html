@@ -32,13 +32,26 @@
         (click)="toggleNotifications()"
         [attr.aria-expanded]="isNotificationsOpen()"
         aria-haspopup="true"
-        [matBadge]="notificationCenter.unreadCount()"
-        [matBadgeHidden]="notificationCenter.unreadCount() === 0"
-        matBadgeColor="warn"
         [matTooltip]="notificationCenter.unreadCount() > 0 ? notificationCenter.unreadCount() + ' unread notification(s)' : 'Notifications'"
         aria-label="Notifications"
       >
-      <mat-icon>notifications</mat-icon>
+      <!-- matBadge lives on the icon itself, not the button — a
+           mat-icon-button's own touch target is bigger than the icon glyph
+           it wraps, so anchoring the badge to the button left it floating
+           away from the bell with a visible gap instead of sitting right
+           against it. aria-hidden="false" + matBadgeDescription: Material
+           warns (dev-mode only) against a matBadge sitting on a mat-icon
+           that's still aria-hidden, since the badge's own content would
+           then be invisible to assistive tech with no icon to attach a
+           description to either — the button's own static aria-label above
+           only ever says "Notifications", never the count. -->
+      <mat-icon
+          aria-hidden="false"
+          [matBadge]="notificationCenter.unreadCount()"
+          [matBadgeHidden]="notificationCenter.unreadCount() === 0"
+          [matBadgeDescription]="notificationCenter.unreadCount() + ' unread'"
+          matBadgeColor="warn"
+        >notifications</mat-icon>
     </button>
     <button
         mat-icon-button
