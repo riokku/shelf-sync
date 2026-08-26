@@ -240,8 +240,33 @@ table[mat-table]{
     font-weight: 600;
   }
 
-  tr.mat-mdc-row:hover{
-    background: var(--mat-sys-surface-container-low);
+  tr.mat-mdc-row{
+    border-left: 3px solid transparent;
+
+    &:hover{
+      background: var(--mat-sys-surface-container-low);
+    }
+
+    // A row's left rule echoes its own status pill's color (same tokens as
+    // .table-status-* below, just a stroke instead of a fill) — the same
+    // "severity at a glance without reading the pill" idea Home's own
+    // ledger rows and the Tasks pages' rows use, generalized to inventory's
+    // own status vocabulary rather than a due-date urgency scale. Nested
+    // under .mat-mdc-row (rather than sibling top-level rules) so these
+    // compound selectors' specificity actually beats the plain
+    // `border-left: 3px solid transparent` default above it — a bare
+    // `.table-row-status-x` rule has *lower* specificity than `tr.mat-mdc-
+    // row` and would silently lose regardless of source order. The plain
+    // --mat-sys-tertiary/-outline roles (not their pale *-container tones)
+    // are used for checked-out/retired specifically, since a 3px stroke
+    // needs more saturation than a container fill to actually read at that
+    // width.
+    &.table-row-status-available{ border-left-color: var(--app-success-bg); }
+    &.table-row-status-checked-out{ border-left-color: var(--mat-sys-tertiary); }
+    &.table-row-status-low-stock,
+    &.table-row-status-pending-retirement{ border-left-color: var(--app-warning-bg); }
+    &.table-row-status-out-of-stock{ border-left-color: var(--app-danger-bg); }
+    &.table-row-status-retired{ border-left-color: var(--mat-sys-outline); }
   }
 }
 
@@ -557,6 +582,10 @@ mat-card{
   display: flex;
   flex-direction: column;
   height: 100%;
+  // Same app-wide bordered-card convention Home/Manage/Tasks all picked up
+  // — Material's own default elevation shadow alone no longer stood out as
+  // "a card" once those surfaces switched to it.
+  border: 1px solid var(--mat-sys-outline-variant);
 
   p{
     display: -webkit-box;

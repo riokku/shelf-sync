@@ -299,7 +299,7 @@
                           }
                           <span class="quantity-badge">
                             <mat-icon>inventory_2</mat-icon>
-                            {{ item.quantityRemaining }}
+                            <span class="mono">{{ item.quantityRemaining }}</span>
                           </span>
                         }
                       </div>
@@ -411,37 +411,37 @@
 
                   <ng-container matColumnDef="quantityTotal">
                     <th mat-header-cell *matHeaderCellDef mat-sort-header>Quantity total</th>
-                    <td mat-cell *matCellDef="let item">{{ item.quantityTotal }}</td>
+                    <td mat-cell *matCellDef="let item" class="mono">{{ item.quantityTotal }}</td>
                   </ng-container>
 
                   <ng-container matColumnDef="quantityPerContainer">
                     <th mat-header-cell *matHeaderCellDef mat-sort-header>Quantity per container</th>
-                    <td mat-cell *matCellDef="let item">{{ item.quantityPerContainer }}</td>
+                    <td mat-cell *matCellDef="let item" class="mono">{{ item.quantityPerContainer }}</td>
                   </ng-container>
 
                   <ng-container matColumnDef="quantityAllocated">
                     <th mat-header-cell *matHeaderCellDef mat-sort-header>Quantity allocated</th>
-                    <td mat-cell *matCellDef="let item">{{ item.quantityAllocated }}</td>
+                    <td mat-cell *matCellDef="let item" class="mono">{{ item.quantityAllocated }}</td>
                   </ng-container>
 
                   <ng-container matColumnDef="quantityRemaining">
                     <th mat-header-cell *matHeaderCellDef mat-sort-header>Remaining</th>
-                    <td mat-cell *matCellDef="let item">{{ item.quantityRemaining }}</td>
+                    <td mat-cell *matCellDef="let item" class="mono">{{ item.quantityRemaining }}</td>
                   </ng-container>
 
                   <ng-container matColumnDef="lowQuantityThreshold">
                     <th mat-header-cell *matHeaderCellDef mat-sort-header>Low quantity threshold</th>
-                    <td mat-cell *matCellDef="let item">{{ item.lowQuantityThreshold }}</td>
+                    <td mat-cell *matCellDef="let item" class="mono">{{ item.lowQuantityThreshold }}</td>
                   </ng-container>
 
                   <ng-container matColumnDef="pricePerUnit">
                     <th mat-header-cell *matHeaderCellDef mat-sort-header>Price per unit</th>
-                    <td mat-cell *matCellDef="let item">{{ item.pricePerUnit | currency }}</td>
+                    <td mat-cell *matCellDef="let item" class="mono">{{ item.pricePerUnit | currency }}</td>
                   </ng-container>
 
                   <ng-container matColumnDef="pricePerContainer">
                     <th mat-header-cell *matHeaderCellDef mat-sort-header>Price per container</th>
-                    <td mat-cell *matCellDef="let item">{{ item.pricePerContainer | currency }}</td>
+                    <td mat-cell *matCellDef="let item" class="mono">{{ item.pricePerContainer | currency }}</td>
                   </ng-container>
 
                   <ng-container matColumnDef="checkedOutTo">
@@ -473,7 +473,12 @@
                   </ng-container>
 
                   <tr mat-header-row *matHeaderRowDef="tableColumns"></tr>
-                  <tr mat-row *matRowDef="let row; columns: tableColumns;" [class.realtime-flash]="isFlashing(row.id)"></tr>
+                  <tr
+                      mat-row
+                      *matRowDef="let row; columns: tableColumns;"
+                      [class]="'table-row-status-' + statusSlug(row)"
+                      [class.realtime-flash]="isFlashing(row.id)"
+                    ></tr>
                 </table>
               </div>
             }

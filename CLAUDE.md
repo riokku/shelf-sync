@@ -1313,6 +1313,24 @@ plain, uncolored `on-surface-variant` in both places now — the left rule alone
 same as Home's own rows — so the previously-shown overdue `<mat-icon>error</mat-icon>` was dropped
 along with it.
 
+The Inventory page — the highest-traffic page this pass had touched — picked up the same three
+primitives. Card view's `mat-card` gets the app-wide `1px solid outline-variant` border (the
+existing per-photo badge system — checked-out/low-stock/out-of-stock/pending-retirement — already
+covers card view's own severity signaling, so no left-rule was added there; a card's badges and a
+row's left rule are two different answers to the same "what's this item's status" question, suited
+to their own layout). Table view's `<tr mat-row>` gets a colored left rule that echoes its own
+status pill's already-established color exactly (`.table-row-status-*`, reusing the same tokens
+`.table-status-*` already defines for the pill fill, just as a stroke instead) rather than
+introducing a separate palette — `available` green, `checked-out` tertiary, `low-stock`/`pending-
+retirement` amber, `out-of-stock` red, `retired` a neutral outline tone. (Nested under `.mat-mdc-row`
+rather than as sibling top-level rules — a bare `.table-row-status-x` selector has *lower*
+specificity than `tr.mat-mdc-row`'s own base `border-left: 3px solid transparent` and silently loses
+to it regardless of source order otherwise, a real bug caught during this pass's own visual
+verification.) Every quantity/price column in both card view (`.quantity-badge`) and table view
+(quantity total/per-container/allocated/remaining/low-threshold, price per unit/container) picked up
+`.mono` — the same "any figure that's actually counted gets the mono treatment" convention from
+Home, applied here for the first time to a page that's mostly *made of* such figures.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
