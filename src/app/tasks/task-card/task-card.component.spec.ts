@@ -24,6 +24,44 @@ describe('TaskCardComponent', () => {
   });
 });
 
+describe('TaskCardComponent severity', () => {
+  let fixture: ComponentFixture<TaskCardComponent>;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [TaskCardComponent]
+    }).compileComponents();
+    fixture = TestBed.createComponent(TaskCardComponent);
+  });
+
+  it('is "danger" for an overdue, not-done task', () => {
+    fixture.componentRef.setInput('task', createTestTask({ due_date: '2000-01-01', status: 'todo' }));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.severity).toBe('danger');
+  });
+
+  it('is "warn" for a task due exactly today', () => {
+    const today = new Date().toISOString().slice(0, 10);
+    fixture.componentRef.setInput('task', createTestTask({ due_date: today, status: 'todo' }));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.severity).toBe('warn');
+  });
+
+  it('is "ok" for a task with no due date, a future due date, or a done task', () => {
+    fixture.componentRef.setInput('task', createTestTask({ due_date: null }));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.severity).toBe('ok');
+
+    fixture.componentRef.setInput('task', createTestTask({ due_date: '2099-01-01' }));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.severity).toBe('ok');
+
+    fixture.componentRef.setInput('task', createTestTask({ due_date: '2000-01-01', status: 'done' }));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.severity).toBe('ok');
+  });
+});
+
 describe('TaskCardComponent createdByLabel', () => {
   let fixture: ComponentFixture<TaskCardComponent>;
 

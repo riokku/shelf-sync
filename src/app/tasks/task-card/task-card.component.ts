@@ -41,4 +41,20 @@ export class TaskCardComponent {
       && this.task.status !== 'done'
       && this.task.due_date < getTodayIsoDate();
   }
+
+  /** Which colored left-rule this row gets — the same 3-tier convention
+   *  HomeComponent.taskRowSeverity() and ManageTasksComponent.taskSeverity()
+   *  both use: overdue (red) outranks due-today (amber), which outranks
+   *  'ok' (a calm tertiary tone for everything else, including a task with
+   *  no due date at all or one that's already done). Replaces what used to
+   *  be a solid red pill around the due-date text specifically. */
+  get severity(): 'danger' | 'warn' | 'ok' {
+    if (this.isOverdue) {
+      return 'danger';
+    }
+    if (this.task.due_date === getTodayIsoDate() && this.task.status !== 'done') {
+      return 'warn';
+    }
+    return 'ok';
+  }
 }

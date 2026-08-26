@@ -562,6 +562,20 @@ export class ManageTasksComponent implements OnInit, HasUnsavedChanges {
     return !!task.due_date && task.status !== 'done' && task.due_date < getTodayIsoDate();
   }
 
+  /** Which colored left-rule a row gets — same 3-tier convention
+   *  HomeComponent.taskRowSeverity() and TaskCardComponent.severity() both
+   *  use: overdue (red) outranks due-today (amber), which outranks 'ok' (a
+   *  calm tertiary tone for everything else). */
+  taskSeverity(task: Task): 'danger' | 'warn' | 'ok' {
+    if (this.isTaskOverdue(task)) {
+      return 'danger';
+    }
+    if (task.due_date === getTodayIsoDate() && task.status !== 'done') {
+      return 'warn';
+    }
+    return 'ok';
+  }
+
   clearTaskFilters() {
     this.taskFilterSearch = '';
     this.taskFilterAssignee = null;

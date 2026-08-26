@@ -1,6 +1,8 @@
 <div
     class="task-row"
-    [class.overdue]="isOverdue"
+    [class.severity-danger]="severity === 'danger'"
+    [class.severity-warn]="severity === 'warn'"
+    [class.severity-ok]="severity === 'ok'"
     [class.realtime-flash]="flash"
     role="button"
     tabindex="0"
@@ -38,9 +40,6 @@
   </span>
   <span class="task-row-due">
     @if (task.due_date) {
-      @if (isOverdue) {
-        <mat-icon>error</mat-icon>
-      }
       Due {{ task.due_date | date: 'M/d/yy' }}
     } @else {
       No due date

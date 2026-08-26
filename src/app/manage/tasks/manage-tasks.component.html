@@ -203,7 +203,9 @@
               <div
                   class="task-row clickable"
                   [class.bulk-edit-active]="bulkEditEnabled"
-                  [class.overdue]="isTaskOverdue(task)"
+                  [class.severity-danger]="taskSeverity(task) === 'danger'"
+                  [class.severity-warn]="taskSeverity(task) === 'warn'"
+                  [class.severity-ok]="taskSeverity(task) === 'ok'"
                   [class.realtime-flash]="isFlashing(task.id)"
                   role="button"
                   tabindex="0"
@@ -245,9 +247,6 @@
                 </span>
                 <span class="task-row-due">
                   @if (task.due_date) {
-                    @if (isTaskOverdue(task)) {
-                      <mat-icon>error</mat-icon>
-                    }
                     Due {{ task.due_date | date: 'M/d/yy' }}
                   } @else {
                     No due date

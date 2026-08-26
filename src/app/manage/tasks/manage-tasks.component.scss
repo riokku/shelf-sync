@@ -139,6 +139,9 @@
   padding: 0.85rem 1.25rem;
   border-radius: 0.5rem;
   background: var(--mat-sys-surface-container-low);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-left: 3px solid var(--mat-sys-outline-variant);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 
   // Only reserves a leading column for the checkbox once Bulk edit is on
   // (see the template's own @if) — otherwise the row has no checkbox to
@@ -147,9 +150,13 @@
     grid-template-columns: 2rem minmax(10rem, 2fr) minmax(8rem, 1fr) minmax(8rem, 1fr) 7.5rem 2.5rem;
   }
 
-  &.overdue{
-    border-left: 4px solid var(--app-overdue-text);
-  }
+  // Same 3-tier left-rule convention Home's own "What's on your plate"
+  // ledger rows and TaskCardComponent's own .task-row use (see
+  // ManageTasksComponent.taskSeverity()'s own doc comment) — replaces what
+  // used to be a flat 4px overdue-only border plus colored due-date text.
+  &.severity-danger{ border-left-color: var(--app-danger-bg); }
+  &.severity-warn{ border-left-color: var(--app-warning-bg); }
+  &.severity-ok{ border-left-color: var(--mat-sys-tertiary); }
 
   &.clickable{
     cursor: pointer;
@@ -235,14 +242,6 @@
     font-size: 0.9rem;
     width: 0.9rem;
     height: 0.9rem;
-  }
-}
-
-.task-row.overdue .task-row-due{
-  color: var(--app-overdue-text);
-
-  mat-icon{
-    color: var(--app-overdue-text);
   }
 }
 

@@ -364,6 +364,36 @@ describe('ManageTasksComponent', () => {
 
 });
 
+describe('ManageTasksComponent taskSeverity()', () => {
+  let component: ManageTasksComponent;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [ManageTasksComponent],
+      providers: [
+        provideRouter([]),
+        provideNativeDateAdapter(),
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: SupabaseService, useValue: createFakeSupabaseService() }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ManageTasksComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
+
+  it('ranks overdue above due-today above everything else', () => {
+    const today = new Date().toISOString().slice(0, 10);
+
+    expect(component.taskSeverity(createTestTask({ due_date: '2000-01-01', status: 'todo' }))).toBe('danger');
+    expect(component.taskSeverity(createTestTask({ due_date: today, status: 'todo' }))).toBe('warn');
+    expect(component.taskSeverity(createTestTask({ due_date: null }))).toBe('ok');
+    expect(component.taskSeverity(createTestTask({ due_date: '2099-01-01' }))).toBe('ok');
+    expect(component.taskSeverity(createTestTask({ due_date: '2000-01-01', status: 'done' }))).toBe('ok');
+  });
+});
+
 describe('ManageTasksComponent submitTask() success', () => {
   // Regression test for a bug where, after a successful submit, the
   // freshly-reset create-task form immediately showed "Title is required"
