@@ -1154,6 +1154,19 @@ biased toward whichever side is narrower. The whole row is hidden entirely (not 
 empty) whenever it resolves to zero items, whether because the toggle is off or every selected item
 has since become unreachable.
 
+The Account page's four cards (profile info, Avatar, Quick menu, Appearance) flow into two columns
+(`.account-cards`, `columns: 22rem 2`) rather than one long stack, so a wide viewport doesn't need
+to scroll nearly as much to see all four. Deliberately CSS multi-column flow, not a rigid 2-up grid
+pairing specific cards into fixed rows — the four cards are noticeably uneven heights (Quick menu
+in particular grows a lot once enabled, Appearance stays short), and a fixed-row grid would size
+each row to its tallest cell, wasting whitespace under whichever card in that row was shorter
+(the same reasoning Settings' own Data tab gives for staying single-column, see that page's own
+paragraph above) — multi-column flow instead lets the browser balance total height across both
+columns on its own, and `break-inside: avoid` on every card keeps one from ever being visually
+split across the column break. Sized by `column-width` (same technique Settings' own
+`.table-column-groups` already established) so a narrow/mobile viewport collapses to a single
+column automatically rather than needing a matching breakpoint here.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)

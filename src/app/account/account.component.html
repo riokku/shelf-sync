@@ -5,6 +5,7 @@
   </div>
   <h2>My Account</h2>
 
+  <div class="account-cards">
   @if (isLoading) {
     <mat-spinner diameter="32"></mat-spinner>
   } @else if (profile) {
@@ -129,5 +130,6 @@
       </mat-button-toggle-group>
     </mat-card-content>
   </mat-card>
+  </div>
   </div>
 </div>
