@@ -3,13 +3,22 @@
 // isolation:isolate this z-index needs to stay scoped) — this component
 // owns its own layout rather than relying on an external class, since
 // nothing else ever embeds it.
+//
+// pointer-events:auto (rather than the old glow's :none) is what lets the
+// crates be grabbed/thrown — safe despite sitting at z-index:-1 "behind"
+// the rest of the hero, since normal CSS stacking still governs hit-testing:
+// wherever the heading/subtitle text actually paints, those elements are on
+// top and receive the pointer event instead, same as they would over any
+// other page background. Only the genuinely empty space behind them (which
+// is also where every crate is biased toward — see HeroCratesSceneComponent's
+// own doc comment) ever reaches the canvas.
 :host{
   position: absolute;
   inset: 0;
   z-index: -1;
   display: block;
   overflow: hidden;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 canvas{
