@@ -111,10 +111,13 @@
             @for (task of visibleOutstandingTasks; track task.id) {
               <li>
                 <a [routerLink]="['/tasks']" [queryParams]="{ task: task.id }">
-                  <span class="home-list-item-primary">{{ task.title }}</span>
-                  <span class="home-list-item-secondary">
-                    {{ task.dueDate ? 'Due ' + (task.dueDate | date: 'M/d/yy') : 'No due date' }}
+                  <span class="home-list-item-text">
+                    <span class="home-list-item-primary">{{ task.title }}</span>
+                    <span class="home-list-item-secondary">
+                      {{ task.dueDate ? 'Due ' + (task.dueDate | date: 'M/d/yy') : 'No due date' }}
+                    </span>
                   </span>
+                  <mat-icon class="home-list-item-arrow" aria-hidden="true">chevron_right</mat-icon>
                 </a>
               </li>
             }
@@ -142,7 +145,10 @@
             @for (item of visibleCheckedOutItems; track item.id) {
               <li>
                 <a [routerLink]="['/inventory']" [queryParams]="{ item: item.id }">
-                  <span class="home-list-item-primary">{{ item.name }}</span>
+                  <span class="home-list-item-text">
+                    <span class="home-list-item-primary">{{ item.name }}</span>
+                  </span>
+                  <mat-icon class="home-list-item-arrow" aria-hidden="true">chevron_right</mat-icon>
                 </a>
               </li>
             }
@@ -170,12 +176,15 @@
             @for (reservation of visibleUpcomingReservations; track reservation.id) {
               <li>
                 <a [routerLink]="['/inventory']" [queryParams]="{ item: reservation.itemId }">
-                  <span class="home-list-item-primary">
-                    {{ reservation.quantity }}&times; {{ reservation.itemName }} for {{ reservation.reservedFor }}
+                  <span class="home-list-item-text">
+                    <span class="home-list-item-primary">
+                      {{ reservation.quantity }}&times; {{ reservation.itemName }} for {{ reservation.reservedFor }}
+                    </span>
+                    <span class="home-list-item-secondary">
+                      {{ reservation.startDate | date: 'M/d/yy' }} – {{ reservation.endDate | date: 'M/d/yy' }}
+                    </span>
                   </span>
-                  <span class="home-list-item-secondary">
-                    {{ reservation.startDate | date: 'M/d/yy' }} – {{ reservation.endDate | date: 'M/d/yy' }}
-                  </span>
+                  <mat-icon class="home-list-item-arrow" aria-hidden="true">chevron_right</mat-icon>
                 </a>
               </li>
             }
