@@ -1,5 +1,7 @@
 @use '../shared/styles/page-toolbar';
 @use '../shared/styles/realtime-flash';
+@use '../shared/styles/skeleton';
+@use '../shared/styles/stagger';
 
 .inventory-wrapper{
   color: var(--mat-sys-on-surface);
@@ -156,10 +158,41 @@
   }
 }
 
-.loading-row{
-  display: flex;
-  justify-content: center;
-  padding: 3rem 0;
+.skeleton-card{
+  // Mirrors the real card's own image/header/content proportions closely
+  // enough to read as "this exact grid, still loading" rather than a
+  // generic gray box — mat-card-header/-content here get no real
+  // title/subtitle/actions content, just the shimmering placeholders below.
+  mat-card-header{
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  mat-card-content{
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+}
+
+.skeleton-card-image{
+  height: 10rem;
+  border-radius: 0;
+}
+
+.skeleton-card-title{
+  width: 60%;
+  height: 1.125rem;
+}
+
+.skeleton-card-subtitle{
+  width: 40%;
+}
+
+.skeleton-card-line-short{
+  width: 70%;
 }
 
 .inventory-header-wrapper{

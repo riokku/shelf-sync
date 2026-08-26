@@ -170,10 +170,28 @@
           </div>
         </div>
       } @else if (isLoading) {
-        <div class="row">
-          <div class="col-12 loading-row">
-            <mat-spinner diameter="32"></mat-spinner>
-          </div>
+        <!-- Card-shaped placeholders rather than a bare spinner — this is
+             the page's own default view mode, so it's the shape a visitor
+             most often waits on. viewMode itself isn't known yet this
+             early (it depends on data not yet loaded), so this doesn't
+             try to match a remembered table-view preference; card view is
+             a reasonable, low-risk default guess either way. -->
+        <div class="row inventory-gallery-wrapper" aria-hidden="true">
+          @for (i of skeletonCards; track i) {
+            <div class="col-12 col-md-6 col-lg-4 inventory-card">
+              <mat-card class="skeleton-card">
+                <div class="skeleton-block skeleton-card-image"></div>
+                <mat-card-header>
+                  <div class="skeleton-line skeleton-card-title"></div>
+                  <div class="skeleton-line skeleton-card-subtitle"></div>
+                </mat-card-header>
+                <mat-card-content>
+                  <div class="skeleton-line"></div>
+                  <div class="skeleton-line skeleton-card-line-short"></div>
+                </mat-card-content>
+              </mat-card>
+            </div>
+          }
         </div>
       } @else if (inventoryList.length === 0) {
         <div class="row">
@@ -239,8 +257,8 @@
             }
             @if (viewMode === 'card') {
               <div class="row inventory-gallery-wrapper">
-                @for (item of pagedInventoryList; track item.id) {
-                  <div class="col-12 col-md-6 col-lg-4 inventory-card">
+                @for (item of pagedInventoryList; track item.id; let i = $index) {
+                  <div class="col-12 col-md-6 col-lg-4 inventory-card cascade-in" [style.animation-delay.ms]="staggerDelay(i)">
                     <mat-card [class.realtime-flash]="isFlashing(item.id)">
                       @if (item.image) {
                         <img mat-card-image [alt]="item.name" [src]="item.image" [class.retired-image]="item.status === 'retired'" />
