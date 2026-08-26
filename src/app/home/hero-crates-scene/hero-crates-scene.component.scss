@@ -1,0 +1,19 @@
+// Same absolute-fill/negative-z-index role the old home-hero-glow span had
+// (see HomeComponent's .home-hero, which supplies the position:relative +
+// isolation:isolate this z-index needs to stay scoped) — this component
+// owns its own layout rather than relying on an external class, since
+// nothing else ever embeds it.
+:host{
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  display: block;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+canvas{
+  display: block;
+  width: 100%;
+  height: 100%;
+}
