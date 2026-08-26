@@ -5,9 +5,10 @@ import { of } from 'rxjs';
 
 import { ManageReservationsComponent } from './manage-reservations.component';
 import { SupabaseService } from '../../core/supabase.service';
+import { AuthService } from '../../core/auth.service';
 import { NotificationService } from '../../core/notification.service';
 import { PlaceReservationModalComponent } from '../../shared/components/place-reservation-modal/place-reservation-modal.component';
-import { createFakeSupabaseService } from '../../testing/fakes';
+import { createFakeAuthService, createFakeProfile, createFakeSupabaseService } from '../../testing/fakes';
 import { InventoryItemReservationWithItem } from '../../shared/utils/inventory-item-reservations';
 
 function createTestReservation(overrides: Partial<InventoryItemReservationWithItem> = {}): InventoryItemReservationWithItem {
@@ -41,12 +42,13 @@ describe('ManageReservationsComponent', () => {
   let component: ManageReservationsComponent;
   let fixture: ComponentFixture<ManageReservationsComponent>;
 
-  async function setup(options: { error?: { message: string } | null } = {}) {
+  async function setup(options: { error?: { message: string } | null; role?: 'admin' | 'manager' | 'staff' } = {}) {
     await TestBed.configureTestingModule({
       imports: [ManageReservationsComponent],
       providers: [
         provideRouter([]),
-        { provide: SupabaseService, useValue: createFakeSupabaseService({ data: [], error: options.error ?? null }) }
+        { provide: SupabaseService, useValue: createFakeSupabaseService({ data: [], error: options.error ?? null }) },
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: options.role ?? 'staff' })) }
       ]
     }).compileComponents();
 
@@ -65,6 +67,20 @@ describe('ManageReservationsComponent', () => {
     await setup();
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('No reservations yet.');
+  });
+
+  describe('page subtitle', () => {
+    it('tells a staff viewer they only see their own reservations', async () => {
+      await setup({ role: 'staff' });
+      fixture.detectChanges();
+      expect(fixture.nativeElement.textContent).toContain('Your own date-ranged bookings');
+    });
+
+    it('tells an admin/manager viewer they see everyone\'s', async () => {
+      await setup({ role: 'manager' });
+      fixture.detectChanges();
+      expect(fixture.nativeElement.textContent).toContain('Date-ranged bookings against your inventory\'s stock.');
+    });
   });
 
   describe('filteredReservations', () => {

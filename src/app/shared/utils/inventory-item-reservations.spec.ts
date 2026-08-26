@@ -13,7 +13,17 @@ function createFakeSupabaseClient(rows: unknown[] = []) {
   for (const method of ['select', 'eq', 'in', 'gte', 'order']) {
     builder[method] = () => builder;
   }
-  return { client: { from: () => builder } } as unknown as { client: { from: () => unknown } };
+  const rpcCalls: { name: string; args: unknown }[] = [];
+  return {
+    client: {
+      from: () => builder,
+      rpc: (name: string, args: unknown) => {
+        rpcCalls.push({ name, args });
+        return { then: (resolve: (value: { data: unknown; error: unknown }) => void) => resolve({ data: rows, error: null }) };
+      }
+    },
+    rpcCalls
+  } as unknown as { client: { from: () => unknown; rpc: (name: string, args: unknown) => unknown }; rpcCalls: { name: string; args: unknown }[] };
 }
 
 describe('loadAllInventoryItemReservations', () => {
@@ -127,5 +137,18 @@ describe('loadUpcomingReservationsForItem', () => {
     expect(reservations[0].reservedFor).toBe('Smith wedding');
     expect(reservations[0].note).toBe('Deliver by 8am');
     expect(reservations[0].status).toBe('picked_up');
+  });
+
+  // Goes through the get_item_upcoming_reservations RPC rather than a
+  // direct .from(...) select — see this function's own doc comment for why
+  // (inventory_item_reservations' SELECT policy scopes a non-admin/manager
+  // caller to just their own rows, which this summary deliberately needs
+  // to bypass so it stays visible to everyone regardless of who booked it).
+  it('calls the RPC scoped by item id, not a direct table select', async () => {
+    const fake = createFakeSupabaseClient([]);
+
+    await loadUpcomingReservationsForItem(fake.client as never, 'item-1');
+
+    expect(fake.rpcCalls).toEqual([{ name: 'get_item_upcoming_reservations', args: { p_item_id: 'item-1' } }]);
   });
 });

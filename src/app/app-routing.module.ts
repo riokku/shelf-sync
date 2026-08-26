@@ -181,8 +181,16 @@ const routes: Routes = [
   {
     path: 'manage/reservations',
     loadComponent: () => import('./manage/reservations/manage-reservations.component').then(m => m.ManageReservationsComponent),
-    canActivate: [approvedGuard, manageGuard],
-    data: { breadcrumb: 'Reservations', breadcrumbParent: MANAGE_BREADCRUMB_PARENT },
+    // approvedGuard only, not manageGuard — every approved org member can
+    // place/action reservations now (RLS/RPC-scoped: staff only see and act
+    // on their own, admin/manager see the whole org's — see
+    // 20260904120000_widen_reservation_access_to_staff.sql), so this is the
+    // one manage/* route reachable without admin/manager. No
+    // breadcrumbParent for the same reason — MANAGE_BREADCRUMB_PARENT links
+    // to /manage, which manageGuard would bounce a staff viewer straight
+    // back out of.
+    canActivate: [approvedGuard],
+    data: { breadcrumb: 'Reservations' },
     title: 'ShelfSync | Reservations'
   },
   {

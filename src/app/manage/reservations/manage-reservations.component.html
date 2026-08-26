@@ -7,7 +7,13 @@
     <div class="page-header-row">
       <div>
         <h2>Reservations</h2>
-        <p class="page-subtitle">Date-ranged bookings against your inventory's stock.</p>
+        <p class="page-subtitle">
+          @if (authService.canManage()) {
+            Date-ranged bookings against your inventory's stock.
+          } @else {
+            Your own date-ranged bookings against the org's inventory — admins and managers see everyone's.
+          }
+        </p>
       </div>
       <button mat-flat-button color="primary" type="button" (click)="openPlaceReservation()">
         <mat-icon>event</mat-icon>

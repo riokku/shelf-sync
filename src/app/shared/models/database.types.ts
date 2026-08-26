@@ -1002,6 +1002,33 @@ export type Database = {
       decline_item_retirement: { Args: { item_id: string }; Returns: undefined }
       decline_task_transfer: { Args: { task_id: string }; Returns: undefined }
       get_inventory_photo_storage_usage: { Args: never; Returns: number }
+      get_item_upcoming_reservations: {
+        Args: { p_item_id: string }
+        Returns: {
+          cancelled_at: string | null
+          cancelled_by: string | null
+          end_date: string
+          id: string
+          item_id: string
+          note: string | null
+          picked_up_at: string | null
+          picked_up_by: string | null
+          quantity: number
+          reserved_at: string
+          reserved_by: string | null
+          reserved_for: string
+          returned_at: string | null
+          returned_by: string | null
+          start_date: string
+          status: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "inventory_item_reservations"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       log_client_error: {
         Args: {
           p_app_env?: string

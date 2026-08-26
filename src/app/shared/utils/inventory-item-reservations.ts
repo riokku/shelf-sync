@@ -3,7 +3,6 @@ import { Database } from '../models/database.types';
 import { InventoryItemReservation, InventoryItemReservationStatus } from '../models/inventory-item-reservation.model';
 import { Profile } from '../../core/auth.service';
 import { resolveProfileName } from './profile-label';
-import { getTodayIsoDate } from './date';
 
 type InventoryItemReservationRow = Database['public']['Tables']['inventory_item_reservations']['Row'];
 
@@ -66,18 +65,24 @@ export async function loadAllInventoryItemReservations(
  *  already in the past), oldest start date first. Backs
  *  ModalTableComponent's read-only "Upcoming reservations" summary, which
  *  has no need for actor-name resolution the way the full manage page does
- *  — it's a glance, not an audit trail. */
+ *  — it's a glance, not an audit trail.
+ *
+ *  Goes through get_item_upcoming_reservations() rather than a direct
+ *  .from(...) select — inventory_item_reservations' own SELECT policy
+ *  scopes a non-admin/manager caller to just their own rows (see
+ *  20260904120000_widen_reservation_access_to_staff.sql), which is right
+ *  for manage/reservations' own org-wide list but would also silently
+ *  narrow this summary to only bookings the *viewer* made. This summary is
+ *  meant to answer "is this item already spoken for by anyone," so it
+ *  reads through a SECURITY DEFINER RPC scoped by item_id instead,
+ *  deliberately bypassing that per-user restriction the same way every
+ *  other RPC in this schema already bypasses RLS for its own controlled
+ *  purpose (see that RPC's own migration for the full reasoning). */
 export async function loadUpcomingReservationsForItem(
   supabase: SupabaseClient<Database>,
   itemId: string
 ): Promise<InventoryItemReservation[]> {
-  const { data } = await supabase
-    .from('inventory_item_reservations')
-    .select('*')
-    .eq('item_id', itemId)
-    .in('status', ['reserved', 'picked_up'])
-    .gte('end_date', getTodayIsoDate())
-    .order('start_date', { ascending: true });
+  const { data } = await supabase.rpc('get_item_upcoming_reservations', { p_item_id: itemId });
 
   return (data ?? []).map(row => toInventoryItemReservation(row, []));
 }

@@ -716,9 +716,10 @@ a PostgREST embedded-resource select — this app doesn't use those anywhere, ev
 list here correlates separately-queried rows by id instead (e.g. `ManageInventoryComponent`'s images/
 activity maps), and this follows the same convention rather than introducing a new one.
 
-Admins and managers get a `manage/reservations` route (`ManageReservationsComponent`, `manageGuard`)
-— date-ranged bookings of an item's stock (e.g. "50 of our 100 chairs for the Smith wedding, June
-1–3"), for the event/rental use case this app's own seed data represents. A reservation books a
+Every approved org member (not just admin/manager — see below) gets a `manage/reservations` route
+(`ManageReservationsComponent`, `approvedGuard`) — date-ranged bookings of an item's stock (e.g.
+"50 of our 100 chairs for the Smith wedding, June 1–3"), for the event/rental use case this app's
+own seed data represents. A reservation books a
 *quantity*, not the whole item, and is fully separate from `is_checked_out`/`checked_out_to` — that
 flag still means "someone has this in hand right now"; a reservation means "this is spoken for on
 these dates," with no automatic interaction between the two. Same overall shape as `manage/orders`
@@ -745,6 +746,37 @@ reservations" summary for its own item (`loadUpcomingReservationsForItem()`, sel
 threading it through `InventoryItem`/`toInventoryItem()`) — knowing an item is already booked is
 genuinely relevant context while deciding whether to check it out right now, which is why this one
 case differs from Orders' own precedent.
+
+Reservations started admin/manager-only (matching Orders' own trust level) but was widened to every
+approved org member — staff can place, cancel, and action reservations too, the same trust level
+item edits/discards already have. Unlike Orders, though, staff only ever see and act on their *own*
+reservations; admin/manager alone still see the whole org's. This is enforced at the RLS/RPC layer,
+not just the UI: `inventory_item_reservations`' SELECT policy now ANDs
+`current_user_role() in ('admin', 'manager') or reserved_by = auth.uid()` into the existing org-scope
+check, and `mark_reservation_picked_up()`/`mark_reservation_returned()`/`cancel_reservation()` each
+gained the same `reserved_by is distinct from auth.uid()` check alongside the admin/manager role
+check they already had (`is distinct from`, not `!=` — `reserved_by` can be null if that profile was
+later removed, and `uuid != null` evaluates to NULL rather than true/false in PL/pgSQL, silently
+skipping the check, the exact failure class `fix_org_isolation_bugs` already had to correct
+elsewhere in this schema). `create_reservation()`'s own capacity check is unaffected by any of this
+— it runs as `SECURITY DEFINER`, which already bypasses RLS, so it always sums *every* org member's
+overlapping reservations regardless of who's calling; a staff member's booking is still correctly
+blocked by someone else's overlapping one even though they can't see that other reservation in their
+own list. `ModalTableComponent`'s "Upcoming reservations" item-popup summary is deliberately exempt
+from this restriction — it's meant to answer "is this item already spoken for by anyone," not just
+"by me," so `loadUpcomingReservationsForItem()` reads through a separate
+`get_item_upcoming_reservations()` RPC (added a migration later,
+`20260905120000_add_item_upcoming_reservations_rpc.sql`, once the first pass at this feature had
+narrowed that summary along with everything else) — `SECURITY DEFINER`, scoped by `item_id` rather
+than `reserved_by`, so it bypasses the SELECT policy's per-user restriction the same way every other
+RPC in this schema already bypasses RLS for its own controlled purpose. `manage/reservations`' own
+org-wide list is unaffected and still goes through the plain, now-scoped SELECT policy directly.
+`ManageReservationsComponent`'s route drops
+`breadcrumbParent`/`manageGuard` (unlike every other `manage/*` route) since linking a non-admin/
+manager viewer's breadcrumb to `/manage` would just bounce them back out via that guard; its own
+page subtitle is the one thing in the component itself that's role-conditional, purely to explain
+to a staff viewer why their list is shorter than an admin/manager's — every actual access check
+still lives in the database, not this `@if`.
 
 `DiscardModalComponent`'s quantity field also has a "Discard all (N)" / "Discard a specific
 quantity" mode toggle (`mode: 'all' | 'partial'`, defaulting to `'all'`) — a restoration of the
@@ -961,17 +993,25 @@ first, persisted write after) — `notifications.read_at` is the one column gran
 
 The bell itself lives in `.header-actions`, badged with `unreadCount()`, opening a small fixed-
 position top-right dropdown (`.notifications-panel`) — **own panel, not `MatMenu`**, the same
-"width could overflow a narrow viewport" reasoning `HeaderComponent`'s mobile nav drawer already
-gives for the identical choice, just sized as a short dropdown rather than a full-height drawer.
-Since `.header-actions` itself is `display:none` below the mobile breakpoint, the mobile nav drawer
-gets its own "Notifications" entry (`openNotificationsFromMobileMenu()` — closes the drawer first,
-then opens the panel, rather than layering both) so the feature isn't desktop-only; both triggers
-share the one panel, which is positioned independently of either (a top-level, always-in-DOM
+"width could overflow a narrow viewport" reasoning `HeaderComponent`'s nav drawer (see its own
+paragraph below) already gives for the identical choice, just sized as a short dropdown rather than
+a full-height drawer. It's positioned independently of its own trigger (a top-level, always-in-DOM
 sibling, same "transform/opacity-toggled via a signal, not `@if`, so both open and close animate"
-technique the mobile drawer already established) rather than anchored to whichever trigger happens
-to be visible. Clicking a notification row (`onNotificationRowClick()`) marks it read and closes the
-panel; navigation itself is a plain `[routerLink]` on the row so ctrl/cmd-click still opens a new tab
-normally.
+technique the nav drawer already established) rather than anchored to it. Clicking a notification
+row (`onNotificationRowClick()`) marks it read and closes the panel; navigation itself is a plain
+`[routerLink]` on the row so ctrl/cmd-click still opens a new tab normally.
+
+`HeaderComponent`'s navigation is a classic hamburger + slide-out drawer at every screen width, not
+just a narrow-viewport fallback for a row of links (which is what it originally was, before this
+rework). The top bar itself only ever shows the brand/logo and, on the right, two persistent icon
+buttons: the notification bell above and the hamburger (`.nav-menu-trigger`, opening `.nav-drawer`).
+Every actual nav link, plus theme toggle/Help/Account/Logout, lives only in the drawer now — the
+bell is the one deliberate exception, kept as an always-visible top-bar icon since its own panel is
+unrelated to navigation and a glanceable unread count shouldn't be buried a click deeper. `.nav-drawer`
+follows the same "own fixed-position panel, not `MatMenu`" reasoning as the notifications panel above
+(a menu sized to its content could overflow a narrow viewport into horizontal scroll; this is pinned
+to the right edge and width-capped at `min(80vw, 20rem)` instead), and reuses the same always-in-DOM/
+`[attr.inert]`-when-closed technique so both open and close get the slide transition.
 
 Five of this app's highest-traffic data-fetch paths — `InventoryComponent`, `TasksComponent`,
 `ManageInventoryComponent`'s Requests tab, `ManageTasksComponent`'s "All tasks" tab, and
@@ -1153,8 +1193,9 @@ The app mixes two Angular module styles, which is important to know before addin
   guarded by `approvedGuard` (plus `home`, `tasks`, `account`, `help` — all similarly guarded).
   `manage` is a card hub (`ManageComponent`) linking to twelve flat sibling routes —
   `manage/inventory`, `manage/tasks`, `manage/team`, `manage/activity`, `manage/error-log`,
-  `manage/suppliers`, `manage/orders`, `manage/reservations`, `manage/release-notes`,
-  `manage/reports` (all `manageGuard`: admin OR manager) and
+  `manage/suppliers`, `manage/orders`, `manage/release-notes`, `manage/reports` (all `manageGuard`:
+  admin OR manager), `manage/reservations` (`approvedGuard` only — every approved org member, not
+  just admin/manager; see the Project Overview section above) and
   `manage/billing`/`manage/danger-zone`/`manage/settings` (`adminGuard`, stricter — financial info,
   org export/delete, and site-wide branding respectively) — rather than nested child routes,
   matching the rest of the app's flat
@@ -1585,6 +1626,18 @@ yet on a hard refresh of `/inventory`.
   (`mark_reservation_picked_up()`/`mark_reservation_returned()`/`cancel_reservation()`), all four
   logging to both `inventory_item_activity` and `activity_log` the same way the retirement/order
   RPCs already do.
+- `widen_reservation_access_to_staff` — see the Project Overview section above for the full
+  behavior. Drops `create_reservation()`'s admin/manager role check entirely (any approved org
+  member can place a reservation now) and rewrites the SELECT policy plus the three transition RPCs
+  so a non-admin/manager caller only ever sees/acts on rows where `reserved_by = auth.uid()`.
+  `create_reservation()`'s own capacity-check query is untouched and unaffected — it's `SECURITY
+  DEFINER`, so it already bypassed RLS before this migration and continues to after.
+- `add_item_upcoming_reservations_rpc` — adds `get_item_upcoming_reservations(p_item_id)`, a
+  narrow follow-up to the migration above: that one's new SELECT policy also silently scoped
+  `ModalTableComponent`'s "Upcoming reservations" item-popup summary down to just the viewer's own
+  bookings, which should stay visible to everyone. `SECURITY DEFINER`, scoped by `item_id` (not
+  `reserved_by`) so it bypasses that restriction on purpose — see the Project Overview section
+  above for the full reasoning.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

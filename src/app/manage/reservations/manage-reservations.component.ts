@@ -8,7 +8,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog } from '@angular/material/dialog';
 import { RouterLink } from '@angular/router';
 import { SupabaseService } from '../../core/supabase.service';
-import { Profile } from '../../core/auth.service';
+import { AuthService, Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { NotificationService } from '../../core/notification.service';
@@ -20,19 +20,26 @@ import { InventoryItemReservationWithItem, loadAllInventoryItemReservations } fr
 
 type ReservationStatusFilter = 'all' | 'reserved' | 'picked_up' | 'returned' | 'cancelled';
 
-/** manage/reservations — org-wide view of every date-ranged booking placed
- *  against any item, plus the "New reservation" entry point that picks an
- *  item from across the whole org. Mirrors manage/orders' own shape almost
- *  exactly (see that component's own doc comment) — one central page for
- *  creating/actioning reservations, rather than scattering that workflow
- *  across however many items' own detail popups have one. ModalTableComponent
+/** manage/reservations — view of every date-ranged booking placed against
+ *  any item, plus the "New reservation" entry point that picks an item from
+ *  across the whole org. Mirrors manage/orders' own shape almost exactly
+ *  (see that component's own doc comment) — one central page for creating/
+ *  actioning reservations, rather than scattering that workflow across
+ *  however many items' own detail popups have one. ModalTableComponent
  *  still shows a small *read-only* "Upcoming reservations" summary for its
  *  own item (see loadUpcomingReservationsForItem()) — unlike Orders, which
  *  dropped per-item visibility entirely once this page existed, knowing an
  *  item is already booked is genuinely useful context while looking at
- *  whether to check it out right now. manageGuard (admin/manager) — same
- *  audience placing/actioning a reservation already needs via
- *  inventory_item_reservations' own RPCs. */
+ *  whether to check it out right now.
+ *
+ *  approvedGuard only, not manageGuard — every approved org member can
+ *  reach this page (see app-routing.module.ts's own route comment), but
+ *  what they actually see/can act on is scoped server-side: admin/manager
+ *  get the whole org's reservations via RLS/the RPCs below, everyone else
+ *  only their own (see 20260904120000_widen_reservation_access_to_staff.sql).
+ *  The "reserved"/"picked_up" action buttons below therefore never need
+ *  their own ownership check in this component — RLS already means a
+ *  non-manage viewer can't even load someone else's row to act on it. */
 @Component({
   selector: 'app-manage-reservations',
   imports: [
@@ -51,6 +58,7 @@ type ReservationStatusFilter = 'all' | 'reserved' | 'picked_up' | 'returned' | '
 })
 export class ManageReservationsComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
+  protected authService = inject(AuthService);
   private notification = inject(NotificationService);
   private dialog = inject(MatDialog);
 
