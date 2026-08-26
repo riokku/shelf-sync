@@ -50,21 +50,21 @@
             </div>
             <div class="usage-stat">
               <span class="usage-stat-label">Team members</span>
-              <span class="usage-stat-value">{{ usageLabel(teamMemberCount, currentTier.limits.maxTeamMembers) }}</span>
+              <span class="usage-stat-value mono">{{ usageLabel(teamMemberCount, currentTier.limits.maxTeamMembers) }}</span>
               @if (currentTier.limits.maxTeamMembers) {
                 <mat-progress-bar mode="determinate" [value]="usagePercent(teamMemberCount, currentTier.limits.maxTeamMembers)" />
               }
             </div>
             <div class="usage-stat">
               <span class="usage-stat-label">Inventory items</span>
-              <span class="usage-stat-value">{{ usageLabel(inventoryItemCount, currentTier.limits.maxInventoryItems) }}</span>
+              <span class="usage-stat-value mono">{{ usageLabel(inventoryItemCount, currentTier.limits.maxInventoryItems) }}</span>
               @if (currentTier.limits.maxInventoryItems) {
                 <mat-progress-bar mode="determinate" [value]="usagePercent(inventoryItemCount, currentTier.limits.maxInventoryItems)" />
               }
             </div>
             <div class="usage-stat">
               <span class="usage-stat-label">Photo storage</span>
-              <span class="usage-stat-value">{{ storageUsageLabel() }}</span>
+              <span class="usage-stat-value mono">{{ storageUsageLabel() }}</span>
               @if (currentTier.limits.storageLimitMb) {
                 <mat-progress-bar mode="determinate" [value]="usagePercent(storageUsedMb, currentTier.limits.storageLimitMb)" />
               }

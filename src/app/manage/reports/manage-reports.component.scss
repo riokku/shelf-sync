@@ -106,14 +106,23 @@
   font-size: 0.8125rem;
 }
 
+// Every one of these (.stat-value/.stat-detail/.breakdown-value/
+// .workload-total below) is always a counted figure, never prose — the
+// same convention Home established gets applied here directly on the
+// class rather than tagging every individual template interpolation with
+// .mono, since there's no case where these classes hold anything else.
 .stat-value{
+  font-family: var(--font-mono);
   font-size: 1.375rem;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .stat-detail{
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.8125rem;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 // A label / progress-bar / value row per entry — the closest this app gets
@@ -148,6 +157,7 @@
   flex-shrink: 0;
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.8125rem;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
@@ -293,6 +303,7 @@
   flex-shrink: 0;
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.8125rem;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
