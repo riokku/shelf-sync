@@ -41,29 +41,29 @@ export class HeaderComponent {
    *  its content, which on a narrow viewport could end up wider than the
    *  remaining space next to the hamburger button and push the page into
    *  horizontal scroll. This is pinned to the right edge and capped at
-   *  `min(80vw, 20rem)`, so it can never do that. */
-  private readonly _isMobileMenuOpen = signal(false);
-  readonly isMobileMenuOpen = this._isMobileMenuOpen.asReadonly();
+   *  `min(80vw, 20rem)`, so it can never do that. The only nav in this app
+   *  at any screen width (see .nav-drawer in header.component.scss) —
+   *  not a narrow-viewport fallback for a row of links. */
+  private readonly _isNavMenuOpen = signal(false);
+  readonly isNavMenuOpen = this._isNavMenuOpen.asReadonly();
 
-  openMobileMenu() {
-    this._isMobileMenuOpen.set(true);
+  openNavMenu() {
+    this._isNavMenuOpen.set(true);
   }
 
-  closeMobileMenu() {
-    this._isMobileMenuOpen.set(false);
+  closeNavMenu() {
+    this._isNavMenuOpen.set(false);
   }
 
-  /** Same "own fixed-position panel rather than MatMenu" shape as the
-   *  mobile drawer above, for the same width-overflow-risk reasoning — but
+  /** Same "own fixed-position panel rather than MatMenu" shape as the nav
+   *  drawer above, for the same width-overflow-risk reasoning — but
    *  positioned as a small top-right dropdown near the bell rather than a
    *  full-height edge-to-edge drawer, since a short notification list
    *  doesn't need that much room. Always in the DOM (see the template's own
-   *  [attr.inert]) so both open and close get the panel's transition.
-   *  Reachable from two different triggers (the desktop bell in
-   *  .header-actions, and a mobile-drawer nav entry — see
-   *  openNotificationsFromMobileMenu() below) since .header-actions itself
-   *  is display:none below the same breakpoint the mobile drawer takes
-   *  over at. */
+   *  [attr.inert]) so both open and close get the panel's transition. The
+   *  bell itself is a persistent top-bar icon (unlike every other nav
+   *  control, which lives only in the drawer) — its own panel is unrelated
+   *  to nav and doesn't belong buried a click deeper. */
   private readonly _isNotificationsOpen = signal(false);
   readonly isNotificationsOpen = this._isNotificationsOpen.asReadonly();
 
@@ -73,14 +73,6 @@ export class HeaderComponent {
 
   closeNotifications() {
     this._isNotificationsOpen.set(false);
-  }
-
-  /** The mobile drawer's own "Notifications" entry — closes the drawer
-   *  first rather than leaving both open at once, since the notifications
-   *  panel would otherwise render on top of (part of) the still-open drawer. */
-  openNotificationsFromMobileMenu() {
-    this.closeMobileMenu();
-    this._isNotificationsOpen.set(true);
   }
 
   /** Marks the clicked row read and closes the panel — navigation itself is
@@ -142,12 +134,12 @@ export class HeaderComponent {
     // Also refresh on navigation — e.g. after approving/declining something
     // on a Manage page and clicking elsewhere, or discarding/restocking an
     // item on Inventory. Cheap count-only queries, not worth wiring up
-    // realtime for. Same event also closes the mobile drawer, so tapping a
+    // realtime for. Same event also closes the nav drawer, so tapping a
     // link in it doesn't leave the drawer sitting open over the page it
     // just navigated to.
     this.router.events.subscribe(event => {
       if (event instanceof NavigationEnd) {
-        this.closeMobileMenu();
+        this.closeNavMenu();
         this.closeNotifications();
         if (this.authService.canManage()) {
           void this.loadPendingManageCount();

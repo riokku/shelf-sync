@@ -17,41 +17,13 @@
       </span>
     }
   </a>
-  <nav class="main-nav">
-    <a mat-button routerLink="/home" routerLinkActive="active">
-      <mat-icon>home</mat-icon>
-      Home
-    </a>
-    <a
-        mat-button
-        routerLink="/inventory"
-        routerLinkActive="active"
-        [matBadge]="lowStockCount()"
-        [matBadgeHidden]="lowStockCount() === 0"
-        matBadgeColor="warn"
-        [matTooltip]="lowStockCount() > 0 ? lowStockCount() + ' item(s) low or out of stock' : ''"
-      >
-      <mat-icon>inventory_2</mat-icon>
-      Inventory
-    </a>
-    <a mat-button routerLink="/tasks" routerLinkActive="active">
-      <mat-icon>checklist</mat-icon>
-      Tasks
-    </a>
-    @if (authService.canManage()) {
-      <a
-          mat-button
-          routerLink="/manage"
-          routerLinkActive="active"
-          [matBadge]="pendingManageCount()"
-          [matBadgeHidden]="pendingManageCount() === 0"
-          matBadgeColor="warn"
-        >
-        <mat-icon>admin_panel_settings</mat-icon>
-        Manage
-      </a>
-    }
-  </nav>
+  <!-- Every nav link, plus account/theme/help/logout, lives in the slide-out
+       drawer below at every screen width — a classic hamburger menu rather
+       than a row of links that only collapses down to one on a narrow
+       viewport. The bell is the one exception: it stays a persistent,
+       glanceable top-bar icon (its own slide-out panel is unrelated to nav
+       and doesn't belong buried a click deeper), so it sits right next to
+       the hamburger rather than inside the drawer. -->
   <div class="header-actions">
     <button
         mat-icon-button
@@ -71,76 +43,51 @@
     <button
         mat-icon-button
         type="button"
-        class="mode-toggle"
-        (click)="themeMode.toggle()"
-        [attr.aria-label]="themeMode.mode() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+        class="nav-menu-trigger"
+        (click)="openNavMenu()"
+        aria-label="Open menu"
       >
-      <mat-icon>{{ themeMode.mode() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
-    </button>
-    <a mat-button routerLink="/help" routerLinkActive="active">
-      <mat-icon>help_outline</mat-icon>
-      Help
-    </a>
-    <a mat-button routerLink="/account" routerLinkActive="active">
-      <mat-icon>account_circle</mat-icon>
-      Account
-    </a>
-    <button mat-stroked-button (click)="logout()">
-      <mat-icon>logout</mat-icon>
-      Logout
+      <mat-icon>menu</mat-icon>
     </button>
   </div>
-
-  <!-- Same links as .main-nav/.header-actions above, collapsed behind one
-       trigger below the 900px breakpoint (see header.component.scss) rather
-       than trying to reflow the full row — hidden/shown purely by CSS
-       rather than a Breakpoint Observer, so there's no extra component
-       state to keep in sync with it. -->
-  <button
-      mat-icon-button
-      type="button"
-      class="mobile-menu-trigger"
-      (click)="openMobileMenu()"
-      aria-label="Open menu"
-    >
-    <mat-icon>menu</mat-icon>
-  </button>
 </section>
 
 <!-- A self-managed fixed-position panel rather than MatMenu — a menu is a
      dropdown sized to its content and anchored to its trigger, which could
      end up wider than the space left next to the hamburger button on a
      narrow viewport and push the page into horizontal scroll. This is
-     pinned to the right edge and width-capped instead (see .mobile-nav-
-     drawer below), so it can't do that, and slides in edge-to-edge the way
-     a mobile nav drawer is expected to look. Always in the DOM (not @if)
-     so the transform transition below can animate both the open *and*
-     close direction — [attr.inert] disables it (focus, clicks, everything)
-     while closed instead, rather than removing it outright. -->
+     pinned to the right edge and width-capped instead (see .nav-drawer
+     below), so it can't do that, and slides in edge-to-edge the way a
+     hamburger nav drawer is expected to look — the only nav in this app at
+     any screen width, not just a narrow-viewport fallback for a row of
+     links that would otherwise overflow. Always in the DOM (not @if) so
+     the transform transition below can animate both the open *and* close
+     direction — [attr.inert] disables it (focus, clicks, everything) while
+     closed instead, rather than removing it outright. -->
 <!-- Click-to-dismiss convenience only, same as a CDK overlay/native dialog
      backdrop — the drawer's own nav links and a dedicated close control
      (both real, focusable, keyboard-operable elements) are the accessible
      way to close it, so this doesn't need its own keyboard handler. -->
 <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
-<div class="mobile-nav-backdrop" [class.open]="isMobileMenuOpen()" (click)="closeMobileMenu()"></div>
+<div class="nav-drawer-backdrop" [class.open]="isNavMenuOpen()" (click)="closeNavMenu()"></div>
 <div
-    class="mobile-nav-drawer"
-    [class.open]="isMobileMenuOpen()"
-    [attr.inert]="isMobileMenuOpen() ? null : ''"
+    class="nav-drawer"
+    [class.open]="isNavMenuOpen()"
+    [attr.inert]="isNavMenuOpen() ? null : ''"
     role="dialog"
     aria-modal="true"
     aria-label="Menu"
     cdkTrapFocus
-    [cdkTrapFocusAutoCapture]="isMobileMenuOpen()"
-    (keydown.escape)="closeMobileMenu()"
+    [cdkTrapFocusAutoCapture]="isNavMenuOpen()"
+    (keydown.escape)="closeNavMenu()"
   >
-  <div class="mobile-nav-drawer-header">
-    <span class="mobile-nav-drawer-title">Menu</span>
-    <button mat-icon-button type="button" (click)="closeMobileMenu()" aria-label="Close menu">
+  <div class="nav-drawer-header">
+    <span class="nav-drawer-title">Menu</span>
+    <button mat-icon-button type="button" (click)="closeNavMenu()" aria-label="Close menu">
       <mat-icon>close</mat-icon>
     </button>
   </div>
-  <nav class="mobile-nav-links">
+  <nav class="nav-drawer-links">
     <a mat-button routerLink="/home" routerLinkActive="active">
       <mat-icon>home</mat-icon>
       Home
@@ -149,7 +96,7 @@
         mat-button
         routerLink="/inventory"
         routerLinkActive="active"
-        class="mobile-menu-badge"
+        class="nav-drawer-badge"
         [matBadge]="lowStockCount()"
         [matBadgeHidden]="lowStockCount() === 0"
         matBadgeColor="warn"
@@ -161,12 +108,21 @@
       <mat-icon>checklist</mat-icon>
       Tasks
     </a>
+    <!-- Every approved org member can reach this now, not just admin/manager
+         — see manage/reservations' own route comment in
+         app-routing.module.ts — so it sits alongside Home/Inventory/Tasks
+         here rather than behind the canManage() check below with the rest
+         of Manage. -->
+    <a mat-button routerLink="/manage/reservations" routerLinkActive="active">
+      <mat-icon>event</mat-icon>
+      Reservations
+    </a>
     @if (authService.canManage()) {
       <a
           mat-button
           routerLink="/manage"
           routerLinkActive="active"
-          class="mobile-menu-badge"
+          class="nav-drawer-badge"
           [matBadge]="pendingManageCount()"
           [matBadgeHidden]="pendingManageCount() === 0"
           matBadgeColor="warn"
@@ -175,18 +131,6 @@
         Manage
       </a>
     }
-    <button
-        mat-button
-        type="button"
-        class="mobile-menu-badge"
-        (click)="openNotificationsFromMobileMenu()"
-        [matBadge]="notificationCenter.unreadCount()"
-        [matBadgeHidden]="notificationCenter.unreadCount() === 0"
-        matBadgeColor="warn"
-      >
-      <mat-icon>notifications</mat-icon>
-      Notifications
-    </button>
     <mat-divider></mat-divider>
     <button mat-button type="button" (click)="themeMode.toggle()">
       <mat-icon>{{ themeMode.mode() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
@@ -207,7 +151,7 @@
   </nav>
 </div>
 
-<!-- Own fixed-position panel, same reasoning/shape as .mobile-nav-drawer
+<!-- Own fixed-position panel, same reasoning/shape as .nav-drawer
      above — see HeaderComponent.isNotificationsOpen's own doc comment.
      Click-to-dismiss backdrop only (transparent, covers the whole
      viewport) — Escape and the panel's own close button are the

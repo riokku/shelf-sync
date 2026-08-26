@@ -97,16 +97,6 @@ describe('HeaderComponent notifications panel', () => {
     expect(component.isNotificationsOpen()).toBeFalse();
   });
 
-  it('openNotificationsFromMobileMenu() closes the mobile drawer and opens the notifications panel instead', () => {
-    const component = setup().componentInstance;
-    component.openMobileMenu();
-
-    component.openNotificationsFromMobileMenu();
-
-    expect(component.isMobileMenuOpen()).toBeFalse();
-    expect(component.isNotificationsOpen()).toBeTrue();
-  });
-
   it('onNotificationRowClick() marks the notification read and closes the panel', () => {
     const component = setup().componentInstance;
     const notificationCenter = (component as unknown as { notificationCenter: NotificationCenterService }).notificationCenter;
@@ -117,6 +107,32 @@ describe('HeaderComponent notifications panel', () => {
 
     expect(markAsReadSpy).toHaveBeenCalledWith('notif-1');
     expect(component.isNotificationsOpen()).toBeFalse();
+  });
+});
+
+describe('HeaderComponent nav drawer', () => {
+  function setup() {
+    TestBed.configureTestingModule({
+      imports: [HeaderComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: SupabaseService, useValue: createFakeSupabaseService() }
+      ]
+    });
+    const fixture = TestBed.createComponent(HeaderComponent);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  it('openNavMenu()/closeNavMenu() toggle the drawer', () => {
+    const component = setup().componentInstance;
+
+    expect(component.isNavMenuOpen()).toBeFalse();
+    component.openNavMenu();
+    expect(component.isNavMenuOpen()).toBeTrue();
+    component.closeNavMenu();
+    expect(component.isNavMenuOpen()).toBeFalse();
   });
 });
 
