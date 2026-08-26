@@ -16,15 +16,35 @@
   }
 }
 
+// Two columns rather than one long stack — sized by column-width (same
+// "adapts to whatever width is actually available instead of a breakpoint
+// tuned for a fixed count" technique Settings' own .table-column-groups
+// already established) so a narrow viewport collapses to a single column
+// on its own rather than needing a matching media query here. Cards flow
+// down one column before starting the next (CSS multi-column, not a rigid
+// 2-up grid), so a short card doesn't leave a same-height gap under it the
+// way pairing fixed grid cells would — see CLAUDE.md's own note on why
+// Settings' Data tab deliberately avoided a two-column layout for exactly
+// that reason; multi-column flow doesn't have that problem since it's not
+// pairing specific cards into fixed rows.
+.account-cards{
+  columns: 22rem 2;
+  column-gap: 1.5rem;
+}
+
 mat-card{
-  max-width: 40rem;
+  // Margin-bottom, not margin-top — in multi-column flow any card can end
+  // up as the first item at the top of a column regardless of source
+  // order, where a margin-top would add an unwanted leading gap that
+  // nothing above it (in that column) actually needs.
+  margin-bottom: 1.5rem;
+  break-inside: avoid;
+  max-width: none;
 }
 
 .avatar-card,
 .quick-menu-card,
 .appearance-card{
-  margin-top: 1.5rem;
-
   h3{
     color: var(--mat-sys-primary);
     margin: 0 0 0.5rem;
