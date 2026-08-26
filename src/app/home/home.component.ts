@@ -5,7 +5,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { AuthService } from '../core/auth.service';
 import { SupabaseService } from '../core/supabase.service';
-import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 import { RingStatComponent } from '../shared/components/ring-stat/ring-stat.component';
 import { needsRestockAttention } from '../shared/utils/inventory-stock';
 import { getTodayIsoDate, parseIsoDate, toIsoDateString } from '../shared/utils/date';
@@ -46,7 +45,7 @@ const HOME_LIST_VISIBLE_CAP = 4;
 
 @Component({
   selector: 'app-home',
-  imports: [RouterModule, MatIconModule, MatButtonModule, DatePipe, BreadcrumbsComponent, RingStatComponent],
+  imports: [RouterModule, MatIconModule, MatButtonModule, DatePipe, RingStatComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
 })

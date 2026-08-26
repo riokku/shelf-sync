@@ -1286,6 +1286,19 @@ enough variety without inventing a fifth/sixth combo — except Danger Zone, whi
 distinct flat red chip rather than joining the Admin section's shared gradient, the same
 "deliberately reads as riskier than its siblings" reasoning its h3 color override already had.
 
+A follow-up pass tightened this to match the design mockup itself rather than just its general
+spirit, after the first cut noticeably diverged on a few concrete measurements — most visibly
+"What's on your plate" (`.home-lists`), which shipped as a full-width single column (the pre-
+existing app's own original reasoning: a narrow card wraps a long task/item/reservation line across
+2-3 lines) when the approved mockup had it as a side-by-side grid. Every card across `HomeComponent`
+and `ManageComponent` also picked up a `1px solid` `outline-variant` border (every card in the
+mockup has one; the shipped version initially didn't), and `.home-grid`/`.home-lists`/`.home-card`/
+`.home-list-card` sizing (padding, border-radius, gap, icon size, heading weight) was tightened to
+the mockup's own tighter, more compact numbers rather than reusing the pre-existing app's looser
+ones. `HomeComponent` also dropped its `<app-breadcrumbs>` row entirely (and the now-unused
+`page-toolbar` style import) — as the very first thing after signing in, "Home" was the only crumb
+it ever showed, with nowhere to actually go back to.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
