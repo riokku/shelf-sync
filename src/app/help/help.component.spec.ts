@@ -1,7 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
+import { of } from 'rxjs';
 
 import { HelpComponent } from './help.component';
+import { NotificationService } from '../core/notification.service';
+import { FeedbackModalComponent } from '../shared/components/feedback-modal/feedback-modal.component';
 import { HELP_FAQ_SECTIONS } from '../shared/models/help-faq';
 
 describe('HelpComponent', () => {
@@ -74,6 +78,39 @@ describe('HelpComponent', () => {
       component.clearSearch();
       expect(component.hasNoResults).toBeFalse();
       expect(component.searchTerm).toBe('');
+    });
+  });
+
+  describe('openFeedback()', () => {
+    it('opens the feedback modal', () => {
+      const dialog = TestBed.inject(MatDialog);
+      const openSpy = spyOn(dialog, 'open').and.returnValue({ afterClosed: () => of(undefined) } as never);
+
+      component.openFeedback();
+
+      expect(openSpy).toHaveBeenCalledWith(FeedbackModalComponent, jasmine.anything());
+    });
+
+    it('toasts once the modal closes having actually sent feedback', () => {
+      const dialog = TestBed.inject(MatDialog);
+      spyOn(dialog, 'open').and.returnValue({ afterClosed: () => of(true) } as never);
+      const notification = TestBed.inject(NotificationService);
+      const successSpy = spyOn(notification, 'success');
+
+      component.openFeedback();
+
+      expect(successSpy).toHaveBeenCalledWith('Thanks — your feedback has been sent.');
+    });
+
+    it('does not toast when the modal is dismissed without sending', () => {
+      const dialog = TestBed.inject(MatDialog);
+      spyOn(dialog, 'open').and.returnValue({ afterClosed: () => of(undefined) } as never);
+      const notification = TestBed.inject(NotificationService);
+      const successSpy = spyOn(notification, 'success');
+
+      component.openFeedback();
+
+      expect(successSpy).not.toHaveBeenCalled();
     });
   });
 });

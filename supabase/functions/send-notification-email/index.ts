@@ -1,11 +1,13 @@
-// Called by four Database Webhook triggers (see the
-// add_notification_email_webhooks migration) whenever a row this app cares
-// about changes in a way worth telling someone about: a task gets directly
-// assigned or a transfer gets offered, an item's retirement request needs
-// approval, or someone's join request needs approval. Each trigger has its
-// own `when (...)` clause scoping it to exactly that transition, so this
-// function can mostly trust that if it's been called, the payload is
-// relevant — it still re-checks defensively before sending anything.
+// Called by five Database Webhook triggers (see the
+// add_notification_email_webhooks and add_feedback migrations) whenever a
+// row this app cares about changes in a way worth telling someone about: a
+// task gets directly assigned or a transfer gets offered, an item's
+// retirement request needs approval, someone's join request needs approval,
+// or a user submits feedback. Each trigger has its own `when (...)` clause
+// (feedback's own trigger has none — every insert there is worth emailing
+// about) scoping it to exactly that transition, so this function can mostly
+// trust that if it's been called, the payload is relevant — it still
+// re-checks defensively before sending anything.
 //
 // Two independent outputs per event: an email (gated by the org's own
 // Settings > Workflow "Email notifications" toggle, see
@@ -43,6 +45,17 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const APP_URL = 'https://shelf-sync.chrisistinson.workers.dev';
 const FROM_ADDRESS = 'ShelfSync <onboarding@resend.dev>';
+// Feedback's one fixed recipient — unlike every other email this function
+// sends, this one never goes to an org member, so it isn't resolved from
+// `profiles` the way everything else here is.
+const FEEDBACK_TO_ADDRESS = 'chris@studiorioconsulting.com';
+
+const FEEDBACK_TYPE_LABELS: Record<string, string> = {
+  bug: 'Bug report',
+  feature_request: 'Feature request',
+  general: 'General feedback',
+  other: 'Other'
+};
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -93,6 +106,8 @@ Deno.serve(async req => {
       result = await resultForRetirementRequest(payload);
     } else if (payload.table === 'profiles') {
       result = await resultForJoinRequest(payload);
+    } else if (payload.table === 'feedback') {
+      result = await resultForFeedback(payload);
     }
   } catch (error) {
     // A bug building the notification shouldn't turn into Supabase
@@ -355,4 +370,48 @@ async function resultForJoinRequest(payload: WebhookPayload): Promise<EventResul
   }
 
   return { emails, notifications };
+}
+
+/** Feedback always sends — there's no per-org "Email notifications" toggle
+ *  to check (see FEEDBACK_TO_ADDRESS's own comment for why: the recipient
+ *  isn't an org member, so none of Settings > Workflow's org-scoped toggles
+ *  apply here), and no notifications row either, since nobody in the app
+ *  ever reads this back. Org name and the submitter's name/email are looked
+ *  up here rather than carried on the row itself, mirroring how every other
+ *  handler above resolves recipient labels from `profiles` rather than
+ *  trusting anything the client could have sent directly. */
+async function resultForFeedback(payload: WebhookPayload): Promise<EventResult> {
+  const record = payload.record as
+    { organization_id: string; user_id: string | null; type: string; message: string } | null;
+  if (!record || payload.type !== 'INSERT') {
+    return EMPTY_RESULT;
+  }
+
+  const [{ data: org }, submitter] = await Promise.all([
+    supabase.from('organizations').select('name').eq('id', record.organization_id).maybeSingle(),
+    profileEmail(record.user_id)
+  ]);
+
+  const orgName = org?.name ?? 'Unknown organization';
+  const personLabel = submitter?.label ?? 'Unknown user';
+  const personEmail = submitter?.email ?? 'unknown';
+  const typeLabel = FEEDBACK_TYPE_LABELS[record.type] ?? record.type;
+
+  return {
+    emails: [{
+      to: FEEDBACK_TO_ADDRESS,
+      // Standardized shape — same "<kind>: <type> — <org> (<person>)" every
+      // time — so these are easy to scan/search/filter in an inbox
+      // regardless of what the message itself says.
+      subject: `New feedback: ${typeLabel} — ${orgName} (${personLabel})`,
+      html: emailShell(
+        'New feedback submitted',
+        `<strong>${escapeHtml(typeLabel)}</strong> from ${escapeHtml(personLabel)} (${escapeHtml(personEmail)}) ` +
+          `at <strong>${escapeHtml(orgName)}</strong>:<br><br>${escapeHtml(record.message).replaceAll('\n', '<br>')}`,
+        'Open ShelfSync',
+        APP_URL
+      )
+    }],
+    notifications: []
+  };
 }

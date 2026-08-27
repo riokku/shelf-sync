@@ -1173,6 +1173,37 @@ immediately visible without an extra click. `hasNoResults` swaps in `EmptyStateC
 desktop `.header-actions` row and the mobile drawer) right next to Account, as a `help_outline`-icon
 "Help" link.
 
+The Help page also has a "Send feedback" button (`.page-header-row`, next to the `<h2>`, the same
+plain h2-plus-trailing-button shape `ManageInventoryComponent`'s own "Export" button already uses —
+not `PageHeaderComponent`'s icon-chip treatment, which is scoped to Manage's sub-pages only) opening
+`FeedbackModalComponent` — a feedback type (Bug report/Feature request/General feedback/Other,
+`shared/models/feedback.ts`) plus a free-text message, from any signed-in user regardless of role.
+Self-contained like `PlaceOrderModalComponent`/`PlaceReservationModalComponent`: it inserts directly
+into a new `feedback` table (self-attributed, `organization_id` defaulting to
+`current_user_org_id()` same as `activity_log`'s own client inserts) rather than handing a value back
+to `HelpComponent` to persist — but unlike those two, there's no `inventory_item_activity`/
+`activity_log` write to make alongside it, since feedback isn't tied to an item or task. `feedback`
+has no SELECT policy for any role at all (a deliberate difference from every other audit-style table
+in this schema, e.g. `activity_log`/`inventory_item_discards`) — nobody in the app ever reads a
+submission back, and a candid bug report or complaint shouldn't be visible to the rest of the org the
+way team-wide activity is. The insert alone is what notifies anyone: `send-notification-email` (see
+its own section below) gains a fifth event kind, dispatched from a `notify_on_feedback_submitted`
+trigger that reuses `call_notification_webhook()` completely unchanged (that function already posts
+`tg_table_name`/the new row generically, so a new table just needed a new trigger, not a new
+Postgres-side function) — no `when (...)` clause, unlike that function's other four triggers, since
+every insert here is worth emailing about. The recipient is a single fixed, out-of-band address
+(`chris@studiorioconsulting.com`, hardcoded in the Edge Function next to `APP_URL`/`FROM_ADDRESS` —
+this is the app's own maintainer, not an org member, so none of it is resolved from `profiles` the
+way every other kind's recipient is) and the subject line is standardized to always the same shape —
+`"New feedback: <type label> — <org name> (<person name>)"` — so submissions stay easy to scan/
+search/filter in an inbox regardless of what the message itself says; the body repeats the same
+type/person/org line above the message text. Deliberately **not** gated behind Settings > Workflow's
+per-org "Email notifications" toggles the way the other four kinds are (`isEmailNotificationEnabled()`
+is skipped entirely for this one) — those toggles are for an org choosing whether *its own members*
+get emailed about *their own org's* events, which doesn't apply to a fixed recipient outside every
+org. Also skips the `notifications` table insert every other kind gets, for the same reason: nobody
+in the app is the "recipient" of feedback the way a task assignee or approving admin is.
+
 A shared `PageIntroComponent` (`shared/components/page-intro`) gives Inventory, Tasks, and the
 Manage hub a one-time, dismissible orientation banner for a user (any role) who might be landing on
 that page for the first time — a short "here's what this page is" hint, distinct from
@@ -1534,6 +1565,7 @@ shared/
   components/donut-chart/ # hand-rolled SVG donut chart (no charting library) — backs manage/reports' "Value by category"
   components/ring-stat/ # hand-rolled SVG percentage ring gauge — backs manage/reports' completion-rate stat
   components/page-header/ # icon-chip + title/subtitle header, shared across most manage/* sub-pages
+  components/feedback-modal/ # self-contained feedback-type + message dialog backing the Help page's "Send feedback" button
   models/inventory-item.model.ts   # InventoryItem class (constructor-based, no defaults)
   models/supplier.model.ts   # Supplier — a directory entry inventory_items.supplier_id can point at
   models/inventory-item-order.model.ts # InventoryItemOrder — one restock order against an item's linked supplier
@@ -1545,6 +1577,7 @@ shared/
   models/changelog.ts        # CHANGELOG_ENTRIES — hand-maintained "What's new" list, backs manage/release-notes
   models/help-faq.ts         # HELP_FAQ_SECTIONS — question/answer/links data backing the searchable Help page
   models/quick-menu.ts       # QUICK_MENU_OPTIONS / MAX_QUICK_MENU_ITEMS — backs AccountComponent's picker and HeaderComponent's own icon row
+  models/feedback.ts         # FeedbackType / FEEDBACK_TYPE_LABELS — backs FeedbackModalComponent, mirrored by hand in the send-notification-email Edge Function
   models/database.types.ts   # generated via `npm run supabase:gen:types` — regenerate, don't hand-edit
   utils/inventory-item.mapper.ts   # toInventoryItem(row, images, checkedOutToLabel, activityLog?, ..., supplierLabel?) — DB row -> InventoryItem
   utils/inventory-item-images.ts   # loadInventoryImagesByItemId() / uploadInventoryItemImages() / deleteInventoryItemImage()
@@ -1933,6 +1966,14 @@ yet on a hard refresh of `/inventory`.
   `is_locked`). `price_per_unit`/`price_per_container`/`supplier_id` stay in the existing
   any-authenticated-user column grant unchanged — this only gates whether a write actually
   commits, not who's granted to attempt it.
+- `add_feedback` — adds `feedback` (`organization_id` defaulting to `current_user_org_id()`,
+  `user_id`, `type`, `message`), backing the Help page's "Send feedback" button (see Project
+  Overview above). INSERT-only, self-attributed, any authenticated org member — no SELECT policy
+  for any role, deliberately unlike every other audit-style table in this schema, since nobody in
+  the app ever reads a submission back. Adds one trigger, `notify_on_feedback_submitted`, reusing
+  `call_notification_webhook()` unchanged (from `add_notification_email_webhooks`) — that function
+  already posts `tg_table_name`/the new row generically, so no Postgres-side function changes were
+  needed, just a new table to point a trigger at.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

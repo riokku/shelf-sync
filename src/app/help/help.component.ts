@@ -1,13 +1,16 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { NotificationService } from '../core/notification.service';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 import { EmptyStateComponent } from '../shared/components/empty-state/empty-state.component';
+import { FeedbackModalComponent } from '../shared/components/feedback-modal/feedback-modal.component';
 import { HELP_FAQ_SECTIONS, HelpFaqSection } from '../shared/models/help-faq';
 
 /** A static, always-available in-app reference for "how do I..." questions
@@ -37,10 +40,26 @@ import { HELP_FAQ_SECTIONS, HelpFaqSection } from '../shared/models/help-faq';
   styleUrl: './help.component.scss',
 })
 export class HelpComponent {
+  private dialog = inject(MatDialog);
+  private notification = inject(NotificationService);
+
   searchTerm = '';
 
   clearSearch() {
     this.searchTerm = '';
+  }
+
+  openFeedback() {
+    const dialogRef = this.dialog.open(FeedbackModalComponent, {
+      width: 'clamp(28rem, 50vw, 36rem)',
+      maxWidth: '90vw'
+    });
+
+    dialogRef.afterClosed().subscribe(sent => {
+      if (sent) {
+        this.notification.success('Thanks — your feedback has been sent.');
+      }
+    });
   }
 
   /** Every section unfiltered while the search box is empty; otherwise

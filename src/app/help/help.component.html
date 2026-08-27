@@ -3,7 +3,13 @@
     <div class="page-toolbar">
       <app-breadcrumbs />
     </div>
-    <h2>Help &amp; FAQ</h2>
+    <div class="page-header-row">
+      <h2>Help &amp; FAQ</h2>
+      <button mat-stroked-button type="button" (click)="openFeedback()">
+        <mat-icon>feedback</mat-icon>
+        Send feedback
+      </button>
+    </div>
     <p class="page-subtitle">Answers to common "how do I..." questions about ShelfSync.</p>
 
     <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">

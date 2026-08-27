@@ -19,6 +19,21 @@
   }
 }
 
+// Same shape ManageInventoryComponent's own .page-header-row already
+// established (h2 + a trailing action button) — duplicated here rather than
+// shared, matching that component's own precedent: PageHeaderComponent's
+// icon-chip treatment is scoped to Manage's sub-pages only (see its own doc
+// comment), and this page keeps the plain bare-<h2> style every other
+// non-Manage page (Inventory, Tasks, Home, Account) already uses.
+.page-header-row{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.25rem;
+}
+
 .page-subtitle{
   color: var(--mat-sys-on-surface-variant);
   margin: 0 0 1.5rem;
