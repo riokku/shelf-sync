@@ -14,6 +14,13 @@ form{
   color: var(--mat-sys-primary);
 }
 
+// Material's button label wraps icon + text as plain inline content with no
+// gap of its own between them — left uncorrected, the send icon sits flush
+// against "Send feedback".
+.send-icon{
+  margin-right: 0.375rem;
+}
+
 // Material's own mat-dialog-title has only 6px of top padding by default —
 // see PlaceOrderModalComponent's own identical fix for the full reasoning.
 [mat-dialog-title]{
