@@ -159,6 +159,12 @@
     &:hover{
       background: var(--mat-sys-surface-container);
     }
+
+    // Same press-feedback convention TaskCardComponent's own .task-row
+    // uses — darkens a step further than :hover on click/tap.
+    &:active{
+      background: var(--mat-sys-surface-container-high);
+    }
   }
 }
 

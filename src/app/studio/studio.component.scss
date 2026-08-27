@@ -52,6 +52,12 @@
     box-shadow: 0 0.75rem 1.75rem rgba(0, 0, 0, 0.12);
   }
 
+  // Same "pushed in" press feedback Home's/Manage's own cards establish.
+  &:active{
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.12);
+  }
+
   h3{
     margin: 0;
   }

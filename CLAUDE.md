@@ -1451,6 +1451,52 @@ card; Inventory's Export button and Tasks' tab row ride in the same default cont
 Suppliers'/Orders' own buttons already established. That leaves only the Manage hub itself
 un-migrated, which keeps its own bare header on purpose (see above).
 
+A pass on empty states and small interaction polish followed. `EmptyStateComponent`'s icon moves
+from a bare, dimmed (`opacity: 0.6`) `mat-icon` floating on its own into a soft circular gradient
+badge — the same two-tone container-token treatment this app's nav/list/page-header icon chips
+already use, just circular and sized up (4.5rem) since this is the one visual focal point of an
+otherwise-empty page rather than a small accent beside other content. The badge plays a brief
+scale-in on mount (a plain CSS animation — an empty state renders once and stays, nothing to
+debounce or replay against, so no JS-driven trigger is needed), skipped under
+`prefers-reduced-motion` same as this app's other ambient animations. The `error` variant swaps the
+badge's fill to a subtle error-tinted one (mirroring `ManageComponent`'s own Danger Zone icon
+treatment) rather than the shared neutral gradient. `compact` mode (an empty state nested inside an
+already-populated page, e.g. a "Completed" section with nothing in it) deliberately keeps the old
+small-inline-icon treatment with no badge — a hero-sized circle would be out of place squeezed into
+one row.
+
+Several of the app's "the whole element is the click target" surfaces (as opposed to a card that
+merely *contains* a button, like Inventory's own item cards) picked up an explicit `:active` press
+state, rather than only ever reacting to `:hover` and otherwise holding steady straight through a
+click: `HomeComponent`'s `.home-card`/`.home-list-card`, `ManageComponent`'s `.manage-card`,
+`StudioComponent`'s `.studio-card`, and `TaskCardComponent`'s/`ManageTasksComponent`'s own
+`.task-row` (both already `role="button"` with a click handler on the whole row, not just an inner
+control). The card surfaces reduce `:hover`'s own lift/shadow into a "pushed in" state (less
+translateY, a smaller shadow, a slight `scale(0.98)`) rather than just holding the hover state
+through the press; the two task-row surfaces instead darken a step further
+(`--mat-sys-surface-container-high`) since a background-only hover has no "lift" to reduce.
+`.home-list-items` rows are the one exception needing a different mechanism — their own `:hover`
+already tops out at `surface-container-high`, the highest container tone available, so there's no
+darker background left to press into; a `scale(0.985)` on `:active` carries the same feedback
+instead, deliberately left out of the row's own `transition` list so the press itself reads as
+instant rather than eased (only the release, back to `:hover`'s background, animates). None of this
+is gated behind `prefers-reduced-motion` — unlike this app's ambient/auto-playing animations, a
+press state only ever fires in direct response to the user's own click, the same category
+`:hover`'s pre-existing transform changes already sit in without a guard. Deliberately scoped to
+elements that are themselves the interactive target — Inventory's card-view `mat-card` and table
+rows were left alone, since neither is actually clickable as a whole (only their own "Details"
+button / actions-column icon button is), and adding press feedback to the surrounding card/row would
+have implied an affordance that isn't really there.
+
+A "checkmark draw-in or subtle confetti" moment on completing every Getting Started step (part of
+the original ask that prompted this pass) was considered and deliberately not built: the step that
+actually flips a task/item/teammate count from zero to nonzero almost always happens on a
+*different* page than Home itself (creating the first inventory item from `manage/inventory`,
+inviting a teammate from `manage/team`, etc.), so by the time a visitor is back on Home with
+`gettingStartedSteps` freshly loaded, the transition already happened off-screen — there's no
+"just completed" moment inside `HomeComponent`'s own lifecycle left to animate. Worth revisiting if
+this card ever gains its own live/realtime updates rather than a load-once snapshot.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)

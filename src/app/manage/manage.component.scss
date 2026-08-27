@@ -67,6 +67,14 @@
     box-shadow: 0 0.75rem 1.75rem rgba(0, 0, 0, 0.12);
   }
 
+  // Same "pushed in" press feedback Home's own .home-card/.home-list-card
+  // establish — less lift than :hover, a smaller shadow, a slight
+  // scale-down, rather than the hover state holding steady through a click.
+  &:active{
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.12);
+  }
+
   h3{
     margin: 0;
   }
