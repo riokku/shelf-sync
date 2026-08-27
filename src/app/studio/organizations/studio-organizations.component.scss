@@ -59,6 +59,23 @@
   opacity: 0.6;
 }
 
+// Whole row opens OrgDetailModalComponent — same hover/focus affordance
+// TaskCardComponent's own .task-row establishes for the identical
+// whole-row-is-a-button shape.
+.org-row-clickable{
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+
+  &:hover,
+  &:focus-visible{
+    background: var(--mat-sys-surface-container-high);
+  }
+
+  &:active{
+    background: var(--mat-sys-surface-container-highest);
+  }
+}
+
 .status-badge{
   padding: 0.125rem 0.5rem;
   border-radius: 999px;
