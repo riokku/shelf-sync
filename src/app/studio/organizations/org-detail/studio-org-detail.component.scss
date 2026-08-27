@@ -19,10 +19,13 @@
 
 // A plain text button (lower emphasis than the page's own stroked/flat
 // action buttons further down) sitting above the org's own name/logo —
-// negative margin pulls it snug against the icon chip below rather than
-// leaving mat-button's own built-in vertical padding as a visible gap.
+// negative top margin pulls it up snug against the breadcrumbs above
+// (countering .page-toolbar's own 1.5rem margin-bottom, a shared style
+// this shouldn't touch directly), while the positive bottom margin gives
+// it clear room from the icon chip/title below rather than reading as
+// part of the same header row.
 .back-row{
-  margin: 0 0 -0.5rem -0.75rem;
+  margin: -1rem 0 1rem -0.75rem;
 }
 
 // The container itself stays full width (same as every sibling Studio page)
