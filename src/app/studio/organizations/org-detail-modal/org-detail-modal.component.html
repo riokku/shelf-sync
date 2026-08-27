@@ -5,13 +5,55 @@
     <dd>{{ organization.created_at | date: 'MMMM d, y' }}</dd>
     <dt>Status</dt>
     <dd>
-      @if (organization.deleted_at) {
-        <span class="status-badge status-badge-deleted">Deleted {{ organization.deleted_at | date: 'M/d/yy' }}</span>
+      @if (isRetired) {
+        <span class="status-badge status-badge-deleted">Retired {{ organization.deleted_at | date: 'M/d/yy' }}</span>
+      } @else if (isSuspended) {
+        <span class="status-badge status-badge-suspended">Suspended {{ organization.suspended_at | date: 'M/d/yy' }}</span>
       } @else {
         <span class="status-badge status-badge-active">Active</span>
       }
     </dd>
+    @if (isSuspended && !isRetired) {
+      <dt>Reason</dt>
+      <dd>
+        {{ organization.suspension_reason }}
+        @if (suspendedByName) {
+          <span class="section-hint"> — by {{ suspendedByName }}</span>
+        }
+      </dd>
+    }
   </dl>
+
+  <section class="org-section platform-actions">
+    <h3>Platform actions</h3>
+    @if (actionError) {
+      <p class="error-message">{{ actionError }}</p>
+    }
+    <div class="platform-actions-buttons">
+      @if (isRetired) {
+        <button mat-stroked-button type="button" [disabled]="isActionPending" (click)="restoreOrganization()">
+          <mat-icon>restore</mat-icon>
+          Restore organization
+        </button>
+      } @else {
+        @if (isSuspended) {
+          <button mat-stroked-button type="button" [disabled]="isActionPending" (click)="unsuspendOrganization()">
+            <mat-icon>check_circle</mat-icon>
+            Unsuspend
+          </button>
+        } @else {
+          <button mat-stroked-button color="warn" type="button" [disabled]="isActionPending" (click)="suspendOrganization()">
+            <mat-icon>block</mat-icon>
+            Suspend
+          </button>
+        }
+        <button mat-flat-button color="warn" type="button" [disabled]="isActionPending" (click)="retireOrganization()">
+          <mat-icon>delete_forever</mat-icon>
+          Retire organization
+        </button>
+      }
+    </div>
+  </section>
 
   @if (isLoading) {
     <div class="loading-row">

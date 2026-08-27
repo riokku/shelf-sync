@@ -38,6 +38,9 @@ function createTestOrg(overrides: Partial<OrganizationRow> = {}): OrganizationRo
     slug: 'acme-events',
     created_at: '2026-01-01T00:00:00.000Z',
     deleted_at: null,
+    suspended_at: null,
+    suspended_by: null,
+    suspension_reason: null,
     ...overrides,
   };
 }

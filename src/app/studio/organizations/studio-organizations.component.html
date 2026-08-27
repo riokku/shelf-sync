@@ -34,7 +34,7 @@
             @for (org of organizations; track org.id) {
               <tr
                 class="org-row-clickable"
-                [class.org-row-deleted]="org.deleted_at"
+                [class.org-row-inactive]="org.deleted_at || org.suspended_at"
                 role="button"
                 tabindex="0"
                 [attr.aria-label]="'View details for ' + org.name"
@@ -48,7 +48,9 @@
                 <td>{{ org.lastActiveAt ? (org.lastActiveAt | date: 'M/d/yy') : '—' }}</td>
                 <td>
                   @if (org.deleted_at) {
-                    <span class="status-badge status-badge-deleted">Deleted</span>
+                    <span class="status-badge status-badge-deleted">Retired</span>
+                  } @else if (org.suspended_at) {
+                    <span class="status-badge status-badge-suspended">Suspended</span>
                   } @else {
                     <span class="status-badge status-badge-active">Active</span>
                   }
