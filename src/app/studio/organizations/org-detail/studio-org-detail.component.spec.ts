@@ -1,21 +1,22 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { ActivatedRoute, provideRouter } from '@angular/router';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { of } from 'rxjs';
 
-import { OrgDetailModalComponent, OrgDetailModalData } from './org-detail-modal.component';
+import { StudioOrgDetailComponent } from './studio-org-detail.component';
 import { SupabaseService } from '../../../core/supabase.service';
 import { NotificationService } from '../../../core/notification.service';
 import { Profile } from '../../../core/auth.service';
 import { Database } from '../../../shared/models/database.types';
-import { createFakeMatDialogRef, createFakeQueryBuilder } from '../../../testing/fakes';
-
-function createFakeDialogRef(result: unknown): MatDialogRef<unknown> {
-  return { afterClosed: () => of(result) } as unknown as MatDialogRef<unknown>;
-}
+import { createFakeActivatedRoute, createFakeQueryBuilder } from '../../../testing/fakes';
 
 type OrganizationRow = Database['public']['Tables']['organizations']['Row'];
 type FeedbackRow = Database['public']['Tables']['feedback']['Row'];
 type ClientErrorLogRow = Database['public']['Tables']['client_error_log']['Row'];
+
+function createFakeDialogRef(result: unknown): MatDialogRef<unknown> {
+  return { afterClosed: () => of(result) } as unknown as MatDialogRef<unknown>;
+}
 
 function createTestOrg(overrides: Partial<OrganizationRow> = {}): OrganizationRow {
   return {
@@ -82,12 +83,11 @@ function createTestErrorLog(overrides: Partial<ClientErrorLogRow> = {}): ClientE
 }
 
 function createFakeSupabaseServiceForOrgDetail(data: {
+  organization?: OrganizationRow | null;
+  organizationError?: { message: string } | null;
   members?: Profile[];
   feedback?: FeedbackRow[];
   errors?: ClientErrorLogRow[];
-  /** The org's suspended_by profile, if any — returned on the *second*
-   *  call to from('profiles') (the first is always the members list load;
-   *  suspendedByName's own lookup, when it happens, always comes after). */
   suspender?: Profile | null;
   rpc?: jasmine.Spy;
 }): SupabaseService {
@@ -95,6 +95,9 @@ function createFakeSupabaseServiceForOrgDetail(data: {
   const fake = {
     client: {
       from: (table: string) => {
+        if (table === 'organizations') {
+          return createFakeQueryBuilder({ data: data.organization ?? null, error: data.organizationError ?? null });
+        }
         if (table === 'profiles') {
           profilesCallCount += 1;
           if (profilesCallCount === 1) {
@@ -113,105 +116,99 @@ function createFakeSupabaseServiceForOrgDetail(data: {
   return fake as unknown as SupabaseService;
 }
 
-describe('OrgDetailModalComponent', () => {
-  let component: OrgDetailModalComponent;
-  let fixture: ComponentFixture<OrgDetailModalComponent>;
-  let supabaseService: SupabaseService;
+describe('StudioOrgDetailComponent', () => {
+  let component: StudioOrgDetailComponent;
+  let fixture: ComponentFixture<StudioOrgDetailComponent>;
 
   async function setup(
-    data: OrgDetailModalData,
+    id: string | null,
     supabaseData: Parameters<typeof createFakeSupabaseServiceForOrgDetail>[0] = {}
   ) {
-    supabaseService = createFakeSupabaseServiceForOrgDetail(supabaseData);
-
     await TestBed.configureTestingModule({
-      imports: [OrgDetailModalComponent],
+      imports: [StudioOrgDetailComponent],
       providers: [
-        { provide: SupabaseService, useValue: supabaseService },
-        { provide: MatDialogRef, useValue: createFakeMatDialogRef() },
-        { provide: MAT_DIALOG_DATA, useValue: data }
+        provideRouter([]),
+        { provide: SupabaseService, useValue: createFakeSupabaseServiceForOrgDetail(supabaseData) },
+        { provide: ActivatedRoute, useValue: createFakeActivatedRoute({}, id ? { id } : {}) }
       ]
     }).compileComponents();
 
-    fixture = TestBed.createComponent(OrgDetailModalComponent);
+    fixture = TestBed.createComponent(StudioOrgDetailComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
     await fixture.whenStable();
   }
 
   it('should create', async () => {
-    await setup({ organization: createTestOrg() });
+    await setup('org-1', { organization: createTestOrg() });
     expect(component).toBeTruthy();
   });
 
-  it('loads members/feedback/errors scoped to the given org and stops loading', async () => {
-    await setup(
-      { organization: createTestOrg({ id: 'org-1' }) },
-      {
-        members: [createTestProfile({ id: 'm-1' })],
-        feedback: [createTestFeedback({ id: 'f-1' })],
-        errors: [createTestErrorLog({ id: 'e-1' })]
-      }
-    );
+  it('loads the organization plus members/feedback/errors scoped to it', async () => {
+    await setup('org-1', {
+      organization: createTestOrg({ id: 'org-1' }),
+      members: [createTestProfile({ id: 'm-1' })],
+      feedback: [createTestFeedback({ id: 'f-1' })],
+      errors: [createTestErrorLog({ id: 'e-1' })]
+    });
 
     expect(component.isLoading).toBeFalse();
+    expect(component.organization?.id).toBe('org-1');
     expect(component.members.length).toBe(1);
     expect(component.recentFeedback.length).toBe(1);
     expect(component.recentErrors.length).toBe(1);
   });
 
   it('breaks down members into admin/approved/pending counts', async () => {
-    await setup(
-      { organization: createTestOrg() },
-      {
-        members: [
-          createTestProfile({ id: 'm-1', role: 'admin', membership_status: 'approved' }),
-          createTestProfile({ id: 'm-2', role: 'staff', membership_status: 'approved' }),
-          createTestProfile({ id: 'm-3', role: 'staff', membership_status: 'pending' })
-        ]
-      }
-    );
+    await setup('org-1', {
+      organization: createTestOrg(),
+      members: [
+        createTestProfile({ id: 'm-1', role: 'admin', membership_status: 'approved' }),
+        createTestProfile({ id: 'm-2', role: 'staff', membership_status: 'approved' }),
+        createTestProfile({ id: 'm-3', role: 'staff', membership_status: 'pending' })
+      ]
+    });
 
     expect(component.adminCount).toBe(1);
     expect(component.approvedCount).toBe(2);
     expect(component.pendingCount).toBe(1);
   });
 
-  it('close() closes the dialog', async () => {
-    await setup({ organization: createTestOrg() });
-    const closeSpy = spyOn(component.dialogRef, 'close');
-
-    component.close();
-
-    expect(closeSpy).toHaveBeenCalled();
-  });
-
   it('resolves suspendedByName from a second profiles lookup when suspended_by is set', async () => {
-    await setup(
-      { organization: createTestOrg({ suspended_at: '2026-02-01T00:00:00.000Z', suspended_by: 'admin-1', suspension_reason: 'Non-payment' }) },
-      { suspender: createTestProfile({ id: 'admin-1', full_name: 'Riley Platform' }) }
-    );
+    await setup('org-1', {
+      organization: createTestOrg({ suspended_at: '2026-02-01T00:00:00.000Z', suspended_by: 'admin-1', suspension_reason: 'Non-payment' }),
+      suspender: createTestProfile({ id: 'admin-1', full_name: 'Riley Platform' })
+    });
 
     expect(component.suspendedByName).toBe('Riley Platform');
     expect(component.isSuspended).toBeTrue();
   });
 
+  it('surfaces a failed load rather than reading as not found', async () => {
+    await setup('org-1', { organizationError: { message: 'network error' } });
+
+    expect(component.loadError).toBe('network error');
+    expect(component.notFound).toBeFalse();
+  });
+
+  it('flags notFound when no row matches the id', async () => {
+    await setup('missing-org', { organization: null });
+
+    expect(component.notFound).toBeTrue();
+    expect(component.loadError).toBeNull();
+  });
+
+  it('flags notFound immediately when there is no id param at all', async () => {
+    await setup(null);
+
+    expect(component.notFound).toBeTrue();
+    expect(component.isLoading).toBeFalse();
+  });
+
   describe('suspendOrganization()', () => {
-    it('does nothing when the modal is dismissed without a reason', async () => {
-      const rpc = jasmine.createSpy('rpc').and.resolveTo({ error: null });
-      await setup({ organization: createTestOrg() }, { rpc });
-      const dialog = TestBed.inject(MatDialog);
-      spyOn(dialog, 'open').and.returnValue(createFakeDialogRef(undefined));
-
-      component.suspendOrganization();
-      await fixture.whenStable();
-
-      expect(rpc).not.toHaveBeenCalled();
-    });
-
     it('calls platform_suspend_organization and updates the org in place on success', async () => {
       const rpc = jasmine.createSpy('rpc').and.resolveTo({ error: null });
-      await setup({ organization: createTestOrg() }, { rpc });
+      await setup('org-1', { organization: createTestOrg(), rpc });
       const dialog = TestBed.inject(MatDialog);
       spyOn(dialog, 'open').and.returnValue(createFakeDialogRef('Repeated abuse'));
       const successSpy = spyOn(TestBed.inject(NotificationService), 'success');
@@ -220,14 +217,14 @@ describe('OrgDetailModalComponent', () => {
       await fixture.whenStable();
 
       expect(rpc).toHaveBeenCalledWith('platform_suspend_organization', { org_id: 'org-1', reason: 'Repeated abuse' });
-      expect(component.organization.suspended_at).toBeTruthy();
-      expect(component.organization.suspension_reason).toBe('Repeated abuse');
+      expect(component.organization?.suspended_at).toBeTruthy();
+      expect(component.organization?.suspension_reason).toBe('Repeated abuse');
       expect(successSpy).toHaveBeenCalled();
     });
 
     it('surfaces an RPC error inline rather than mutating the org', async () => {
       const rpc = jasmine.createSpy('rpc').and.resolveTo({ error: { message: 'not a platform admin' } });
-      await setup({ organization: createTestOrg() }, { rpc });
+      await setup('org-1', { organization: createTestOrg(), rpc });
       const dialog = TestBed.inject(MatDialog);
       spyOn(dialog, 'open').and.returnValue(createFakeDialogRef('Reason'));
 
@@ -235,17 +232,17 @@ describe('OrgDetailModalComponent', () => {
       await fixture.whenStable();
 
       expect(component.actionError).toBe('not a platform admin');
-      expect(component.organization.suspended_at).toBeNull();
+      expect(component.organization?.suspended_at).toBeNull();
     });
   });
 
   describe('unsuspendOrganization()', () => {
     it('calls platform_unsuspend_organization and clears suspension fields on confirm', async () => {
       const rpc = jasmine.createSpy('rpc').and.resolveTo({ error: null });
-      await setup(
-        { organization: createTestOrg({ suspended_at: '2026-02-01T00:00:00.000Z', suspended_by: 'admin-1', suspension_reason: 'Non-payment' }) },
-        { rpc }
-      );
+      await setup('org-1', {
+        organization: createTestOrg({ suspended_at: '2026-02-01T00:00:00.000Z', suspended_by: 'admin-1', suspension_reason: 'Non-payment' }),
+        rpc
+      });
       const dialog = TestBed.inject(MatDialog);
       spyOn(dialog, 'open').and.returnValue(createFakeDialogRef(true));
 
@@ -253,27 +250,15 @@ describe('OrgDetailModalComponent', () => {
       await fixture.whenStable();
 
       expect(rpc).toHaveBeenCalledWith('platform_unsuspend_organization', { org_id: 'org-1' });
-      expect(component.organization.suspended_at).toBeNull();
+      expect(component.organization?.suspended_at).toBeNull();
       expect(component.isSuspended).toBeFalse();
-    });
-
-    it('does nothing when not confirmed', async () => {
-      const rpc = jasmine.createSpy('rpc').and.resolveTo({ error: null });
-      await setup({ organization: createTestOrg({ suspended_at: '2026-02-01T00:00:00.000Z' }) }, { rpc });
-      const dialog = TestBed.inject(MatDialog);
-      spyOn(dialog, 'open').and.returnValue(createFakeDialogRef(false));
-
-      component.unsuspendOrganization();
-      await fixture.whenStable();
-
-      expect(rpc).not.toHaveBeenCalled();
     });
   });
 
   describe('retireOrganization()', () => {
     it('calls platform_retire_organization and sets deleted_at on confirm', async () => {
       const rpc = jasmine.createSpy('rpc').and.resolveTo({ error: null });
-      await setup({ organization: createTestOrg() }, { rpc });
+      await setup('org-1', { organization: createTestOrg(), rpc });
       const dialog = TestBed.inject(MatDialog);
       spyOn(dialog, 'open').and.returnValue(createFakeDialogRef(true));
 
@@ -281,7 +266,7 @@ describe('OrgDetailModalComponent', () => {
       await fixture.whenStable();
 
       expect(rpc).toHaveBeenCalledWith('platform_retire_organization', { org_id: 'org-1' });
-      expect(component.organization.deleted_at).toBeTruthy();
+      expect(component.organization?.deleted_at).toBeTruthy();
       expect(component.isRetired).toBeTrue();
     });
   });
@@ -289,7 +274,7 @@ describe('OrgDetailModalComponent', () => {
   describe('restoreOrganization()', () => {
     it('calls platform_restore_organization and clears deleted_at on confirm', async () => {
       const rpc = jasmine.createSpy('rpc').and.resolveTo({ error: null });
-      await setup({ organization: createTestOrg({ deleted_at: '2026-02-01T00:00:00.000Z' }) }, { rpc });
+      await setup('org-1', { organization: createTestOrg({ deleted_at: '2026-02-01T00:00:00.000Z' }), rpc });
       const dialog = TestBed.inject(MatDialog);
       spyOn(dialog, 'open').and.returnValue(createFakeDialogRef(true));
 
@@ -297,7 +282,7 @@ describe('OrgDetailModalComponent', () => {
       await fixture.whenStable();
 
       expect(rpc).toHaveBeenCalledWith('platform_restore_organization', { org_id: 'org-1' });
-      expect(component.organization.deleted_at).toBeNull();
+      expect(component.organization?.deleted_at).toBeNull();
       expect(component.isRetired).toBeFalse();
     });
   });

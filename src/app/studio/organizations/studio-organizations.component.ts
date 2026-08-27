@@ -1,7 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SupabaseService } from '../../core/supabase.service';
@@ -9,7 +9,6 @@ import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadc
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { Database } from '../../shared/models/database.types';
-import { OrgDetailModalComponent } from './org-detail-modal/org-detail-modal.component';
 
 type OrganizationRow = Database['public']['Tables']['organizations']['Row'];
 
@@ -33,7 +32,7 @@ interface OrganizationSummary extends OrganizationRow {
 })
 export class StudioOrganizationsComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
-  private dialog = inject(MatDialog);
+  private router = inject(Router);
 
   isLoading = true;
   loadError: string | null = null;
@@ -47,15 +46,13 @@ export class StudioOrganizationsComponent implements OnInit {
     void this.loadOrganizations();
   }
 
-  /** Opens the read-only drill-down for one row — see OrgDetailModalComponent's
-   *  own doc comment for what it shows and why it's scoped the way it is. */
+  /** Navigates to this org's own dedicated page — see
+   *  StudioOrgDetailComponent's own doc comment for what it shows and why
+   *  it's scoped the way it is. Was a popup (OrgDetailModalComponent)
+   *  before the first "convert Studio's info drill-downs to real pages"
+   *  pass. */
   openOrgDetail(org: OrganizationSummary) {
-    this.dialog.open(OrgDetailModalComponent, {
-      data: { organization: org },
-      width: 'clamp(32rem, 60vw, 48rem)',
-      maxWidth: '95vw',
-      autoFocus: false,
-    });
+    this.router.navigate(['/studio/organizations', org.id]);
   }
 
   private async loadOrganizations() {

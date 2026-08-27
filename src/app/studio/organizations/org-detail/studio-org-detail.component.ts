@@ -1,6 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { MatDialog, MatDialogRef, MatDialogTitle, MatDialogContent, MatDialogActions, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -11,6 +12,9 @@ import { Database } from '../../../shared/models/database.types';
 import { profileDisplayName } from '../../../shared/utils/profile-label';
 import { isProfileOnline, formatLastSeen } from '../../../shared/utils/presence';
 import { FEEDBACK_STATUS_LABELS, FEEDBACK_TYPE_LABELS, FeedbackStatus, FeedbackType } from '../../../shared/models/feedback';
+import { BreadcrumbsComponent } from '../../../shared/components/breadcrumbs/breadcrumbs.component';
+import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { SuspendOrganizationModalComponent } from '../../../shared/components/suspend-organization-modal/suspend-organization-modal.component';
 import { DeleteOrganizationModalComponent } from '../../../shared/components/delete-organization-modal/delete-organization-modal.component';
@@ -19,17 +23,16 @@ type OrganizationRow = Database['public']['Tables']['organizations']['Row'];
 type FeedbackRow = Database['public']['Tables']['feedback']['Row'];
 type ClientErrorLogRow = Database['public']['Tables']['client_error_log']['Row'];
 
-export interface OrgDetailModalData {
-  organization: OrganizationRow;
-}
-
-/** Support/debugging drill-down for a single org from StudioOrganizationsComponent's
- *  own flat table — everything here comes from tables a platform admin already has
- *  cross-org read on (profiles/feedback/client_error_log, see add_platform_admin),
- *  deliberately not inventory_items/tasks counts, which would need a new RLS policy
- *  this pass doesn't add. Self-loaded in ngOnInit() from just the org row passed in,
- *  same "caller hands over the minimum, this component fetches its own supplementary
- *  data" convention ModalTableComponent's own reservations summary already uses.
+/** A dedicated page for one org, reached via a `studio/organizations/:id`
+ *  route from either StudioOrganizationsComponent's own table rows or
+ *  StudioUsersComponent's own user rows (a user's row links to their org's
+ *  page, same as it used to open the same org's popup) — replaces the old
+ *  OrgDetailModalComponent popup entirely, per the first "convert Studio's
+ *  info drill-downs from popups to real pages" pass. Everything here comes
+ *  from tables a platform admin already has cross-org read on (profiles/
+ *  feedback/client_error_log/organizations, see add_platform_admin) —
+ *  deliberately not inventory/task counts, which would need a new RLS
+ *  policy this pass doesn't add.
  *
  *  Also where a platform admin actually acts on an org — suspend/unsuspend
  *  (an immediate, reversible access block for abuse/non-payment, see
@@ -38,40 +41,40 @@ export interface OrgDetailModalData {
  *  just triggerable on any org rather than only that org's own admin on
  *  their own — labeled "Retire" here specifically, a distinct word for a
  *  distinct trigger: a concluded contract, not abuse). Every action mutates
- *  `data.organization` in place on success rather than closing/reopening
- *  the dialog or emitting an event back to the caller — the exact same
- *  "shared object reference" convention InventoryComponent.showDetails()
- *  already relies on for ModalTableComponent's own edits, since
- *  StudioOrganizationsComponent/StudioUsersComponent both hand this
- *  component the very row object sitting in their own list.
+ *  `this.organization` in place on success — same "keep the viewer on the
+ *  page, just update what it shows" behavior the old popup already had,
+ *  simpler here since there's no longer a caller's own list row to keep in
+ *  sync (a page reload of the list picks up the change naturally).
  *
- *  Deliberately imports the individual MatDialogTitle/MatDialogContent/
- *  MatDialogActions directives rather than the full MatDialogModule —
- *  MatDialogModule's own NgModule declaration carries `providers:
- *  [MatDialog]`, which (for a standalone component with further dialogs of
- *  its own to open, unlike a plain leaf dialog like
- *  DeleteOrganizationModalComponent) creates a second, module-scoped
- *  MatDialog instance shadowing the app-wide root one for this component's
- *  own `inject(MatDialog)` — harmless in the running app (each dialog still
- *  opens/tracks itself correctly) but breaks spying on the root instance
- *  from a test, which is what actually surfaced this. */
+ *  A leaf dialog (SuspendOrganizationModalComponent/ConfirmDialogComponent/
+ *  DeleteOrganizationModalComponent) is still the right shape for a small
+ *  one-off confirmation/reason prompt — only the *info drill-down* itself
+ *  moved from popup to page. Unlike the old OrgDetailModalComponent, this
+ *  component is never itself rendered as dialog content, so it needs no
+ *  MatDialogModule import at all (just the MatDialog service to open those
+ *  three leaf dialogs) — sidesteps that component's own DI-shadowing
+ *  footgun entirely rather than working around it (see that component's
+ *  history for the full story, preserved in CLAUDE.md). */
 @Component({
-  selector: 'app-org-detail-modal',
-  imports: [DatePipe, MatDialogTitle, MatDialogContent, MatDialogActions, MatButtonModule, MatIconModule, MatProgressSpinnerModule],
-  templateUrl: './org-detail-modal.component.html',
-  styleUrl: './org-detail-modal.component.scss',
+  selector: 'app-studio-org-detail',
+  imports: [DatePipe, RouterLink, MatButtonModule, MatIconModule, MatProgressSpinnerModule, BreadcrumbsComponent, PageHeaderComponent, EmptyStateComponent],
+  templateUrl: './studio-org-detail.component.html',
+  styleUrl: './studio-org-detail.component.scss',
 })
-export class OrgDetailModalComponent implements OnInit {
+export class StudioOrgDetailComponent implements OnInit {
+  private route = inject(ActivatedRoute);
   private supabase = inject(SupabaseService).client;
   private dialog = inject(MatDialog);
   private notification = inject(NotificationService);
-  dialogRef = inject(MatDialogRef<OrgDetailModalComponent>);
-  data = inject<OrgDetailModalData>(MAT_DIALOG_DATA);
 
   readonly feedbackTypeLabels = FEEDBACK_TYPE_LABELS;
   readonly feedbackStatusLabels = FEEDBACK_STATUS_LABELS;
 
   isLoading = true;
+  loadError: string | null = null;
+  notFound = false;
+
+  organization: OrganizationRow | null = null;
   members: Profile[] = [];
   recentFeedback: FeedbackRow[] = [];
   recentErrors: ClientErrorLogRow[] = [];
@@ -83,16 +86,12 @@ export class OrgDetailModalComponent implements OnInit {
   isActionPending = false;
   actionError: string | null = null;
 
-  get organization(): OrganizationRow {
-    return this.data.organization;
-  }
-
   get isRetired(): boolean {
-    return !!this.organization.deleted_at;
+    return !!this.organization?.deleted_at;
   }
 
   get isSuspended(): boolean {
-    return !!this.organization.suspended_at;
+    return !!this.organization?.suspended_at;
   }
 
   get approvedCount(): number {
@@ -132,23 +131,60 @@ export class OrgDetailModalComponent implements OnInit {
   }
 
   async ngOnInit() {
-    const orgId = this.organization.id;
+    // Read once — every navigation into this page comes from a genuinely
+    // different route (studio/organizations or studio/users), which always
+    // recreates the component regardless of Angular's default route-reuse
+    // behavior, so there's no "same route, new id" case to react to here.
+    const id = this.route.snapshot.paramMap.get('id');
+    if (!id) {
+      this.notFound = true;
+      this.isLoading = false;
+      return;
+    }
+    await this.loadOrganization(id);
+  }
+
+  retryLoad() {
+    const id = this.route.snapshot.paramMap.get('id');
+    if (id) {
+      void this.loadOrganization(id);
+    }
+  }
+
+  private async loadOrganization(id: string) {
+    this.isLoading = true;
+    this.loadError = null;
+    this.notFound = false;
+
+    const { data: organization, error } = await this.supabase.from('organizations').select('*').eq('id', id).maybeSingle();
+
+    if (error) {
+      this.loadError = error.message;
+      this.isLoading = false;
+      return;
+    }
+    if (!organization) {
+      this.notFound = true;
+      this.isLoading = false;
+      return;
+    }
+    this.organization = organization;
 
     const [{ data: members }, { data: feedback }, { data: errors }] = await Promise.all([
-      this.supabase.from('profiles').select('*').eq('organization_id', orgId).order('full_name'),
-      this.supabase.from('feedback').select('*').eq('organization_id', orgId).order('created_at', { ascending: false }).limit(5),
-      this.supabase.from('client_error_log').select('*').eq('organization_id', orgId).order('created_at', { ascending: false }).limit(5)
+      this.supabase.from('profiles').select('*').eq('organization_id', id).order('full_name'),
+      this.supabase.from('feedback').select('*').eq('organization_id', id).order('created_at', { ascending: false }).limit(5),
+      this.supabase.from('client_error_log').select('*').eq('organization_id', id).order('created_at', { ascending: false }).limit(5)
     ]);
 
     this.members = members ?? [];
     this.recentFeedback = feedback ?? [];
     this.recentErrors = errors ?? [];
 
-    if (this.organization.suspended_by) {
+    if (organization.suspended_by) {
       const { data: suspender } = await this.supabase
         .from('profiles')
         .select('*')
-        .eq('id', this.organization.suspended_by)
+        .eq('id', organization.suspended_by)
         .maybeSingle();
       this.suspendedByName = suspender ? profileDisplayName(suspender) : null;
     }
@@ -156,12 +192,18 @@ export class OrgDetailModalComponent implements OnInit {
     this.isLoading = false;
   }
 
+  // The four action methods below are only ever invoked from buttons
+  // rendered inside the "organization loaded" branch of the template, so
+  // `this.organization!` is safe here even though the field's own type
+  // stays nullable for the loading/not-found states above.
+
   suspendOrganization() {
     if (this.isActionPending) {
       return;
     }
+    const org = this.organization!;
     const dialogRef = this.dialog.open(SuspendOrganizationModalComponent, {
-      data: { organizationName: this.organization.name },
+      data: { organizationName: org.name },
       width: 'clamp(28rem, 50vw, 34rem)',
       maxWidth: '90vw'
     });
@@ -173,7 +215,7 @@ export class OrgDetailModalComponent implements OnInit {
       this.isActionPending = true;
       this.actionError = null;
 
-      const { error } = await this.supabase.rpc('platform_suspend_organization', { org_id: this.organization.id, reason });
+      const { error } = await this.supabase.rpc('platform_suspend_organization', { org_id: org.id, reason });
 
       this.isActionPending = false;
       if (error) {
@@ -181,7 +223,7 @@ export class OrgDetailModalComponent implements OnInit {
         return;
       }
 
-      Object.assign(this.data.organization, { suspended_at: new Date().toISOString(), suspension_reason: reason });
+      Object.assign(org, { suspended_at: new Date().toISOString(), suspension_reason: reason });
       this.suspendedByName = 'you';
       this.notification.success('Organization suspended.');
     });
@@ -191,10 +233,11 @@ export class OrgDetailModalComponent implements OnInit {
     if (this.isActionPending) {
       return;
     }
+    const org = this.organization!;
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
         title: 'Unsuspend organization?',
-        message: `${this.organization.name} will immediately regain access to ShelfSync.`,
+        message: `${org.name} will immediately regain access to ShelfSync.`,
         confirmLabel: 'Unsuspend organization'
       },
       width: 'clamp(24rem, 40vw, 30rem)',
@@ -208,7 +251,7 @@ export class OrgDetailModalComponent implements OnInit {
       this.isActionPending = true;
       this.actionError = null;
 
-      const { error } = await this.supabase.rpc('platform_unsuspend_organization', { org_id: this.organization.id });
+      const { error } = await this.supabase.rpc('platform_unsuspend_organization', { org_id: org.id });
 
       this.isActionPending = false;
       if (error) {
@@ -216,7 +259,7 @@ export class OrgDetailModalComponent implements OnInit {
         return;
       }
 
-      Object.assign(this.data.organization, { suspended_at: null, suspended_by: null, suspension_reason: null });
+      Object.assign(org, { suspended_at: null, suspended_by: null, suspension_reason: null });
       this.suspendedByName = null;
       this.notification.success('Organization unsuspended.');
     });
@@ -226,8 +269,9 @@ export class OrgDetailModalComponent implements OnInit {
     if (this.isActionPending) {
       return;
     }
+    const org = this.organization!;
     const dialogRef = this.dialog.open(DeleteOrganizationModalComponent, {
-      data: { organizationName: this.organization.name },
+      data: { organizationName: org.name },
       width: 'clamp(28rem, 50vw, 34rem)',
       maxWidth: '90vw'
     });
@@ -239,7 +283,7 @@ export class OrgDetailModalComponent implements OnInit {
       this.isActionPending = true;
       this.actionError = null;
 
-      const { error } = await this.supabase.rpc('platform_retire_organization', { org_id: this.organization.id });
+      const { error } = await this.supabase.rpc('platform_retire_organization', { org_id: org.id });
 
       this.isActionPending = false;
       if (error) {
@@ -247,7 +291,7 @@ export class OrgDetailModalComponent implements OnInit {
         return;
       }
 
-      Object.assign(this.data.organization, { deleted_at: new Date().toISOString() });
+      Object.assign(org, { deleted_at: new Date().toISOString() });
       this.notification.success('Organization retired.');
     });
   }
@@ -256,10 +300,11 @@ export class OrgDetailModalComponent implements OnInit {
     if (this.isActionPending) {
       return;
     }
+    const org = this.organization!;
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
         title: 'Restore organization?',
-        message: `${this.organization.name} will no longer be scheduled for deletion, and its team will regain access.`,
+        message: `${org.name} will no longer be scheduled for deletion, and its team will regain access.`,
         confirmLabel: 'Restore organization'
       },
       width: 'clamp(24rem, 40vw, 30rem)',
@@ -273,7 +318,7 @@ export class OrgDetailModalComponent implements OnInit {
       this.isActionPending = true;
       this.actionError = null;
 
-      const { error } = await this.supabase.rpc('platform_restore_organization', { org_id: this.organization.id });
+      const { error } = await this.supabase.rpc('platform_restore_organization', { org_id: org.id });
 
       this.isActionPending = false;
       if (error) {
@@ -281,12 +326,8 @@ export class OrgDetailModalComponent implements OnInit {
         return;
       }
 
-      Object.assign(this.data.organization, { deleted_at: null });
+      Object.assign(org, { deleted_at: null });
       this.notification.success('Organization restored.');
     });
-  }
-
-  close() {
-    this.dialogRef.close();
   }
 }

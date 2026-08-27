@@ -1,0 +1,146 @@
+<div class="studio-org-detail-wrapper">
+  <div class="container">
+    <div class="page-toolbar">
+      <app-breadcrumbs [labelOverride]="organization?.name" />
+    </div>
+    <app-page-header icon="apartment" [title]="organization?.name || 'Organization'" />
+
+    @if (loadError) {
+      <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load this organization. ' + loadError">
+        <button mat-stroked-button type="button" (click)="retryLoad()">
+          <mat-icon>refresh</mat-icon>
+          Retry
+        </button>
+      </app-empty-state>
+    } @else if (isLoading) {
+      <div class="loading-row">
+        <mat-spinner diameter="32"></mat-spinner>
+      </div>
+    } @else if (notFound) {
+      <app-empty-state icon="apartment" message="This organization doesn't exist, or you no longer have access to it.">
+        <button mat-stroked-button type="button" routerLink="/studio/organizations">
+          <mat-icon>arrow_back</mat-icon>
+          Back to Organizations
+        </button>
+      </app-empty-state>
+    } @else if (organization) {
+      <dl class="org-meta">
+        <dt>Created</dt>
+        <dd>{{ organization.created_at | date: 'MMMM d, y' }}</dd>
+        <dt>Status</dt>
+        <dd>
+          @if (isRetired) {
+            <span class="status-badge status-badge-deleted">Retired {{ organization.deleted_at | date: 'M/d/yy' }}</span>
+          } @else if (isSuspended) {
+            <span class="status-badge status-badge-suspended">Suspended {{ organization.suspended_at | date: 'M/d/yy' }}</span>
+          } @else {
+            <span class="status-badge status-badge-active">Active</span>
+          }
+        </dd>
+        @if (isSuspended && !isRetired) {
+          <dt>Reason</dt>
+          <dd>
+            {{ organization.suspension_reason }}
+            @if (suspendedByName) {
+              <span class="section-hint"> — by {{ suspendedByName }}</span>
+            }
+          </dd>
+        }
+      </dl>
+
+      <section class="org-section platform-actions">
+        <h3>Platform actions</h3>
+        @if (actionError) {
+          <p class="error-message">{{ actionError }}</p>
+        }
+        <div class="platform-actions-buttons">
+          @if (isRetired) {
+            <button mat-stroked-button type="button" [disabled]="isActionPending" (click)="restoreOrganization()">
+              <mat-icon>restore</mat-icon>
+              Restore organization
+            </button>
+          } @else {
+            @if (isSuspended) {
+              <button mat-stroked-button type="button" [disabled]="isActionPending" (click)="unsuspendOrganization()">
+                <mat-icon>check_circle</mat-icon>
+                Unsuspend
+              </button>
+            } @else {
+              <button mat-stroked-button color="warn" type="button" [disabled]="isActionPending" (click)="suspendOrganization()">
+                <mat-icon>block</mat-icon>
+                Suspend
+              </button>
+            }
+            <button mat-flat-button color="warn" type="button" [disabled]="isActionPending" (click)="retireOrganization()">
+              <mat-icon>delete_forever</mat-icon>
+              Retire organization
+            </button>
+          }
+        </div>
+      </section>
+
+      <section class="org-section">
+        <h3>Members <span class="mono">({{ members.length }})</span></h3>
+        <p class="section-hint">
+          {{ adminCount }} admin, {{ approvedCount }} approved, {{ pendingCount }} pending
+        </p>
+        @if (members.length === 0) {
+          <p class="empty-hint">No members.</p>
+        } @else {
+          <ul class="member-list">
+            @for (member of members; track member.id) {
+              <li>
+                <span class="member-name">{{ displayName(member) }}</span>
+                <span class="member-role-badge" [class]="'role-' + member.role">{{ member.role }}</span>
+                @if (member.membership_status === 'pending') {
+                  <span class="status-badge status-badge-pending">Pending</span>
+                }
+                <span class="member-presence">
+                  @if (isOnline(member)) {
+                    <span class="online-dot"></span>
+                    Online
+                  } @else {
+                    {{ lastSeenLabel(member) }}
+                  }
+                </span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <section class="org-section">
+        <h3>Recent feedback</h3>
+        @if (recentFeedback.length === 0) {
+          <p class="empty-hint">No feedback from this organization.</p>
+        } @else {
+          <ul class="mini-list">
+            @for (row of recentFeedback; track row.id) {
+              <li>
+                <span class="status-badge" [class]="'status-badge-feedback-' + row.status">{{ statusLabel(row) }}</span>
+                <span class="mini-list-text" [title]="row.message">{{ typeLabel(row) }} — {{ row.message }}</span>
+                <span class="mini-list-date">{{ row.created_at | date: 'M/d/yy' }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <section class="org-section">
+        <h3>Recent errors</h3>
+        @if (recentErrors.length === 0) {
+          <p class="empty-hint">No errors logged.</p>
+        } @else {
+          <ul class="mini-list">
+            @for (row of recentErrors; track row.id) {
+              <li>
+                <span class="mini-list-text" [title]="row.message">{{ row.message }}</span>
+                <span class="mini-list-date">{{ row.created_at | date: 'M/d/yy' }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    }
+  </div>
+</div>

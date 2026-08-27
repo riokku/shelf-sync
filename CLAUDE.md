@@ -1264,39 +1264,55 @@ example of this).
 
 `StudioOrganizationsComponent`'s own table rows are now clickable — the whole `<tr>` (same
 `role="button"`/`tabindex="0"`/`(keydown.enter)`/`(keydown.space)` whole-row-is-a-button shape
-`TaskCardComponent`'s own `.task-row` already establishes) opens `OrgDetailModalComponent`, a
-read-only per-org drill-down: the org's own created date/status, a member list (name, role badge,
-a "Pending" badge for an unapproved join request, and the same online-dot/"last seen" presence
-treatment `ManageTeamComponent`'s own per-member indicator uses), the org's 5 most recent feedback
-submissions (reusing `StudioFeedbackComponent`'s own new/reviewed/resolved status-badge colors),
-and its 5 most recent client errors. Deliberately scoped to only the three tables a platform admin
-already has cross-org SELECT on (`profiles`/`feedback`/`client_error_log`, see `add_platform_admin`
-above) — no inventory/task counts, which would need a new cross-org RLS policy on
-`inventory_items`/`tasks` this pass doesn't add; a natural follow-up once that's worth doing.
-Self-loaded in `ngOnInit()` from just the one org row `StudioOrganizationsComponent` already has in
-hand (three parallel queries filtered by `organization_id`, the feedback/error ones capped at 5
-each via `order(created_at desc).limit(5)`), the same "caller hands over the minimum, this
-component fetches its own supplementary data" convention `ModalTableComponent`'s own reservations
-summary already uses.
+`TaskCardComponent`'s own `.task-row` already establishes) navigates to `studio/organizations/:id`
+(`StudioOrgDetailComponent`), a dedicated page for that one org: its own created date/status, a
+member list (name, role badge, a "Pending" badge for an unapproved join request, and the same
+online-dot/"last seen" presence treatment `ManageTeamComponent`'s own per-member indicator uses),
+the org's 5 most recent feedback submissions (reusing `StudioFeedbackComponent`'s own new/reviewed/
+resolved status-badge colors), and its 5 most recent client errors. Deliberately scoped to only the
+three tables a platform admin already has cross-org SELECT on (`profiles`/`feedback`/
+`client_error_log`, see `add_platform_admin` above) — no inventory/task counts, which would need a
+new cross-org RLS policy on `inventory_items`/`tasks` this pass doesn't add; a natural follow-up
+once that's worth doing. Self-loaded in `ngOnInit()` from just the `:id` route param (an
+`organizations.select('*').eq('id', id).maybeSingle()` lookup, then the member/feedback/error
+queries filtered by that same id, the feedback/error ones capped at 5 each via
+`order(created_at desc).limit(5)`) — a missing/inaccessible id renders a "doesn't exist, or you no
+longer have access" empty state with a link back to Organizations, and a genuine fetch error gets
+the same `loadError`/retry treatment this app's five highest-traffic pages already established,
+rather than either case reading as a blank or broken page.
+
+This was originally a popup (`OrgDetailModalComponent`, opened via `MatDialog.open()`) before a
+follow-up pass converted it — the first of what's meant to be a broader "convert Studio's info
+drill-downs from popups to real pages" sweep, revisited page-by-page elsewhere in the app once
+Studio itself was settled. `BreadcrumbsComponent` gained a `labelOverride` input to support this:
+every other page's breadcrumb label comes from static route `data`, but an entity-detail page's
+real label (the org's name here) isn't known until its own async load resolves, so the route's
+`data.breadcrumb` is just a placeholder ("Organization") that `[labelOverride]="organization?.name"`
+overrides once the fetch completes — falling back to that placeholder for the brief window before
+it does. `STUDIO_ORGANIZATIONS_BREADCRUMB_PARENT` (`app-routing.module.ts`) gives the page its own
+"Home / Organizations / {org name}" crumb — the list you actually drilled in from, one level short
+of the full "Home / Studio / Organizations / {name}" chain, since `BreadcrumbParent` only ever
+supports a single hop (same limit `MANAGE_BREADCRUMB_PARENT`/`STUDIO_BREADCRUMB_PARENT` already
+accept for every other nested page in this schema).
 
 A fourth Studio card, **Users** (`StudioUsersComponent`, `studio/users`), is the opposite direction
 from Organizations' own org-first browse — a support conversation usually starts from a name or an
 email, not an org, so this is a cross-org lookup: type into a search field and every matching
 profile (name/email substring, case-insensitive) shows up with its org, role, and approval status,
-each row opening the exact same `OrgDetailModalComponent` Organizations' own rows open (finding
-someone and then seeing their org's full context is one click, not a second lookup). Deliberately
-search-first rather than browse-first — nothing renders until a search term narrows it, both
-because "browse everyone" is already Organizations' own job (via its member counts) and because a
-platform-wide profile list only grows as the product does; results are capped at 25 with a "showing
-N of M" hint above the table once a search matches more than that. Matching is a plain client-side
-substring filter over a `profiles` list loaded once on init (same "load once, filter in memory"
-shape `ManageTeamComponent`'s own team search already uses) rather than a server-side `ilike`
-search this app has no other precedent for — the platform's total user count is still small enough
-for this to stay cheap, and avoids the escaping complexity a raw `.or()`/`ilike` filter string built
-from unsanitized user input would otherwise need. Reads the same two cross-org-granted tables
-Organizations' own page already does (`profiles`/`organizations`) — no new policy.
+each row linking to the exact same `StudioOrgDetailComponent` page Organizations' own rows link to
+(finding someone and then seeing their org's full context is one click, not a second lookup).
+Deliberately search-first rather than browse-first — nothing renders until a search term narrows
+it, both because "browse everyone" is already Organizations' own job (via its member counts) and
+because a platform-wide profile list only grows as the product does; results are capped at 25 with
+a "showing N of M" hint above the table once a search matches more than that. Matching is a plain
+client-side substring filter over a `profiles` list loaded once on init (same "load once, filter in
+memory" shape `ManageTeamComponent`'s own team search already uses) rather than a server-side
+`ilike` search this app has no other precedent for — the platform's total user count is still small
+enough for this to stay cheap, and avoids the escaping complexity a raw `.or()`/`ilike` filter
+string built from unsanitized user input would otherwise need. Reads the same two cross-org-granted
+tables Organizations' own page already does (`profiles`/`organizations`) — no new policy.
 
-`OrgDetailModalComponent` is also where a platform admin actually acts on an org, via a "Platform
+`StudioOrgDetailComponent` is also where a platform admin actually acts on an org, via a "Platform
 actions" section above the read-only Members/feedback/errors sections — the last of the four
 Studio admin features from this same pass. Two distinct, deliberately separate levers, each for a
 distinct trigger: **Suspend** is an immediate, fully reversible access block for abuse or
@@ -1331,35 +1347,38 @@ field already established, simpler than `DeleteOrganizationModalComponent`'s typ
 since suspension is fully reversible); `retireOrganization()` reuses
 `DeleteOrganizationModalComponent` as-is (it already just takes an org name, no assumption baked in
 that the caller is that org's own admin); `unsuspendOrganization()`/`restoreOrganization()` both use
-the plain `ConfirmDialogComponent`. Every action mutates `data.organization` in place on success
-rather than closing the dialog or emitting an event back to the caller — the same shared-object-
-reference convention `InventoryComponent.showDetails()` already established for `ModalTableComponent`'s
-own edits, since `StudioOrganizationsComponent`/`StudioUsersComponent` both hand this component the
-very row object sitting in their own list, so the parent's table/status badge updates for free.
-`StudioOrganizationsComponent`'s own status badge gained a third state (`Active`/`Suspended`/
-`Retired`, precedence in that order — a retired org's badge wins even if it was suspended first),
-and its `.org-row-deleted` muting class was generalized to `.org-row-inactive` to also cover a
-merely-suspended (not yet retired) row.
+the plain `ConfirmDialogComponent`. Every action mutates `this.organization` in place on success
+rather than navigating away or refetching — the page itself is the only thing that needs to reflect
+the change now (unlike the old popup, which had to keep a caller's own list row in sync via a
+shared object reference; a page reload of `StudioOrganizationsComponent`'s own list picks up the
+change naturally on next visit). `StudioOrganizationsComponent`'s own status badge gained a third
+state (`Active`/`Suspended`/`Retired`, precedence in that order — a retired org's badge wins even if
+it was suspended first), and its `.org-row-deleted` muting class was generalized to
+`.org-row-inactive` to also cover a merely-suspended (not yet retired) row.
 
-Building `OrgDetailModalComponent`'s own action-opening methods surfaced a real Angular DI footgun
-worth remembering: `MatDialogModule`'s own `NgModule` declaration carries `providers: [MatDialog]`
-(visible in Angular Material's own compiled metadata) *in addition to* `MatDialog`'s tree-shakable
-`providedIn: 'root'` — meaning a standalone component that both (a) is itself rendered as a dialog's
-content (needing `mat-dialog-title`/`-content`/`-actions` in its own template) *and* (b) opens
-further dialogs of its own via `inject(MatDialog)`, gets a second, module-scoped `MatDialog`
-instance if it imports the *whole* `MatDialogModule` — silently shadowing the app-wide root
-instance for that one component. Invisible in the running app (each dialog still opens and tracks
-itself correctly regardless of which instance's stack it's on), but it breaks spying on the root
-`MatDialog` from a test — `TestBed.inject(MatDialog)` resolves the true root singleton, while the
-component under test holds the shadowed one, so `spyOn(dialog, 'open')` silently never intercepts
-anything and the component always exercises a *real* (never-resolving, since nothing in the test
-env can close it) dialog instead. `ModalTableComponent` — this schema's only pre-existing example of
-this same "dialog content that opens further dialogs" shape — never surfaced this, simply because
-its own spec never once spies on `MatDialog.open()`. The fix: import the individual
-`MatDialogTitle`/`MatDialogContent`/`MatDialogActions` standalone directives instead of the whole
-module — they carry no such provider baggage — which is what `OrgDetailModalComponent` does now.
-Worth applying the same swap to any *other* component that turns out to need both halves of this
-shape, and worth remembering generally: an NgModule imported into a standalone component's own
+Building the original `OrgDetailModalComponent`'s own action-opening methods (back when this was
+still a popup) surfaced a real Angular DI footgun worth remembering, since it'll resurface the
+moment any *other* dialog-content component needs to open further dialogs of its own:
+`MatDialogModule`'s own `NgModule` declaration carries `providers: [MatDialog]` (visible in Angular
+Material's own compiled metadata) *in addition to* `MatDialog`'s tree-shakable `providedIn: 'root'`
+— meaning a standalone component that both (a) is itself rendered as a dialog's content (needing
+`mat-dialog-title`/`-content`/`-actions` in its own template) *and* (b) opens further dialogs of its
+own via `inject(MatDialog)`, gets a second, module-scoped `MatDialog` instance if it imports the
+*whole* `MatDialogModule` — silently shadowing the app-wide root instance for that one component.
+Invisible in the running app (each dialog still opens and tracks itself correctly regardless of
+which instance's stack it's on), but it breaks spying on the root `MatDialog` from a test —
+`TestBed.inject(MatDialog)` resolves the true root singleton, while the component under test holds
+the shadowed one, so `spyOn(dialog, 'open')` silently never intercepts anything and the component
+always exercises a *real* (never-resolving, since nothing in the test env can close it) dialog
+instead. `ModalTableComponent` — this schema's other example of a "dialog content that opens
+further dialogs" shape — never surfaced this, simply because its own spec never once spies on
+`MatDialog.open()`. The fix at the time: import the individual `MatDialogTitle`/`MatDialogContent`/
+`MatDialogActions` standalone directives instead of the whole module — they carry no such provider
+baggage. Moot for this specific component now that it's a page rather than dialog content at all
+(no `mat-dialog-*` directives needed, so no `MatDialogModule` import, so no shadowing possible —
+just a plain `inject(MatDialog)` to open its three leaf dialogs, same as
+`ManageDangerZoneComponent`'s own shape), but worth remembering generally for `ModalTableComponent`
+or any future dialog-in-dialog component: an NgModule imported into a standalone component's own
 `imports` array can carry provider side effects well beyond the directives/pipes it's there for.
 
 A shared `PageIntroComponent` (`shared/components/page-intro`) gives Inventory, Tasks, and the
@@ -1721,12 +1740,15 @@ The app mixes two Angular module styles, which is important to know before addin
   `manage/settings` lives under `manage` (not its own top-level `settings` route) for
   the same reason as every other admin/manager tool here — it's reachable only via the Manage hub's
   own Settings card, not a direct header nav link or Home card, matching Billing/Danger Zone's own
-  precedent of being Manage-hub-only rather than duplicated elsewhere. `studio` and its three flat
-  sibling routes (`studio/feedback`, `studio/error-log`, `studio/organizations`) follow the exact
-  same card-hub/flat-sibling-routes shape as `manage` — but guarded by `platformAdminGuard`, a
-  genuinely different, cross-org audience (`profiles.is_platform_admin`, not any `role`) than every
-  guard above; see the Project Overview section above for the full reasoning and why this is
-  deliberately not nested under `manage` itself. Every route uses
+  precedent of being Manage-hub-only rather than duplicated elsewhere. `studio` and its flat
+  sibling routes (`studio/feedback`, `studio/error-log`, `studio/organizations`, `studio/users`)
+  follow the exact same card-hub/flat-sibling-routes shape as `manage` — but guarded by
+  `platformAdminGuard`, a genuinely different, cross-org audience (`profiles.is_platform_admin`,
+  not any `role`) than every guard above; see the Project Overview section above for the full
+  reasoning and why this is deliberately not nested under `manage` itself.
+  `studio/organizations/:id` (`StudioOrgDetailComponent`) is this app's first parameterized
+  detail-page route — see its own Project Overview paragraph below for why Studio's info
+  drill-downs moved from a popup to a real page. Every route uses
   `loadComponent` rather than a top-level `component` import, so each page (and whatever it
   imports) only ships once actually navigated to instead of all bundling into one initial chunk;
   no resolvers exist yet.
@@ -2212,8 +2234,8 @@ yet on a hard refresh of `/inventory`.
 - `add_platform_org_suspension_and_retirement` — adds `organizations.suspended_at`/`suspended_by`/
   `suspension_reason` and four `SECURITY DEFINER` RPCs
   (`platform_suspend_organization`/`platform_unsuspend_organization`/`platform_retire_organization`/
-  `platform_restore_organization`), all `is_platform_admin()`-gated, backing `OrgDetailModalComponent`'s
-  new "Platform actions" section (see Project Overview above for the full suspend-vs-retire
+  `platform_restore_organization`), all `is_platform_admin()`-gated, backing `StudioOrgDetailComponent`'s
+  "Platform actions" section (see Project Overview above for the full suspend-vs-retire
   reasoning). Folds `suspended_at is null` into `current_user_org_id()` right alongside its existing
   `deleted_at is null` check (diffed against `fix_org_isolation_bugs`'s version, the latest at the
   time) — same single choke point, so a suspended org's members lose all data access schema-wide the

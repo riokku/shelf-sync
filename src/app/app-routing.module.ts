@@ -20,6 +20,15 @@ const MANAGE_BREADCRUMB_PARENT: BreadcrumbParent = { label: 'Manage', link: '/ma
 // there, and vice versa.
 const STUDIO_BREADCRUMB_PARENT: BreadcrumbParent = { label: 'Studio', link: '/studio' };
 
+// One level deeper than STUDIO_BREADCRUMB_PARENT — for StudioOrgDetailComponent
+// specifically, whose own crumb reads Home / Organizations / {org name} rather
+// than Home / Studio / {org name}: the list you actually drilled in from
+// (Organizations, or Users landing on the same page) is the more useful
+// parent link than the hub two hops back, same "parent = the list page you
+// came from" reasoning MANAGE_BREADCRUMB_PARENT/STUDIO_BREADCRUMB_PARENT
+// themselves already follow.
+const STUDIO_ORGANIZATIONS_BREADCRUMB_PARENT: BreadcrumbParent = { label: 'Organizations', link: '/studio/organizations' };
+
 // Every route gets an explicit `title` — Angular's default TitleStrategy
 // only ever writes document.title when the *active* route defines one and
 // silently leaves the previous title in place otherwise, so leaving any
@@ -260,6 +269,17 @@ const routes: Routes = [
     canActivate: [approvedGuard, platformAdminGuard],
     data: { breadcrumb: 'Organizations', breadcrumbParent: STUDIO_BREADCRUMB_PARENT },
     title: 'ShelfSync | Studio Organizations'
+  },
+  {
+    path: 'studio/organizations/:id',
+    loadComponent: () =>
+      import('./studio/organizations/org-detail/studio-org-detail.component').then(m => m.StudioOrgDetailComponent),
+    canActivate: [approvedGuard, platformAdminGuard],
+    // Placeholder — StudioOrgDetailComponent's own BreadcrumbsComponent
+    // binding overrides this with the org's real name once it loads (see
+    // BreadcrumbsComponent's own labelOverride input).
+    data: { breadcrumb: 'Organization', breadcrumbParent: STUDIO_ORGANIZATIONS_BREADCRUMB_PARENT },
+    title: 'ShelfSync | Studio Organization'
   },
   {
     path: 'studio/users',
