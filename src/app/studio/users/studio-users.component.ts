@@ -110,7 +110,7 @@ export class StudioUsersComponent implements OnInit {
     }
     this.dialog.open(OrgDetailModalComponent, {
       data: { organization },
-      width: '32rem',
+      width: 'clamp(32rem, 60vw, 48rem)',
       maxWidth: '95vw',
       autoFocus: false,
     });

@@ -52,7 +52,7 @@ export class StudioOrganizationsComponent implements OnInit {
   openOrgDetail(org: OrganizationSummary) {
     this.dialog.open(OrgDetailModalComponent, {
       data: { organization: org },
-      width: '32rem',
+      width: 'clamp(32rem, 60vw, 48rem)',
       maxWidth: '95vw',
       autoFocus: false,
     });
