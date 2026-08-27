@@ -1,7 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -13,7 +13,6 @@ import { profileDisplayName } from '../../shared/utils/profile-label';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
-import { OrgDetailModalComponent } from '../organizations/org-detail-modal/org-detail-modal.component';
 
 type OrganizationRow = Database['public']['Tables']['organizations']['Row'];
 
@@ -25,10 +24,10 @@ type OrganizationRow = Database['public']['Tables']['organizations']['Row'];
  *  renders until a search term narrows it, both because "browse every
  *  user" is already Organizations' own job (via its member counts) and
  *  because a platform-wide profile list only grows as the product does.
- *  A matched row opens the exact same OrgDetailModalComponent a click on
- *  Organizations' own table opens, so finding someone and then seeing
- *  their org's full context (members/feedback/errors) is one click, not a
- *  second lookup. Everything here comes from the same cross-org
+ *  A matched row links to the exact same StudioOrgDetailComponent page a
+ *  click on Organizations' own table opens, so finding someone and then
+ *  seeing their org's full context (members/feedback/errors) is one click,
+ *  not a second lookup. Everything here comes from the same cross-org
  *  profiles/organizations reads StudioOrganizationsComponent already
  *  relies on (see add_platform_admin) — no new policy needed. Matching is
  *  a plain client-side substring filter over a profiles list loaded once
@@ -54,7 +53,7 @@ type OrganizationRow = Database['public']['Tables']['organizations']['Row'];
 })
 export class StudioUsersComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
-  private dialog = inject(MatDialog);
+  private router = inject(Router);
 
   isLoading = true;
   loadError: string | null = null;
@@ -101,19 +100,10 @@ export class StudioUsersComponent implements OnInit {
     return this.organizationsById.get(profile.organization_id)?.name ?? 'Unknown organization';
   }
 
-  /** Opens the same OrgDetailModalComponent Organizations' own table rows
-   *  open, for the org this profile belongs to. */
+  /** Navigates to the same StudioOrgDetailComponent page Organizations'
+   *  own table rows link to, for the org this profile belongs to. */
   openOrganization(profile: Profile) {
-    const organization = this.organizationsById.get(profile.organization_id);
-    if (!organization) {
-      return;
-    }
-    this.dialog.open(OrgDetailModalComponent, {
-      data: { organization },
-      width: 'clamp(32rem, 60vw, 48rem)',
-      maxWidth: '95vw',
-      autoFocus: false,
-    });
+    this.router.navigate(['/studio/organizations', profile.organization_id]);
   }
 
   private async loadDirectory() {

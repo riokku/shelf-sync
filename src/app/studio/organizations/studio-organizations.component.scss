@@ -60,9 +60,9 @@
   opacity: 0.6;
 }
 
-// Whole row opens OrgDetailModalComponent — same hover/focus affordance
-// TaskCardComponent's own .task-row establishes for the identical
-// whole-row-is-a-button shape.
+// Whole row navigates to this org's own page (StudioOrgDetailComponent) —
+// same hover/focus affordance TaskCardComponent's own .task-row establishes
+// for the identical whole-row-is-a-button shape.
 .org-row-clickable{
   cursor: pointer;
   transition: background-color 0.15s ease;

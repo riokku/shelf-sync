@@ -1,3 +1,23 @@
+@use '../../../shared/styles/page-toolbar';
+
+.studio-org-detail-wrapper{
+  color: var(--mat-sys-on-surface);
+  padding: 3rem 1.5rem;
+  max-width: 100%;
+
+  .container{
+    padding-left: 0;
+    padding-right: 0;
+    max-width: 48rem;
+  }
+}
+
+.loading-row{
+  display: flex;
+  justify-content: center;
+  padding: 3rem 0;
+}
+
 .org-meta{
   display: grid;
   grid-template-columns: auto 1fr;
@@ -15,22 +35,20 @@
   }
 }
 
-.loading-row{
-  display: flex;
-  justify-content: center;
-  padding: 2rem 0;
-}
-
 .org-section{
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
 
   &:last-child{
     margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
   }
 
   h3{
     margin: 0 0 0.25rem;
-    font-size: 1rem;
+    font-size: 1.125rem;
   }
 }
 
@@ -92,7 +110,7 @@
 // Same three-state palette StudioFeedbackComponent's own .status-badge-*
 // already establishes for these exact statuses — duplicated here (not
 // shared) matching this app's own small-presentational-pattern convention,
-// prefixed -feedback- so it can't collide with this modal's own org-status
+// prefixed -feedback- so it can't collide with this page's own org-status
 // badges above.
 .status-badge-feedback-new{
   background: var(--app-warning-bg);

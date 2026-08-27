@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, Input, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -20,10 +20,22 @@ export interface BreadcrumbParent {
 export class BreadcrumbsComponent {
   private route = inject(ActivatedRoute);
 
-  /** Set per-route via the `breadcrumb` route `data` property (see
-   *  app-routing.module.ts), so this label updates automatically as the
-   *  user navigates between top-level pages. */
-  label: string = this.route.snapshot.data['breadcrumb'] ?? '';
+  /** Overrides the trailing "current page" label for an entity-detail page
+   *  whose real label (e.g. an org's name) isn't known from static route
+   *  config the way every other page's title is — it only resolves once
+   *  that page's own async load finishes. Falls back to the static
+   *  `breadcrumb` route data below whenever unset or still empty (e.g.
+   *  while the entity is still loading), so a page like
+   *  StudioOrgDetailComponent that binds `[labelOverride]="organization?.name"`
+   *  reads correctly at every stage: the route's own placeholder label
+   *  before load, then the real name once it resolves. */
+  @Input() labelOverride?: string;
+
+  private readonly routeLabel: string = this.route.snapshot.data['breadcrumb'] ?? '';
+
+  get label(): string {
+    return this.labelOverride || this.routeLabel;
+  }
 
   parent: BreadcrumbParent | null = this.route.snapshot.data['breadcrumbParent'] ?? null;
 }

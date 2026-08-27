@@ -163,11 +163,11 @@ export function createFakeSupplierService(suppliers: Supplier[] = []): SupplierS
   return fake as unknown as SupplierService;
 }
 
-export function createFakeActivatedRoute(queryParams: Record<string, string> = {}): ActivatedRoute {
+export function createFakeActivatedRoute(queryParams: Record<string, string> = {}, pathParams: Record<string, string> = {}): ActivatedRoute {
   return {
     snapshot: {
       queryParamMap: convertToParamMap(queryParams),
-      paramMap: convertToParamMap({}),
+      paramMap: convertToParamMap(pathParams),
       data: {},
     },
   } as unknown as ActivatedRoute;

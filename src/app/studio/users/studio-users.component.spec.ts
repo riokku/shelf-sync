@@ -1,9 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
-import { MatDialog } from '@angular/material/dialog';
+import { Router, provideRouter } from '@angular/router';
 
 import { StudioUsersComponent } from './studio-users.component';
-import { OrgDetailModalComponent } from '../organizations/org-detail-modal/org-detail-modal.component';
 import { SupabaseService } from '../../core/supabase.service';
 import { Profile } from '../../core/auth.service';
 import { Database } from '../../shared/models/database.types';
@@ -131,21 +129,18 @@ describe('StudioUsersComponent', () => {
     expect(component.organizationName(component.filteredResults[0])).toBe('Gatherwell Events Co.');
   });
 
-  it('openOrganization() opens OrgDetailModalComponent with the profile\'s org', async () => {
-    const organization = createTestOrg({ id: 'org-1', name: 'Gatherwell Events Co.' });
+  it('openOrganization() navigates to the profile\'s org page', async () => {
     await createComponent({
       profiles: [createTestProfile({ full_name: 'Alex Rivera', organization_id: 'org-1' })],
-      organizations: [organization]
+      organizations: [createTestOrg({ id: 'org-1', name: 'Gatherwell Events Co.' })]
     });
     component.searchTerm = 'Alex';
-    const dialog = TestBed.inject(MatDialog);
-    const openSpy = spyOn(dialog, 'open');
+    const router = TestBed.inject(Router);
+    const navigateSpy = spyOn(router, 'navigate');
 
     component.openOrganization(component.filteredResults[0]);
 
-    expect(openSpy).toHaveBeenCalledWith(OrgDetailModalComponent, jasmine.objectContaining({
-      data: { organization }
-    }));
+    expect(navigateSpy).toHaveBeenCalledWith(['/studio/organizations', 'org-1']);
   });
 
   it('surfaces a failed load rather than reading as an empty directory', async () => {

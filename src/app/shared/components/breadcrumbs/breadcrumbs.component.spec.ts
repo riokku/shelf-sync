@@ -28,6 +28,19 @@ describe('BreadcrumbsComponent', () => {
     expect(component.parent).toBeNull();
     expect(fixture.debugElement.query(By.css('.breadcrumb-separator'))).toBeNull();
   });
+
+  it('falls back to the empty route label when labelOverride is unset', () => {
+    expect(component.label).toBe('');
+  });
+
+  it('prefers labelOverride over the route label once set (e.g. an entity name resolving after async load)', () => {
+    component.labelOverride = 'Gatherwell Events Co.';
+    fixture.detectChanges();
+
+    expect(component.label).toBe('Gatherwell Events Co.');
+    const current = fixture.debugElement.query(By.css('.breadcrumb-current'));
+    expect(current.nativeElement.textContent.trim()).toBe('Gatherwell Events Co.');
+  });
 });
 
 /** Covers the Home / Manage / {page} shape every page under Manage now
@@ -41,11 +54,12 @@ describe('BreadcrumbsComponent with a breadcrumbParent', () => {
     }).compileComponents();
 
     const fixture = TestBed.createComponent(BreadcrumbsComponent);
-    // Route data is read once in the constructor's field initializers, so
-    // this has to be set before that runs — easier to just assign the
-    // resulting fields directly than to fight TestBed's ActivatedRoute
-    // provider order for a two-field object.
-    fixture.componentInstance.label = 'Inventory';
+    // Route data (routeLabel/parent) is read once from ActivatedRoute's
+    // constructor-time snapshot, so it's easier to drive this test via the
+    // public labelOverride input (which the label getter prefers anyway)
+    // than to fight TestBed's ActivatedRoute provider order for a two-field
+    // object; parent has no such override, so it's still assigned directly.
+    fixture.componentInstance.labelOverride = 'Inventory';
     fixture.componentInstance.parent = { label: 'Manage', link: '/manage' };
     fixture.detectChanges();
 

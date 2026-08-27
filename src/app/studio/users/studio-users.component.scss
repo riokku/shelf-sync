@@ -63,8 +63,8 @@
   font-weight: 600;
 }
 
-// Whole row opens OrgDetailModalComponent for this user's org — same
-// affordance StudioOrganizationsComponent's own .org-row-clickable
+// Whole row navigates to this user's own org page (StudioOrgDetailComponent)
+// — same affordance StudioOrganizationsComponent's own .org-row-clickable
 // establishes.
 .user-row-clickable{
   cursor: pointer;
@@ -80,7 +80,7 @@
   }
 }
 
-// Same badge shapes OrgDetailModalComponent's own .member-role-badge/
+// Same badge shapes StudioOrgDetailComponent's own .member-role-badge/
 // .status-badge-* establish — duplicated per this app's own
 // small-presentational-pattern convention.
 .member-role-badge{
