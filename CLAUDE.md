@@ -1262,6 +1262,23 @@ duplicated from `manage/reports` rather than shared, matching this app's own con
 centralizing every small presentational pattern (the icon-chip gradients are the other standing
 example of this).
 
+`StudioOrganizationsComponent`'s own table rows are now clickable — the whole `<tr>` (same
+`role="button"`/`tabindex="0"`/`(keydown.enter)`/`(keydown.space)` whole-row-is-a-button shape
+`TaskCardComponent`'s own `.task-row` already establishes) opens `OrgDetailModalComponent`, a
+read-only per-org drill-down: the org's own created date/status, a member list (name, role badge,
+a "Pending" badge for an unapproved join request, and the same online-dot/"last seen" presence
+treatment `ManageTeamComponent`'s own per-member indicator uses), the org's 5 most recent feedback
+submissions (reusing `StudioFeedbackComponent`'s own new/reviewed/resolved status-badge colors),
+and its 5 most recent client errors. Deliberately scoped to only the three tables a platform admin
+already has cross-org SELECT on (`profiles`/`feedback`/`client_error_log`, see `add_platform_admin`
+above) — no inventory/task counts, which would need a new cross-org RLS policy on
+`inventory_items`/`tasks` this pass doesn't add; a natural follow-up once that's worth doing.
+Self-loaded in `ngOnInit()` from just the one org row `StudioOrganizationsComponent` already has in
+hand (three parallel queries filtered by `organization_id`, the feedback/error ones capped at 5
+each via `order(created_at desc).limit(5)`), the same "caller hands over the minimum, this
+component fetches its own supplementary data" convention `ModalTableComponent`'s own reservations
+summary already uses.
+
 A shared `PageIntroComponent` (`shared/components/page-intro`) gives Inventory, Tasks, and the
 Manage hub a one-time, dismissible orientation banner for a user (any role) who might be landing on
 that page for the first time — a short "here's what this page is" hint, distinct from

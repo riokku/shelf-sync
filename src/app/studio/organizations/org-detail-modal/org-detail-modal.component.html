@@ -1,0 +1,87 @@
+<h2 mat-dialog-title>{{ organization.name }}</h2>
+<mat-dialog-content>
+  <dl class="org-meta">
+    <dt>Created</dt>
+    <dd>{{ organization.created_at | date: 'MMMM d, y' }}</dd>
+    <dt>Status</dt>
+    <dd>
+      @if (organization.deleted_at) {
+        <span class="status-badge status-badge-deleted">Deleted {{ organization.deleted_at | date: 'M/d/yy' }}</span>
+      } @else {
+        <span class="status-badge status-badge-active">Active</span>
+      }
+    </dd>
+  </dl>
+
+  @if (isLoading) {
+    <div class="loading-row">
+      <mat-spinner diameter="28"></mat-spinner>
+    </div>
+  } @else {
+    <section class="org-section">
+      <h3>Members <span class="mono">({{ members.length }})</span></h3>
+      <p class="section-hint">
+        {{ adminCount }} admin, {{ approvedCount }} approved, {{ pendingCount }} pending
+      </p>
+      @if (members.length === 0) {
+        <p class="empty-hint">No members.</p>
+      } @else {
+        <ul class="member-list">
+          @for (member of members; track member.id) {
+            <li>
+              <span class="member-name">{{ displayName(member) }}</span>
+              <span class="member-role-badge" [class]="'role-' + member.role">{{ member.role }}</span>
+              @if (member.membership_status === 'pending') {
+                <span class="status-badge status-badge-pending">Pending</span>
+              }
+              <span class="member-presence">
+                @if (isOnline(member)) {
+                  <span class="online-dot"></span>
+                  Online
+                } @else {
+                  {{ lastSeenLabel(member) }}
+                }
+              </span>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <section class="org-section">
+      <h3>Recent feedback</h3>
+      @if (recentFeedback.length === 0) {
+        <p class="empty-hint">No feedback from this organization.</p>
+      } @else {
+        <ul class="mini-list">
+          @for (row of recentFeedback; track row.id) {
+            <li>
+              <span class="status-badge" [class]="'status-badge-feedback-' + row.status">{{ statusLabel(row) }}</span>
+              <span class="mini-list-text" [title]="row.message">{{ typeLabel(row) }} — {{ row.message }}</span>
+              <span class="mini-list-date">{{ row.created_at | date: 'M/d/yy' }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <section class="org-section">
+      <h3>Recent errors</h3>
+      @if (recentErrors.length === 0) {
+        <p class="empty-hint">No errors logged.</p>
+      } @else {
+        <ul class="mini-list">
+          @for (row of recentErrors; track row.id) {
+            <li>
+              <span class="mini-list-text" [title]="row.message">{{ row.message }}</span>
+              <span class="mini-list-date">{{ row.created_at | date: 'M/d/yy' }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="close()">Close</button>
+</mat-dialog-actions>

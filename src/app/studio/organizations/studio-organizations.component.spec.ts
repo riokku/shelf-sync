@@ -1,7 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
 
 import { StudioOrganizationsComponent } from './studio-organizations.component';
+import { OrgDetailModalComponent } from './org-detail-modal/org-detail-modal.component';
 import { SupabaseService } from '../../core/supabase.service';
 import { createFakeQueryBuilder } from '../../testing/fakes';
 
@@ -97,5 +99,18 @@ describe('StudioOrganizationsComponent', () => {
 
     expect(component.loadError).toBe('network error');
     expect(component.organizations).toEqual([]);
+  });
+
+  it('openOrgDetail() opens OrgDetailModalComponent with the clicked org as data', async () => {
+    await createComponent({ organizations: [createTestOrgRow({ id: 'org-1' })] });
+    const dialog = TestBed.inject(MatDialog);
+    const openSpy = spyOn(dialog, 'open');
+
+    const org = component.organizations[0];
+    component.openOrgDetail(org);
+
+    expect(openSpy).toHaveBeenCalledWith(OrgDetailModalComponent, jasmine.objectContaining({
+      data: { organization: org }
+    }));
   });
 });

@@ -1,6 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SupabaseService } from '../../core/supabase.service';
@@ -8,6 +9,7 @@ import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadc
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { Database } from '../../shared/models/database.types';
+import { OrgDetailModalComponent } from './org-detail-modal/org-detail-modal.component';
 
 type OrganizationRow = Database['public']['Tables']['organizations']['Row'];
 
@@ -31,6 +33,7 @@ interface OrganizationSummary extends OrganizationRow {
 })
 export class StudioOrganizationsComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
+  private dialog = inject(MatDialog);
 
   isLoading = true;
   loadError: string | null = null;
@@ -42,6 +45,17 @@ export class StudioOrganizationsComponent implements OnInit {
 
   retryLoad() {
     void this.loadOrganizations();
+  }
+
+  /** Opens the read-only drill-down for one row — see OrgDetailModalComponent's
+   *  own doc comment for what it shows and why it's scoped the way it is. */
+  openOrgDetail(org: OrganizationSummary) {
+    this.dialog.open(OrgDetailModalComponent, {
+      data: { organization: org },
+      width: '32rem',
+      maxWidth: '95vw',
+      autoFocus: false,
+    });
   }
 
   private async loadOrganizations() {

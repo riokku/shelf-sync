@@ -32,7 +32,16 @@
           </thead>
           <tbody>
             @for (org of organizations; track org.id) {
-              <tr [class.org-row-deleted]="org.deleted_at">
+              <tr
+                class="org-row-clickable"
+                [class.org-row-deleted]="org.deleted_at"
+                role="button"
+                tabindex="0"
+                [attr.aria-label]="'View details for ' + org.name"
+                (click)="openOrgDetail(org)"
+                (keydown.enter)="openOrgDetail(org)"
+                (keydown.space)="openOrgDetail(org)"
+              >
                 <td class="org-name">{{ org.name }}</td>
                 <td>{{ org.created_at | date: 'M/d/yy' }}</td>
                 <td class="mono">{{ org.memberCount }}</td>
