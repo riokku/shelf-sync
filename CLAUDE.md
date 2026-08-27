@@ -1373,6 +1373,30 @@ own Danger Zone card and `PageHeaderComponent`'s own `variant="danger"` already 
 own hardcoded reds. Suspend's own button stays plain `color="warn"` — it's fully reversible, so a
 lighter, theme-following touch is still appropriate there.
 
+A second follow-up gave "Recent errors" the exact same `mat-accordion` treatment "Recent feedback"
+got above (both now share one `.recent-list-accordion`/`.recent-entry-message` styling, since
+they're structurally identical apart from the feedback panel's own leading status badge) — an error
+message can run just as long as a feedback one, so the same single-line/`[title]`-tooltip
+limitation applied equally to both; the header's own title text gets an explicit ellipsis rule
+(`.recent-entry-title`) that feedback's own title never needed, since feedback's title is always
+just a short type label while an error's title *is* the (potentially very long) message itself.
+Also added a persistent "Back" button (a plain `.back-row`, deliberately its own row above
+`app-page-header` rather than that component's own trailing-action slot — this reads as leaving the
+page entirely, a different weight than an action that stays on it, so it sits above the org's own
+name/logo rather than beside it) — visible immediately regardless of load state, rather than only
+appearing inside the `notFound` empty state as it originally did (that empty state's own button was
+removed once this permanent one existed, so the two didn't duplicate the same affordance on the same
+screen). A third follow-up gave the page header itself the org's own uploaded logo in place of the
+generic `apartment` icon, whenever that org has one: `PageHeaderComponent` gained an optional
+`logoUrl` input that swaps in an `<img>` (and the chip's own gradient background for a neutral one —
+see that component's own doc comment for why a gradient tuned for a plain icon glyph doesn't suit an
+arbitrary logo image) — the first `PageHeaderComponent` usage in the app whose own identity is a
+specific *entity* rather than the page itself. Resolved via
+`SiteSettingsService.loadLogoUrlForOrganization(id)`, an already-existing method (originally built
+for the register page's own invite-link logo preview) that reads any org's branding by id regardless
+of the caller's own — `site_settings`' branding columns are anon/authenticated readable schema-wide,
+unlike every other org-scoped table here, so this needed no new RLS policy.
+
 Building the original `OrgDetailModalComponent`'s own action-opening methods (back when this was
 still a popup) surfaced a real Angular DI footgun worth remembering, since it'll resurface the
 moment any *other* dialog-content component needs to open further dialogs of its own:

@@ -28,6 +28,15 @@ export class PageHeaderComponent {
   @Input({ required: true }) icon!: string;
   @Input({ required: true }) title!: string;
   @Input() subtitle?: string;
+  /** When set, renders in place of the generic Material `icon` above — for
+   *  a page whose own identity is a specific org's uploaded logo
+   *  (StudioOrgDetailComponent) rather than a fixed icon glyph every visit
+   *  shows the same way. Swaps the chip's own gradient background for a
+   *  plain neutral one too (see this component's own .scss) — the
+   *  primary/tertiary-container gradient is tuned for a white/light icon
+   *  glyph on top (see HomeComponent's own doc comment on why), not an
+   *  arbitrary logo image whose own colors need to render legibly instead. */
+  @Input() logoUrl?: string;
   /** 'danger' swaps the icon chip for the same flat red treatment
    *  ManageComponent's own Danger Zone card uses (see that component's own
    *  `.manage-card-icon-danger` comment) rather than the shared gradient —

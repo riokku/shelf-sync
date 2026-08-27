@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SupabaseService } from '../../../core/supabase.service';
 import { NotificationService } from '../../../core/notification.service';
+import { SiteSettingsService } from '../../../core/site-settings.service';
 import { Profile } from '../../../core/auth.service';
 import { Database } from '../../../shared/models/database.types';
 import { profileDisplayName } from '../../../shared/utils/profile-label';
@@ -55,7 +56,14 @@ type ClientErrorLogRow = Database['public']['Tables']['client_error_log']['Row']
  *  MatDialogModule import at all (just the MatDialog service to open those
  *  three leaf dialogs) — sidesteps that component's own DI-shadowing
  *  footgun entirely rather than working around it (see that component's
- *  history for the full story, preserved in CLAUDE.md). */
+ *  history for the full story, preserved in CLAUDE.md).
+ *
+ *  The page header shows the org's own uploaded logo (see orgLogoUrl's own
+ *  doc comment) rather than a fixed icon, when that org has one — this
+ *  page's whole identity is a specific org, unlike every other
+ *  PageHeaderComponent usage in the app where a generic icon is the right
+ *  call because the page itself, not any one entity, is what's being
+ *  labeled. */
 @Component({
   selector: 'app-studio-org-detail',
   imports: [DatePipe, RouterLink, MatButtonModule, MatExpansionModule, MatIconModule, MatProgressSpinnerModule, BreadcrumbsComponent, PageHeaderComponent, EmptyStateComponent],
@@ -67,6 +75,7 @@ export class StudioOrgDetailComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
   private dialog = inject(MatDialog);
   private notification = inject(NotificationService);
+  private siteSettings = inject(SiteSettingsService);
 
   readonly feedbackTypeLabels = FEEDBACK_TYPE_LABELS;
   readonly feedbackStatusLabels = FEEDBACK_STATUS_LABELS;
@@ -79,6 +88,16 @@ export class StudioOrgDetailComponent implements OnInit {
   members: Profile[] = [];
   recentFeedback: FeedbackRow[] = [];
   recentErrors: ClientErrorLogRow[] = [];
+
+  /** The org's own uploaded logo (Settings > Style), if it has one — resolved
+   *  via SiteSettingsService.loadLogoUrlForOrganization(), the same
+   *  cross-org-by-id lookup the register page's own invite-link preview
+   *  already uses (site_settings' branding columns are anon/authenticated
+   *  readable regardless of caller's own org, unlike every other org-scoped
+   *  table in this schema — see that method's own doc comment). Passed to
+   *  PageHeaderComponent's own `logoUrl` input, which falls back to the
+   *  plain `apartment` icon whenever this stays null. */
+  orgLogoUrl: string | null = null;
 
   /** Resolved separately from members above — the platform admin who
    *  suspended this org almost certainly isn't one of its own members. */
@@ -171,15 +190,17 @@ export class StudioOrgDetailComponent implements OnInit {
     }
     this.organization = organization;
 
-    const [{ data: members }, { data: feedback }, { data: errors }] = await Promise.all([
+    const [{ data: members }, { data: feedback }, { data: errors }, logoUrl] = await Promise.all([
       this.supabase.from('profiles').select('*').eq('organization_id', id).order('full_name'),
       this.supabase.from('feedback').select('*').eq('organization_id', id).order('created_at', { ascending: false }).limit(5),
-      this.supabase.from('client_error_log').select('*').eq('organization_id', id).order('created_at', { ascending: false }).limit(5)
+      this.supabase.from('client_error_log').select('*').eq('organization_id', id).order('created_at', { ascending: false }).limit(5),
+      this.siteSettings.loadLogoUrlForOrganization(id)
     ]);
 
     this.members = members ?? [];
     this.recentFeedback = feedback ?? [];
     this.recentErrors = errors ?? [];
+    this.orgLogoUrl = logoUrl;
 
     if (organization.suspended_by) {
       const { data: suspender } = await this.supabase

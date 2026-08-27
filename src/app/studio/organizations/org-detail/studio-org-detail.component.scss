@@ -17,6 +17,14 @@
   padding: 3rem 0;
 }
 
+// A plain text button (lower emphasis than the page's own stroked/flat
+// action buttons further down) sitting above the org's own name/logo —
+// negative margin pulls it snug against the icon chip below rather than
+// leaving mat-button's own built-in vertical padding as a visible gap.
+.back-row{
+  margin: 0 0 -0.5rem -0.75rem;
+}
+
 // The container itself stays full width (same as every sibling Studio page)
 // so the breadcrumbs/page-header sit at the same horizontal position across
 // pages — only the actual detail content is capped, same "wide container,
@@ -151,45 +159,33 @@
   color: var(--app-success-on-bg);
 }
 
-// Each entry is its own expansion panel (mat-panel-title holding the
-// status badge + type, mat-panel-description holding the date, same shape
-// ManageTeamComponent's own per-member panels establish) rather than the
-// one-line, ellipsis-truncated row Recent errors below still uses — a
-// feedback message is often long enough that hovering for the native
-// [title] tooltip was a poor way to actually read it; expanding the panel
-// shows it in full instead. No custom panel styling beyond this — same
-// "use Material's own default panel chrome" convention HelpComponent's own
-// FAQ accordion already establishes.
-.feedback-accordion{
+// Both Recent feedback and Recent errors render their entries this way —
+// one expansion panel each, mat-panel-description holding the date — rather
+// than the single-line, ellipsis-truncated/`[title]`-tooltip row both
+// originally used: a message (feedback or error) is often long enough that
+// hovering for a native tooltip was a poor way to actually read it in full;
+// expanding the panel now shows it in full instead. No custom panel styling
+// beyond this — same "use Material's own default panel chrome" convention
+// HelpComponent's own FAQ accordion already establishes.
+.recent-list-accordion{
   .status-badge{
     margin-right: 0.5rem;
   }
 }
 
-.feedback-message{
-  margin: 0;
-  line-height: 1.5;
+// Recent errors' own panel title is the error message itself (no badge/type
+// to lead with the way feedback's own title has) — could run to any length,
+// so it needs its own explicit truncation in the collapsed header (feedback's
+// title is just a short type label and never needed this).
+.recent-entry-title{
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.mini-list{
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+.recent-entry-message{
   margin: 0;
-  padding: 0;
-  list-style: none;
-
-  li{
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0;
-    border-top: 1px solid var(--mat-sys-outline-variant);
-
-    &:first-child{
-      border-top: none;
-    }
-  }
+  line-height: 1.5;
 }
 
 // One grid across every row (not a per-row flex layout) so the role badge
@@ -315,24 +311,4 @@
   .online-dot{
     animation: none;
   }
-}
-
-.mini-list li{
-  align-items: flex-start;
-}
-
-.mini-list-text{
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: 0.875rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mini-list-date{
-  flex-shrink: 0;
-  color: var(--mat-sys-on-surface-variant);
-  font-size: 0.75rem;
-  font-family: var(--font-mono);
 }

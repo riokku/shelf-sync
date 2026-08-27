@@ -40,6 +40,29 @@ describe('PageHeaderComponent', () => {
     expect(fixture.nativeElement.querySelector('.page-header-icon-danger')).not.toBeNull();
   });
 
+  it('renders an <img> instead of the mat-icon when logoUrl is set', async () => {
+    const fixture = await createComponent();
+    fixture.componentInstance.icon = 'apartment';
+    fixture.componentInstance.title = 'Gatherwell Events Co.';
+    fixture.componentInstance.logoUrl = 'https://example.com/logo.png';
+    fixture.detectChanges();
+
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelector('.page-header-icon-logo img')?.getAttribute('src')).toBe('https://example.com/logo.png');
+    expect(el.querySelector('mat-icon')).toBeNull();
+  });
+
+  it('falls back to the mat-icon when logoUrl is unset', async () => {
+    const fixture = await createComponent();
+    fixture.componentInstance.icon = 'apartment';
+    fixture.componentInstance.title = 'Gatherwell Events Co.';
+    fixture.detectChanges();
+
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelector('img')).toBeNull();
+    expect(el.querySelector('mat-icon')?.textContent).toContain('apartment');
+  });
+
   it('renders a subtitle when given', async () => {
     const fixture = await createComponent();
     fixture.componentInstance.icon = 'bar_chart';

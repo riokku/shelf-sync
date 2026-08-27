@@ -3,7 +3,13 @@
     <div class="page-toolbar">
       <app-breadcrumbs [labelOverride]="organization?.name" />
     </div>
-    <app-page-header icon="apartment" [title]="organization?.name || 'Organization'" />
+    <div class="back-row">
+      <button mat-button type="button" routerLink="/studio/organizations">
+        <mat-icon>arrow_back</mat-icon>
+        Back
+      </button>
+    </div>
+    <app-page-header icon="apartment" [logoUrl]="orgLogoUrl ?? undefined" [title]="organization?.name || 'Organization'" />
 
     @if (loadError) {
       <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load this organization. ' + loadError">
@@ -17,12 +23,7 @@
         <mat-spinner diameter="32"></mat-spinner>
       </div>
     } @else if (notFound) {
-      <app-empty-state icon="apartment" message="This organization doesn't exist, or you no longer have access to it.">
-        <button mat-stroked-button type="button" routerLink="/studio/organizations">
-          <mat-icon>arrow_back</mat-icon>
-          Back to Organizations
-        </button>
-      </app-empty-state>
+      <app-empty-state icon="apartment" message="This organization doesn't exist, or you no longer have access to it." />
     } @else if (organization) {
       <div class="org-detail-content">
         <dl class="org-meta">
@@ -88,7 +89,7 @@
           @if (recentFeedback.length === 0) {
             <p class="empty-hint">No feedback from this organization.</p>
           } @else {
-            <mat-accordion multi class="feedback-accordion">
+            <mat-accordion multi class="recent-list-accordion">
               @for (row of recentFeedback; track row.id) {
                 <mat-expansion-panel>
                   <mat-expansion-panel-header>
@@ -98,7 +99,7 @@
                     </mat-panel-title>
                     <mat-panel-description>{{ row.created_at | date: 'M/d/yy' }}</mat-panel-description>
                   </mat-expansion-panel-header>
-                  <p class="feedback-message">{{ row.message }}</p>
+                  <p class="recent-entry-message">{{ row.message }}</p>
                 </mat-expansion-panel>
               }
             </mat-accordion>
@@ -110,14 +111,17 @@
           @if (recentErrors.length === 0) {
             <p class="empty-hint">No errors logged.</p>
           } @else {
-            <ul class="mini-list">
+            <mat-accordion multi class="recent-list-accordion">
               @for (row of recentErrors; track row.id) {
-                <li>
-                  <span class="mini-list-text" [title]="row.message">{{ row.message }}</span>
-                  <span class="mini-list-date">{{ row.created_at | date: 'M/d/yy' }}</span>
-                </li>
+                <mat-expansion-panel>
+                  <mat-expansion-panel-header>
+                    <mat-panel-title class="recent-entry-title">{{ row.message }}</mat-panel-title>
+                    <mat-panel-description>{{ row.created_at | date: 'M/d/yy' }}</mat-panel-description>
+                  </mat-expansion-panel-header>
+                  <p class="recent-entry-message">{{ row.message }}</p>
+                </mat-expansion-panel>
               }
-            </ul>
+            </mat-accordion>
           }
         </section>
 

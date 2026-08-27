@@ -6,9 +6,10 @@ import { of } from 'rxjs';
 import { StudioOrgDetailComponent } from './studio-org-detail.component';
 import { SupabaseService } from '../../../core/supabase.service';
 import { NotificationService } from '../../../core/notification.service';
+import { SiteSettingsService } from '../../../core/site-settings.service';
 import { Profile } from '../../../core/auth.service';
 import { Database } from '../../../shared/models/database.types';
-import { createFakeActivatedRoute, createFakeQueryBuilder } from '../../../testing/fakes';
+import { createFakeActivatedRoute, createFakeQueryBuilder, createFakeSiteSettingsService } from '../../../testing/fakes';
 
 type OrganizationRow = Database['public']['Tables']['organizations']['Row'];
 type FeedbackRow = Database['public']['Tables']['feedback']['Row'];
@@ -122,13 +123,18 @@ describe('StudioOrgDetailComponent', () => {
 
   async function setup(
     id: string | null,
-    supabaseData: Parameters<typeof createFakeSupabaseServiceForOrgDetail>[0] = {}
+    supabaseData: Parameters<typeof createFakeSupabaseServiceForOrgDetail>[0] = {},
+    orgLogoUrl: string | null = null
   ) {
+    const siteSettings = createFakeSiteSettingsService();
+    spyOn(siteSettings, 'loadLogoUrlForOrganization').and.resolveTo(orgLogoUrl);
+
     await TestBed.configureTestingModule({
       imports: [StudioOrgDetailComponent],
       providers: [
         provideRouter([]),
         { provide: SupabaseService, useValue: createFakeSupabaseServiceForOrgDetail(supabaseData) },
+        { provide: SiteSettingsService, useValue: siteSettings },
         { provide: ActivatedRoute, useValue: createFakeActivatedRoute({}, id ? { id } : {}) }
       ]
     }).compileComponents();
@@ -157,6 +163,19 @@ describe('StudioOrgDetailComponent', () => {
     expect(component.members.length).toBe(1);
     expect(component.recentFeedback.length).toBe(1);
     expect(component.recentErrors.length).toBe(1);
+  });
+
+  it('resolves the org\'s own logo via SiteSettingsService, scoped by this org\'s id', async () => {
+    await setup('org-1', { organization: createTestOrg({ id: 'org-1' }) }, 'https://example.com/logo.png');
+
+    expect(TestBed.inject(SiteSettingsService).loadLogoUrlForOrganization).toHaveBeenCalledWith('org-1');
+    expect(component.orgLogoUrl).toBe('https://example.com/logo.png');
+  });
+
+  it('leaves orgLogoUrl null when the org has no custom logo', async () => {
+    await setup('org-1', { organization: createTestOrg() });
+
+    expect(component.orgLogoUrl).toBeNull();
   });
 
   it('breaks down members into admin/approved/pending counts', async () => {

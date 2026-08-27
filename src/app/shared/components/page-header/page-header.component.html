@@ -1,5 +1,11 @@
 <div class="page-header">
-  <span class="page-header-icon" [class.page-header-icon-danger]="variant === 'danger'"><mat-icon>{{ icon }}</mat-icon></span>
+  <span class="page-header-icon" [class.page-header-icon-danger]="variant === 'danger'" [class.page-header-icon-logo]="logoUrl">
+    @if (logoUrl) {
+      <img [src]="logoUrl" alt="" />
+    } @else {
+      <mat-icon>{{ icon }}</mat-icon>
+    }
+  </span>
   <div class="page-header-text">
     <h2>{{ title }}<ng-content select="[headerTitleExtra]" /></h2>
     @if (subtitle) {
