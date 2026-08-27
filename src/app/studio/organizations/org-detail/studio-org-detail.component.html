@@ -92,7 +92,9 @@
               @for (member of members; track member.id) {
                 <li>
                   <span class="member-name">{{ displayName(member) }}</span>
-                  <span class="member-role-badge" [class]="'role-' + member.role">{{ member.role }}</span>
+                  <span class="member-role-cell">
+                    <span class="member-role-badge" [class]="'role-' + member.role">{{ member.role }}</span>
+                  </span>
                   <span class="member-status-cell">
                     @if (member.membership_status === 'pending') {
                       <span class="status-badge status-badge-pending">Pending</span>

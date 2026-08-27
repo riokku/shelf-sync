@@ -194,22 +194,44 @@
   white-space: nowrap;
 }
 
-// Always rendered (even with nothing in it) so the presence column after it
-// stays put whether or not this particular member has a "Pending" badge to
-// show — an absent element here would otherwise shift every later column
-// for that one row only.
+// Both always rendered (even with nothing/just the badge in them) so later
+// columns stay put whether or not this particular member has a "Pending"
+// badge to show, and so the role pill itself (below) never carries the
+// row's own divider border directly on its rounded box — that border
+// belongs to this plain wrapper cell instead, same reasoning
+// member-status-cell already established.
+.member-role-cell,
 .member-status-cell{
   min-width: 0;
 }
 
+// Same pill shape and per-role coloring ManageTeamComponent's own
+// .team-member-role establishes (role-admin/role-manager/role-staff) —
+// duplicated, not shared, matching this app's own small-presentational-
+// pattern convention.
 .member-role-badge{
-  padding: 0.125rem 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
   border-radius: 999px;
-  background: var(--mat-sys-surface-container-highest);
-  color: var(--mat-sys-on-surface-variant);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
+
+  &.role-admin{
+    background: var(--mat-sys-primary-container);
+    color: var(--mat-sys-on-primary-container);
+  }
+
+  &.role-manager{
+    background: var(--mat-sys-tertiary-container);
+    color: var(--mat-sys-on-tertiary-container);
+  }
+
+  &.role-staff{
+    background: var(--mat-sys-surface-variant);
+    color: var(--mat-sys-on-surface-variant);
+  }
 }
 
 .member-presence{
