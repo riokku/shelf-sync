@@ -1356,6 +1356,23 @@ state (`Active`/`Suspended`/`Retired`, precedence in that order — a retired or
 it was suspended first), and its `.org-row-deleted` muting class was generalized to
 `.org-row-inactive` to also cover a merely-suspended (not yet retired) row.
 
+A follow-up polish pass reordered `StudioOrgDetailComponent`'s own sections and tightened two
+details. "Platform actions" moved from right under the meta `dl` to the very bottom of the page,
+after Members/Recent feedback/Recent errors — reading the org's own read-only context first, with
+the consequential actions only after, rather than leading with them. "Recent feedback" became a
+`mat-accordion` (one `mat-expansion-panel` per entry, same title/description header shape
+`ManageTeamComponent`'s own per-member panels already establish) instead of a single-line,
+`[title]`-tooltip-truncated row — a feedback message is often too long for one line, and hovering
+for a native tooltip was a poor way to actually read it; expanding the panel now shows it in full.
+"Retire organization" gets a hardcoded solid red (`--app-danger-bg`/`--app-danger-on-bg`, via the
+button's own `--mat-button-filled-container-color`/`-label-text-color` tokens) instead of Material's
+theme-following `color="warn"` — since an org can pick its own color theme (see `THEME_PRESETS`),
+`warn` isn't guaranteed to read as an unambiguous red the way this one-way, semi-permanent action
+needs to; same "deliberately reads as riskier than everything around it" reasoning `ManageComponent`'s
+own Danger Zone card and `PageHeaderComponent`'s own `variant="danger"` already establish with their
+own hardcoded reds. Suspend's own button stays plain `color="warn"` — it's fully reversible, so a
+lighter, theme-following touch is still appropriate there.
+
 Building the original `OrgDetailModalComponent`'s own action-opening methods (back when this was
 still a popup) surfaced a real Angular DI footgun worth remembering, since it'll resurface the
 moment any *other* dialog-content component needs to open further dialogs of its own:

@@ -115,6 +115,22 @@
   gap: 0.75rem;
 }
 
+// A deliberately hardcoded red rather than `color="warn"` — that role
+// follows the org's own chosen THEME_PRESETS color, which isn't
+// guaranteed to read as a loud, unambiguous red the way this one-way,
+// semi-permanent action needs to. Same "reads as riskier than everything
+// around it, on purpose" reasoning ManageComponent's own Danger Zone card
+// and PageHeaderComponent's own `variant="danger"` already establish with
+// their own hardcoded reds, applied here to a single button rather than a
+// whole card/header. Overrides the filled button's own theme tokens
+// directly (Suspend's plain `color="warn"` stroked button stays
+// theme-following — it's reversible, a lighter touch is appropriate).
+.retire-button{
+  --mat-button-filled-container-color: var(--app-danger-bg);
+  --mat-button-filled-label-text-color: var(--app-danger-on-bg);
+  --mat-button-filled-state-layer-color: var(--app-danger-on-bg);
+}
+
 // Same three-state palette StudioFeedbackComponent's own .status-badge-*
 // already establishes for these exact statuses — duplicated here (not
 // shared) matching this app's own small-presentational-pattern convention,
@@ -133,6 +149,26 @@
 .status-badge-feedback-resolved{
   background: var(--app-success-bg);
   color: var(--app-success-on-bg);
+}
+
+// Each entry is its own expansion panel (mat-panel-title holding the
+// status badge + type, mat-panel-description holding the date, same shape
+// ManageTeamComponent's own per-member panels establish) rather than the
+// one-line, ellipsis-truncated row Recent errors below still uses — a
+// feedback message is often long enough that hovering for the native
+// [title] tooltip was a poor way to actually read it; expanding the panel
+// shows it in full instead. No custom panel styling beyond this — same
+// "use Material's own default panel chrome" convention HelpComponent's own
+// FAQ accordion already establishes.
+.feedback-accordion{
+  .status-badge{
+    margin-right: 0.5rem;
+  }
+}
+
+.feedback-message{
+  margin: 0;
+  line-height: 1.5;
 }
 
 .mini-list{

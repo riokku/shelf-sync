@@ -3,6 +3,7 @@ import { DatePipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SupabaseService } from '../../../core/supabase.service';
@@ -57,7 +58,7 @@ type ClientErrorLogRow = Database['public']['Tables']['client_error_log']['Row']
  *  history for the full story, preserved in CLAUDE.md). */
 @Component({
   selector: 'app-studio-org-detail',
-  imports: [DatePipe, RouterLink, MatButtonModule, MatIconModule, MatProgressSpinnerModule, BreadcrumbsComponent, PageHeaderComponent, EmptyStateComponent],
+  imports: [DatePipe, RouterLink, MatButtonModule, MatExpansionModule, MatIconModule, MatProgressSpinnerModule, BreadcrumbsComponent, PageHeaderComponent, EmptyStateComponent],
   templateUrl: './studio-org-detail.component.html',
   styleUrl: './studio-org-detail.component.scss',
 })

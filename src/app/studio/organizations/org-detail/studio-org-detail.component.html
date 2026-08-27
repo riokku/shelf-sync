@@ -49,37 +49,6 @@
           }
         </dl>
 
-        <section class="org-section platform-actions">
-          <h3>Platform actions</h3>
-          @if (actionError) {
-            <p class="error-message">{{ actionError }}</p>
-          }
-          <div class="platform-actions-buttons">
-            @if (isRetired) {
-              <button mat-stroked-button type="button" [disabled]="isActionPending" (click)="restoreOrganization()">
-                <mat-icon>restore</mat-icon>
-                Restore organization
-              </button>
-            } @else {
-              @if (isSuspended) {
-                <button mat-stroked-button type="button" [disabled]="isActionPending" (click)="unsuspendOrganization()">
-                  <mat-icon>check_circle</mat-icon>
-                  Unsuspend
-                </button>
-              } @else {
-                <button mat-stroked-button color="warn" type="button" [disabled]="isActionPending" (click)="suspendOrganization()">
-                  <mat-icon>block</mat-icon>
-                  Suspend
-                </button>
-              }
-              <button mat-flat-button color="warn" type="button" [disabled]="isActionPending" (click)="retireOrganization()">
-                <mat-icon>delete_forever</mat-icon>
-                Retire organization
-              </button>
-            }
-          </div>
-        </section>
-
         <section class="org-section">
           <h3>Members <span class="mono">({{ members.length }})</span></h3>
           <p class="section-hint">
@@ -119,15 +88,20 @@
           @if (recentFeedback.length === 0) {
             <p class="empty-hint">No feedback from this organization.</p>
           } @else {
-            <ul class="mini-list">
+            <mat-accordion multi class="feedback-accordion">
               @for (row of recentFeedback; track row.id) {
-                <li>
-                  <span class="status-badge" [class]="'status-badge-feedback-' + row.status">{{ statusLabel(row) }}</span>
-                  <span class="mini-list-text" [title]="row.message">{{ typeLabel(row) }} — {{ row.message }}</span>
-                  <span class="mini-list-date">{{ row.created_at | date: 'M/d/yy' }}</span>
-                </li>
+                <mat-expansion-panel>
+                  <mat-expansion-panel-header>
+                    <mat-panel-title>
+                      <span class="status-badge" [class]="'status-badge-feedback-' + row.status">{{ statusLabel(row) }}</span>
+                      {{ typeLabel(row) }}
+                    </mat-panel-title>
+                    <mat-panel-description>{{ row.created_at | date: 'M/d/yy' }}</mat-panel-description>
+                  </mat-expansion-panel-header>
+                  <p class="feedback-message">{{ row.message }}</p>
+                </mat-expansion-panel>
               }
-            </ul>
+            </mat-accordion>
           }
         </section>
 
@@ -145,6 +119,37 @@
               }
             </ul>
           }
+        </section>
+
+        <section class="org-section platform-actions">
+          <h3>Platform actions</h3>
+          @if (actionError) {
+            <p class="error-message">{{ actionError }}</p>
+          }
+          <div class="platform-actions-buttons">
+            @if (isRetired) {
+              <button mat-stroked-button type="button" [disabled]="isActionPending" (click)="restoreOrganization()">
+                <mat-icon>restore</mat-icon>
+                Restore organization
+              </button>
+            } @else {
+              @if (isSuspended) {
+                <button mat-stroked-button type="button" [disabled]="isActionPending" (click)="unsuspendOrganization()">
+                  <mat-icon>check_circle</mat-icon>
+                  Unsuspend
+                </button>
+              } @else {
+                <button mat-stroked-button color="warn" type="button" [disabled]="isActionPending" (click)="suspendOrganization()">
+                  <mat-icon>block</mat-icon>
+                  Suspend
+                </button>
+              }
+              <button mat-flat-button class="retire-button" type="button" [disabled]="isActionPending" (click)="retireOrganization()">
+                <mat-icon>delete_forever</mat-icon>
+                Retire organization
+              </button>
+            }
+          </div>
         </section>
       </div>
     }
