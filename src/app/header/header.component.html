@@ -187,6 +187,15 @@
           >Manage</span>
       </a>
     }
+    <!-- Visible only to the app's own maintainer (see
+         AuthService.isPlatformAdmin's own doc comment) — every other
+         signed-in user, including an org's own admin, never sees this. -->
+    @if (authService.isPlatformAdmin()) {
+      <a mat-button routerLink="/studio" routerLinkActive="active">
+        <mat-icon>dashboard</mat-icon>
+        Studio
+      </a>
+    }
     <mat-divider></mat-divider>
     <button mat-button type="button" (click)="themeMode.toggle()">
       <mat-icon>{{ themeMode.mode() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>

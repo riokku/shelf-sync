@@ -1,0 +1,79 @@
+@use '../../shared/styles/page-toolbar';
+
+.studio-organizations-wrapper{
+  color: var(--mat-sys-on-surface);
+  padding: 3rem 1.5rem;
+  max-width: 100%;
+
+  .container{
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+.loading-row{
+  display: flex;
+  justify-content: center;
+  padding: 3rem 0;
+}
+
+// Same plain-table shape ManageSuppliersComponent's own .suppliers-table
+// already establishes.
+.organizations-table-wrapper{
+  overflow-x: auto;
+}
+
+.organizations-table{
+  width: 100%;
+  border-collapse: collapse;
+
+  th{
+    text-align: left;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--mat-sys-on-surface-variant);
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+    white-space: nowrap;
+  }
+
+  td{
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+    vertical-align: middle;
+  }
+
+  tr:last-child td{
+    border-bottom: none;
+  }
+}
+
+.org-name{
+  font-weight: 600;
+}
+
+// A soft-deleted org (see manage/danger-zone) still shows here rather than
+// disappearing — the status badge is the signal, this just mutes the whole
+// row a touch further so it visually recedes behind still-active orgs.
+.org-row-deleted{
+  opacity: 0.6;
+}
+
+.status-badge{
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.status-badge-active{
+  background: var(--app-success-bg);
+  color: var(--app-success-on-bg);
+}
+
+.status-badge-deleted{
+  background: var(--app-danger-bg);
+  color: var(--app-danger-on-bg);
+}

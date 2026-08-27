@@ -20,6 +20,11 @@ export class AuthService {
   readonly role = computed(() => this._profile()?.role ?? null);
   readonly canManage = computed(() => this.role() === 'admin' || this.role() === 'manager');
   readonly organizationId = computed(() => this._profile()?.organization_id ?? null);
+  /** True only for the app's own maintainer, not any org's own admin — see
+   *  platformAdminGuard/StudioComponent. Set once, manually, directly
+   *  against the hosted project (see the add_platform_admin migration's
+   *  own doc comment for why); nothing in this app ever writes it. */
+  readonly isPlatformAdmin = computed(() => this._profile()?.is_platform_admin ?? false);
 
   /** Loaded alongside `profile` (same lifecycle: populated once the
    *  profile's own organization_id is known, cleared together on sign-out)

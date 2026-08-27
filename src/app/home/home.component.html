@@ -116,6 +116,17 @@
           <p>Administer inventory, tasks, and your team.</p>
         </a>
       }
+      <!-- Visible only to the app's own maintainer, never any org's own
+           admin — see AuthService.isPlatformAdmin's own doc comment. -->
+      @if (authService.isPlatformAdmin()) {
+        <a class="home-card" routerLink="/studio">
+          <span class="home-card-icon home-card-icon-d">
+            <mat-icon>dashboard</mat-icon>
+          </span>
+          <h3>Studio</h3>
+          <p>Cross-organization feedback, errors, and organizations.</p>
+        </a>
+      }
     </div>
 
     <span class="home-kicker">For you</span>

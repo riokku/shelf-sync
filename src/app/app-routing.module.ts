@@ -4,6 +4,7 @@ import { authGuard } from './core/guards/auth.guard';
 import { approvedGuard } from './core/guards/approved.guard';
 import { manageGuard } from './core/guards/manage.guard';
 import { adminGuard } from './core/guards/admin.guard';
+import { platformAdminGuard } from './core/guards/platform-admin.guard';
 import { unsavedChangesGuard } from './core/guards/unsaved-changes.guard';
 import { BreadcrumbParent } from './shared/components/breadcrumbs/breadcrumbs.component';
 
@@ -11,6 +12,13 @@ import { BreadcrumbParent } from './shared/components/breadcrumbs/breadcrumbs.co
 // read Home / Manage / {page} — the Manage hub itself doesn't need this,
 // it only ever sits one level under Home.
 const MANAGE_BREADCRUMB_PARENT: BreadcrumbParent = { label: 'Manage', link: '/manage' };
+
+// Same idea, one level under /studio instead — deliberately a separate
+// constant rather than reusing MANAGE_BREADCRUMB_PARENT, since /studio is a
+// genuinely different, non-nested area (see StudioComponent's own doc
+// comment): an org's own admin should never see a "Manage" crumb leading
+// there, and vice versa.
+const STUDIO_BREADCRUMB_PARENT: BreadcrumbParent = { label: 'Studio', link: '/studio' };
 
 // Every route gets an explicit `title` — Angular's default TitleStrategy
 // only ever writes document.title when the *active* route defines one and
@@ -223,6 +231,35 @@ const routes: Routes = [
     canActivate: [approvedGuard, adminGuard],
     data: { breadcrumb: 'Settings', breadcrumbParent: MANAGE_BREADCRUMB_PARENT },
     title: 'ShelfSync | Settings'
+  },
+  {
+    path: 'studio',
+    loadComponent: () => import('./studio/studio.component').then(m => m.StudioComponent),
+    canActivate: [approvedGuard, platformAdminGuard],
+    data: { breadcrumb: 'Studio' },
+    title: 'ShelfSync | Studio'
+  },
+  {
+    path: 'studio/feedback',
+    loadComponent: () => import('./studio/feedback/studio-feedback.component').then(m => m.StudioFeedbackComponent),
+    canActivate: [approvedGuard, platformAdminGuard],
+    data: { breadcrumb: 'Feedback', breadcrumbParent: STUDIO_BREADCRUMB_PARENT },
+    title: 'ShelfSync | Studio Feedback'
+  },
+  {
+    path: 'studio/error-log',
+    loadComponent: () => import('./studio/error-log/studio-error-log.component').then(m => m.StudioErrorLogComponent),
+    canActivate: [approvedGuard, platformAdminGuard],
+    data: { breadcrumb: 'Error Log', breadcrumbParent: STUDIO_BREADCRUMB_PARENT },
+    title: 'ShelfSync | Studio Error Log'
+  },
+  {
+    path: 'studio/organizations',
+    loadComponent: () =>
+      import('./studio/organizations/studio-organizations.component').then(m => m.StudioOrganizationsComponent),
+    canActivate: [approvedGuard, platformAdminGuard],
+    data: { breadcrumb: 'Organizations', breadcrumbParent: STUDIO_BREADCRUMB_PARENT },
+    title: 'ShelfSync | Studio Organizations'
   },
   // Catches any URL that doesn't match a route above — must stay last.
   // Unguarded (reachable by a signed-out visitor too, see

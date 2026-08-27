@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 
 import { HomeComponent } from './home.component';
@@ -378,5 +379,44 @@ describe('HomeComponent getting-started card', () => {
 
     const secondVisit = await createComponent('admin', { items: 0, tasks: 0, teammates: 0 });
     expect(secondVisit.componentInstance.showGettingStarted).toBeFalse();
+  });
+});
+
+/** The Studio card is purely template-gated (no new component field) —
+ *  verified by rendering, not by reading a property. 'staff' role so
+ *  loadGettingStarted() skips its own queries entirely, same reasoning
+ *  'HomeComponent personal lists' above already uses. */
+describe('HomeComponent Studio card', () => {
+  async function createComponent(isPlatformAdmin: boolean) {
+    await TestBed.resetTestingModule().configureTestingModule({
+      imports: [HomeComponent],
+      providers: [
+        provideRouter([]),
+        {
+          provide: AuthService,
+          useValue: createFakeAuthService(createFakeProfile({ role: 'staff', is_platform_admin: isPlatformAdmin }))
+        },
+        { provide: SupabaseService, useValue: createFakeSupabaseServiceForPersonalStats({}) }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(HomeComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    return fixture;
+  }
+
+  it('is hidden for an ordinary user', async () => {
+    const fixture = await createComponent(false);
+    const links = fixture.debugElement.queryAll(By.css('.home-card')).map(el => el.nativeElement.textContent);
+
+    expect(links.some(text => text.includes('Studio'))).toBeFalse();
+  });
+
+  it('shows up only for the platform-admin account', async () => {
+    const fixture = await createComponent(true);
+    const links = fixture.debugElement.queryAll(By.css('.home-card')).map(el => el.nativeElement.textContent);
+
+    expect(links.some(text => text.includes('Studio'))).toBeTrue();
   });
 });

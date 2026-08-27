@@ -1,0 +1,112 @@
+@use '../shared/styles/page-toolbar';
+
+.studio-wrapper{
+  color: var(--mat-sys-on-surface);
+  padding: 3rem 1.5rem;
+  max-width: 100%;
+
+  h2{
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  .container{
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+.studio-subtitle{
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0 0 2rem;
+}
+
+// Flat grid, not grouped into sections — ManageComponent's own sectioning
+// earns its keep with a dozen-plus cards, but three cards reads better as
+// one row, same shape HomeComponent's own .home-grid already uses.
+.studio-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 1.5rem;
+}
+
+.studio-card{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 1.75rem;
+  border-radius: 0.75rem;
+  background: var(--mat-sys-surface-container-low);
+  border: 1px solid var(--mat-sys-outline-variant);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 0.15s ease, transform 0.2s ease, box-shadow 0.2s ease;
+
+  // Same lift-on-hover treatment Manage's own .manage-card/Home's own
+  // .home-card already use — this hub is this app's other "pick a card"
+  // moment.
+  &:hover{
+    background: var(--mat-sys-surface-container);
+    transform: translateY(-0.25rem);
+    box-shadow: 0 0.75rem 1.75rem rgba(0, 0, 0, 0.12);
+  }
+
+  h3{
+    margin: 0;
+  }
+
+  p{
+    margin: 0;
+    color: var(--mat-sys-on-surface-variant);
+    font-size: 0.875rem;
+  }
+
+  // Same enlarged/bold pending-count badge treatment ManageComponent's own
+  // .manage-card establishes — see that component's own comment for why
+  // each of these four lines/the ::ng-deep rule below are needed.
+  --mat-badge-container-size: 22px;
+  --mat-badge-line-height: 22px;
+  --mat-badge-text-size: 0.8125rem;
+  --mat-badge-text-weight: 700;
+
+  &:not(.mat-badge-hidden) ::ng-deep .mat-badge-content{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+// Same flat container-token icon-chip convention HomeComponent's own
+// .home-card-icon-primary/-secondary/-tertiary establish, reused here
+// rather than Manage's per-section gradient (which earns its keep grouping
+// many cards into few colors — not needed for three ungrouped cards).
+.studio-card-icon{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.75rem;
+
+  mat-icon{
+    font-size: 1.5rem;
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+}
+
+.studio-card-icon-primary{
+  background: var(--mat-sys-primary-container);
+  mat-icon{ color: var(--mat-sys-on-primary-container); }
+}
+
+.studio-card-icon-secondary{
+  background: var(--mat-sys-secondary-container);
+  mat-icon{ color: var(--mat-sys-on-secondary-container); }
+}
+
+.studio-card-icon-tertiary{
+  background: var(--mat-sys-tertiary-container);
+  mat-icon{ color: var(--mat-sys-on-tertiary-container); }
+}

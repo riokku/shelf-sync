@@ -1,0 +1,33 @@
+<div class="studio-wrapper">
+  <div class="container">
+    <div class="page-toolbar">
+      <app-breadcrumbs />
+    </div>
+    <h2>Studio</h2>
+    <p class="studio-subtitle">Cross-organization tools, visible only to you.</p>
+
+    <div class="studio-grid">
+      <a
+          class="studio-card"
+          routerLink="/studio/feedback"
+          [matBadge]="newFeedbackCount"
+          [matBadgeHidden]="newFeedbackCount === 0"
+          matBadgeColor="warn"
+        >
+        <span class="studio-card-icon studio-card-icon-primary"><mat-icon>feedback</mat-icon></span>
+        <h3>Feedback</h3>
+        <p>Bug reports, feature requests, and general feedback from every organization.</p>
+      </a>
+      <a class="studio-card" routerLink="/studio/error-log">
+        <span class="studio-card-icon studio-card-icon-tertiary"><mat-icon>bug_report</mat-icon></span>
+        <h3>Error Log</h3>
+        <p>Client errors logged across every organization.</p>
+      </a>
+      <a class="studio-card" routerLink="/studio/organizations">
+        <span class="studio-card-icon studio-card-icon-secondary"><mat-icon>apartment</mat-icon></span>
+        <h3>Organizations</h3>
+        <p>Every organization using ShelfSync, at a glance.</p>
+      </a>
+    </div>
+  </div>
+</div>

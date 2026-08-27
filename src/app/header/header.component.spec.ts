@@ -72,6 +72,38 @@ describe('HeaderComponent low stock badge', () => {
   }));
 });
 
+/** The Studio nav link is purely template-gated (no new component field) —
+ *  verified by rendering, not by reading a property. */
+describe('HeaderComponent Studio nav link', () => {
+  function render(profile: ReturnType<typeof createFakeProfile>) {
+    TestBed.configureTestingModule({
+      imports: [HeaderComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService(profile) },
+        { provide: SupabaseService, useValue: createFakeSupabaseService() }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(HeaderComponent);
+    fixture.detectChanges();
+    tick();
+    const linkTexts = fixture.debugElement.queryAll(By.css('.nav-drawer-links a')).map(el => el.nativeElement.textContent.trim());
+    discardPeriodicTasks();
+    return linkTexts;
+  }
+
+  it('is hidden for an ordinary org admin', fakeAsync(() => {
+    const linkTexts = render(createFakeProfile({ role: 'admin', is_platform_admin: false }));
+    expect(linkTexts.some(text => text.includes('Studio'))).toBeFalse();
+  }));
+
+  it('shows up only for the platform-admin account', fakeAsync(() => {
+    const linkTexts = render(createFakeProfile({ is_platform_admin: true }));
+    expect(linkTexts.some(text => text.includes('Studio'))).toBeTrue();
+  }));
+});
+
 describe('HeaderComponent notifications panel', () => {
   function setup() {
     TestBed.configureTestingModule({

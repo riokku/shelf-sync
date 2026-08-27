@@ -141,6 +141,9 @@ export type Database = {
           id: string
           message: string
           organization_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
           type: string
           user_id: string | null
         }
@@ -149,6 +152,9 @@ export type Database = {
           id?: string
           message: string
           organization_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
           type: string
           user_id?: string | null
         }
@@ -157,6 +163,9 @@ export type Database = {
           id?: string
           message?: string
           organization_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
           type?: string
           user_id?: string | null
         }
@@ -166,6 +175,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -767,6 +783,7 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          is_platform_admin: boolean
           last_active_at: string | null
           membership_status: Database["public"]["Enums"]["membership_status"]
           nickname: string | null
@@ -782,6 +799,7 @@ export type Database = {
           email: string
           full_name?: string | null
           id: string
+          is_platform_admin?: boolean
           last_active_at?: string | null
           membership_status?: Database["public"]["Enums"]["membership_status"]
           nickname?: string | null
@@ -797,6 +815,7 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          is_platform_admin?: boolean
           last_active_at?: string | null
           membership_status?: Database["public"]["Enums"]["membership_status"]
           nickname?: string | null
@@ -1080,6 +1099,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      is_platform_admin: { Args: never; Returns: boolean }
       log_client_error: {
         Args: {
           p_app_env?: string

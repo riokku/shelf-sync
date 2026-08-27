@@ -14,3 +14,17 @@ export const FEEDBACK_TYPE_LABELS: Record<FeedbackType, string> = {
   general: 'General feedback',
   other: 'Other'
 };
+
+/** Mirrors `feedback.status`'s check constraint (see the add_feedback_status
+ *  migration) — backs StudioFeedbackComponent's review workflow. Unlike
+ *  FeedbackType above, this column is never read by the Edge Function, so
+ *  there's no second copy to keep in sync. */
+export type FeedbackStatus = 'new' | 'reviewed' | 'resolved';
+
+export const FEEDBACK_STATUSES: FeedbackStatus[] = ['new', 'reviewed', 'resolved'];
+
+export const FEEDBACK_STATUS_LABELS: Record<FeedbackStatus, string> = {
+  new: 'New',
+  reviewed: 'Reviewed',
+  resolved: 'Resolved'
+};

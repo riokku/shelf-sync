@@ -1,0 +1,54 @@
+<div class="studio-organizations-wrapper">
+  <div class="container">
+    <div class="page-toolbar">
+      <app-breadcrumbs />
+    </div>
+    <app-page-header icon="apartment" title="Organizations" subtitle="Every organization using ShelfSync, most recently created first." />
+
+    @if (loadError) {
+      <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load organizations. ' + loadError">
+        <button mat-stroked-button type="button" (click)="retryLoad()">
+          <mat-icon>refresh</mat-icon>
+          Retry
+        </button>
+      </app-empty-state>
+    } @else if (isLoading) {
+      <div class="loading-row">
+        <mat-spinner diameter="32"></mat-spinner>
+      </div>
+    } @else if (organizations.length === 0) {
+      <app-empty-state icon="apartment" message="No organizations yet." />
+    } @else {
+      <div class="organizations-table-wrapper">
+        <table class="organizations-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Created</th>
+              <th>Members</th>
+              <th>Last active</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (org of organizations; track org.id) {
+              <tr [class.org-row-deleted]="org.deleted_at">
+                <td class="org-name">{{ org.name }}</td>
+                <td>{{ org.created_at | date: 'M/d/yy' }}</td>
+                <td>{{ org.memberCount }}</td>
+                <td>{{ org.lastActiveAt ? (org.lastActiveAt | date: 'M/d/yy') : '—' }}</td>
+                <td>
+                  @if (org.deleted_at) {
+                    <span class="status-badge status-badge-deleted">Deleted</span>
+                  } @else {
+                    <span class="status-badge status-badge-active">Active</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>

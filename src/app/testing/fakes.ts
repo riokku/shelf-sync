@@ -29,6 +29,7 @@ export function createFakeProfile(overrides: Partial<Profile> = {}): Profile {
     role: 'staff',
     membership_status: 'approved',
     organization_id: 'org-1',
+    is_platform_admin: false,
     avatar_key: null,
     last_active_at: null,
     quick_menu_enabled: false,
@@ -63,6 +64,7 @@ export function createFakeAuthService(
       const role = profileSignal()?.role;
       return role === 'admin' || role === 'manager';
     }),
+    isPlatformAdmin: computed(() => profileSignal()?.is_platform_admin ?? false),
     organizationId: computed(() => profileSignal()?.organization_id ?? null),
     organizationName: signal(options.organizationName ?? null).asReadonly(),
     getSession: async () => fakeSession,

@@ -1183,10 +1183,12 @@ into a new `feedback` table (self-attributed, `organization_id` defaulting to
 `current_user_org_id()` same as `activity_log`'s own client inserts) rather than handing a value back
 to `HelpComponent` to persist — but unlike those two, there's no `inventory_item_activity`/
 `activity_log` write to make alongside it, since feedback isn't tied to an item or task. `feedback`
-has no SELECT policy for any role at all (a deliberate difference from every other audit-style table
-in this schema, e.g. `activity_log`/`inventory_item_discards`) — nobody in the app ever reads a
-submission back, and a candid bug report or complaint shouldn't be visible to the rest of the org the
-way team-wide activity is. The insert alone is what notifies anyone: `send-notification-email` (see
+had no SELECT policy for any role at all when this shipped (a deliberate difference from every other
+audit-style table in this schema, e.g. `activity_log`/`inventory_item_discards`) — a candid bug
+report or complaint shouldn't be visible to the rest of the org the way team-wide activity is, so
+nobody *in that org* reads a submission back; Studio's own Feedback inbox (see that section's own
+paragraph below) is a later, narrow, deliberate exception to this — not a reversal of it, see that
+paragraph for why. The insert alone is what notifies anyone: `send-notification-email` (see
 its own section below) gains a fifth event kind, dispatched from a `notify_on_feedback_submitted`
 trigger that reuses `call_notification_webhook()` completely unchanged (that function already posts
 `tg_table_name`/the new row generically, so a new table just needed a new trigger, not a new
@@ -1203,6 +1205,46 @@ is skipped entirely for this one) — those toggles are for an org choosing whet
 get emailed about *their own org's* events, which doesn't apply to a fixed recipient outside every
 org. Also skips the `notifications` table insert every other kind gets, for the same reason: nobody
 in the app is the "recipient" of feedback the way a task assignee or approving admin is.
+
+A `/studio` route (`StudioComponent`, guarded by a new `platformAdminGuard` — stricter than every
+existing guard, including `adminGuard`: it checks `profiles.is_platform_admin`, not `role`) is a
+genuinely new concept for this schema: every other RLS policy and every `manage/*` route scopes
+strictly to the caller's own `organization_id`, but Studio is for the app's own maintainer, not any
+org's own admin — an org's `role = 'admin'` grants nothing here, and `is_platform_admin` grants
+nothing in `manage/*`. The two are deliberately orthogonal, not a hierarchy (Studio isn't "super
+admin" sitting above org admin — it's a different, cross-org audience entirely). Same card-hub shape
+as `ManageComponent` (`.studio-card`/`.studio-card-icon`, deliberately not shared CSS — see that
+component's own precedent of duplicating this shape per-page rather than factoring it out), three
+cards: **Feedback** (`StudioFeedbackComponent`) is the cross-org counterpart to the Help page's
+"Send feedback" button above — every organization's submissions in one searchable/filterable list,
+readable at all only because of a new "Platform admins can view all feedback" SELECT policy (an
+*additional* permissive policy, not a replacement — RLS policies on the same table OR together, so
+`feedback`'s own org-scoped-to-nobody default is untouched for every other role). A review workflow
+(`status`: new/reviewed/resolved, plus `reviewed_by`/`reviewed_at`) was added alongside this
+(`add_feedback_status` migration) since the table had none before — marking a row reviewed/resolved
+writes directly via `.update()` (no RPC needed: a column-scoped grant on just those three columns,
+same shape `add_inventory_item_retirement` established for `inventory_items`, plus the same
+`is_platform_admin()`-gated RLS policy) rather than reloading the whole list, the same "mutate the
+bound row object in place" convention `InventoryComponent`'s own edit flow already uses. **Error
+Log** (`StudioErrorLogComponent`) is a near-identical fork of `manage/error-log` — same dev-error
+toggle, client-side pagination, and profile-name resolution — with the one real difference being no
+`organization_id` filter (again, an additional cross-org SELECT policy alongside
+`client_error_log`'s existing org-scoped one) and each row additionally showing which org it came
+from, so the same bug hitting several customers shows up as several rows here instead of needing to
+check each org's own error log separately. **Organizations** (`StudioOrganizationsComponent`) is a
+plain table (same shape `ManageSuppliersComponent`'s own `<table>` already establishes, not a
+`mat-table`) of every org — name, created date, member count, last-active date, active/deleted
+status — needing no new policy on `organizations` itself (its own SELECT policy was already
+`using (true)` for any authenticated user from `create_organizations.sql`), just a new cross-org
+SELECT policy on `profiles` to compute member count/last-active from, reduced client-side into one
+`Map` keyed by org id rather than a query per org. `AuthService.isPlatformAdmin` (alongside
+`canManage`, same `computed()` shape) backs both `platformAdminGuard` and two small pieces of nav
+discoverability visible only to that one account: a "Studio" link in `HeaderComponent`'s nav drawer
+(right where the `canManage()`-gated "Manage" link already sits) and a fifth card on
+`HomeComponent`'s `.home-grid`, after Manage. `is_platform_admin` itself is never writable through
+the app at all (not even an RPC) — set once, manually, directly against the hosted project, same
+"real sensitive one-off value, never in a migration file" convention this app's Vault secrets and
+hosted-org reseed already follow.
 
 A shared `PageIntroComponent` (`shared/components/page-intro`) gives Inventory, Tasks, and the
 Manage hub a one-time, dismissible orientation banner for a user (any role) who might be landing on
@@ -1510,7 +1552,12 @@ The app mixes two Angular module styles, which is important to know before addin
   `manage/settings` lives under `manage` (not its own top-level `settings` route) for
   the same reason as every other admin/manager tool here — it's reachable only via the Manage hub's
   own Settings card, not a direct header nav link or Home card, matching Billing/Danger Zone's own
-  precedent of being Manage-hub-only rather than duplicated elsewhere. Every route uses
+  precedent of being Manage-hub-only rather than duplicated elsewhere. `studio` and its three flat
+  sibling routes (`studio/feedback`, `studio/error-log`, `studio/organizations`) follow the exact
+  same card-hub/flat-sibling-routes shape as `manage` — but guarded by `platformAdminGuard`, a
+  genuinely different, cross-org audience (`profiles.is_platform_admin`, not any `role`) than every
+  guard above; see the Project Overview section above for the full reasoning and why this is
+  deliberately not nested under `manage` itself. Every route uses
   `loadComponent` rather than a top-level `component` import, so each page (and whatever it
   imports) only ships once actually navigated to instead of all bundling into one initial chunk;
   no resolvers exist yet.
@@ -1531,6 +1578,7 @@ core/
   guards/auth.guard.ts    # CanActivateFn — awaits authService.getSession() directly
   guards/manage.guard.ts  # admin OR manager
   guards/admin.guard.ts   # admin only (manage/settings, manage/billing, manage/danger-zone)
+  guards/platform-admin.guard.ts # is_platform_admin only — a different, cross-org audience from every guard above (studio/*)
   guards/unsaved-changes.guard.ts # CanDeactivateFn — confirms leaving a dirty create form (manage/inventory, manage/tasks)
 header/, footer/                                           # standalone layout components; header has the logout button
 login/                                                      # standalone login screen, real Supabase auth
@@ -1551,6 +1599,7 @@ manage/                                                     # card hub (ManageCo
   settings/                                                # admin-only: theme picker + logo upload (site_settings) — see Project Overview above
 account/                                                    # profile info, avatar picker, light/dark mode toggle, quick-menu picker
 help/                                                        # static in-app "how do I..." reference (see Project Overview above)
+studio/                                                     # platform-admin only (is_platform_admin, not any org role): card hub (StudioComponent) linking to feedback/, error-log/, organizations/ — see Project Overview above
 shared/
   components/modal-table/    # standalone Material dialog showing InventoryItem details
   components/bulk-action-toolbar/ # shared "N selected / select all / clear" chrome for every page with bulk actions
@@ -1969,11 +2018,28 @@ yet on a hard refresh of `/inventory`.
 - `add_feedback` — adds `feedback` (`organization_id` defaulting to `current_user_org_id()`,
   `user_id`, `type`, `message`), backing the Help page's "Send feedback" button (see Project
   Overview above). INSERT-only, self-attributed, any authenticated org member — no SELECT policy
-  for any role, deliberately unlike every other audit-style table in this schema, since nobody in
-  the app ever reads a submission back. Adds one trigger, `notify_on_feedback_submitted`, reusing
+  for any role at the time, deliberately unlike every other audit-style table in this schema, so
+  nobody *in that org* reads a submission back (see `add_platform_admin` below for the later,
+  narrow, cross-org exception). Adds one trigger, `notify_on_feedback_submitted`, reusing
   `call_notification_webhook()` unchanged (from `add_notification_email_webhooks`) — that function
   already posts `tg_table_name`/the new row generically, so no Postgres-side function changes were
   needed, just a new table to point a trigger at.
+- `add_platform_admin` — adds `profiles.is_platform_admin` (RPC/manual-only, same reasoning
+  `role`/`membership_status` already have — no column grant at all, since the only writer is a
+  one-off `UPDATE` run directly against the hosted project, never through the app or a migration)
+  and `is_platform_admin()`, a `SECURITY DEFINER` helper mirroring `current_user_role()`/
+  `current_user_org_id()`'s own shape exactly. Adds three *additional* permissive SELECT policies —
+  RLS policies on the same table OR together, so each of these sits alongside that table's existing
+  policy without touching it — granting a platform admin cross-org read on `feedback`,
+  `client_error_log`, and `profiles`, backing Studio (see Project Overview above for the full
+  feature). `organizations` needed no new policy: its own SELECT policy was already `using (true)`
+  for any authenticated user (`create_organizations.sql`).
+- `add_feedback_status` — adds `feedback.status`/`reviewed_by`/`reviewed_at`, backing
+  `StudioFeedbackComponent`'s review workflow (new/reviewed/resolved) — `feedback` had no such
+  workflow at all before this. Column-scoped grant (`update (status, reviewed_by, reviewed_at)`,
+  same shape `add_inventory_item_retirement` established for `inventory_items`) plus a
+  `platformAdminGuard`-matching RLS UPDATE policy — so even a platform admin can't rewrite the
+  original `type`/`message` through this path, and nobody else can update the table at all.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power
