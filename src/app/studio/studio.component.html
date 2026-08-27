@@ -6,6 +6,37 @@
     <h2>Studio</h2>
     <p class="studio-subtitle">Cross-organization tools, visible only to you.</p>
 
+    @if (isLoadingStats) {
+      <div class="loading-row">
+        <mat-spinner diameter="32"></mat-spinner>
+      </div>
+    } @else {
+      <div class="studio-stats-card">
+        <div class="stat-grid">
+          <div class="stat-tile">
+            <span class="stat-label">Organizations</span>
+            <span class="stat-value">{{ totalOrgCount }}</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-label">New this week</span>
+            <span class="stat-value">{{ newOrgCount }}</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-label">Approved users</span>
+            <span class="stat-value">{{ approvedUserCount }}</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-label">Open feedback</span>
+            <span class="stat-value">{{ newFeedbackCount }}</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-label">Errors (24h)</span>
+            <span class="stat-value">{{ recentErrorCount }}</span>
+          </div>
+        </div>
+      </div>
+    }
+
     <div class="studio-grid">
       <a
           class="studio-card"

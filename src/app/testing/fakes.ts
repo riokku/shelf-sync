@@ -193,7 +193,7 @@ export function createFakeQueryBuilder(result: { data?: unknown; count?: number;
   const builder: Record<string, unknown> = {
     then: (resolve: (value: typeof result) => void) => resolve(result),
   };
-  for (const method of ['select', 'eq', 'neq', 'not', 'in', 'gte', 'lt', 'order', 'limit', 'single', 'maybeSingle', 'insert', 'update', 'delete', 'upsert']) {
+  for (const method of ['select', 'eq', 'neq', 'not', 'in', 'is', 'gte', 'lt', 'order', 'limit', 'single', 'maybeSingle', 'insert', 'update', 'delete', 'upsert']) {
     builder[method] = () => builder;
   }
   return builder;

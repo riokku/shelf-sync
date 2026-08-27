@@ -21,6 +21,49 @@
   margin: 0 0 2rem;
 }
 
+.loading-row{
+  display: flex;
+  justify-content: center;
+  padding: 2rem 0;
+}
+
+// The platform-admin counterpart to manage/reports' own stat-grid/-tile/
+// -label/-value — same shape, duplicated here rather than shared, matching
+// this app's own convention of not extracting every small presentational
+// pattern into a shared component (see e.g. the icon-chip gradients
+// repeated per hub rather than centralized).
+.studio-stats-card{
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 2rem;
+  border-radius: 0.9rem;
+  background: var(--mat-sys-surface-container-low);
+  border: 1px solid var(--mat-sys-outline-variant);
+}
+
+.stat-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 1.5rem;
+}
+
+.stat-tile{
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.stat-label{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8125rem;
+}
+
+.stat-value{
+  font-family: var(--font-mono);
+  font-size: 1.375rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 // Flat grid, not grouped into sections — ManageComponent's own sectioning
 // earns its keep with a dozen-plus cards, but three cards reads better as
 // one row, same shape HomeComponent's own .home-grid already uses.
