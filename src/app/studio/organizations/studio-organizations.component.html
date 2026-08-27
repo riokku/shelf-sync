@@ -35,7 +35,7 @@
               <tr [class.org-row-deleted]="org.deleted_at">
                 <td class="org-name">{{ org.name }}</td>
                 <td>{{ org.created_at | date: 'M/d/yy' }}</td>
-                <td>{{ org.memberCount }}</td>
+                <td class="mono">{{ org.memberCount }}</td>
                 <td>{{ org.lastActiveAt ? (org.lastActiveAt | date: 'M/d/yy') : '—' }}</td>
                 <td>
                   @if (org.deleted_at) {
