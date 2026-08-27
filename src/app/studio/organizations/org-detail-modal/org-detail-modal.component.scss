@@ -73,6 +73,22 @@
   color: var(--app-warning-on-bg);
 }
 
+.status-badge-suspended{
+  background: var(--app-warning-bg);
+  color: var(--app-warning-on-bg);
+}
+
+.error-message{
+  color: var(--app-error-text);
+  margin: -0.5rem 0 1rem;
+}
+
+.platform-actions-buttons{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
 // Same three-state palette StudioFeedbackComponent's own .status-badge-*
 // already establishes for these exact statuses — duplicated here (not
 // shared) matching this app's own small-presentational-pattern convention,

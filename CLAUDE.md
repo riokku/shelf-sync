@@ -1296,6 +1296,72 @@ for this to stay cheap, and avoids the escaping complexity a raw `.or()`/`ilike`
 from unsanitized user input would otherwise need. Reads the same two cross-org-granted tables
 Organizations' own page already does (`profiles`/`organizations`) — no new policy.
 
+`OrgDetailModalComponent` is also where a platform admin actually acts on an org, via a "Platform
+actions" section above the read-only Members/feedback/errors sections — the last of the four
+Studio admin features from this same pass. Two distinct, deliberately separate levers, each for a
+distinct trigger: **Suspend** is an immediate, fully reversible access block for abuse or
+non-payment (does *not* start any delete countdown — an org can sit suspended indefinitely until a
+platform admin lifts it), while **Retire** is the platform-side counterpart to
+`ManageDangerZoneComponent`'s own self-service "Delete organization" — the exact same
+`organizations.deleted_at` soft-delete-then-30-day-purge mechanism, just triggerable by a platform
+admin on *any* org rather than only that org's own admin on their own, and deliberately labeled
+"Retire" here (not "Delete") since the trigger this pass was built for is a concluded contract, not
+abuse — a distinct enough mental model from the self-service flow's own framing to deserve its own
+word even though the underlying column is identical. `platform_suspend_organization()`/
+`platform_unsuspend_organization()`/`platform_retire_organization()`/`platform_restore_organization()`
+(`add_platform_org_suspension_and_retirement` migration) are four new `SECURITY DEFINER` RPCs,
+platform-admin-gated exactly like every other cross-org write in this schema
+(`is_platform_admin()`, see `add_platform_admin`) — `restore_organization` also happens to be the
+self-service "undo" `add_organization_deletion`'s own comment had flagged as not existing yet
+("Recovery today is a manual update... no self-service UI yet"); it's still not self-service for an
+org's own admin, but at least no longer a manual SQL statement run by hand against the hosted
+project. Suspension adds `organizations.suspended_at`/`suspended_by`/`suspension_reason`, and
+folds `suspended_at is null` into `current_user_org_id()` right alongside its existing
+`deleted_at is null` check (diffed against `fix_org_isolation_bugs`'s version per this repo's own
+"diff against the previous version" lesson) — the same single choke point every org-scoped RLS
+policy in this schema already reads, so a suspended org's members lose all data access immediately,
+schema-wide, with no per-policy changes needed, exactly mirroring how a retired org already worked.
+In practice this means a suspended org's members hit the same "We couldn't find your account"
+`PendingApprovalComponent` state a retired org's members already did — `approvedGuard`'s own
+`getProfile()` call returns null once the RLS SELECT policy denies it, no new copy or guard logic
+needed. `suspendOrganization()` opens a new `SuspendOrganizationModalComponent`
+(`shared/components/suspend-organization-modal`) for a mandatory reason (same "a consequential-but-
+reversible action should still say why" reasoning `DiscardModalComponent`'s own mandatory reason
+field already established, simpler than `DeleteOrganizationModalComponent`'s type-to-confirm shape
+since suspension is fully reversible); `retireOrganization()` reuses
+`DeleteOrganizationModalComponent` as-is (it already just takes an org name, no assumption baked in
+that the caller is that org's own admin); `unsuspendOrganization()`/`restoreOrganization()` both use
+the plain `ConfirmDialogComponent`. Every action mutates `data.organization` in place on success
+rather than closing the dialog or emitting an event back to the caller — the same shared-object-
+reference convention `InventoryComponent.showDetails()` already established for `ModalTableComponent`'s
+own edits, since `StudioOrganizationsComponent`/`StudioUsersComponent` both hand this component the
+very row object sitting in their own list, so the parent's table/status badge updates for free.
+`StudioOrganizationsComponent`'s own status badge gained a third state (`Active`/`Suspended`/
+`Retired`, precedence in that order — a retired org's badge wins even if it was suspended first),
+and its `.org-row-deleted` muting class was generalized to `.org-row-inactive` to also cover a
+merely-suspended (not yet retired) row.
+
+Building `OrgDetailModalComponent`'s own action-opening methods surfaced a real Angular DI footgun
+worth remembering: `MatDialogModule`'s own `NgModule` declaration carries `providers: [MatDialog]`
+(visible in Angular Material's own compiled metadata) *in addition to* `MatDialog`'s tree-shakable
+`providedIn: 'root'` — meaning a standalone component that both (a) is itself rendered as a dialog's
+content (needing `mat-dialog-title`/`-content`/`-actions` in its own template) *and* (b) opens
+further dialogs of its own via `inject(MatDialog)`, gets a second, module-scoped `MatDialog`
+instance if it imports the *whole* `MatDialogModule` — silently shadowing the app-wide root
+instance for that one component. Invisible in the running app (each dialog still opens and tracks
+itself correctly regardless of which instance's stack it's on), but it breaks spying on the root
+`MatDialog` from a test — `TestBed.inject(MatDialog)` resolves the true root singleton, while the
+component under test holds the shadowed one, so `spyOn(dialog, 'open')` silently never intercepts
+anything and the component always exercises a *real* (never-resolving, since nothing in the test
+env can close it) dialog instead. `ModalTableComponent` — this schema's only pre-existing example of
+this same "dialog content that opens further dialogs" shape — never surfaced this, simply because
+its own spec never once spies on `MatDialog.open()`. The fix: import the individual
+`MatDialogTitle`/`MatDialogContent`/`MatDialogActions` standalone directives instead of the whole
+module — they carry no such provider baggage — which is what `OrgDetailModalComponent` does now.
+Worth applying the same swap to any *other* component that turns out to need both halves of this
+shape, and worth remembering generally: an NgModule imported into a standalone component's own
+`imports` array can carry provider side effects well beyond the directives/pipes it's there for.
+
 A shared `PageIntroComponent` (`shared/components/page-intro`) gives Inventory, Tasks, and the
 Manage hub a one-time, dismissible orientation banner for a user (any role) who might be landing on
 that page for the first time — a short "here's what this page is" hint, distinct from
@@ -2143,6 +2209,17 @@ yet on a hard refresh of `/inventory`.
   same shape `add_inventory_item_retirement` established for `inventory_items`) plus a
   `platformAdminGuard`-matching RLS UPDATE policy — so even a platform admin can't rewrite the
   original `type`/`message` through this path, and nobody else can update the table at all.
+- `add_platform_org_suspension_and_retirement` — adds `organizations.suspended_at`/`suspended_by`/
+  `suspension_reason` and four `SECURITY DEFINER` RPCs
+  (`platform_suspend_organization`/`platform_unsuspend_organization`/`platform_retire_organization`/
+  `platform_restore_organization`), all `is_platform_admin()`-gated, backing `OrgDetailModalComponent`'s
+  new "Platform actions" section (see Project Overview above for the full suspend-vs-retire
+  reasoning). Folds `suspended_at is null` into `current_user_org_id()` right alongside its existing
+  `deleted_at is null` check (diffed against `fix_org_isolation_bugs`'s version, the latest at the
+  time) — same single choke point, so a suspended org's members lose all data access schema-wide the
+  moment they're suspended, no per-policy changes needed. No new grant/policy on `organizations`
+  itself needed for the writes — all four are RPC-only, same "SECURITY DEFINER bypasses RLS, no
+  table grant required" shape every other RPC-gated write in this schema already uses.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

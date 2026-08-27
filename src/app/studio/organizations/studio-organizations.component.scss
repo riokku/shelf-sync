@@ -52,10 +52,11 @@
   font-weight: 600;
 }
 
-// A soft-deleted org (see manage/danger-zone) still shows here rather than
-// disappearing — the status badge is the signal, this just mutes the whole
-// row a touch further so it visually recedes behind still-active orgs.
-.org-row-deleted{
+// A retired (see manage/danger-zone's own soft-delete) or suspended org
+// still shows here rather than disappearing — the status badge is the
+// signal, this just mutes the whole row a touch further so it visually
+// recedes behind still-active orgs.
+.org-row-inactive{
   opacity: 0.6;
 }
 
@@ -88,6 +89,11 @@
 .status-badge-active{
   background: var(--app-success-bg);
   color: var(--app-success-on-bg);
+}
+
+.status-badge-suspended{
+  background: var(--app-warning-bg);
+  color: var(--app-warning-on-bg);
 }
 
 .status-badge-deleted{

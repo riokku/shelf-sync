@@ -759,6 +759,9 @@ export type Database = {
           id: string
           name: string
           slug: string
+          suspended_at: string | null
+          suspended_by: string | null
+          suspension_reason: string | null
         }
         Insert: {
           created_at?: string
@@ -766,6 +769,9 @@ export type Database = {
           id?: string
           name: string
           slug: string
+          suspended_at?: string | null
+          suspended_by?: string | null
+          suspension_reason?: string | null
         }
         Update: {
           created_at?: string
@@ -773,8 +779,19 @@ export type Database = {
           id?: string
           name?: string
           slug?: string
+          suspended_at?: string | null
+          suspended_by?: string | null
+          suspension_reason?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "organizations_suspended_by_fkey"
+            columns: ["suspended_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       profiles: {
         Row: {
@@ -1116,6 +1133,22 @@ export type Database = {
       }
       mark_reservation_returned: {
         Args: { reservation_id: string }
+        Returns: undefined
+      }
+      platform_restore_organization: {
+        Args: { org_id: string }
+        Returns: undefined
+      }
+      platform_retire_organization: {
+        Args: { org_id: string }
+        Returns: undefined
+      }
+      platform_suspend_organization: {
+        Args: { org_id: string; reason?: string }
+        Returns: undefined
+      }
+      platform_unsuspend_organization: {
+        Args: { org_id: string }
         Returns: undefined
       }
       profile_display_name: { Args: { target_id: string }; Returns: string }

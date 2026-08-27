@@ -13,6 +13,7 @@ interface FakeOrgRow {
   slug: string;
   created_at: string;
   deleted_at: string | null;
+  suspended_at: string | null;
 }
 
 function createTestOrgRow(overrides: Partial<FakeOrgRow> = {}): FakeOrgRow {
@@ -22,6 +23,7 @@ function createTestOrgRow(overrides: Partial<FakeOrgRow> = {}): FakeOrgRow {
     slug: 'acme-events',
     created_at: '2026-01-01T00:00:00.000Z',
     deleted_at: null,
+    suspended_at: null,
     ...overrides,
   };
 }
