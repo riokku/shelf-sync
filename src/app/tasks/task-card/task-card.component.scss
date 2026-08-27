@@ -26,6 +26,14 @@
     background: var(--mat-sys-surface-container);
   }
 
+  // A touch of press feedback on click/tap — darkens a step further than
+  // :hover rather than holding the same background straight through the
+  // click, same "the row should visibly react to the press itself"
+  // reasoning the app's card surfaces get via their own :active rules.
+  &:active{
+    background: var(--mat-sys-surface-container-high);
+  }
+
   // Same 3-tier left-rule convention Home's own "What's on your plate"
   // ledger rows use (see TaskCardComponent.severity()'s own doc comment) —
   // replaces what used to be a solid red pill around the due-date text

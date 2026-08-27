@@ -210,6 +210,14 @@
     transform: translateY(-0.25rem);
     box-shadow: 0 0.75rem 1.75rem rgba(0, 0, 0, 0.12);
   }
+
+  // A brief "pushed in" feel on click/tap — less lift than :hover, a
+  // smaller shadow, and a slight scale-down — rather than the hover state
+  // just holding steady through the press with no feedback of its own.
+  &:active{
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.12);
+  }
 }
 
 @for $i from 1 through 3{
@@ -324,6 +332,17 @@
         transform: translateX(0.1875rem);
         color: var(--mat-sys-primary);
       }
+    }
+
+    // A brief scale-down on click/tap — :hover already tops out at
+    // surface-container-high (the highest container tone available), so
+    // there's no darker background left to press further into; a scale
+    // change carries the same "the row reacted to your click" feedback
+    // instead. Deliberately outside the transition list above so the press
+    // itself is instant, not eased — only the release (back to :hover's own
+    // background) animates.
+    &:active{
+      transform: scale(0.985);
     }
 
     // Overdue (red) outranks due-today (amber), which outranks 'ok' (a
@@ -529,6 +548,12 @@
     background: var(--mat-sys-surface-container);
     transform: translateY(-0.25rem);
     box-shadow: 0 0.75rem 1.75rem rgba(0, 0, 0, 0.12);
+  }
+
+  // Same "pushed in" press feedback .home-list-card's own :active uses.
+  &:active{
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.12);
   }
 
   h3{

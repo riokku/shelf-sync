@@ -1,5 +1,11 @@
 <div class="empty-state" [class.compact]="compact" [class.error]="variant === 'error'">
-  <mat-icon class="empty-state-icon">{{ icon }}</mat-icon>
+  @if (compact) {
+    <mat-icon class="empty-state-icon">{{ icon }}</mat-icon>
+  } @else {
+    <span class="empty-state-icon-badge">
+      <mat-icon class="empty-state-icon">{{ icon }}</mat-icon>
+    </span>
+  }
   <p>{{ message }}</p>
   <ng-content></ng-content>
 </div>

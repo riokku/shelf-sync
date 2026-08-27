@@ -7,11 +7,29 @@
   text-align: center;
   color: var(--mat-sys-on-surface-variant);
 
+  // A soft circular gradient badge behind the icon — the same two-tone
+  // container-token treatment this app's nav/list/page-header icon chips
+  // already use (see HomeComponent's own doc comment for why *-container
+  // tokens specifically), just circular and sized up a touch since this is
+  // the one visual focal point of an otherwise-empty page rather than a
+  // small accent beside other content. Replaces the old bare, dimmed
+  // (opacity 0.6) icon floating on its own.
+  .empty-state-icon-badge{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 4.5rem;
+    height: 4.5rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--mat-sys-primary-container), var(--mat-sys-tertiary-container));
+    animation: empty-state-badge-in 0.4s ease-out;
+  }
+
   .empty-state-icon{
-    font-size: 2.5rem;
-    width: 2.5rem;
-    height: 2.5rem;
-    opacity: 0.6;
+    font-size: 2rem;
+    width: 2rem;
+    height: 2rem;
+    color: var(--mat-sys-on-primary-container);
   }
 
   p{
@@ -27,17 +45,44 @@
   }
 }
 
+// A gentle pop-in for the badge on first render — an empty state is a
+// terminal, mount-once view (nothing to debounce or replay against), so a
+// plain CSS animation on mount is all this needs, no JS-driven trigger.
+@keyframes empty-state-badge-in{
+  from{ opacity: 0; transform: scale(0.7); }
+  to{ opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .empty-state-icon-badge{
+    animation: none;
+  }
+}
+
 // A failed data load rather than an ordinary "nothing here yet" — same
 // error color token this app's inline .error-message already uses, so a
 // load failure reads as a problem rather than blending into every other
-// empty state's neutral tone.
+// empty state's neutral tone. The badge itself swaps to a subtle
+// error-tinted fill (mirroring ManageComponent's own Danger Zone card icon
+// treatment) rather than joining the neutral gradient every other empty
+// state gets.
 .empty-state.error{
   color: var(--app-error-text);
+
+  .empty-state-icon-badge{
+    background: color-mix(in srgb, var(--app-error-text) 18%, var(--mat-sys-surface-container-low));
+  }
+
+  .empty-state-icon{
+    color: var(--app-error-text);
+  }
 }
 
 // Nested inside an already-populated page (e.g. a "Completed" section with
 // nothing in it yet) rather than a whole page/tab having nothing to show —
-// small and inline instead of the full centered treatment above.
+// small and inline instead of the full centered badge treatment above, so
+// no badge/animation here: a hero-style circle would be out of place
+// squeezed into a single inline row.
 .empty-state.compact{
   flex-direction: row;
   justify-content: flex-start;
@@ -49,6 +94,7 @@
     font-size: 1.125rem;
     width: 1.125rem;
     height: 1.125rem;
+    color: inherit;
     opacity: 0.7;
   }
 
