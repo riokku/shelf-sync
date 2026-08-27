@@ -261,6 +261,13 @@ const routes: Routes = [
     data: { breadcrumb: 'Organizations', breadcrumbParent: STUDIO_BREADCRUMB_PARENT },
     title: 'ShelfSync | Studio Organizations'
   },
+  {
+    path: 'studio/users',
+    loadComponent: () => import('./studio/users/studio-users.component').then(m => m.StudioUsersComponent),
+    canActivate: [approvedGuard, platformAdminGuard],
+    data: { breadcrumb: 'Users', breadcrumbParent: STUDIO_BREADCRUMB_PARENT },
+    title: 'ShelfSync | Studio Users'
+  },
   // Catches any URL that doesn't match a route above — must stay last.
   // Unguarded (reachable by a signed-out visitor too, see
   // NotFoundComponent's own doc comment). Gets an explicit `title` like

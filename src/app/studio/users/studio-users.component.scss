@@ -1,0 +1,115 @@
+@use '../../shared/styles/page-toolbar';
+
+.studio-users-wrapper{
+  color: var(--mat-sys-on-surface);
+  padding: 3rem 1.5rem;
+  max-width: 100%;
+
+  .container{
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+.loading-row{
+  display: flex;
+  justify-content: center;
+  padding: 3rem 0;
+}
+
+.user-search-field{
+  width: 100%;
+  max-width: 28rem;
+}
+
+.search-hint{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+}
+
+// Same plain-table shape StudioOrganizationsComponent's own
+// .organizations-table already establishes — duplicated, not shared, same
+// convention.
+.users-table-wrapper{
+  overflow-x: auto;
+}
+
+.users-table{
+  width: 100%;
+  border-collapse: collapse;
+
+  th{
+    text-align: left;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--mat-sys-on-surface-variant);
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+    white-space: nowrap;
+  }
+
+  td{
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+    vertical-align: middle;
+  }
+
+  tr:last-child td{
+    border-bottom: none;
+  }
+}
+
+.user-name{
+  font-weight: 600;
+}
+
+// Whole row opens OrgDetailModalComponent for this user's org — same
+// affordance StudioOrganizationsComponent's own .org-row-clickable
+// establishes.
+.user-row-clickable{
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+
+  &:hover,
+  &:focus-visible{
+    background: var(--mat-sys-surface-container-high);
+  }
+
+  &:active{
+    background: var(--mat-sys-surface-container-highest);
+  }
+}
+
+// Same badge shapes OrgDetailModalComponent's own .member-role-badge/
+// .status-badge-* establish — duplicated per this app's own
+// small-presentational-pattern convention.
+.member-role-badge{
+  display: inline-flex;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  background: var(--mat-sys-surface-container-highest);
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge{
+  display: inline-flex;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.status-badge-active{
+  background: var(--app-success-bg);
+  color: var(--app-success-on-bg);
+}
+
+.status-badge-pending{
+  background: var(--app-warning-bg);
+  color: var(--app-warning-on-bg);
+}

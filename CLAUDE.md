@@ -1279,6 +1279,23 @@ each via `order(created_at desc).limit(5)`), the same "caller hands over the min
 component fetches its own supplementary data" convention `ModalTableComponent`'s own reservations
 summary already uses.
 
+A fourth Studio card, **Users** (`StudioUsersComponent`, `studio/users`), is the opposite direction
+from Organizations' own org-first browse — a support conversation usually starts from a name or an
+email, not an org, so this is a cross-org lookup: type into a search field and every matching
+profile (name/email substring, case-insensitive) shows up with its org, role, and approval status,
+each row opening the exact same `OrgDetailModalComponent` Organizations' own rows open (finding
+someone and then seeing their org's full context is one click, not a second lookup). Deliberately
+search-first rather than browse-first — nothing renders until a search term narrows it, both
+because "browse everyone" is already Organizations' own job (via its member counts) and because a
+platform-wide profile list only grows as the product does; results are capped at 25 with a "showing
+N of M" hint above the table once a search matches more than that. Matching is a plain client-side
+substring filter over a `profiles` list loaded once on init (same "load once, filter in memory"
+shape `ManageTeamComponent`'s own team search already uses) rather than a server-side `ilike`
+search this app has no other precedent for — the platform's total user count is still small enough
+for this to stay cheap, and avoids the escaping complexity a raw `.or()`/`ilike` filter string built
+from unsanitized user input would otherwise need. Reads the same two cross-org-granted tables
+Organizations' own page already does (`profiles`/`organizations`) — no new policy.
+
 A shared `PageIntroComponent` (`shared/components/page-intro`) gives Inventory, Tasks, and the
 Manage hub a one-time, dismissible orientation banner for a user (any role) who might be landing on
 that page for the first time — a short "here's what this page is" hint, distinct from
@@ -1685,7 +1702,7 @@ manage/                                                     # card hub (ManageCo
   settings/                                                # admin-only: theme picker + logo upload (site_settings) — see Project Overview above
 account/                                                    # profile info, avatar picker, light/dark mode toggle, quick-menu picker
 help/                                                        # static in-app "how do I..." reference (see Project Overview above)
-studio/                                                     # platform-admin only (is_platform_admin, not any org role): card hub (StudioComponent) linking to feedback/, error-log/, organizations/ — see Project Overview above
+studio/                                                     # platform-admin only (is_platform_admin, not any org role): card hub (StudioComponent) linking to feedback/, error-log/, organizations/, users/ — see Project Overview above
 shared/
   components/modal-table/    # standalone Material dialog showing InventoryItem details
   components/bulk-action-toolbar/ # shared "N selected / select all / clear" chrome for every page with bulk actions
