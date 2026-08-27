@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { TaskCardComponent } from './task-card.component';
 import { createTestTask } from '../../testing/fakes';
+import { getTodayIsoDate } from '../../shared/utils/date';
 
 describe('TaskCardComponent', () => {
   let component: TaskCardComponent;
@@ -41,7 +42,12 @@ describe('TaskCardComponent severity', () => {
   });
 
   it('is "warn" for a task due exactly today', () => {
-    const today = new Date().toISOString().slice(0, 10);
+    // getTodayIsoDate() (local-time-safe), not `new Date().toISOString()`
+    // (UTC-based) — the component's own severity getter compares against
+    // getTodayIsoDate() too, and a UTC-vs-local mismatch can silently shift
+    // this by a day depending on the runner's timezone/time of day. See
+    // date.ts's own doc comment on toIsoDateString() for the same pitfall.
+    const today = getTodayIsoDate();
     fixture.componentRef.setInput('task', createTestTask({ due_date: today, status: 'todo' }));
     fixture.detectChanges();
     expect(fixture.componentInstance.severity).toBe('warn');

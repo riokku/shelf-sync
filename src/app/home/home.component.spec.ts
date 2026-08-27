@@ -5,6 +5,7 @@ import { HomeComponent } from './home.component';
 import { AuthService } from '../core/auth.service';
 import { SupabaseService } from '../core/supabase.service';
 import { createFakeAuthService, createFakeProfile, createFakeSupabaseService } from '../testing/fakes';
+import { getTodayIsoDate, toIsoDateString } from '../shared/utils/date';
 
 describe('HomeComponent', () => {
   let component: HomeComponent;
@@ -211,7 +212,12 @@ describe('HomeComponent personal lists', () => {
   });
 
   it('tasksDueTodayCount counts only tasks due exactly today', async () => {
-    const today = new Date().toISOString().slice(0, 10);
+    // getTodayIsoDate() (local-time-safe), not `new Date().toISOString()`
+    // (UTC-based) — tasksDueTodayCount itself compares against
+    // getTodayIsoDate() too, and a UTC-vs-local mismatch can silently shift
+    // this by a day depending on the runner's timezone/time of day. See
+    // date.ts's own doc comment on toIsoDateString() for the same pitfall.
+    const today = getTodayIsoDate();
     const fixture = await createComponent({
       tasks: [
         { id: 't1', title: 'Due today', due_date: today },
@@ -224,11 +230,11 @@ describe('HomeComponent personal lists', () => {
   });
 
   it('reservationsStartingSoonCount counts reservations starting within the next 7 days', async () => {
+    // toIsoDateString() (local-time-safe), not Date.toISOString() (UTC-based)
+    // — same pitfall as the other dates in this file; harmless for an
+    // offset of a few days, but worth staying consistent.
     const today = new Date();
-    const iso = (daysOffset: number) => {
-      const d = new Date(today.getTime() + daysOffset * 86400000);
-      return d.toISOString().slice(0, 10);
-    };
+    const iso = (daysOffset: number) => toIsoDateString(new Date(today.getTime() + daysOffset * 86400000))!;
     const fixture = await createComponent({
       reservations: [
         { id: 'r1', item_id: 'item-1', start_date: iso(2), end_date: iso(10), quantity: 5, reserved_for: 'Soon' },
@@ -243,7 +249,9 @@ describe('HomeComponent personal lists', () => {
   it('taskRowSeverity ranks overdue above due-today above everything else', async () => {
     const fixture = await createComponent({});
     const { componentInstance: component } = fixture;
-    const today = new Date().toISOString().slice(0, 10);
+    // getTodayIsoDate() (local-time-safe) — see the earlier "due exactly
+    // today" test's own comment for why not `new Date().toISOString()`.
+    const today = getTodayIsoDate();
 
     expect(component.taskRowSeverity({ id: '1', title: '', dueDate: '2000-01-01' })).toBe('danger');
     expect(component.taskRowSeverity({ id: '2', title: '', dueDate: today })).toBe('warn');
@@ -252,7 +260,9 @@ describe('HomeComponent personal lists', () => {
   });
 
   it('heroSubtitle reflects a real count of what needs attention today, not fixed text', async () => {
-    const today = new Date().toISOString().slice(0, 10);
+    // getTodayIsoDate() (local-time-safe) — see the earlier "due exactly
+    // today" test's own comment for why not `new Date().toISOString()`.
+    const today = getTodayIsoDate();
     const fixture = await createComponent({
       tasks: [{ id: 't1', title: 'Due today', due_date: today }]
     });

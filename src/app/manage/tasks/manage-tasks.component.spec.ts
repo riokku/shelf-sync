@@ -8,6 +8,7 @@ import { AuthService } from '../../core/auth.service';
 import { SupabaseService } from '../../core/supabase.service';
 import { NotificationService } from '../../core/notification.service';
 import { createFakeActivatedRoute, createFakeAuthService, createFakeProfile, createFakeSupabaseService, createTestTask } from '../../testing/fakes';
+import { getTodayIsoDate } from '../../shared/utils/date';
 
 describe('ManageTasksComponent', () => {
   let component: ManageTasksComponent;
@@ -384,7 +385,12 @@ describe('ManageTasksComponent taskSeverity()', () => {
   });
 
   it('ranks overdue above due-today above everything else', () => {
-    const today = new Date().toISOString().slice(0, 10);
+    // getTodayIsoDate() (local-time-safe), not `new Date().toISOString()`
+    // (UTC-based) — the component's own taskSeverity() compares against
+    // getTodayIsoDate() too, and a UTC-vs-local mismatch can silently shift
+    // this by a day depending on the runner's timezone/time of day. See
+    // date.ts's own doc comment on toIsoDateString() for the same pitfall.
+    const today = getTodayIsoDate();
 
     expect(component.taskSeverity(createTestTask({ due_date: '2000-01-01', status: 'todo' }))).toBe('danger');
     expect(component.taskSeverity(createTestTask({ due_date: today, status: 'todo' }))).toBe('warn');
