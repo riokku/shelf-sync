@@ -36,14 +36,50 @@ describe('FeedbackModalComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('defaults the feedback type to "general"', async () => {
+  it('has no default feedback type, so a category must be explicitly chosen', async () => {
     await setup();
-    expect(component.feedbackForm.controls.type.value).toBe('general');
+    expect(component.feedbackForm.controls.type.value).toBeNull();
+  });
+
+  describe('form validity (backs the Submit button\'s [disabled] binding)', () => {
+    it('is invalid with neither field filled in', async () => {
+      await setup();
+      expect(component.feedbackForm.invalid).toBeTrue();
+    });
+
+    it('is still invalid with only a type picked', async () => {
+      await setup();
+      component.feedbackForm.controls.type.setValue('bug');
+      expect(component.feedbackForm.invalid).toBeTrue();
+    });
+
+    it('is still invalid with only a message typed', async () => {
+      await setup();
+      component.feedbackForm.controls.message.setValue('Something is broken.');
+      expect(component.feedbackForm.invalid).toBeTrue();
+    });
+
+    it('is valid once both a type and a message are present', async () => {
+      await setup();
+      component.feedbackForm.controls.type.setValue('bug');
+      component.feedbackForm.controls.message.setValue('Something is broken.');
+      expect(component.feedbackForm.valid).toBeTrue();
+    });
   });
 
   describe('submit()', () => {
+    it('requires a feedback type', async () => {
+      await setup();
+      component.feedbackForm.controls.message.setValue('Something is broken.');
+
+      await component.submit();
+
+      expect(component.feedbackForm.controls.type.hasError('required')).toBeTrue();
+    });
+
     it('requires a message', async () => {
       await setup();
+      component.feedbackForm.controls.type.setValue('bug');
 
       await component.submit();
 
@@ -52,6 +88,7 @@ describe('FeedbackModalComponent', () => {
 
     it('requires a signed-in session', async () => {
       await setup({ hasSession: false });
+      component.feedbackForm.controls.type.setValue('bug');
       component.feedbackForm.controls.message.setValue('Something is broken.');
 
       await component.submit();
@@ -74,6 +111,7 @@ describe('FeedbackModalComponent', () => {
     it('surfaces an insert error rather than closing the dialog', async () => {
       await setup({ error: { message: 'insert failed' } });
       const closeSpy = spyOn(dialogRef, 'close');
+      component.feedbackForm.controls.type.setValue('bug');
       component.feedbackForm.controls.message.setValue('Something is broken.');
 
       await component.submit();

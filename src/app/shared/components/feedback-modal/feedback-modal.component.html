@@ -15,6 +15,9 @@
           <mat-option [value]="type">{{ feedbackTypeLabels[type] }}</mat-option>
         }
       </mat-select>
+      @if (feedbackForm.controls.type.hasError('required') && feedbackForm.controls.type.touched) {
+        <mat-error>Pick a feedback type.</mat-error>
+      }
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="full-width">
@@ -31,7 +34,7 @@
   </mat-dialog-content>
   <mat-dialog-actions align="end">
     <button mat-button type="button" (click)="cancel()">Cancel</button>
-    <button mat-flat-button color="primary" type="submit" [disabled]="isSaving">
+    <button mat-flat-button color="primary" type="submit" [disabled]="isSaving || feedbackForm.invalid">
       @if (isSaving) {
         <mat-spinner diameter="20"></mat-spinner>
       } @else {

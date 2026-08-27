@@ -42,8 +42,12 @@ export class FeedbackModalComponent {
   readonly feedbackTypes = FEEDBACK_TYPES;
   readonly feedbackTypeLabels = FEEDBACK_TYPE_LABELS;
 
+  // No default type — the Submit button stays disabled (see the template's
+  // [disabled]="feedbackForm.invalid") until both fields are actually
+  // filled in, rather than a pre-picked "General feedback" silently
+  // counting as "chosen".
   feedbackForm = new FormGroup({
-    type: new FormControl<FeedbackType>('general', { nonNullable: true, validators: [Validators.required] }),
+    type: new FormControl<FeedbackType | null>(null, { validators: [Validators.required] }),
     message: new FormControl('', { nonNullable: true, validators: [Validators.required] })
   });
 
@@ -75,7 +79,9 @@ export class FeedbackModalComponent {
     // (see the add_feedback migration), same convention activity_log's own
     // client inserts already follow.
     const { error } = await this.supabase.from('feedback').insert({
-      type: value.type,
+      // Non-null by construction — the invalid-form guard above already
+      // requires type to be non-null before this line ever runs.
+      type: value.type!,
       message: value.message.trim(),
       user_id: session.user.id
     });
