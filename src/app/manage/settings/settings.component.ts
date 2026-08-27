@@ -11,6 +11,7 @@ import { InventoryFieldOptionsService } from '../../core/inventory-field-options
 import { NotificationService } from '../../core/notification.service';
 import { SiteSettingsService } from '../../core/site-settings.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { FieldOptionsEditorComponent } from '../../shared/components/field-options-editor/field-options-editor.component';
 import { THEME_PRESETS } from '../../shared/models/theme-preset';
 import { INVENTORY_TABLE_COLUMN_GROUPS, InventoryTableColumnKey } from '../../shared/models/inventory-table-column';
@@ -18,7 +19,7 @@ import { INVENTORY_FORM_FIELD_GROUPS, InventoryFormFieldKey } from '../../shared
 
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule, MatButtonModule, MatButtonToggleModule, MatCheckboxModule, MatIconModule, MatProgressSpinnerModule, MatSlideToggleModule, BreadcrumbsComponent, FieldOptionsEditorComponent],
+  imports: [FormsModule, MatButtonModule, MatButtonToggleModule, MatCheckboxModule, MatIconModule, MatProgressSpinnerModule, MatSlideToggleModule, BreadcrumbsComponent, PageHeaderComponent, FieldOptionsEditorComponent],
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.scss'
 })

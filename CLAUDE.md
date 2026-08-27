@@ -1438,11 +1438,18 @@ swaps the icon chip for the same flat red treatment its own Manage-hub card alre
 `ManageComponent`'s own `.manage-card-icon-danger` comment) rather than the shared gradient — this
 page is a deliberate outlier meant to read as riskier than every other page, not another
 destination in the same set. Applied to Reports, Suppliers, Orders, Team, Activity, Release Notes,
-Error Log, Reservations, Billing, and Danger Zone — deliberately not `manage/settings` (tabbed, a
-more involved layout), `manage/inventory`/`manage/tasks` (each already has its own more intricate
-header row with a tab toggle and bulk-edit controls), or the Manage hub itself (already has its own
-distinct treatment paired with its own page-intro banner) — a natural extension of the same
-component to whichever of those needs it next.
+Error Log, Reservations, Billing, and Danger Zone in a first pass — deliberately not
+`manage/settings`/`manage/inventory`/`manage/tasks` at the time, since each has a tab toggle (plus,
+for Inventory, an action button and for Tasks, bulk-edit controls) sitting right below the heading,
+which looked riskier to retrofit than the plainer pages. A follow-up pass covered those three too:
+the tab toggle group (and, on Inventory, the Export button; on Tasks, the Bulk edit controls) turned
+out to already be its own element sitting *below* the heading in every case, not something
+entangled with it — so the swap was exactly the same as everywhere else, `<app-page-header>` in,
+bare `<h2>` (± its own `.page-header-row` wrapper) out, with the tab/action row left completely
+untouched as a sibling underneath. Settings uses the same `palette` icon as its own Manage-hub
+card; Inventory's Export button and Tasks' tab row ride in the same default content-projection slot
+Suppliers'/Orders' own buttons already established. That leaves only the Manage hub itself
+un-migrated, which keeps its own bare header on purpose (see above).
 
 ## Tech Stack
 

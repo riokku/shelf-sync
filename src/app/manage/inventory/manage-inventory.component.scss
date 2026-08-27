@@ -6,24 +6,10 @@
   padding: 3rem 1.5rem;
   max-width: 100%;
 
-  h2{
-    text-transform: uppercase;
-    margin: 0;
-  }
-
   .container{
     padding-left: 0;
     padding-right: 0;
   }
-}
-
-.page-header-row{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-  margin-bottom: 1.5rem;
 }
 
 .view-toggle{
