@@ -8,7 +8,6 @@
   .container{
     padding-left: 0;
     padding-right: 0;
-    max-width: 48rem;
   }
 }
 
@@ -16,6 +15,15 @@
   display: flex;
   justify-content: center;
   padding: 3rem 0;
+}
+
+// The container itself stays full width (same as every sibling Studio page)
+// so the breadcrumbs/page-header sit at the same horizontal position across
+// pages — only the actual detail content is capped, same "wide container,
+// narrower content" split ManageBillingComponent's own .billing-card
+// already establishes.
+.org-detail-content{
+  max-width: 48rem;
 }
 
 .org-meta{
@@ -127,7 +135,6 @@
   color: var(--app-success-on-bg);
 }
 
-.member-list,
 .mini-list{
   display: flex;
   flex-direction: column;
@@ -149,8 +156,37 @@
   }
 }
 
+// One grid across every row (not a per-row flex layout) so the role badge
+// and presence/last-seen text actually line up in columns instead of each
+// row's own content just sitting wherever its own width happens to land —
+// `li { display: contents }` lets each row's span children become direct
+// items of this single grid rather than nested inside their own separate
+// mini flex row, which is what makes the column widths shared across every
+// member rather than computed independently per row.
+.member-list{
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  column-gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li{
+    display: contents;
+
+    > *{
+      padding: 0.5rem 0;
+      border-top: 1px solid var(--mat-sys-outline-variant);
+    }
+
+    &:first-child > *{
+      border-top: none;
+    }
+  }
+}
+
 .member-name{
-  flex: 1 1 auto;
   min-width: 0;
   font-weight: 500;
   overflow: hidden;
@@ -158,8 +194,15 @@
   white-space: nowrap;
 }
 
+// Always rendered (even with nothing in it) so the presence column after it
+// stays put whether or not this particular member has a "Pending" badge to
+// show — an absent element here would otherwise shift every later column
+// for that one row only.
+.member-status-cell{
+  min-width: 0;
+}
+
 .member-role-badge{
-  flex-shrink: 0;
   padding: 0.125rem 0.5rem;
   border-radius: 999px;
   background: var(--mat-sys-surface-container-highest);
@@ -170,7 +213,6 @@
 }
 
 .member-presence{
-  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 0.375rem;
