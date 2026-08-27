@@ -18,6 +18,7 @@ import { SupabaseService } from '../../core/supabase.service';
 import { NotificationService } from '../../core/notification.service';
 import { AuthService, Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { UserAvatarComponent } from '../../shared/components/user-avatar/user-avatar.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { BulkActionToolbarComponent } from '../../shared/components/bulk-action-toolbar/bulk-action-toolbar.component';
@@ -54,6 +55,7 @@ type RelatedItemOption = Pick<Database['public']['Tables']['inventory_items']['R
     MatSlideToggleModule,
     MatDatepickerModule,
     BreadcrumbsComponent,
+    PageHeaderComponent,
     UserAvatarComponent,
     EmptyStateComponent,
     BulkActionToolbarComponent

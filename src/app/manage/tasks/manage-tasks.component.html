@@ -3,7 +3,7 @@
     <div class="page-toolbar">
       <app-breadcrumbs />
     </div>
-    <h2>Manage Tasks</h2>
+    <app-page-header icon="checklist" title="Manage Tasks" />
 
     <div class="tasks-header-row">
       <mat-button-toggle-group [ngModel]="viewMode" (ngModelChange)="setViewMode($event)" class="view-toggle">

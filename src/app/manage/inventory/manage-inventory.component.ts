@@ -21,6 +21,7 @@ import { SiteSettingsService } from '../../core/site-settings.service';
 import { SupplierService } from '../../core/supplier.service';
 import { InventoryFormFieldKey } from '../../shared/models/inventory-form-field';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { ModalTableComponent } from '../../shared/components/modal-table/modal-table.component';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
@@ -61,6 +62,7 @@ type InventoryItemRow = Database['public']['Tables']['inventory_items']['Row'];
     MatTooltipModule,
     MatCheckboxModule,
     BreadcrumbsComponent,
+    PageHeaderComponent,
     EmptyStateComponent,
     BulkActionToolbarComponent,
     HelpTooltipComponent

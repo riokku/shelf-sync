@@ -3,7 +3,7 @@
     <div class="page-toolbar">
       <app-breadcrumbs />
     </div>
-    <h2>Settings</h2>
+    <app-page-header icon="palette" title="Settings" />
 
     <mat-button-toggle-group [ngModel]="viewMode" (ngModelChange)="setViewMode($event)" class="view-toggle">
       <mat-button-toggle value="data">

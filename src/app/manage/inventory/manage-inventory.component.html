@@ -4,8 +4,7 @@
       <app-breadcrumbs />
     </div>
 
-    <div class="page-header-row">
-      <h2>Manage Inventory</h2>
+    <app-page-header icon="inventory_2" title="Manage Inventory">
       <button
           mat-stroked-button
           type="button"
@@ -16,7 +15,7 @@
         <mat-icon>download</mat-icon>
         Export
       </button>
-    </div>
+    </app-page-header>
 
     <mat-button-toggle-group [ngModel]="viewMode" (ngModelChange)="setViewMode($event)" class="view-toggle">
       <mat-button-toggle value="create">
