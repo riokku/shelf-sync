@@ -1246,6 +1246,22 @@ the app at all (not even an RPC) — set once, manually, directly against the ho
 "real sensitive one-off value, never in a migration file" convention this app's Vault secrets and
 hosted-org reseed already follow.
 
+`StudioComponent`'s own hub picked up a headline stat-grid above its three cards — the
+platform-admin counterpart to `manage/reports`' own stat tiles, giving this hub an actual
+"state of the business" glance instead of just three navigation links. Five plain head:true/count
+queries (organizations active-count, organizations created in the last 7 days, approved profiles,
+open feedback, and non-development `client_error_log` rows in the last 24 hours), same convention
+`ManageComponent`'s own `ngOnInit()` already uses for its three pending-queue badges — no new RPC or
+view, this schema already grants a platform admin cross-org read on every table involved. The
+24-hour error count is filtered client-side against the fetched rows' own `app_env` rather than a
+SQL `.neq('app_env', 'development')`, since `x != y` evaluates to `NULL` — not true — when `x` is
+`NULL` in Postgres, which would have silently excluded a null `app_env` row instead of counting it
+as "not development" the way `StudioErrorLogComponent`'s own equivalent, already-shipped check
+(`row.app_env !== 'development'`) does. `.stat-grid`/`.stat-tile`/`.stat-label`/`.stat-value` are
+duplicated from `manage/reports` rather than shared, matching this app's own convention of not
+centralizing every small presentational pattern (the icon-chip gradients are the other standing
+example of this).
+
 A shared `PageIntroComponent` (`shared/components/page-intro`) gives Inventory, Tasks, and the
 Manage hub a one-time, dismissible orientation banner for a user (any role) who might be landing on
 that page for the first time — a short "here's what this page is" hint, distinct from
