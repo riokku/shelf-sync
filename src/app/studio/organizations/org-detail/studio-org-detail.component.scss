@@ -162,11 +162,19 @@
 // `li { display: contents }` lets each row's span children become direct
 // items of this single grid rather than nested inside their own separate
 // mini flex row, which is what makes the column widths shared across every
-// member rather than computed independently per row.
+// member rather than computed independently per row. Deliberately no
+// `align-items: center` here — that would let a shorter cell (plain text)
+// get vertically centered within a row taller than it (e.g. one holding a
+// padded pill badge), pulling that cell's own border-top down to a
+// different y-coordinate than its neighbors' and breaking the divider into
+// disconnected segments instead of one continuous line. Grid's own default
+// (`stretch`) instead makes every cell in a row the row's own full height,
+// so all 4 border-tops land on the same line; each cell centers its own
+// content internally instead (see .member-role-cell/.member-status-cell/
+// .member-presence below).
 .member-list{
   display: grid;
   grid-template-columns: 1fr auto auto auto;
-  align-items: center;
   column-gap: 1rem;
   margin: 0;
   padding: 0;
@@ -187,6 +195,8 @@
 }
 
 .member-name{
+  display: flex;
+  align-items: center;
   min-width: 0;
   font-weight: 500;
   overflow: hidden;
@@ -199,9 +209,14 @@
 // badge to show, and so the role pill itself (below) never carries the
 // row's own divider border directly on its rounded box — that border
 // belongs to this plain wrapper cell instead, same reasoning
-// member-status-cell already established.
+// member-status-cell already established. `display: flex; align-items:
+// center` centers the badge within the cell's own full-row-height box now
+// that the grid container itself no longer does that centering (see
+// .member-list's own comment above).
 .member-role-cell,
 .member-status-cell{
+  display: flex;
+  align-items: center;
   min-width: 0;
 }
 
