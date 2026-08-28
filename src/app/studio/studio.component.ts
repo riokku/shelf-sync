@@ -1,6 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { MatBadgeModule } from '@angular/material/badge';
+import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { SupabaseService } from '../core/supabase.service';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
@@ -16,7 +17,7 @@ import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrum
  *  gated the same way, so nobody else ever sees either exists. */
 @Component({
   selector: 'app-studio',
-  imports: [RouterModule, MatBadgeModule, MatIconModule, BreadcrumbsComponent],
+  imports: [RouterModule, MatBadgeModule, MatButtonModule, MatIconModule, BreadcrumbsComponent],
   templateUrl: './studio.component.html',
   styleUrl: './studio.component.scss',
 })

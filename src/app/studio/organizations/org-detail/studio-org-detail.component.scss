@@ -12,16 +12,12 @@
   }
 }
 
-// A plain text button (lower emphasis than the page's own stroked/flat
-// action buttons further down) sitting above the org's own name/logo —
-// negative top margin pulls it up snug against the breadcrumbs above
-// (countering .page-toolbar's own 1.5rem margin-bottom, a shared style
-// this shouldn't touch directly), while the positive bottom margin gives
-// it clear room from the icon chip/title below rather than reading as
-// part of the same header row.
-.back-row{
-  margin: -1rem 0 1rem -0.75rem;
-}
+// .back-row itself (the layout, including its own positive bottom margin
+// giving it clear room from the icon chip/title below rather than reading
+// as part of the same header row) comes from the shared page-toolbar
+// partial above — a plain text button (lower emphasis than the page's own
+// stroked/flat action buttons further down) sitting above the org's own
+// name/logo.
 
 // The container itself stays full width (same as every sibling Studio page)
 // so the breadcrumbs/page-header sit at the same horizontal position across

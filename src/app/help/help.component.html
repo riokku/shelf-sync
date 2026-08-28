@@ -3,6 +3,12 @@
     <div class="page-toolbar">
       <app-breadcrumbs />
     </div>
+    <div class="back-row">
+      <button mat-button type="button" routerLink="/home">
+        <mat-icon>arrow_back</mat-icon>
+        Back
+      </button>
+    </div>
     <div class="page-header-row">
       <h2>Help &amp; FAQ</h2>
       <button mat-stroked-button type="button" (click)="openFeedback()">
