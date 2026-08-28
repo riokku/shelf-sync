@@ -17,7 +17,46 @@
     </div>
   }
   @if (!selectedTask) {
-    <h2>My Tasks</h2>
+    <div class="back-row">
+      <button mat-button type="button" routerLink="/home">
+        <mat-icon>arrow_back</mat-icon>
+        Back
+      </button>
+    </div>
+    <div class="page-hero">
+      <span class="page-hero-backdrop" aria-hidden="true"></span>
+      <span class="page-hero-glow page-hero-glow-1" aria-hidden="true"></span>
+      <span class="page-hero-glow page-hero-glow-2" aria-hidden="true"></span>
+      <span class="page-hero-kicker">
+        <mat-icon>checklist</mat-icon>
+        {{ incompleteTasks.length }} open
+      </span>
+      <h2>My Tasks</h2>
+      <p class="page-hero-subtitle">Everything assigned to you, plus any transfer offers waiting on your response.</p>
+      <div class="page-hero-pulse-row">
+        <div class="page-hero-pulse-chip">
+          <mat-icon>event_busy</mat-icon>
+          <span>
+            <span class="page-hero-pulse-value mono">{{ heroOverdueCount }}</span>
+            <span class="page-hero-pulse-label">Overdue</span>
+          </span>
+        </div>
+        <div class="page-hero-pulse-chip">
+          <mat-icon>today</mat-icon>
+          <span>
+            <span class="page-hero-pulse-value mono">{{ heroDueTodayCount }}</span>
+            <span class="page-hero-pulse-label">Due today</span>
+          </span>
+        </div>
+        <div class="page-hero-pulse-chip">
+          <mat-icon>swap_horiz</mat-icon>
+          <span>
+            <span class="page-hero-pulse-value mono">{{ incomingTransfers.length }}</span>
+            <span class="page-hero-pulse-label">Transfer offers</span>
+          </span>
+        </div>
+      </div>
+    </div>
   }
   <app-page-intro
       pageKey="tasks"

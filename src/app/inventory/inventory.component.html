@@ -14,7 +14,39 @@
         </div>
       }
       @if (!selectedItem) {
-        <h2>Inventory</h2>
+        <div class="back-row">
+          <button mat-button type="button" routerLink="/home">
+            <mat-icon>arrow_back</mat-icon>
+            Back
+          </button>
+        </div>
+        <div class="page-hero">
+          <span class="page-hero-backdrop" aria-hidden="true"></span>
+          <span class="page-hero-glow page-hero-glow-1" aria-hidden="true"></span>
+          <span class="page-hero-glow page-hero-glow-2" aria-hidden="true"></span>
+          <span class="page-hero-kicker">
+            <mat-icon>inventory_2</mat-icon>
+            {{ heroItemCount }} active items
+          </span>
+          <h2>Inventory</h2>
+          <p class="page-hero-subtitle">Browse by card or table, filter by category or location, and click any item for its full history.</p>
+          <div class="page-hero-pulse-row">
+            <div class="page-hero-pulse-chip">
+              <mat-icon>warning</mat-icon>
+              <span>
+                <span class="page-hero-pulse-value mono">{{ heroRestockCount }}</span>
+                <span class="page-hero-pulse-label">Low or out of stock</span>
+              </span>
+            </div>
+            <div class="page-hero-pulse-chip">
+              <mat-icon>logout</mat-icon>
+              <span>
+                <span class="page-hero-pulse-value mono">{{ heroCheckedOutCount }}</span>
+                <span class="page-hero-pulse-label">Checked out</span>
+              </span>
+            </div>
+          </div>
+        </div>
       }
       <app-page-intro
           pageKey="inventory"

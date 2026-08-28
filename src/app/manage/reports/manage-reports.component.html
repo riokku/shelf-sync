@@ -4,10 +4,12 @@
       <app-breadcrumbs />
     </div>
     <app-page-header
-        icon="bar_chart"
         title="Reports"
         subtitle="A snapshot of where things stand right now — not a trend over time yet."
-      />
+        zone="insights"
+      >
+      <app-ring-stat headerFigure [percent]="completionRatePercent" label="Task completion" />
+    </app-page-header>
 
     @if (isLoading) {
       <!-- Real headings (static text, unaffected by data) with shimmering

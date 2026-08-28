@@ -1,17 +1,19 @@
 @use '../shared/styles/page-toolbar';
+@use '../shared/styles/page-hero';
 @use '../shared/styles/realtime-flash';
 @use '../shared/styles/skeleton';
 @use '../shared/styles/stagger';
 
-// Only rendered while an item's detail view is showing (see selectedItem's
-// own doc comment) — sits right below the breadcrumbs; the "Inventory"
-// heading below is hidden in that same state (the item's own name renders
-// inside app-modal-table's own header instead — see ModalTableComponent's
-// own showTitle doc comment for why). Same shape StudioOrgDetailComponent's
-// own .back-row already establishes: negative top margin snugs it up
-// against .page-toolbar's own 1.5rem margin-bottom, negative left margin so
-// the button's own padding doesn't visibly indent it past the breadcrumbs
-// above.
+// One class, two mutually-exclusive meanings depending on selectedItem —
+// while an item's detail view is showing, this is "back to the list" (the
+// "Inventory" heading/hero below is hidden in that same state; the item's
+// own name renders inside app-modal-table's own header instead — see
+// ModalTableComponent's own showTitle doc comment for why); while browsing,
+// it's "back to Home", sitting right above the hero. Same shape
+// StudioOrgDetailComponent's own .back-row already establishes: negative
+// top margin snugs it up against .page-toolbar's own 1.5rem margin-bottom,
+// negative left margin so the button's own padding doesn't visibly indent
+// it past the breadcrumbs above.
 .back-row{
   margin: -1rem 0 1rem -0.75rem;
 }

@@ -1,3 +1,11 @@
+// .page-hero and its supporting classes (backdrop/glow/kicker/subtitle/
+// pulse-row/pulse-chip) come from the shared partial below — this was the
+// original, only usage of that whole treatment before Inventory/Tasks/the
+// Manage hub all wanted it too; see shared/styles/_page-hero.scss's own
+// doc comment for why it moved out to there instead of staying here with
+// the other three `@use`-ing it in as a copy.
+@use '../shared/styles/page-hero';
+
 .home-wrapper{
   color: var(--mat-sys-on-surface);
   padding: 3rem 1.5rem;
@@ -7,149 +15,6 @@
     padding-left: 0;
     padding-right: 0;
   }
-}
-
-.home-subtitle{
-  margin: 0 0 1.75rem;
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 1.0625rem;
-  max-width: 34rem;
-}
-
-// A pinned-dark gradient band, the same treatment landing.component.scss's
-// own .hero-region/.hero-backdrop use for the marketing page's hero — see
-// this file's own project-overview paragraph for why bringing that same
-// bold, "always dark regardless of the visitor's toggle" moment inside the
-// authenticated shell (just for this one entry point, not every page) is
-// worth the departure from the plain toggle-following surface every other
-// page here uses. color-scheme:dark forces every --mat-sys-* role read
-// inside this block to resolve to its dark-mode value regardless of the
-// viewer's own light/dark preference, which .home-hero-backdrop below
-// leans on directly.
-.home-hero{
-  position: relative;
-  isolation: isolate;
-  color-scheme: dark;
-  color: #fff;
-  padding: 2.75rem 2.5rem 3rem;
-  margin-bottom: 2rem;
-  border-radius: 1rem;
-  overflow: hidden;
-
-  h2{
-    font-size: clamp(1.9rem, 3.4vw, 2.75rem);
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    margin: 0 0 0.5rem;
-  }
-}
-
-// Same gradient formula as landing's .hero-backdrop: mixing the (pale,
-// dark-mode) primary/tertiary roles with black brings them back down to a
-// usable deep background rather than the near-white tone they'd otherwise
-// resolve to under color-scheme:dark. Recolors itself per-organization
-// theme the same way every other themed visual in this app already does.
-.home-hero-backdrop{
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background:
-    radial-gradient(circle at 20% 15%, color-mix(in srgb, var(--mat-sys-tertiary) 40%, transparent), transparent 55%),
-    linear-gradient(155deg, color-mix(in srgb, var(--mat-sys-primary) 60%, black) 0%, color-mix(in srgb, var(--mat-sys-tertiary) 35%, #101019) 100%);
-}
-
-.home-hero-glow{
-  position: absolute;
-  width: 20rem;
-  height: 20rem;
-  border-radius: 50%;
-  filter: blur(55px);
-  opacity: 0.6;
-  animation: home-hero-glow-drift 17s ease-in-out infinite alternate;
-  pointer-events: none;
-}
-
-.home-hero-glow-1{
-  top: -6rem;
-  left: -3rem;
-  background: color-mix(in srgb, var(--mat-sys-tertiary) 70%, transparent);
-}
-
-.home-hero-glow-2{
-  bottom: -8rem;
-  right: -4rem;
-  background: color-mix(in srgb, var(--mat-sys-primary) 70%, transparent);
-  animation-duration: 21s;
-}
-
-@keyframes home-hero-glow-drift{
-  from{ transform: translate(0, 0) scale(1); }
-  to{ transform: translate(2rem, 1.5rem) scale(1.18); }
-}
-
-@media (prefers-reduced-motion: reduce){
-  .home-hero-glow{
-    animation: none;
-  }
-}
-
-.home-hero-kicker{
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.25rem 0.7rem 0.25rem 0.55rem;
-  margin-bottom: 0.9rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-
-  mat-icon{
-    font-size: 14px;
-    width: 14px;
-    height: 14px;
-  }
-}
-
-// The hero's own at-a-glance operational summary — see
-// HomeComponent.heroSubtitle()'s own comment for why the line above this
-// is now computed from these same three figures rather than a fixed
-// "Where do you want to go?" that never changed.
-.home-pulse-row{
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.home-pulse-chip{
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.75rem 1.1rem;
-  border-radius: 0.85rem;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  backdrop-filter: blur(6px);
-
-  mat-icon{
-    opacity: 0.9;
-  }
-}
-
-.home-pulse-value{
-  display: block;
-  font-size: 1.375rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.home-pulse-label{
-  display: block;
-  margin-top: 0.15rem;
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.75);
 }
 
 // A small pill "kicker" above both .home-grid ("Where to") and .home-lists

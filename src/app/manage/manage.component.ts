@@ -1,6 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { MatBadgeModule } from '@angular/material/badge';
+import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from '../core/auth.service';
 import { SupabaseService } from '../core/supabase.service';
@@ -10,7 +11,7 @@ import { getUnseenChangelogCount } from '../shared/utils/changelog';
 
 @Component({
   selector: 'app-manage',
-  imports: [RouterModule, MatBadgeModule, MatIconModule, BreadcrumbsComponent, PageIntroComponent],
+  imports: [RouterModule, MatBadgeModule, MatButtonModule, MatIconModule, BreadcrumbsComponent, PageIntroComponent],
   templateUrl: './manage.component.html',
   styleUrl: './manage.component.scss',
 })

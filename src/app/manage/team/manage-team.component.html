@@ -16,7 +16,9 @@
       </div>
     }
     @if (!selectedTask) {
-      <app-page-header icon="group" title="Manage Team" />
+      <app-page-header title="Manage Team" zone="team">
+        <app-ring-stat headerFigure [percent]="onlinePercent" label="Online now" />
+      </app-page-header>
     }
 
     @if (selectedTask) {

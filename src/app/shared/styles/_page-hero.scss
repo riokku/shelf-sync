@@ -1,0 +1,159 @@
+// The pinned-dark gradient hero band — originally HomeComponent's own
+// `.home-hero`, factored out here once Inventory/Tasks/the Manage hub all
+// wanted the identical treatment for their own top-level entrance (see each
+// of those components' own doc comments for their own headline/pulse-row
+// content). A shared partial (matching the convention _skeleton.scss/
+// _stagger.scss/_realtime-flash.scss already established), not a shared
+// Angular component — every consumer's actual kicker/heading/pulse figures
+// differ enough (and are driven by that page's own data) that projecting
+// them through content-projection slots would add more indirection than it
+// saves; `@use`-ing this partial into each consumer's own component
+// stylesheet is enough to keep the visual language identical.
+//
+// color-scheme:dark on .page-hero forces every --mat-sys-* role read inside
+// it to resolve to its dark-mode value regardless of the viewer's own
+// light/dark preference — mat.theme()'s `theme-type: color-scheme` emits
+// each role via light-dark(), which respects an ancestor's own
+// `color-scheme` property, not just the document's. That's also why a
+// breadcrumb pill or anything else themed via plain --mat-sys-* tokens
+// would auto-relight correctly if ever nested inside this block — not used
+// today (every consumer keeps its own <app-breadcrumbs> in its existing
+// spot above the hero, unchanged, rather than risking it disappearing
+// alongside a conditionally-rendered hero — see InventoryComponent's own
+// template), but worth knowing if a future page wants to.
+.page-hero{
+  position: relative;
+  isolation: isolate;
+  color-scheme: dark;
+  color: #fff;
+  padding: 2.75rem 2.5rem 3rem;
+  margin-bottom: 2rem;
+  border-radius: 1rem;
+  overflow: hidden;
+
+  h2{
+    font-size: clamp(1.9rem, 3.4vw, 2.75rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0 0 0.5rem;
+  }
+}
+
+// A quieter cut of the same band — for a hero that's announcing a
+// destination one click deeper than Home/Inventory/Tasks (the Manage hub)
+// rather than the app's own front door, so it doesn't compete with those
+// for "boldest thing on screen." Halves the vertical padding and caps the
+// heading size rather than letting it scale all the way up to Home's own.
+.page-hero-quiet{
+  padding: 1.85rem 2.25rem 2.1rem;
+
+  h2{
+    font-size: clamp(1.6rem, 2.6vw, 2.1rem);
+  }
+}
+
+.page-hero-backdrop{
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 20% 15%, color-mix(in srgb, var(--mat-sys-tertiary) 40%, transparent), transparent 55%),
+    linear-gradient(155deg, color-mix(in srgb, var(--mat-sys-primary) 60%, black) 0%, color-mix(in srgb, var(--mat-sys-tertiary) 35%, #101019) 100%);
+}
+
+.page-hero-glow{
+  position: absolute;
+  width: 20rem;
+  height: 20rem;
+  border-radius: 50%;
+  filter: blur(55px);
+  opacity: 0.6;
+  animation: page-hero-glow-drift 17s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.page-hero-glow-1{
+  top: -6rem;
+  left: -3rem;
+  background: color-mix(in srgb, var(--mat-sys-tertiary) 70%, transparent);
+}
+
+.page-hero-glow-2{
+  bottom: -8rem;
+  right: -4rem;
+  background: color-mix(in srgb, var(--mat-sys-primary) 70%, transparent);
+  animation-duration: 21s;
+}
+
+@keyframes page-hero-glow-drift{
+  from{ transform: translate(0, 0) scale(1); }
+  to{ transform: translate(2rem, 1.5rem) scale(1.18); }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .page-hero-glow{
+    animation: none;
+  }
+}
+
+.page-hero-kicker{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.7rem 0.25rem 0.55rem;
+  margin-bottom: 0.9rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+
+  mat-icon{
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.page-hero-subtitle{
+  margin: 0 0 1.75rem;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 1.0625rem;
+  max-width: 34rem;
+}
+
+.page-hero-pulse-row{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.page-hero-pulse-chip{
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem 1.1rem;
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(6px);
+
+  mat-icon{
+    opacity: 0.9;
+  }
+}
+
+.page-hero-pulse-value{
+  display: block;
+  font-size: 1.375rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.page-hero-pulse-label{
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.75);
+}

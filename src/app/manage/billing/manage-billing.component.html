@@ -3,7 +3,9 @@
     <div class="page-toolbar">
       <app-breadcrumbs />
     </div>
-    <app-page-header icon="credit_card" title="Billing" />
+    <app-page-header title="Billing" zone="admin">
+      <app-ring-stat headerFigure [percent]="usagePercent(storageUsedMb, currentTier.limits.storageLimitMb)" label="Storage used" />
+    </app-page-header>
 
     <div class="preview-banner">
       <mat-icon>info</mat-icon>

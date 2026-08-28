@@ -73,6 +73,40 @@ describe('PageHeaderComponent', () => {
     expect(fixture.nativeElement.querySelector('.page-header-subtitle')?.textContent)
       .toContain('A snapshot of where things stand right now.');
   });
+
+  it('stays plain when zone is unset, even with an icon', async () => {
+    const fixture = await createComponent();
+    fixture.componentInstance.icon = 'storefront';
+    fixture.componentInstance.title = 'Suppliers';
+    fixture.detectChanges();
+
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelector('.page-header-zone')).toBeNull();
+    expect(el.querySelector('.page-header-ghost-icon')).toBeNull();
+    expect(el.querySelector('.page-header-rule')).toBeNull();
+  });
+
+  it('adds the zone wash, watermark, and rule once a zone is set', async () => {
+    const fixture = await createComponent();
+    fixture.componentInstance.icon = 'storefront';
+    fixture.componentInstance.title = 'Suppliers';
+    fixture.componentInstance.zone = 'inventory';
+    fixture.detectChanges();
+
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelector('.page-header-zone-inventory')).not.toBeNull();
+    expect(el.querySelector('.page-header-ghost-icon')?.textContent).toContain('storefront');
+    expect(el.querySelector('.page-header-rule')).not.toBeNull();
+  });
+
+  it('omits the watermark when a zone is set but there is no icon', async () => {
+    const fixture = await createComponent();
+    fixture.componentInstance.title = 'Reports';
+    fixture.componentInstance.zone = 'insights';
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.page-header-ghost-icon')).toBeNull();
+  });
 });
 
 @Component({
@@ -100,5 +134,31 @@ describe('PageHeaderComponent content projection', () => {
     expect(el.querySelector('h2')?.textContent).toContain('Orders');
     expect(el.querySelector('h2')?.textContent).toContain('(extra)');
     expect(el.querySelector('.page-header-actions button')?.textContent).toContain('Place order');
+  });
+});
+
+@Component({
+  standalone: true,
+  imports: [PageHeaderComponent],
+  template: `
+    <app-page-header title="Task throughput" zone="insights">
+      <span headerFigure class="fake-ring">72%</span>
+    </app-page-header>
+  `
+})
+class PageHeaderFigureHost { }
+
+describe('PageHeaderComponent headerFigure projection', () => {
+  it('projects headerFigure content in place of the plain icon chip', async () => {
+    await TestBed.configureTestingModule({
+      imports: [PageHeaderFigureHost]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(PageHeaderFigureHost);
+    fixture.detectChanges();
+
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelector('.page-header-figure .fake-ring')?.textContent).toContain('72%');
+    expect(el.querySelector('.page-header-icon')).toBeNull();
   });
 });
