@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -17,6 +17,9 @@ import {
   ReservableItem
 } from '../../shared/components/place-reservation-modal/place-reservation-modal.component';
 import { InventoryItemReservationWithItem, loadAllInventoryItemReservations } from '../../shared/utils/inventory-item-reservations';
+import { subscribeToTableChanges } from '../../shared/utils/realtime';
+import { FlashTracker } from '../../shared/utils/flash-tracker';
+import { debounce } from '../../shared/utils/debounce';
 
 type ReservationStatusFilter = 'all' | 'reserved' | 'picked_up' | 'returned' | 'cancelled';
 
@@ -61,6 +64,7 @@ export class ManageReservationsComponent implements OnInit {
   protected authService = inject(AuthService);
   private notification = inject(NotificationService);
   private dialog = inject(MatDialog);
+  private destroyRef = inject(DestroyRef);
 
   isLoading = true;
   isProcessingReservation = false;
@@ -93,6 +97,14 @@ export class ManageReservationsComponent implements OnInit {
   private profiles: Profile[] = [];
   reservations: InventoryItemReservationWithItem[] = [];
 
+  // Which rows should currently show the brief "someone else just changed
+  // this" pulse — see ManageOrdersComponent's own identical
+  // flashTracker/pendingFlashIds/debouncedReload trio for the full
+  // reasoning; this page mirrors it exactly.
+  private flashTracker = new FlashTracker();
+  private pendingFlashIds = new Set<string>();
+  private readonly debouncedReloadReservations = debounce(() => void this.reloadAndFlashChangedReservations(), 300);
+
   get filteredReservations(): InventoryItemReservationWithItem[] {
     if (this.statusFilter === 'all') {
       return this.reservations;
@@ -118,6 +130,40 @@ export class ManageReservationsComponent implements OnInit {
     this.profiles = profiles ?? [];
     await this.loadReservations();
     this.isLoading = false;
+
+    // Live updates from other users/tabs — someone else placing, cancelling,
+    // or actioning a reservation shows up here without a manual reload. RLS
+    // scopes exactly what a staff subscriber even receives here the same way
+    // it already scopes loadReservations()'s own query (see this
+    // component's own route comment) — no client-side filtering needed on
+    // top of it. Reuses loadReservations() itself (debounced), same "full
+    // reload rather than a single-row patch" reasoning ManageOrdersComponent's
+    // own identical subscription already uses.
+    const channel = subscribeToTableChanges(this.supabase, 'inventory_item_reservations', payload => {
+      // DELETE isn't tracked — this table has no delete path in this app,
+      // and there'd be no row left to flash once the reload below completes.
+      if (payload.eventType !== 'DELETE' && payload.new.id) {
+        this.pendingFlashIds.add(payload.new.id);
+      }
+      this.debouncedReloadReservations();
+    });
+    this.destroyRef.onDestroy(() => {
+      this.debouncedReloadReservations.cancel();
+      this.flashTracker.clear();
+      void this.supabase.removeChannel(channel);
+    });
+  }
+
+  isFlashing(reservationId: string): boolean {
+    return this.flashTracker.isFlashing(reservationId);
+  }
+
+  private async reloadAndFlashChangedReservations() {
+    await this.loadReservations();
+    for (const id of this.pendingFlashIds) {
+      this.flashTracker.flash(id);
+    }
+    this.pendingFlashIds.clear();
   }
 
   /** Re-runs loadReservations() after a failed load — the Retry button's

@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { of } from 'rxjs';
@@ -185,4 +185,133 @@ describe('ManageOrdersComponent', () => {
       expect(component.orderError).toBe('not awaiting receipt');
     });
   });
+});
+
+/** Table-aware and realtime-capturing at once — createFakeSupabaseService()
+ *  (testing/fakes.ts) is deliberately too generic for this (one result
+ *  reused for every `.from()` call, and its own fake channel never actually
+ *  invokes a callback — see its own doc comment), same reasoning
+ *  ManageTasksComponent's own identical local fake gives. */
+function createRealtimeCapturingSupabaseService() {
+  let capturedCallback: ((payload: unknown) => void) | null = null;
+  let ordersSelectCount = 0;
+
+  function builder(table: string) {
+    const b: Record<string, unknown> = {
+      then: (resolve: (value: unknown) => void) => resolve({ data: [], error: null }),
+    };
+    for (const method of ['select', 'eq', 'order']) {
+      b[method] = () => {
+        if (table === 'inventory_item_orders' && method === 'select') {
+          ordersSelectCount++;
+        }
+        return b;
+      };
+    }
+    return b;
+  }
+
+  const channel: Record<string, unknown> = {
+    on: (_type: string, _filter: unknown, callback: (payload: unknown) => void) => {
+      capturedCallback = callback;
+      return channel;
+    },
+    subscribe: () => channel,
+  };
+
+  const service = {
+    client: {
+      from: (table: string) => builder(table),
+      channel: () => channel,
+      removeChannel: async () => ({ status: 'ok' }),
+    }
+  } as unknown as SupabaseService;
+
+  return {
+    service,
+    emitChange: (payload: unknown) => capturedCallback?.(payload),
+    getOrdersSelectCount: () => ordersSelectCount,
+  };
+}
+
+describe('ManageOrdersComponent realtime updates', () => {
+  function configure(service: SupabaseService) {
+    TestBed.configureTestingModule({
+      imports: [ManageOrdersComponent],
+      providers: [
+        provideRouter([]),
+        { provide: SupabaseService, useValue: service },
+        { provide: SupplierService, useValue: createFakeSupplierService() }
+      ]
+    });
+    return TestBed.createComponent(ManageOrdersComponent);
+  }
+
+  it('collapses a burst of postgres_changes events into a single reload, 300ms after the last one', fakeAsync(() => {
+    const { service, emitChange, getOrdersSelectCount } = createRealtimeCapturingSupabaseService();
+    const fixture = configure(service);
+    fixture.detectChanges();
+    tick();
+
+    // ngOnInit's own initial loadOrders() call.
+    expect(getOrdersSelectCount()).toBe(1);
+
+    emitChange({ eventType: 'UPDATE', new: { id: 'order-1' }, old: {} });
+    emitChange({ eventType: 'UPDATE', new: { id: 'order-1' }, old: {} });
+    emitChange({ eventType: 'UPDATE', new: { id: 'order-1' }, old: {} });
+
+    tick(299);
+    expect(getOrdersSelectCount()).toBe(1); // still within the debounce window
+
+    tick(1);
+    expect(getOrdersSelectCount()).toBe(2); // exactly one more loadOrders() call, not three
+  }));
+
+  it('cancels a pending debounced reload and removes the channel on destroy', fakeAsync(() => {
+    const { service, emitChange, getOrdersSelectCount } = createRealtimeCapturingSupabaseService();
+    const removeChannelSpy = spyOn(service.client, 'removeChannel').and.callThrough();
+    const fixture = configure(service);
+    fixture.detectChanges();
+    tick();
+
+    emitChange({ eventType: 'UPDATE', new: { id: 'order-1' }, old: {} });
+    fixture.destroy();
+    tick(300);
+
+    expect(removeChannelSpy).toHaveBeenCalled();
+    expect(getOrdersSelectCount()).toBe(1); // the debounced reload never fired post-destroy
+  }));
+
+  it('flashes a changed order only once the debounced reload actually reflects it, then clears the flash after it fades', fakeAsync(() => {
+    const { service, emitChange } = createRealtimeCapturingSupabaseService();
+    const fixture = configure(service);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    tick();
+
+    expect(component.isFlashing('order-1')).toBeFalse();
+
+    emitChange({ eventType: 'UPDATE', new: { id: 'order-1' }, old: {} });
+    // Not yet — still within the 300ms debounce window.
+    expect(component.isFlashing('order-1')).toBeFalse();
+
+    tick(300);
+    expect(component.isFlashing('order-1')).toBeTrue();
+
+    tick(1500);
+    expect(component.isFlashing('order-1')).toBeFalse();
+  }));
+
+  it('does not flash a deleted order — there is nothing left to show it on, and inventory_item_orders has no delete path anyway', fakeAsync(() => {
+    const { service, emitChange } = createRealtimeCapturingSupabaseService();
+    const fixture = configure(service);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    tick();
+
+    emitChange({ eventType: 'DELETE', new: {}, old: { id: 'order-1' } });
+    tick(300);
+
+    expect(component.isFlashing('order-1')).toBeFalse();
+  }));
 });

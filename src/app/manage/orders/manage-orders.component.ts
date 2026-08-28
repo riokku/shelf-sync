@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -17,6 +17,9 @@ import { HelpTooltipComponent } from '../../shared/components/help-tooltip/help-
 import { PlaceOrderModalComponent, OrderableItem } from '../../shared/components/place-order-modal/place-order-modal.component';
 import { InventoryItemOrderWithItem, loadAllInventoryItemOrders } from '../../shared/utils/inventory-item-orders';
 import { resolveSupplierName } from '../../shared/utils/supplier-label';
+import { subscribeToTableChanges } from '../../shared/utils/realtime';
+import { FlashTracker } from '../../shared/utils/flash-tracker';
+import { debounce } from '../../shared/utils/debounce';
 
 type OrderStatusFilter = 'all' | 'ordered' | 'received' | 'cancelled';
 
@@ -53,6 +56,7 @@ export class ManageOrdersComponent implements OnInit {
   private supplierService = inject(SupplierService);
   private notification = inject(NotificationService);
   private dialog = inject(MatDialog);
+  private destroyRef = inject(DestroyRef);
 
   isLoading = true;
   isProcessingOrder = false;
@@ -72,6 +76,17 @@ export class ManageOrdersComponent implements OnInit {
   private allItems: { id: string; name: string; supplier_id: string | null }[] = [];
   private profiles: Profile[] = [];
   orders: InventoryItemOrderWithItem[] = [];
+
+  // Which rows should currently show the brief "someone else just changed
+  // this" pulse (see shared/utils/flash-tracker.ts) — read from the
+  // template via isFlashing(order.id). Ids land here as raw
+  // postgres_changes events come in (see ngOnInit's subscription below) and
+  // get flashed once loadOrders()'s own debounced reload actually reflects
+  // them — same shape ManageTasksComponent's own pendingFlashIds/
+  // debouncedReloadTasks pair already establishes.
+  private flashTracker = new FlashTracker();
+  private pendingFlashIds = new Set<string>();
+  private readonly debouncedReloadOrders = debounce(() => void this.reloadAndFlashChangedOrders(), 300);
 
   get filteredOrders(): InventoryItemOrderWithItem[] {
     if (this.statusFilter === 'all') {
@@ -107,6 +122,41 @@ export class ManageOrdersComponent implements OnInit {
     this.profiles = profiles ?? [];
     await this.loadOrders();
     this.isLoading = false;
+
+    // Live updates from other users/tabs — marking an order received or
+    // cancelled elsewhere shows up here without a manual reload. Reuses
+    // loadOrders() itself (debounced), same "full reload rather than a
+    // single-row patch" reasoning the task pages already use — this page
+    // has no per-row cached shape worth patching in place the way
+    // Inventory's own refreshInventoryListItem() does. No client-side
+    // organization_id filter — see subscribeToTableChanges()'s own comment
+    // for why RLS alone is the right boundary here.
+    const channel = subscribeToTableChanges(this.supabase, 'inventory_item_orders', payload => {
+      // DELETE isn't tracked — inventory_item_orders has no delete path in
+      // this app, and there'd be no row left to flash once the reload below
+      // completes anyway.
+      if (payload.eventType !== 'DELETE' && payload.new.id) {
+        this.pendingFlashIds.add(payload.new.id);
+      }
+      this.debouncedReloadOrders();
+    });
+    this.destroyRef.onDestroy(() => {
+      this.debouncedReloadOrders.cancel();
+      this.flashTracker.clear();
+      void this.supabase.removeChannel(channel);
+    });
+  }
+
+  isFlashing(orderId: string): boolean {
+    return this.flashTracker.isFlashing(orderId);
+  }
+
+  private async reloadAndFlashChangedOrders() {
+    await this.loadOrders();
+    for (const id of this.pendingFlashIds) {
+      this.flashTracker.flash(id);
+    }
+    this.pendingFlashIds.clear();
   }
 
   /** Re-runs loadOrders() after a failed load — the Retry button's handler

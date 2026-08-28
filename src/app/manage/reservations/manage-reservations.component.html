@@ -63,7 +63,7 @@
       } @else {
         <ul class="reservation-list">
           @for (reservation of filteredReservations; track reservation.id) {
-            <li class="reservation-card">
+            <li class="reservation-card" [class.realtime-flash]="isFlashing(reservation.id)">
               <div class="reservation-info">
                 <div class="reservation-row">
                   <span class="status-pill" [class]="'reservation-' + reservation.status">

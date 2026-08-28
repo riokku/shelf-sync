@@ -529,7 +529,13 @@ describe('ManageInventoryComponent submitInventoryItem() success', () => {
  *  shapes — `singleResult` only once `.single()`/`.maybeSingle()` has been
  *  called in the chain, an empty list otherwise. */
 function createRealtimeCapturingSupabaseService(singleResult: { data: unknown; error: null }) {
-  let capturedCallback: ((payload: unknown) => void) | null = null;
+  // Keyed by table name, not a single captured callback — ManageInventoryComponent
+  // now opens two separate subscriptions (inventory_items and, since the
+  // widen-realtime-coverage pass, inventory_item_images) against the same
+  // fake channel object. emitChange() defaults to 'inventory_items' so every
+  // existing call site (all written before the second subscription existed)
+  // keeps targeting the same one without changes.
+  const capturedCallbacks = new Map<string, (payload: unknown) => void>();
   function builder() {
     let wantsSingle = false;
     const b: Record<string, unknown> = {
@@ -543,8 +549,8 @@ function createRealtimeCapturingSupabaseService(singleResult: { data: unknown; e
     return b;
   }
   const channel: Record<string, unknown> = {
-    on: (_type: string, _filter: unknown, callback: (payload: unknown) => void) => {
-      capturedCallback = callback;
+    on: (_type: string, filter: { table: string }, callback: (payload: unknown) => void) => {
+      capturedCallbacks.set(filter.table, callback);
       return channel;
     },
     subscribe: () => channel,
@@ -552,7 +558,7 @@ function createRealtimeCapturingSupabaseService(singleResult: { data: unknown; e
   const service = {
     client: { from: () => builder(), rpc: () => builder(), channel: () => channel, removeChannel: async () => ({ status: 'ok' }) }
   } as unknown as SupabaseService;
-  return { service, emitChange: (payload: unknown) => capturedCallback?.(payload) };
+  return { service, emitChange: (payload: unknown, table = 'inventory_items') => capturedCallbacks.get(table)?.(payload) };
 }
 
 describe('ManageInventoryComponent realtime updates', () => {
@@ -669,7 +675,37 @@ describe('ManageInventoryComponent realtime updates', () => {
     expect(component.allInventoryItems).toEqual([]);
   });
 
-  it('removes the channel on destroy', async () => {
+  it('flashes the row when a photo is added/removed elsewhere — a pure image-table change never touches the parent row', fakeAsync(() => {
+    const currentRow = createTestInventoryItemRow({ id: 'item-1', name: 'Same Name' });
+    const { service, emitChange } = createRealtimeCapturingSupabaseService({ data: currentRow, error: null });
+
+    TestBed.configureTestingModule({
+      imports: [ManageInventoryComponent],
+      providers: [
+        provideRouter([]),
+        provideNativeDateAdapter(),
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: SupabaseService, useValue: service }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(ManageInventoryComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    tick();
+
+    component.allInventoryItems = [createTestInventoryItemRow({ id: 'item-1', name: 'Same Name' })];
+    expect(component.isFlashing('item-1')).toBeFalse();
+
+    // inventory_item_images rows key off item_id, not id — a plain postgres
+    // row with no `id` field on top.
+    emitChange({ eventType: 'INSERT', new: { item_id: 'item-1' }, old: {} }, 'inventory_item_images');
+    tick();
+
+    expect(component.isFlashing('item-1')).toBeTrue();
+  }));
+
+  it('removes both channels on destroy', async () => {
     const { service } = createRealtimeCapturingSupabaseService({ data: [], error: null });
     const removeChannelSpy = spyOn(service.client, 'removeChannel').and.callThrough();
 
@@ -689,6 +725,6 @@ describe('ManageInventoryComponent realtime updates', () => {
 
     fixture.destroy();
 
-    expect(removeChannelSpy).toHaveBeenCalled();
+    expect(removeChannelSpy).toHaveBeenCalledTimes(2);
   });
 });

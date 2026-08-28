@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { of } from 'rxjs';
@@ -226,4 +226,132 @@ describe('ManageReservationsComponent', () => {
       expect(component.reservationError).toBe('can no longer be cancelled');
     });
   });
+});
+
+/** Table-aware and realtime-capturing at once — same reasoning
+ *  ManageOrdersComponent's own identical local fake gives (createFakeSupabaseService()
+ *  reuses one result for every `.from()` call and its fake channel never
+ *  actually invokes a callback). */
+function createRealtimeCapturingSupabaseService() {
+  let capturedCallback: ((payload: unknown) => void) | null = null;
+  let reservationsSelectCount = 0;
+
+  function builder(table: string) {
+    const b: Record<string, unknown> = {
+      then: (resolve: (value: unknown) => void) => resolve({ data: [], error: null }),
+    };
+    for (const method of ['select', 'eq', 'order']) {
+      b[method] = () => {
+        if (table === 'inventory_item_reservations' && method === 'select') {
+          reservationsSelectCount++;
+        }
+        return b;
+      };
+    }
+    return b;
+  }
+
+  const channel: Record<string, unknown> = {
+    on: (_type: string, _filter: unknown, callback: (payload: unknown) => void) => {
+      capturedCallback = callback;
+      return channel;
+    },
+    subscribe: () => channel,
+  };
+
+  const service = {
+    client: {
+      from: (table: string) => builder(table),
+      channel: () => channel,
+      removeChannel: async () => ({ status: 'ok' }),
+    }
+  } as unknown as SupabaseService;
+
+  return {
+    service,
+    emitChange: (payload: unknown) => capturedCallback?.(payload),
+    getReservationsSelectCount: () => reservationsSelectCount,
+  };
+}
+
+describe('ManageReservationsComponent realtime updates', () => {
+  function configure(service: SupabaseService) {
+    TestBed.configureTestingModule({
+      imports: [ManageReservationsComponent],
+      providers: [
+        provideRouter([]),
+        { provide: SupabaseService, useValue: service },
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: 'admin' })) }
+      ]
+    });
+    return TestBed.createComponent(ManageReservationsComponent);
+  }
+
+  it('collapses a burst of postgres_changes events into a single reload, 300ms after the last one', fakeAsync(() => {
+    const { service, emitChange, getReservationsSelectCount } = createRealtimeCapturingSupabaseService();
+    const fixture = configure(service);
+    fixture.detectChanges();
+    tick();
+
+    // ngOnInit's own initial loadReservations() call.
+    expect(getReservationsSelectCount()).toBe(1);
+
+    emitChange({ eventType: 'UPDATE', new: { id: 'reservation-1' }, old: {} });
+    emitChange({ eventType: 'UPDATE', new: { id: 'reservation-1' }, old: {} });
+    emitChange({ eventType: 'UPDATE', new: { id: 'reservation-1' }, old: {} });
+
+    tick(299);
+    expect(getReservationsSelectCount()).toBe(1); // still within the debounce window
+
+    tick(1);
+    expect(getReservationsSelectCount()).toBe(2); // exactly one more loadReservations() call, not three
+  }));
+
+  it('cancels a pending debounced reload and removes the channel on destroy', fakeAsync(() => {
+    const { service, emitChange, getReservationsSelectCount } = createRealtimeCapturingSupabaseService();
+    const removeChannelSpy = spyOn(service.client, 'removeChannel').and.callThrough();
+    const fixture = configure(service);
+    fixture.detectChanges();
+    tick();
+
+    emitChange({ eventType: 'UPDATE', new: { id: 'reservation-1' }, old: {} });
+    fixture.destroy();
+    tick(300);
+
+    expect(removeChannelSpy).toHaveBeenCalled();
+    expect(getReservationsSelectCount()).toBe(1); // the debounced reload never fired post-destroy
+  }));
+
+  it('flashes a changed reservation only once the debounced reload actually reflects it, then clears the flash after it fades', fakeAsync(() => {
+    const { service, emitChange } = createRealtimeCapturingSupabaseService();
+    const fixture = configure(service);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    tick();
+
+    expect(component.isFlashing('reservation-1')).toBeFalse();
+
+    emitChange({ eventType: 'UPDATE', new: { id: 'reservation-1' }, old: {} });
+    // Not yet — still within the 300ms debounce window.
+    expect(component.isFlashing('reservation-1')).toBeFalse();
+
+    tick(300);
+    expect(component.isFlashing('reservation-1')).toBeTrue();
+
+    tick(1500);
+    expect(component.isFlashing('reservation-1')).toBeFalse();
+  }));
+
+  it('does not flash a deleted reservation — there is nothing left to show it on, and inventory_item_reservations has no delete path anyway', fakeAsync(() => {
+    const { service, emitChange } = createRealtimeCapturingSupabaseService();
+    const fixture = configure(service);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    tick();
+
+    emitChange({ eventType: 'DELETE', new: {}, old: { id: 'reservation-1' } });
+    tick(300);
+
+    expect(component.isFlashing('reservation-1')).toBeFalse();
+  }));
 });

@@ -561,46 +561,72 @@ own button) resets both rather than just the search term the way it used to.
 Inventory item and task changes now show up live across users/tabs instead of needing a manual
 refresh, via Supabase Realtime (`postgres_changes`) — `shared/utils/realtime.ts`'s
 `subscribeToTableChanges()`, a thin wrapper opening one `supabase.channel(...)` per component
-(this is a single-router-outlet SPA, so at most one of the five subscribing components is ever
+(this is a single-router-outlet SPA, so at most one of the seven subscribing components is ever
 mounted at a time — no app-wide channel-manager service needed), torn down via `DestroyRef.
 onDestroy(() => supabase.removeChannel(channel))`, the same cleanup pattern this app's `setInterval`
 usages already established. Deliberately **no client-side `organization_id` filter** on the
 subscription — matches every other query in this app, which trusts RLS alone for org scoping; a
 Realtime `postgres_changes` event is itself gated per-subscriber by the table's own RLS SELECT
-policy, no separate "Realtime Authorization" setup needed for this event type. Each of the five
-subscribing components reuses its own page's existing reload precedent rather than a new merge
-strategy: `ManageInventoryComponent`/`InventoryComponent` patch a single row in place
+policy (join-based policies included — see `widen_realtime_to_child_tables`'s own migration
+comment for why that still works, and why it still needs `REPLICA IDENTITY FULL`), no separate
+"Realtime Authorization" setup needed for this event type. Each of the subscribing components
+reuses its own page's existing reload precedent rather than a new merge strategy:
+`ManageInventoryComponent`/`InventoryComponent` patch a single row in place
 (`refreshInventoryItem()`/`refreshInventoryListItem()`, the latter promoting `loadInventory()`'s
 local `profiles` var to a field so it can re-resolve labels for just the one changed item);
-`TasksComponent`/`ManageTasksComponent`/`ManageTeamComponent` instead reuse their existing full-
-reload methods (`loadTasks()`/`loadTeamTasks()`), debounced 300ms via a new plain-`setTimeout`
-`shared/utils/debounce.ts` utility (matching this app's no-RxJS-operators convention) so a burst of
-WAL events collapses into one reload rather than one per event — these three pages already
-deliberately do a full reload after any local mutation, since a transfer can move a task between
-lists. `ManageTeamComponent`'s subscription is added alongside, not merged into, its existing 30s
-presence-poll `setInterval`/cleanup — a separate, already-settled concern (see the presence
-paragraph above) this feature has no reason to disturb. Scope is deliberately narrow: only
-`inventory_items`/`tasks` rows go live — child tables (`inventory_item_images`,
-`inventory_item_containers`, `inventory_item_activity`, `activity_log`) aren't subscribed, so a
-pure photo-only edit won't push live (container edits are covered indirectly, since they write
-derived quantity fields back onto the parent row). No toast fires for a background change from
-another user — `NotificationService` stays scoped to the acting user's own action, same as
-everywhere else in the app; data just updates silently — instead, the specific row/card that
-changed briefly pulses via a shared `.realtime-flash` treatment (`shared/styles/_realtime-flash.scss`,
-a background-color fade reusing the same visual language as `LandingComponent`'s own decorative
-`.mock-row.flash` mockup) so a live update is noticeable without needing a toast. `shared/utils/
-flash-tracker.ts`'s `FlashTracker` (a plain `Set<string>` of currently-flashing ids with its own
-auto-expiry, matching this app's existing convention of plain class fields over a signals-based
-state layer) is what each of the five components adds/reads from — `isFlashing(id)` in the
-template — rather than a signal-per-row. Only ever triggered from the realtime handler itself, not
-from a component's own local-edit reload paths (e.g. `ManageInventoryComponent.openInventoryDetail()`'s
-`afterClosed()`), since flashing your own just-made edit would be pointless — you already see it
-change. `InventoryComponent`/`ManageInventoryComponent` flash the single patched row directly, once
-the patch itself lands (never on a DELETE, since there's no row left to flash). `TasksComponent`/
-`ManageTasksComponent`/`ManageTeamComponent` collect changed ids into a `pendingFlashIds` set as raw
-(pre-debounce) `postgres_changes` events arrive, then flash all of them together right after their
-existing debounced reload actually completes — flashing before the reload would highlight a row
-that's still showing stale data.
+`TasksComponent`/`ManageTasksComponent`/`ManageTeamComponent`/`ManageOrdersComponent`/
+`ManageReservationsComponent` instead reuse their existing full-reload methods
+(`loadTasks()`/`loadTeamTasks()`/`loadOrders()`/`loadReservations()`), debounced 300ms via a new
+plain-`setTimeout` `shared/utils/debounce.ts` utility (matching this app's no-RxJS-operators
+convention) so a burst of WAL events collapses into one reload rather than one per event — these
+pages already deliberately do a full reload after any local mutation, since e.g. a transfer can
+move a task between lists. `ManageTeamComponent`'s subscription is added alongside, not merged
+into, its existing 30s presence-poll `setInterval`/cleanup — a separate, already-settled concern
+(see the presence paragraph above) this feature has no reason to disturb.
+
+Scope started deliberately narrow (only `inventory_items`/`tasks` rows going live) and was widened
+in a follow-up pass once the gap it left started to matter: a pure `inventory_item_images` add/
+remove never touches its parent `inventory_items` row at all, so a photo-only edit didn't push live
+even though everything else did (`inventory_item_containers`/`inventory_item_discards` were never
+part of this gap — a container edit, container-tracked discard included, already re-derives and
+writes `quantity_remaining`/`quantity_total` back onto the parent row on every save, which the
+existing `inventory_items` subscription already picks up). `InventoryComponent`/
+`ManageInventoryComponent` each now open a *second*, separate subscription on
+`inventory_item_images` alongside their existing `inventory_items` one — keyed by `item_id`, not
+`id` — that reuses `refreshInventoryListItem()`/`refreshInventoryItem()` verbatim (both already
+reload that item's images on every call, regardless of why); the same follow-up also gave
+`manage/orders`/`manage/reservations` a realtime subscription of their own for the first time
+(`inventory_item_orders`/`inventory_item_reservations` respectively) — unlike every other page
+here, these two previously had none at all, so marking an order received or actioning a reservation
+in one tab never showed up in another until a manual reload. Both reuse the same debounced-full-
+reload-plus-`pendingFlashIds` shape the task pages already established, described below.
+`ManageReservationsComponent`'s subscription needs no extra client-side scoping for a staff
+viewer even though this page's own guard is `approvedGuard` (every approved member, not just
+admin/manager) — `inventory_item_reservations`' own SELECT policy already restricts a non-admin/
+manager caller to just their own rows (see `widen_reservation_access_to_staff`), and Realtime
+evaluates that same real policy per subscriber, so a staff member's channel simply never receives
+another member's row to begin with.
+
+No toast fires for a background change from another user — `NotificationService` stays scoped to
+the acting user's own action, same as everywhere else in the app; data just updates silently —
+instead, the specific row/card that changed briefly pulses via a shared `.realtime-flash` treatment
+(`shared/styles/_realtime-flash.scss`, a background-color fade reusing the same visual language as
+`LandingComponent`'s own decorative `.mock-row.flash` mockup) so a live update is noticeable
+without needing a toast. `shared/utils/flash-tracker.ts`'s `FlashTracker` (a plain `Set<string>` of
+currently-flashing ids with its own auto-expiry, matching this app's existing convention of plain
+class fields over a signals-based state layer) is what each of the subscribing components adds/
+reads from — `isFlashing(id)` in the template — rather than a signal-per-row. Only ever triggered
+from the realtime handler itself, not from a component's own local-edit reload paths (e.g.
+`ManageInventoryComponent.openInventoryDetail()`'s `afterClosed()`), since flashing your own
+just-made edit would be pointless — you already see it change. `InventoryComponent`/
+`ManageInventoryComponent` flash the single patched row directly, once the patch itself lands
+(never on a DELETE, since there's no row left to flash — the `inventory_item_images` subscription
+is the one exception, flashing unconditionally on every event including DELETE, since deleting a
+photo still leaves the item's own row/card visible to flash). `TasksComponent`/
+`ManageTasksComponent`/`ManageTeamComponent`/`ManageOrdersComponent`/`ManageReservationsComponent`
+collect changed ids into a `pendingFlashIds` set as raw (pre-debounce) `postgres_changes` events
+arrive, then flash all of them together right after their existing debounced reload actually
+completes — flashing before the reload would highlight a row that's still showing stale data.
 
 Three pages support bulk (multi-select) actions: the Inventory page (bulk category/physical-location
 reassignment), Manage > Tasks' "All tasks" list (bulk status change and bulk delete), and Manage >
@@ -2283,6 +2309,15 @@ yet on a hard refresh of `/inventory`.
   moment they're suspended, no per-policy changes needed. No new grant/policy on `organizations`
   itself needed for the writes — all four are RPC-only, same "SECURITY DEFINER bypasses RLS, no
   table grant required" shape every other RPC-gated write in this schema already uses.
+- `widen_realtime_to_child_tables` — adds `inventory_item_images`/`inventory_item_orders`/
+  `inventory_item_reservations` to the `supabase_realtime` publication (same idempotent
+  existence-check wrapper `enable_realtime_for_inventory_and_tasks` already established) plus
+  `REPLICA IDENTITY FULL` on all three, backing the widened realtime coverage described in the
+  Project Overview section above. All three tables' own SELECT policies are join-based (via
+  `item_id` -> `inventory_items.organization_id`, not a flat `organization_id` column of their
+  own) — still gates `postgres_changes` delivery correctly, but the join needs `item_id` present
+  on a DELETE's old-row payload to evaluate at all, which is exactly what `REPLICA IDENTITY FULL`
+  (not the default primary-key-only identity) provides.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

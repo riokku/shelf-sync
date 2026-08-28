@@ -66,7 +66,7 @@
       } @else {
         <ul class="order-list">
           @for (order of filteredOrders; track order.id) {
-            <li class="order-card">
+            <li class="order-card" [class.realtime-flash]="isFlashing(order.id)">
               <div class="order-info">
                 <div class="order-row">
                   <span class="status-pill" [class]="'order-' + order.status">

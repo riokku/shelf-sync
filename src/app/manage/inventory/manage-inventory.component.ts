@@ -365,9 +365,26 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
         }
       });
     });
+
+    // A second, separate subscription for a pure photo add/remove — see
+    // InventoryComponent's own identical subscription for the full
+    // reasoning (a container edit already writes derived quantity fields
+    // back onto the parent row, which the subscription above already
+    // covers; a photo doesn't touch it at all). Reuses refreshInventoryItem()
+    // verbatim — it already reloads this item's images on every call.
+    const imagesChannel = subscribeToTableChanges(this.supabase, 'inventory_item_images', payload => {
+      const itemId = payload.eventType === 'DELETE' ? payload.old.item_id : payload.new.item_id;
+      if (!itemId) {
+        return;
+      }
+      void this.refreshInventoryItem(itemId).then(() => {
+        this.flashTracker.flash(itemId);
+      });
+    });
     this.destroyRef.onDestroy(() => {
       this.flashTracker.clear();
       void this.supabase.removeChannel(channel);
+      void this.supabase.removeChannel(imagesChannel);
     });
   }
 
