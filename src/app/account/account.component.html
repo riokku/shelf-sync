@@ -7,7 +7,45 @@
 
   <div class="account-cards">
   @if (isLoading) {
-    <mat-spinner diameter="32"></mat-spinner>
+    <!-- Real mat-card shells mirroring the profile/avatar/quick-menu cards'
+         own shape below, rather than a bare spinner. -->
+    <mat-card aria-hidden="true">
+      <mat-card-content>
+        <div class="profile-header">
+          <div class="skeleton-circle skeleton-account-avatar"></div>
+          <div class="skeleton-account-name-block">
+            <div class="skeleton-line skeleton-account-name"></div>
+            <div class="skeleton-line skeleton-account-role"></div>
+          </div>
+        </div>
+        <dl>
+          @for (i of skeletonDetailRows; track i) {
+            <dt><div class="skeleton-line skeleton-account-detail-label"></div></dt>
+            <dd><div class="skeleton-line skeleton-account-detail-value"></div></dd>
+          }
+        </dl>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="avatar-card" aria-hidden="true">
+      <mat-card-content>
+        <div class="skeleton-line skeleton-account-heading"></div>
+        <div class="skeleton-line skeleton-account-hint"></div>
+        <div class="avatar-picker">
+          @for (i of skeletonAvatarOptions; track i) {
+            <div class="skeleton-circle skeleton-account-avatar"></div>
+          }
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="quick-menu-card" aria-hidden="true">
+      <mat-card-content>
+        <div class="skeleton-line skeleton-account-heading"></div>
+        <div class="skeleton-line skeleton-account-hint"></div>
+        <div class="skeleton-block skeleton-account-toggle"></div>
+      </mat-card-content>
+    </mat-card>
   } @else if (profile) {
     <mat-card>
       <mat-card-content>

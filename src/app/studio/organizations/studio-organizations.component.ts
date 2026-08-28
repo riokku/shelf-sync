@@ -3,7 +3,6 @@ import { DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SupabaseService } from '../../core/supabase.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
@@ -26,7 +25,7 @@ interface OrganizationSummary extends OrganizationRow {
  *  map rather than a per-org query loop. */
 @Component({
   selector: 'app-studio-organizations',
-  imports: [DatePipe, MatButtonModule, MatIconModule, MatProgressSpinnerModule, BreadcrumbsComponent, PageHeaderComponent, EmptyStateComponent],
+  imports: [DatePipe, MatButtonModule, MatIconModule, BreadcrumbsComponent, PageHeaderComponent, EmptyStateComponent],
   templateUrl: './studio-organizations.component.html',
   styleUrl: './studio-organizations.component.scss',
 })
@@ -37,6 +36,9 @@ export class StudioOrganizationsComponent implements OnInit {
   isLoading = true;
   loadError: string | null = null;
   organizations: OrganizationSummary[] = [];
+  /** Repeat-count for the loading-state skeleton table rows — see
+   *  InventoryComponent.skeletonCards' own identical doc comment. */
+  readonly skeletonRows = [1, 2, 3, 4];
 
   async ngOnInit() {
     await this.loadOrganizations();

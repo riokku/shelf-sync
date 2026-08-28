@@ -1,4 +1,5 @@
 @use '../../../shared/styles/page-toolbar';
+@use '../../../shared/styles/skeleton';
 
 .studio-org-detail-wrapper{
   color: var(--mat-sys-on-surface);
@@ -9,12 +10,6 @@
     padding-left: 0;
     padding-right: 0;
   }
-}
-
-.loading-row{
-  display: flex;
-  justify-content: center;
-  padding: 3rem 0;
 }
 
 // A plain text button (lower emphasis than the page's own stroked/flat
@@ -52,6 +47,16 @@
   dd{
     margin: 0;
   }
+}
+
+// Loading-state placeholders only, sized to roughly match .org-meta's own
+// dt/dd text above.
+.skeleton-org-meta-label{
+  width: 4rem;
+}
+
+.skeleton-org-meta-value{
+  width: 7rem;
 }
 
 .org-section{
@@ -236,6 +241,23 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+// Loading-state placeholders only — .skeleton-member-row's own li rides the
+// same "li{ display: contents }" rule .member-list already defines above
+// (it targets every direct <li> child generically, not a specific class),
+// so these just need their own sizing, not a layout rule of their own.
+// .skeleton-member-status is deliberately empty/unstyled — most real rows
+// have nothing in that cell either (only a pending member shows a badge
+// there), so an empty placeholder is the accurate common case.
+.skeleton-member-name{
+  width: 60%;
+  max-width: 10rem;
+}
+
+.skeleton-member-presence{
+  width: 5rem;
+  justify-self: end;
 }
 
 // Both always rendered (even with nothing/just the badge in them) so later

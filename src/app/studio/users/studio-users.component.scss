@@ -1,4 +1,5 @@
 @use '../../shared/styles/page-toolbar';
+@use '../../shared/styles/skeleton';
 
 .studio-users-wrapper{
   color: var(--mat-sys-on-surface);
@@ -11,12 +12,6 @@
   }
 }
 
-.loading-row{
-  display: flex;
-  justify-content: center;
-  padding: 3rem 0;
-}
-
 .user-search-field{
   width: 100%;
   max-width: 28rem;
@@ -25,6 +20,20 @@
 .search-hint{
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.875rem;
+}
+
+// Loading-state placeholders only, sized to roughly match .user-search-field/
+// .search-hint's own footprint above.
+.skeleton-user-search-field{
+  width: 100%;
+  max-width: 28rem;
+  height: 3.5rem;
+  border-radius: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton-user-search-hint{
+  width: 16rem;
 }
 
 // Same plain-table shape StudioOrganizationsComponent's own

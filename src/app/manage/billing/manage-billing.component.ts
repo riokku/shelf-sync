@@ -3,7 +3,6 @@ import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { SupabaseService } from '../../core/supabase.service';
@@ -34,7 +33,6 @@ import { PricingTier, pricingTierByKey } from '../../shared/models/pricing-tier'
     MatButtonModule,
     MatIconModule,
     MatProgressBarModule,
-    MatProgressSpinnerModule,
     RouterLink,
     BreadcrumbsComponent,
     PageHeaderComponent
@@ -47,6 +45,9 @@ export class ManageBillingComponent implements OnInit {
   private authService = inject(AuthService);
 
   isLoading = true;
+  /** Fixed at 3 — the real .usage-grid below always renders exactly this
+   *  many stats. */
+  readonly skeletonUsageStats = [1, 2, 3];
 
   readonly currentTier: PricingTier = pricingTierByKey('free');
 

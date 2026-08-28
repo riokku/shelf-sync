@@ -2,7 +2,6 @@ import { Component, OnInit, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog } from '@angular/material/dialog';
 import { SupplierService } from '../../core/supplier.service';
 import { NotificationService } from '../../core/notification.service';
@@ -26,7 +25,6 @@ import { SupplierFormModalComponent, SupplierFormModalData } from '../../shared/
     MatButtonModule,
     MatIconModule,
     MatTooltipModule,
-    MatProgressSpinnerModule,
     BreadcrumbsComponent,
     PageHeaderComponent,
     EmptyStateComponent
@@ -41,6 +39,9 @@ export class ManageSuppliersComponent implements OnInit {
 
   isLoading = true;
   removeError: string | null = null;
+  /** Repeat-count for the loading-state skeleton table rows — see
+   *  InventoryComponent.skeletonCards' own identical doc comment. */
+  readonly skeletonRows = [1, 2, 3, 4];
 
   async ngOnInit() {
     await this.supplierService.load();

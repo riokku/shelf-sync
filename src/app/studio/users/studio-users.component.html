@@ -13,8 +13,12 @@
         </button>
       </app-empty-state>
     } @else if (isLoading) {
-      <div class="loading-row">
-        <mat-spinner diameter="32"></mat-spinner>
+      <!-- Mirrors the search field + hint text this page always shows once
+           loaded (the results table itself never renders until a search
+           term is typed, so there's no table shape to placeholder here). -->
+      <div aria-hidden="true">
+        <div class="skeleton-block skeleton-user-search-field"></div>
+        <div class="skeleton-line skeleton-user-search-hint"></div>
       </div>
     } @else {
       <mat-form-field appearance="outline" class="user-search-field">

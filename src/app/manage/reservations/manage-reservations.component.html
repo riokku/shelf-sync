@@ -16,9 +16,29 @@
     }
 
     @if (isLoading) {
-      <div class="loading-row">
-        <mat-spinner diameter="32"></mat-spinner>
-      </div>
+      <!-- Mirrors the always-shown status-toggle row plus .reservation-card's
+           own status-pill + item-link + quantity / dates / meta / actions
+           layout, rather than a bare spinner. -->
+      <div class="skeleton-block skeleton-status-toggle" aria-hidden="true"></div>
+      <ul class="reservation-list" aria-hidden="true">
+        @for (i of skeletonRows; track i) {
+          <li class="reservation-card">
+            <div class="reservation-info skeleton-reservation-info">
+              <div class="reservation-row">
+                <div class="skeleton-block skeleton-cell-badge"></div>
+                <div class="skeleton-line skeleton-reservation-item"></div>
+                <div class="skeleton-line skeleton-reservation-quantity"></div>
+              </div>
+              <div class="skeleton-line skeleton-reservation-dates"></div>
+              <div class="skeleton-line skeleton-reservation-meta"></div>
+            </div>
+            <div class="reservation-actions">
+              <div class="skeleton-block skeleton-action-button"></div>
+              <div class="skeleton-block skeleton-action-button"></div>
+            </div>
+          </li>
+        }
+      </ul>
     } @else if (loadError) {
       <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load reservations. ' + loadError">
         <button mat-stroked-button type="button" (click)="retryLoad()">

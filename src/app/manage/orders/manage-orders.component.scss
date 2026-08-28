@@ -1,4 +1,5 @@
 @use '../../shared/styles/page-toolbar';
+@use '../../shared/styles/skeleton';
 
 .manage-orders-wrapper{
   color: var(--mat-sys-on-surface);
@@ -16,14 +17,36 @@
   margin: 0 0 1rem;
 }
 
-.loading-row{
-  display: flex;
-  justify-content: center;
-  padding: 3rem 0;
-}
-
 .status-toggle{
   margin-bottom: 1.5rem;
+}
+
+// Loading-state placeholders only — sized to roughly match this page's own
+// real content shapes above (.status-toggle, .order-row/-meta).
+.skeleton-status-toggle{
+  width: 16rem;
+  height: 2.5rem;
+  border-radius: 0.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.skeleton-order-info{
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1 1 auto;
+}
+
+.skeleton-order-item{
+  width: 10rem;
+}
+
+.skeleton-order-quantity{
+  width: 9rem;
+}
+
+.skeleton-order-meta{
+  width: 14rem;
 }
 
 .status-pill{

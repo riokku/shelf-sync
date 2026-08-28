@@ -7,7 +7,6 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SupabaseService } from '../../core/supabase.service';
 import { AuthService, Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
@@ -52,7 +51,6 @@ type StatusFilter = 'all' | FeedbackStatus;
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
-    MatProgressSpinnerModule,
     BreadcrumbsComponent,
     PageHeaderComponent,
     EmptyStateComponent
@@ -74,6 +72,9 @@ export class StudioFeedbackComponent implements OnInit {
   loadError: string | null = null;
   feedback: FeedbackWithContext[] = [];
   private profiles: Profile[] = [];
+  /** Repeat-count for the loading-state skeleton accordion rows — see
+   *  InventoryComponent.skeletonCards' own identical doc comment. */
+  readonly skeletonRows = [1, 2, 3, 4];
 
   statusFilter: StatusFilter = 'all';
   searchTerm = '';

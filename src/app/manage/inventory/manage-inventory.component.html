@@ -346,7 +346,24 @@
             </button>
           </app-empty-state>
         } @else if (isLoadingInventoryList) {
-          <mat-spinner diameter="32"></mat-spinner>
+          <!-- Row-shaped placeholders mirroring .retirement-request-row's
+               own checkbox + main + actions flex layout, rather than a bare
+               spinner. -->
+          <div class="task-rows" aria-hidden="true">
+            @for (i of skeletonRetirementRows; track i) {
+              <div class="task-row retirement-request-row skeleton-retirement-row">
+                <div class="skeleton-circle skeleton-retirement-checkbox"></div>
+                <div class="skeleton-retirement-main">
+                  <div class="skeleton-line skeleton-retirement-title"></div>
+                  <div class="skeleton-line skeleton-retirement-subtitle"></div>
+                </div>
+                <div class="skeleton-retirement-actions">
+                  <div class="skeleton-block skeleton-retirement-button"></div>
+                  <div class="skeleton-block skeleton-retirement-button"></div>
+                </div>
+              </div>
+            }
+          </div>
         } @else if (pendingRetirementItems.length === 0) {
           <app-empty-state icon="inventory_2" message="No pending retirement requests." />
         } @else {

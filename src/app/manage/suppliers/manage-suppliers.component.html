@@ -20,8 +20,33 @@
     }
 
     @if (isLoading) {
-      <div class="loading-row">
-        <mat-spinner diameter="32"></mat-spinner>
+      <!-- Real header, shimmering body cells — the columns are known before
+           any data comes back, so only the row content needs to placeholder. -->
+      <div class="suppliers-table-wrapper" aria-hidden="true">
+        <table class="suppliers-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Contact</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Website</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (i of skeletonRows; track i) {
+              <tr>
+                <td><div class="skeleton-line skeleton-cell-wide"></div></td>
+                <td><div class="skeleton-line skeleton-cell-medium"></div></td>
+                <td><div class="skeleton-line skeleton-cell-medium"></div></td>
+                <td><div class="skeleton-line skeleton-cell-narrow"></div></td>
+                <td><div class="skeleton-line skeleton-cell-medium"></div></td>
+                <td class="supplier-actions"><div class="skeleton-circle skeleton-cell-icon"></div></td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
     } @else if (supplierService.loadError()) {
       <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load suppliers. ' + supplierService.loadError()">

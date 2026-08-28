@@ -1,5 +1,6 @@
 @use '../../shared/styles/page-toolbar';
 @use '../../shared/styles/realtime-flash';
+@use '../../shared/styles/skeleton';
 
 // Only rendered while an item's detail view is showing (see
 // selectedItemDetail's own doc comment) — sits right below the breadcrumbs,
@@ -268,6 +269,44 @@
   display: flex;
   gap: 0.5rem;
   flex-shrink: 0;
+}
+
+// Loading-state placeholders only — mirrors .retirement-request-row's own
+// checkbox + main + actions flex layout, same "separate classes, never used
+// for a real row" convention TasksComponent's own .skeleton-task-row
+// already establishes.
+.skeleton-retirement-checkbox{
+  flex-shrink: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.skeleton-retirement-main{
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.skeleton-retirement-title{
+  width: 40%;
+}
+
+.skeleton-retirement-subtitle{
+  width: 65%;
+}
+
+.skeleton-retirement-actions{
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.skeleton-retirement-button{
+  width: 5.5rem;
+  height: 2.25rem;
+  border-radius: 0.25rem;
 }
 
 // 900px, matching the header's own breakpoint, rather than the site's

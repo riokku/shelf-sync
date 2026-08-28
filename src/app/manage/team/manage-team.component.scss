@@ -1,4 +1,5 @@
 @use '../../shared/styles/page-toolbar';
+@use '../../shared/styles/skeleton';
 
 // Only rendered while a task's detail view is showing (see selectedTask's
 // own doc comment) — sits right below the breadcrumbs, above this page's
@@ -205,6 +206,23 @@ mat-panel-description{
 .avatar-status-wrapper{
   position: relative;
   display: inline-flex;
+}
+
+// Loading-state placeholders only — sized to match app-user-avatar's own
+// default (1.75rem, not size="sm") and .team-member-last-seen's own
+// min-width above.
+.skeleton-team-avatar{
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.skeleton-team-name{
+  width: 8rem;
+}
+
+.skeleton-team-last-seen{
+  width: 6rem;
 }
 
 // A small pulsing green dot overlaid on the avatar's bottom-right corner,

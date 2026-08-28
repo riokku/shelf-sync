@@ -93,6 +93,9 @@ export class ManageTeamComponent implements OnInit, HasUnsavedChanges {
 
   teamMembers: TeamMember[] = [];
   isLoadingTeam = true;
+  /** Repeat-count for the loading-state skeleton accordion rows — see
+   *  InventoryComponent.skeletonCards' own identical doc comment. */
+  readonly skeletonRows = [1, 2, 3, 4];
   /** Set when loadProfiles()'s own query fails — see InventoryComponent's
    *  identical loadError field for the full reasoning. */
   loadError: string | null = null;

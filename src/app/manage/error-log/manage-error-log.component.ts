@@ -6,7 +6,6 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SupabaseService } from '../../core/supabase.service';
 import { Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
@@ -35,7 +34,6 @@ type ClientErrorLogRow = Database['public']['Tables']['client_error_log']['Row']
     MatExpansionModule,
     MatIconModule,
     MatPaginatorModule,
-    MatProgressSpinnerModule,
     BreadcrumbsComponent,
     PageHeaderComponent,
     EmptyStateComponent
@@ -49,6 +47,9 @@ export class ManageErrorLogComponent implements OnInit {
   isLoading = true;
   errorLog: ClientErrorLogRow[] = [];
   private profiles: Profile[] = [];
+  /** Repeat-count for the loading-state skeleton accordion rows — see
+   *  InventoryComponent.skeletonCards' own identical doc comment. */
+  readonly skeletonRows = [1, 2, 3, 4];
   /** Set when loadErrorLog()'s own query fails — see InventoryComponent's
    *  identical loadError field for the full reasoning. Particularly worth
    *  having *here*: this is the diagnostic page an admin checks *after*

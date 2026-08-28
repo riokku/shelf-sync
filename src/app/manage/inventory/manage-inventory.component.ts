@@ -199,6 +199,9 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
   // of which need every item, not just the ones with a pending request.
   allInventoryItems: InventoryItemRow[] = [];
   isLoadingInventoryList = true;
+  /** Repeat-count for the Requests tab's loading-state skeleton rows — see
+   *  InventoryComponent.skeletonCards' own identical doc comment. */
+  readonly skeletonRetirementRows = [1, 2, 3];
   /** Set by openInventoryDetail() below — while non-null, the template
    *  swaps the tab strip and whichever tab's own content out for this item's
    *  detail view instead, with a Back button (rendered here, right below

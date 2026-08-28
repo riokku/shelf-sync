@@ -15,8 +15,45 @@
     </div>
 
     @if (isLoading) {
-      <div class="loading-row">
-        <mat-spinner diameter="32"></mat-spinner>
+      <!-- Real card shells mirroring the plan-summary/usage-grid/billing-
+           details cards below, rather than a bare spinner. -->
+      <div class="billing-card" aria-hidden="true">
+        <section class="billing-section">
+          <div class="skeleton-line skeleton-billing-heading"></div>
+          <div class="plan-summary">
+            <div class="plan-summary-info skeleton-billing-plan-info">
+              <div class="skeleton-line skeleton-billing-plan-name"></div>
+              <div class="skeleton-line skeleton-billing-plan-price"></div>
+            </div>
+            <div class="skeleton-block skeleton-billing-button"></div>
+          </div>
+        </section>
+      </div>
+
+      <div class="billing-card" aria-hidden="true">
+        <section class="billing-section">
+          <div class="skeleton-line skeleton-billing-heading"></div>
+          <div class="usage-grid">
+            @for (i of skeletonUsageStats; track i) {
+              <div class="usage-stat skeleton-billing-usage-stat">
+                <div class="skeleton-line skeleton-billing-usage-label"></div>
+                <div class="skeleton-line skeleton-billing-usage-value"></div>
+              </div>
+            }
+          </div>
+        </section>
+      </div>
+
+      <div class="billing-card" aria-hidden="true">
+        <section class="billing-section">
+          <div class="skeleton-line skeleton-billing-heading"></div>
+          <dl class="billing-details">
+            <dt><div class="skeleton-line skeleton-billing-detail-label"></div></dt>
+            <dd><div class="skeleton-line skeleton-billing-detail-value"></div></dd>
+            <dt><div class="skeleton-line skeleton-billing-detail-label"></div></dt>
+            <dd><div class="skeleton-line skeleton-billing-detail-value"></div></dd>
+          </dl>
+        </section>
       </div>
     } @else {
       <div class="billing-card">

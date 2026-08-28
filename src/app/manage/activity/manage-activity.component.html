@@ -16,7 +16,20 @@
     </div>
 
     @if (isLoading) {
-      <mat-spinner diameter="32" />
+      <!-- Row-shaped placeholders mirroring .activity-row's own avatar +
+           entity-icon + message/time layout, rather than a bare spinner. -->
+      <div class="activity-list" aria-hidden="true">
+        @for (i of skeletonRows; track i) {
+          <div class="activity-row">
+            <div class="skeleton-circle skeleton-activity-avatar"></div>
+            <div class="skeleton-circle skeleton-activity-icon"></div>
+            <div class="activity-details">
+              <div class="skeleton-line skeleton-activity-message"></div>
+              <div class="skeleton-line skeleton-activity-time"></div>
+            </div>
+          </div>
+        }
+      </div>
     } @else if (loadError) {
       <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load the activity log. ' + loadError">
         <button mat-stroked-button type="button" (click)="retryLoad()">

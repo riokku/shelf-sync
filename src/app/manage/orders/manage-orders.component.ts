@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog } from '@angular/material/dialog';
 import { RouterLink } from '@angular/router';
 import { SupabaseService } from '../../core/supabase.service';
@@ -40,7 +39,6 @@ type OrderStatusFilter = 'all' | 'ordered' | 'received' | 'cancelled';
     MatButtonModule,
     MatIconModule,
     MatButtonToggleModule,
-    MatProgressSpinnerModule,
     RouterLink,
     BreadcrumbsComponent,
     PageHeaderComponent,
@@ -59,6 +57,9 @@ export class ManageOrdersComponent implements OnInit {
   isLoading = true;
   isProcessingOrder = false;
   orderError: string | null = null;
+  /** Repeat-count for the loading-state skeleton cards — see
+   *  InventoryComponent.skeletonCards' own identical doc comment. */
+  readonly skeletonRows = [1, 2, 3];
   /** Set when loadOrders()'s own query fails — see InventoryComponent's
    *  identical loadError field for the full reasoning. Only the orders
    *  query itself is checked, not the items/profiles/supplier lookups

@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog } from '@angular/material/dialog';
 import { RouterLink } from '@angular/router';
 import { SupabaseService } from '../../core/supabase.service';
@@ -49,7 +48,6 @@ type ReservationStatusFilter = 'all' | 'reserved' | 'picked_up' | 'returned' | '
     MatButtonModule,
     MatIconModule,
     MatButtonToggleModule,
-    MatProgressSpinnerModule,
     RouterLink,
     BreadcrumbsComponent,
     PageHeaderComponent,
@@ -67,6 +65,9 @@ export class ManageReservationsComponent implements OnInit {
   isLoading = true;
   isProcessingReservation = false;
   reservationError: string | null = null;
+  /** Repeat-count for the loading-state skeleton cards — see
+   *  InventoryComponent.skeletonCards' own identical doc comment. */
+  readonly skeletonRows = [1, 2, 3];
   /** Set when loadReservations()'s own query fails — see InventoryComponent's
    *  identical loadError field for the full reasoning. Only the reservations
    *  query itself is checked, not the items/profiles lookups ngOnInit also

@@ -135,7 +135,28 @@
           </button>
         </app-empty-state>
       } @else if (isLoadingTeam) {
-        <mat-spinner diameter="32"></mat-spinner>
+        <!-- Real (disabled) mat-expansion-panel shells mirroring each
+             member row's own avatar + name / last-seen + role-badge header,
+             same "reuse Material's real header layout" trick
+             ManageErrorLogComponent's own accordion skeleton uses — nested
+             task rows are never shown here since every real panel starts
+             collapsed too. -->
+        <mat-accordion multi aria-hidden="true">
+          @for (i of skeletonRows; track i) {
+            <mat-expansion-panel disabled>
+              <mat-expansion-panel-header>
+                <mat-panel-title>
+                  <div class="skeleton-circle skeleton-team-avatar me-2"></div>
+                  <div class="skeleton-line skeleton-team-name"></div>
+                </mat-panel-title>
+                <mat-panel-description>
+                  <div class="skeleton-line skeleton-team-last-seen"></div>
+                  <div class="skeleton-block skeleton-cell-badge"></div>
+                </mat-panel-description>
+              </mat-expansion-panel-header>
+            </mat-expansion-panel>
+          }
+        </mat-accordion>
       } @else if (teamMembers.length === 0) {
         <app-empty-state icon="group_off" message="No users found." />
       } @else if (filteredTeamMembers.length === 0) {

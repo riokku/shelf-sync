@@ -2,7 +2,6 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SupabaseService } from '../../core/supabase.service';
 import { Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
@@ -70,7 +69,7 @@ interface AssigneeWorkloadRow {
  *  need one. */
 @Component({
   selector: 'app-manage-reports',
-  imports: [CurrencyPipe, DecimalPipe, MatButtonModule, MatIconModule, MatProgressSpinnerModule, BreadcrumbsComponent, PageHeaderComponent, EmptyStateComponent, DonutChartComponent, RingStatComponent],
+  imports: [CurrencyPipe, DecimalPipe, MatButtonModule, MatIconModule, BreadcrumbsComponent, PageHeaderComponent, EmptyStateComponent, DonutChartComponent, RingStatComponent],
   templateUrl: './manage-reports.component.html',
   styleUrl: './manage-reports.component.scss',
 })
@@ -78,6 +77,14 @@ export class ManageReportsComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
 
   isLoading = true;
+  /** Fixed counts for the loading-state skeleton — a stat-grid is always 4
+   *  tiles (2 for Stock movement's own narrower grid), a breakdown list is
+   *  a plausible-looking 3 rows regardless of how many the real data ends
+   *  up having (unknowable before it loads). */
+  readonly skeletonStatTiles = [1, 2, 3, 4];
+  readonly skeletonNarrowStatTiles = [1, 2];
+  readonly skeletonThroughputStatTiles = [1, 2, 3];
+  readonly skeletonBreakdownRows = [1, 2, 3];
   /** Set when any of the three primary queries ngOnInit runs
    *  (inventory_items, inventory_item_discards, tasks) fails — see
    *  InventoryComponent's identical loadError field for the full reasoning.

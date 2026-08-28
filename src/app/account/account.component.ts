@@ -40,6 +40,13 @@ export class AccountComponent implements OnInit {
   profile: Profile | null = null;
   organizationName: string | null = null;
   isLoading = true;
+  /** Repeat-counts for the loading-state skeleton cards below — see
+   *  InventoryComponent.skeletonCards' own identical doc comment.
+   *  skeletonAvatarOptions is fixed at 8 (roughly matching AVATAR_PRESETS'
+   *  own count) since the real avatar-picker grid isn't itself loaded from
+   *  a query — this is purely a placeholder for its typical row length. */
+  readonly skeletonDetailRows = [1, 2, 3, 4, 5];
+  readonly skeletonAvatarOptions = [1, 2, 3, 4, 5, 6, 7, 8];
 
   readonly avatarPresets = AVATAR_PRESETS;
   isSavingAvatar = false;

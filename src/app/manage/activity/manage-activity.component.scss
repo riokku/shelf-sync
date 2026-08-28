@@ -1,4 +1,5 @@
 @use '../../shared/styles/page-toolbar';
+@use '../../shared/styles/skeleton';
 
 .manage-activity-wrapper{
   color: var(--mat-sys-on-surface);
@@ -58,6 +59,29 @@
 .activity-time{
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.75rem;
+}
+
+// Loading-state placeholders only — sized to match app-user-avatar's own
+// size="sm" (1.25rem) and mat-icon's default (1.5rem) respectively.
+.skeleton-activity-avatar{
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.skeleton-activity-icon{
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.skeleton-activity-message{
+  width: 60%;
+  max-width: 22rem;
+}
+
+.skeleton-activity-time{
+  width: 3.5rem;
 }
 
 // Same "mobile" breakpoint the rest of Manage's pages use.

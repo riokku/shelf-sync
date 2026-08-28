@@ -1,5 +1,6 @@
 @use '../../shared/styles/page-toolbar';
 @use '../../shared/styles/realtime-flash';
+@use '../../shared/styles/skeleton';
 
 // Only rendered while a task's detail view is showing (see selectedTask's
 // own doc comment) — sits right below the breadcrumbs, above this page's
@@ -175,6 +176,35 @@
       background: var(--mat-sys-surface-container-high);
     }
   }
+}
+
+// Loading-state placeholders only — see TasksComponent's own identical
+// comment on .skeleton-task-row for why these live as separate classes
+// rather than reusing .task-row-title/etc. directly (those are real-row
+// classes with their own layout rules, never used for the placeholders
+// above; a bulk-edit-active row's own leading checkbox column doesn't need
+// a skeleton counterpart since the toggle is off by default and this state
+// is brief either way).
+.skeleton-task-row{
+  display: grid;
+  grid-template-columns: minmax(10rem, 2fr) minmax(8rem, 1fr) minmax(8rem, 1fr) 7.5rem 2.5rem;
+  align-items: center;
+  column-gap: 1.5rem;
+}
+
+.skeleton-task-title{
+  width: 60%;
+}
+
+.skeleton-task-status{
+  height: 1.5rem;
+  border-radius: 999px;
+}
+
+.skeleton-task-delete{
+  width: 1.5rem;
+  height: 1.5rem;
+  justify-self: center;
 }
 
 .task-row-main{

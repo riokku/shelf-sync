@@ -1,4 +1,5 @@
 @use '../../shared/styles/page-toolbar';
+@use '../../shared/styles/skeleton';
 
 .manage-billing-wrapper{
   color: var(--mat-sys-on-surface);
@@ -9,12 +10,6 @@
     padding-left: 0;
     padding-right: 0;
   }
-}
-
-.loading-row{
-  display: flex;
-  justify-content: center;
-  padding: 3rem 0;
 }
 
 .preview-banner{
@@ -175,4 +170,55 @@ mat-progress-bar{
     margin: 0;
     font-weight: 600;
   }
+}
+
+// Loading-state placeholders only, sized to roughly match this page's own
+// heading/plan/usage-stat/billing-detail text above.
+.skeleton-billing-heading{
+  width: 40%;
+  max-width: 8rem;
+  height: 1.125rem;
+  margin-bottom: 1.25rem;
+}
+
+.skeleton-billing-plan-info{
+  gap: 0.5rem;
+}
+
+.skeleton-billing-plan-name{
+  width: 8rem;
+  height: 1.25rem;
+}
+
+.skeleton-billing-plan-price{
+  width: 6rem;
+}
+
+.skeleton-billing-button{
+  width: 8rem;
+  height: 2.25rem;
+  border-radius: 0.25rem;
+}
+
+.skeleton-billing-usage-stat{
+  gap: 0.5rem;
+}
+
+.skeleton-billing-usage-label{
+  width: 65%;
+  max-width: 7rem;
+}
+
+.skeleton-billing-usage-value{
+  width: 45%;
+  max-width: 5rem;
+  height: 1.125rem;
+}
+
+.skeleton-billing-detail-label{
+  width: 8rem;
+}
+
+.skeleton-billing-detail-value{
+  width: 6rem;
 }

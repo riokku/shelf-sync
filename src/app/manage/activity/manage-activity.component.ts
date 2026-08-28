@@ -2,7 +2,6 @@ import { Component, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SupabaseService } from '../../core/supabase.service';
 import { Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
@@ -22,7 +21,7 @@ const ENTITY_ICONS: Record<ActivityEntityType, string> = {
 
 @Component({
   selector: 'app-manage-activity',
-  imports: [DatePipe, MatButtonModule, MatIconModule, MatProgressSpinnerModule, BreadcrumbsComponent, PageHeaderComponent, UserAvatarComponent, EmptyStateComponent],
+  imports: [DatePipe, MatButtonModule, MatIconModule, BreadcrumbsComponent, PageHeaderComponent, UserAvatarComponent, EmptyStateComponent],
   templateUrl: './manage-activity.component.html',
   styleUrl: './manage-activity.component.scss',
 })
@@ -32,6 +31,9 @@ export class ManageActivityComponent implements OnInit {
   private profiles: Profile[] = [];
   entries: OrgActivityLogEntry[] = [];
   isLoading = true;
+  /** Repeat-count for the loading-state skeleton rows — see
+   *  InventoryComponent.skeletonCards' own identical doc comment. */
+  readonly skeletonRows = [1, 2, 3, 4, 5];
   /** Set when loadEntries()'s own query fails — see InventoryComponent's
    *  identical loadError field for the full reasoning. Unlike that field's
    *  usual "leave what's already loaded in place" background-refresh

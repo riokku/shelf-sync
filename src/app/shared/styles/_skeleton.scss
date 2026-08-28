@@ -65,3 +65,55 @@
     }
   }
 }
+
+// A handful of width presets for a .skeleton-line sitting inside a real
+// table's own <td> (Suppliers, Studio Organizations, Studio Users all share
+// this exact shape: a genuine <thead> — the columns are already known
+// before any data comes back — with shimmering body cells standing in for
+// the actual rows) — shared here rather than duplicated per page, unlike
+// the rest of this app's skeleton shapes, which stay bespoke per page (see
+// TasksComponent's own .skeleton-task-row) since a table row's cells don't
+// vary in shape from one table page to the next the way a card/list row
+// does; only the mix of column widths differs, which callers control by
+// picking which preset goes in which cell. .skeleton-cell-icon stands in
+// for a trailing icon-button column.
+.skeleton-cell-wide{ width: 70%; }
+.skeleton-cell-medium{ width: 55%; }
+.skeleton-cell-narrow{ width: 35%; }
+
+.skeleton-cell-icon{
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+// A .skeleton-block standing in for a status pill/badge cell.
+.skeleton-cell-badge{
+  width: 4rem;
+  height: 1.5rem;
+  border-radius: 999px;
+}
+
+// Backs a real (disabled) mat-expansion-panel's own header content, shared
+// by every accordion-shaped loading state in this app (Manage/Studio Error
+// Log, Studio Feedback all use the identical title-plus-trailing-badge-and-
+// timestamp header shape) — fixed rem widths rather than the .skeleton-cell-*
+// presets' percentages above, since mat-panel-title/-description are flex
+// items with no definite width of their own for a percentage to resolve
+// against (a <td> in a real table does have one, which is what makes the
+// percentage approach safe there but not here).
+.skeleton-panel-title{
+  width: 60%;
+  max-width: 20rem;
+}
+
+.skeleton-panel-timestamp{
+  width: 6rem;
+}
+
+// A .skeleton-block standing in for a text/icon button — shared by every
+// loading-state row with trailing action buttons (Reservations, Orders).
+.skeleton-action-button{
+  width: 5.5rem;
+  height: 2.25rem;
+  border-radius: 0.25rem;
+}

@@ -10,8 +10,88 @@
       />
 
     @if (isLoading) {
-      <div class="loading-row">
-        <mat-spinner diameter="32"></mat-spinner>
+      <!-- Real headings (static text, unaffected by data) with shimmering
+           stat-tiles/chart/breakdown-list content in place of the real
+           numbers — the three cards' own headings/labels don't shift once
+           data lands, only the figures underneath them do. -->
+      <div class="reports-columns" aria-hidden="true">
+        <div class="report-card">
+          <section class="report-section">
+            <h3>Inventory value &amp; stock health</h3>
+            <div class="stat-grid">
+              @for (i of skeletonStatTiles; track i) {
+                <div class="stat-tile">
+                  <div class="skeleton-line skeleton-stat-label"></div>
+                  <div class="skeleton-line skeleton-stat-value"></div>
+                </div>
+              }
+            </div>
+            <h4>Value by category</h4>
+            <div class="skeleton-circle skeleton-donut"></div>
+            <ul class="breakdown-list">
+              @for (i of skeletonBreakdownRows; track i) {
+                <li>
+                  <div class="skeleton-line skeleton-breakdown-label"></div>
+                  <span class="bar-track"></span>
+                  <div class="skeleton-line skeleton-breakdown-value"></div>
+                </li>
+              }
+            </ul>
+          </section>
+        </div>
+
+        <div class="reports-column-secondary">
+          <div class="report-card">
+            <section class="report-section">
+              <h3>Stock movement &amp; loss</h3>
+              <div class="stat-grid">
+                @for (i of skeletonNarrowStatTiles; track i) {
+                  <div class="stat-tile">
+                    <div class="skeleton-line skeleton-stat-label"></div>
+                    <div class="skeleton-line skeleton-stat-value"></div>
+                  </div>
+                }
+              </div>
+              <h4>Top reasons</h4>
+              <ul class="breakdown-list">
+                @for (i of skeletonBreakdownRows; track i) {
+                  <li>
+                    <div class="skeleton-line skeleton-breakdown-label"></div>
+                    <span class="bar-track"></span>
+                    <div class="skeleton-line skeleton-breakdown-value"></div>
+                  </li>
+                }
+              </ul>
+            </section>
+          </div>
+
+          <div class="report-card">
+            <section class="report-section">
+              <h3>Task throughput</h3>
+              <div class="throughput-summary">
+                <div class="skeleton-circle skeleton-ring"></div>
+                <div class="stat-grid throughput-stat-grid">
+                  @for (i of skeletonThroughputStatTiles; track i) {
+                    <div class="stat-tile">
+                      <div class="skeleton-line skeleton-stat-label"></div>
+                      <div class="skeleton-line skeleton-stat-value"></div>
+                    </div>
+                  }
+                </div>
+              </div>
+              <h4>Workload by assignee</h4>
+              <ul class="breakdown-list">
+                @for (i of skeletonBreakdownRows; track i) {
+                  <li>
+                    <div class="skeleton-line skeleton-breakdown-label"></div>
+                    <span class="bar-track"></span>
+                    <div class="skeleton-line skeleton-breakdown-value"></div>
+                  </li>
+                }
+              </ul>
+            </section>
+          </div>
+        </div>
       </div>
     } @else if (loadError) {
       <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load reports. ' + loadError">

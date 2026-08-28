@@ -176,7 +176,22 @@
             </button>
           </app-empty-state>
         } @else if (isLoadingTasks) {
-          <mat-spinner diameter="32"></mat-spinner>
+          <!-- Row-shaped placeholders mirroring .task-row's own 5-column
+               grid (main / assignee / due / status pill / delete), rather
+               than a bare spinner — same shape TasksComponent's own
+               .skeleton-task-row already established, just re-cut to this
+               page's own wider row. -->
+          <div class="task-rows" aria-hidden="true">
+            @for (i of skeletonRows; track i) {
+              <div class="task-row skeleton-task-row">
+                <div class="skeleton-line skeleton-task-title"></div>
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line"></div>
+                <div class="skeleton-block skeleton-task-status"></div>
+                <div class="skeleton-circle skeleton-task-delete"></div>
+              </div>
+            }
+          </div>
         } @else if (filteredAllTasks.length === 0) {
           <app-empty-state icon="search_off" message="No tasks match these filters.">
             @if (hasActiveTaskFilters) {

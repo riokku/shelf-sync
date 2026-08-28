@@ -1,4 +1,5 @@
 @use '../../shared/styles/page-toolbar';
+@use '../../shared/styles/skeleton';
 
 .studio-feedback-wrapper{
   color: var(--mat-sys-on-surface);
@@ -9,12 +10,6 @@
     padding-left: 0;
     padding-right: 0;
   }
-}
-
-.loading-row{
-  display: flex;
-  justify-content: center;
-  padding: 3rem 0;
 }
 
 .feedback-controls{
@@ -28,6 +23,21 @@
 .search-field{
   width: 100%;
   max-width: 28rem;
+}
+
+// Loading-state placeholders only, sized to roughly match .search-field/
+// mat-button-toggle-group's own footprint above.
+.skeleton-feedback-search{
+  width: 100%;
+  max-width: 28rem;
+  height: 3.5rem;
+  border-radius: 0.25rem;
+}
+
+.skeleton-feedback-toggle{
+  width: 16rem;
+  height: 2.5rem;
+  border-radius: 0.25rem;
 }
 
 .feedback-list{

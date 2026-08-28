@@ -7,8 +7,17 @@
     <p class="studio-subtitle">Cross-organization tools, visible only to you.</p>
 
     @if (isLoadingStats) {
-      <div class="loading-row">
-        <mat-spinner diameter="32"></mat-spinner>
+      <!-- Real card/grid shell, shimmering label/value content — same 5-tile
+           shape the loaded state below always renders. -->
+      <div class="studio-stats-card" aria-hidden="true">
+        <div class="stat-grid">
+          @for (i of skeletonStatTiles; track i) {
+            <div class="stat-tile">
+              <div class="skeleton-line skeleton-stat-label"></div>
+              <div class="skeleton-line skeleton-stat-value"></div>
+            </div>
+          }
+        </div>
       </div>
     } @else {
       <div class="studio-stats-card">

@@ -6,9 +6,21 @@
     <app-page-header icon="bug_report" title="Error Log" subtitle="Uncaught client errors across every organization, most recent first." />
 
     @if (isLoading) {
-      <div class="loading-row">
-        <mat-spinner diameter="32"></mat-spinner>
-      </div>
+      <!-- Same real-shell, disabled-panel skeleton treatment
+           ManageErrorLogComponent's own identical loading state uses. -->
+      <mat-accordion multi class="error-log-list" aria-hidden="true">
+        @for (i of skeletonRows; track i) {
+          <mat-expansion-panel disabled>
+            <mat-expansion-panel-header>
+              <mat-panel-title><div class="skeleton-line skeleton-panel-title"></div></mat-panel-title>
+              <mat-panel-description>
+                <div class="skeleton-block skeleton-cell-badge"></div>
+                <div class="skeleton-line skeleton-panel-timestamp"></div>
+              </mat-panel-description>
+            </mat-expansion-panel-header>
+          </mat-expansion-panel>
+        }
+      </mat-accordion>
     } @else {
       <div class="error-log-controls">
         <mat-checkbox [(ngModel)]="includeDevErrors" (change)="onFilterChange()">

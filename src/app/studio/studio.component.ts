@@ -2,7 +2,6 @@ import { Component, OnInit, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SupabaseService } from '../core/supabase.service';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 
@@ -17,7 +16,7 @@ import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrum
  *  gated the same way, so nobody else ever sees either exists. */
 @Component({
   selector: 'app-studio',
-  imports: [RouterModule, MatBadgeModule, MatIconModule, MatProgressSpinnerModule, BreadcrumbsComponent],
+  imports: [RouterModule, MatBadgeModule, MatIconModule, BreadcrumbsComponent],
   templateUrl: './studio.component.html',
   styleUrl: './studio.component.scss',
 })
@@ -35,6 +34,9 @@ export class StudioComponent implements OnInit {
    *  here is a plain head:true query, same convention ManageComponent's own
    *  ngOnInit() already uses for its three pending-queue badges. */
   isLoadingStats = true;
+  /** Fixed at 5 — the real .stat-grid below always renders exactly this many
+   *  tiles, unlike a data-driven list's own skeletonRows count. */
+  readonly skeletonStatTiles = [1, 2, 3, 4, 5];
   /** Active (non-soft-deleted) organizations — the number that actually
    *  matters day to day, separate from newOrgCount below which is a gross
    *  signup count and deliberately doesn't exclude an org that signed up

@@ -13,8 +13,29 @@
         </button>
       </app-empty-state>
     } @else if (isLoading) {
-      <div class="loading-row">
-        <mat-spinner diameter="32"></mat-spinner>
+      <div class="organizations-table-wrapper" aria-hidden="true">
+        <table class="organizations-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Created</th>
+              <th>Members</th>
+              <th>Last active</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (i of skeletonRows; track i) {
+              <tr>
+                <td><div class="skeleton-line skeleton-cell-wide"></div></td>
+                <td><div class="skeleton-line skeleton-cell-narrow"></div></td>
+                <td><div class="skeleton-line skeleton-cell-narrow"></div></td>
+                <td><div class="skeleton-line skeleton-cell-narrow"></div></td>
+                <td><div class="skeleton-block skeleton-cell-badge"></div></td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
     } @else if (organizations.length === 0) {
       <app-empty-state icon="apartment" message="No organizations yet." />

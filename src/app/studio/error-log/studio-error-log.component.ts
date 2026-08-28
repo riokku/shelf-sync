@@ -4,7 +4,6 @@ import { DatePipe } from '@angular/common';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SupabaseService } from '../../core/supabase.service';
 import { Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
@@ -31,7 +30,6 @@ type ClientErrorLogRow = Database['public']['Tables']['client_error_log']['Row']
     MatCheckboxModule,
     MatExpansionModule,
     MatPaginatorModule,
-    MatProgressSpinnerModule,
     BreadcrumbsComponent,
     PageHeaderComponent,
     EmptyStateComponent
@@ -46,6 +44,9 @@ export class StudioErrorLogComponent implements OnInit {
   errorLog: ClientErrorLogRow[] = [];
   private profiles: Profile[] = [];
   private orgNamesById = new Map<string, string>();
+  /** Repeat-count for the loading-state skeleton accordion rows — see
+   *  InventoryComponent.skeletonCards' own identical doc comment. */
+  readonly skeletonRows = [1, 2, 3, 4];
 
   includeDevErrors = false;
 

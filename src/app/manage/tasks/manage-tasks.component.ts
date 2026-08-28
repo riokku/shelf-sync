@@ -94,6 +94,9 @@ export class ManageTasksComponent implements OnInit, HasUnsavedChanges {
   readonly statusLabels = TASK_STATUS_LABELS;
   allTasks: Task[] = [];
   isLoadingTasks = true;
+  /** Repeat-count for the loading-state skeleton rows — see
+   *  InventoryComponent.skeletonCards' own identical doc comment. */
+  readonly skeletonRows = [1, 2, 3, 4];
   /** Set when loadTasks()'s own query fails — see InventoryComponent's
    *  identical loadError field for the full reasoning. Left in place across
    *  a failed background refresh (e.g. a realtime-triggered reload) rather

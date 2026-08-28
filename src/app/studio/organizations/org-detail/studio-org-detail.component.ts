@@ -5,7 +5,6 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SupabaseService } from '../../../core/supabase.service';
 import { NotificationService } from '../../../core/notification.service';
 import { SiteSettingsService } from '../../../core/site-settings.service';
@@ -66,7 +65,7 @@ type ClientErrorLogRow = Database['public']['Tables']['client_error_log']['Row']
  *  labeled. */
 @Component({
   selector: 'app-studio-org-detail',
-  imports: [DatePipe, RouterLink, MatButtonModule, MatExpansionModule, MatIconModule, MatProgressSpinnerModule, BreadcrumbsComponent, PageHeaderComponent, EmptyStateComponent],
+  imports: [DatePipe, RouterLink, MatButtonModule, MatExpansionModule, MatIconModule, BreadcrumbsComponent, PageHeaderComponent, EmptyStateComponent],
   templateUrl: './studio-org-detail.component.html',
   styleUrl: './studio-org-detail.component.scss',
 })
@@ -83,6 +82,10 @@ export class StudioOrgDetailComponent implements OnInit {
   isLoading = true;
   loadError: string | null = null;
   notFound = false;
+  /** Repeat-counts for the loading-state skeleton rows — see
+   *  InventoryComponent.skeletonCards' own identical doc comment. */
+  readonly skeletonMemberRows = [1, 2, 3];
+  readonly skeletonRecentRows = [1, 2];
 
   organization: OrganizationRow | null = null;
   members: Profile[] = [];

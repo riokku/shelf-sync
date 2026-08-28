@@ -6,9 +6,23 @@
     <app-page-header icon="bug_report" title="Error Log" subtitle="Uncaught errors your team has run into recently, most recent first." />
 
     @if (isLoading) {
-      <div class="loading-row">
-        <mat-spinner diameter="32"></mat-spinner>
-      </div>
+      <!-- Real (disabled, non-interactive) mat-expansion-panel shells with
+           shimmering title/description content, rather than a bare
+           spinner — reuses Material's own header layout pixel-for-pixel
+           instead of hand-rolling a matching flex shape. -->
+      <mat-accordion multi class="error-log-list" aria-hidden="true">
+        @for (i of skeletonRows; track i) {
+          <mat-expansion-panel disabled>
+            <mat-expansion-panel-header>
+              <mat-panel-title><div class="skeleton-line skeleton-panel-title"></div></mat-panel-title>
+              <mat-panel-description>
+                <div class="skeleton-block skeleton-cell-badge"></div>
+                <div class="skeleton-line skeleton-panel-timestamp"></div>
+              </mat-panel-description>
+            </mat-expansion-panel-header>
+          </mat-expansion-panel>
+        }
+      </mat-accordion>
     } @else if (loadError) {
       <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load the error log. ' + loadError">
         <button mat-stroked-button type="button" (click)="retryLoad()">

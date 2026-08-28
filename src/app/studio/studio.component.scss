@@ -1,4 +1,5 @@
 @use '../shared/styles/page-toolbar';
+@use '../shared/styles/skeleton';
 
 .studio-wrapper{
   color: var(--mat-sys-on-surface);
@@ -21,11 +22,6 @@
   margin: 0 0 2rem;
 }
 
-.loading-row{
-  display: flex;
-  justify-content: center;
-  padding: 2rem 0;
-}
 
 // The platform-admin counterpart to manage/reports' own stat-grid/-tile/
 // -label/-value — same shape, duplicated here rather than shared, matching
@@ -62,6 +58,19 @@
   font-size: 1.375rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+// Loading-state placeholders only, sized to roughly match .stat-label/
+// .stat-value's own footprint above.
+.skeleton-stat-label{
+  width: 70%;
+  max-width: 6rem;
+}
+
+.skeleton-stat-value{
+  width: 45%;
+  max-width: 4rem;
+  height: 1.375rem;
 }
 
 // Flat grid, not grouped into sections — ManageComponent's own sectioning

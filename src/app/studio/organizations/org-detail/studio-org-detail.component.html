@@ -19,8 +19,67 @@
         </button>
       </app-empty-state>
     } @else if (isLoading) {
-      <div class="loading-row">
-        <mat-spinner diameter="32"></mat-spinner>
+      <!-- Mirrors the meta dl, Members' own 4-column row grid, and Recent
+           feedback/errors' real (disabled) accordion shells — same tricks
+           the rest of this pass' skeleton work already established. Platform
+           actions is left out entirely: which buttons even show depends on
+           the org's own suspended/retired state, not knowable before load. -->
+      <div class="org-detail-content" aria-hidden="true">
+        <dl class="org-meta">
+          <dt><div class="skeleton-line skeleton-org-meta-label"></div></dt>
+          <dd><div class="skeleton-line skeleton-org-meta-value"></div></dd>
+          <dt><div class="skeleton-line skeleton-org-meta-label"></div></dt>
+          <dd><div class="skeleton-block skeleton-cell-badge"></div></dd>
+        </dl>
+
+        <section class="org-section">
+          <h3>Members</h3>
+          <ul class="member-list">
+            @for (i of skeletonMemberRows; track i) {
+              <li class="skeleton-member-row">
+                <div class="skeleton-line skeleton-member-name"></div>
+                <div class="skeleton-block skeleton-cell-badge"></div>
+                <div class="skeleton-member-status"></div>
+                <div class="skeleton-line skeleton-member-presence"></div>
+              </li>
+            }
+          </ul>
+        </section>
+
+        <section class="org-section">
+          <h3>Recent feedback</h3>
+          <mat-accordion multi class="recent-list-accordion">
+            @for (i of skeletonRecentRows; track i) {
+              <mat-expansion-panel disabled>
+                <mat-expansion-panel-header>
+                  <mat-panel-title>
+                    <div class="skeleton-block skeleton-cell-badge"></div>
+                    <div class="skeleton-line skeleton-panel-title"></div>
+                  </mat-panel-title>
+                  <mat-panel-description>
+                    <div class="skeleton-line skeleton-panel-timestamp"></div>
+                  </mat-panel-description>
+                </mat-expansion-panel-header>
+              </mat-expansion-panel>
+            }
+          </mat-accordion>
+        </section>
+
+        <section class="org-section">
+          <h3>Recent errors</h3>
+          <mat-accordion multi class="recent-list-accordion">
+            @for (i of skeletonRecentRows; track i) {
+              <mat-expansion-panel disabled>
+                <mat-expansion-panel-header>
+                  <mat-panel-title><div class="skeleton-line skeleton-panel-title"></div></mat-panel-title>
+                  <mat-panel-description>
+                    <div class="skeleton-line skeleton-panel-timestamp"></div>
+                  </mat-panel-description>
+                </mat-expansion-panel-header>
+              </mat-expansion-panel>
+            }
+          </mat-accordion>
+        </section>
       </div>
     } @else if (notFound) {
       <app-empty-state icon="apartment" message="This organization doesn't exist, or you no longer have access to it." />

@@ -21,9 +21,28 @@
     }
 
     @if (isLoading) {
-      <div class="loading-row">
-        <mat-spinner diameter="32"></mat-spinner>
-      </div>
+      <!-- Same skeleton treatment ManageReservationsComponent's own
+           identical loading state uses, minus the second (dates) line this
+           page's own .order-card doesn't have. -->
+      <div class="skeleton-block skeleton-status-toggle" aria-hidden="true"></div>
+      <ul class="order-list" aria-hidden="true">
+        @for (i of skeletonRows; track i) {
+          <li class="order-card">
+            <div class="order-info skeleton-order-info">
+              <div class="order-row">
+                <div class="skeleton-block skeleton-cell-badge"></div>
+                <div class="skeleton-line skeleton-order-item"></div>
+                <div class="skeleton-line skeleton-order-quantity"></div>
+              </div>
+              <div class="skeleton-line skeleton-order-meta"></div>
+            </div>
+            <div class="order-actions">
+              <div class="skeleton-block skeleton-action-button"></div>
+              <div class="skeleton-block skeleton-action-button"></div>
+            </div>
+          </li>
+        }
+      </ul>
     } @else if (loadError) {
       <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load orders. ' + loadError">
         <button mat-stroked-button type="button" (click)="retryLoad()">

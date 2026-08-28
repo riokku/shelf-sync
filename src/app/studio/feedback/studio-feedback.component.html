@@ -13,9 +13,30 @@
         </button>
       </app-empty-state>
     } @else if (isLoading) {
-      <div class="loading-row">
-        <mat-spinner diameter="32"></mat-spinner>
+      <!-- Mirrors the always-shown controls row (search + status toggle)
+           plus the same real-shell, disabled-panel accordion treatment
+           ManageErrorLogComponent's own loading state uses — just a wider
+           title column, since this page's own panel title packs a status
+           badge and type label in ahead of the message preview. -->
+      <div class="feedback-controls" aria-hidden="true">
+        <div class="skeleton-block skeleton-feedback-search"></div>
+        <div class="skeleton-block skeleton-feedback-toggle"></div>
       </div>
+      <mat-accordion multi class="feedback-list" aria-hidden="true">
+        @for (i of skeletonRows; track i) {
+          <mat-expansion-panel disabled>
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+                <div class="skeleton-block skeleton-cell-badge"></div>
+                <div class="skeleton-line skeleton-panel-title"></div>
+              </mat-panel-title>
+              <mat-panel-description>
+                <div class="skeleton-line skeleton-panel-timestamp"></div>
+              </mat-panel-description>
+            </mat-expansion-panel-header>
+          </mat-expansion-panel>
+        }
+      </mat-accordion>
     } @else {
       <div class="feedback-controls">
         <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
