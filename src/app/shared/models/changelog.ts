@@ -14,6 +14,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    date: '2026-08-28',
+    title: 'Quicker way back to Home',
+    description: 'Inventory, Tasks, Manage, Reservations, Help, Account, and Studio all show a Back button now, right above the page title.'
+  },
+  {
+    date: '2026-08-28',
+    title: 'Bolder page headers',
+    description: 'Inventory, Tasks, and the Manage hub now open with a bold gradient header showing live counts at a glance, and every Manage page picked up a splash of matching color.'
+  },
+  {
     date: '2026-08-25',
     title: 'First-run page guidance',
     description: 'Inventory, Tasks, and the Manage hub now show a one-time, dismissible orientation hint the first time you visit.'

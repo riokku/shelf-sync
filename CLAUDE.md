@@ -1699,6 +1699,64 @@ inviting a teammate from `manage/team`, etc.), so by the time a visitor is back 
 "just completed" moment inside `HomeComponent`'s own lifecycle left to animate. Worth revisiting if
 this card ever gains its own live/realtime updates rather than a load-once snapshot.
 
+A follow-up design pass gave Home's own hero band — previously unique to that one page — to
+Inventory, Tasks, and the Manage hub too, the three other pages one tap away from it in the nav
+drawer, on the reasoning that a bold, "this is a real destination" entrance shouldn't be reserved
+for the app's front door alone. The gradient/glow-blob backdrop, kicker chip, and pulse-row stat
+chips (previously hand-rolled directly in `home.component.scss`/`.html`) moved out to a new
+`shared/styles/_page-hero.scss` partial — same `@use`-per-consumer convention `_skeleton.scss`/
+`_stagger.scss`/`_realtime-flash.scss` already established — so `HomeComponent` itself was
+refactored onto the shared classes rather than kept as a fourth, slightly-different copy. Each
+consumer's kicker/pulse-row content is its own, drawn from data that page already has loaded rather
+than a new query: Inventory's kicker is its own active item count, its pulse row low/out-of-stock
+plus checked-out counts; Tasks' kicker is its open task count, its pulse row overdue/due-today/
+transfer-offer counts; the Manage hub's kicker is the signed-in org's own name
+(`authService.organizationName()`), its pulse row retirement-request/task-transfer/unseen-release-note
+counts (the same three badge counts `ManageComponent.ngOnInit()` already loaded for its own cards).
+The Manage hub's own hero is a quieter cut — `.page-hero-quiet`, less padding and a capped heading
+size — since it's one click deeper than the other three and reads as competing with them at full
+strength.
+
+`PageHeaderComponent` — the compact icon-chip header every `manage/*` sub-page already used —
+picked up a matching but lighter-weight upgrade of its own via a new opt-in `zone` input
+(`'inventory' | 'team' | 'insights' | 'admin'`, matching `ManageComponent`'s own four card groupings
+exactly): a diluted two-tone gradient wash behind the whole header, an oversized low-opacity
+watermark of the page's own `icon` bleeding off its right edge, and a thin primary->tertiary
+gradient rule under the title. Unset by default (every existing usage keeps rendering exactly as
+before), it's now set on all 13 real page usages of this component — Inventory/Suppliers/Orders/
+Reservations get `zone="inventory"`, Tasks/Team get `zone="team"`, Activity/Release Notes/Reports/
+Error Log get `zone="insights"`, Billing/Settings get `zone="admin"` — while Danger Zone keeps its
+own distinct flat-red `variant="danger"` treatment instead of joining the Admin wash (same
+"deliberately reads as riskier than its siblings" reasoning its icon chip already had), and every
+dialog-content usage (`ModalTableComponent`, `TaskDetailModalComponent`) leaves `zone` unset
+entirely, since a colored wash/watermark suits a full page, not a dialog. Studio's own five
+`PageHeaderComponent` usages were left out of this pass too — Studio has no equivalent four-section
+grouping to key a zone off of, a natural extension once/if it does.
+
+A second new `[headerFigure]` content-projection slot lets a caller swap the header's plain icon
+chip for a live figure instead — wired up on the three pages that already had one obvious headline
+stat previously buried in a card below the fold: `RingStatComponent` now sits directly in Reports'
+own header (`completionRatePercent`, the same figure its "Task throughput" card already showed and
+still does — duplicating a headline number into the header rather than moving it, the same "echo up
+top, detail below" shape `HomeComponent`'s own pulse row already has with its own list cards),
+Billing's (`usagePercent(storageUsedMb, currentTier.limits.storageLimitMb)`, reusing that page's own
+existing helper), and Team's (a new `onlinePercent` getter — approved members currently online, as a
+percentage of the whole team).
+
+Every top-level page reachable directly from the header's nav drawer/quick menu — Inventory, Tasks,
+Manage, Reservations, Help, Account, and Studio — now also shows a plain "Back" button
+(`routerLink="/home"`) right above its heading/hero, alongside (not replacing) the breadcrumb trail
+that was already there; Home itself is the one exception, same "nowhere to go back to" reasoning its
+own missing breadcrumbs already have. Inventory and Tasks already had a `.back-row` for leaving an
+item/task's own in-place detail view — the new "back to Home" button reuses that identical class
+rather than inventing a second one, since the two meanings are mutually exclusive (a page only ever
+shows one at a time: leaving a detail view, or browsing). `.back-row`'s own layout (previously
+copy-pasted identically into seven-plus component stylesheets, `StudioOrgDetailComponent` first)
+moved into the shared `_page-toolbar.scss` partial alongside `.page-toolbar` itself, since every
+consumer already `@use`s that partial for its breadcrumb row anyway — `ModalTableComponent` is the
+one holdout, keeping its own local rule (a different margin, no `.page-toolbar` of its own to sit
+under).
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -1907,6 +1965,8 @@ shared/
                              # login/register no longer share a partial like this — each owns its own layout now
   styles/_skeleton.scss     # .skeleton-line/-block/-circle shimmer placeholders, backing Inventory/Tasks' loading states
   styles/_stagger.scss      # .cascade-in fade+rise, staggered per-item via [style.animation-delay.ms] — Inventory cards, Tasks rows
+  styles/_page-hero.scss    # .page-hero gradient/glow-blob band — Home, Inventory, Tasks, the Manage hub
+  styles/_page-toolbar.scss # .page-toolbar (breadcrumb row) + .back-row, shared by every authenticated page
 ```
 `src/environments/environment.ts` and `environment.prod.ts` hold `supabaseUrl` and
 `supabaseAnonKey` (the publishable key — safe to commit, it's constrained by RLS).
