@@ -58,6 +58,22 @@
   justify-content: flex-end;
 }
 
+// matTooltip on a disabled native <button> never fires — a disabled form
+// control suppresses mouseenter/focus entirely in every browser, so the
+// tooltip directive's own listeners simply never see the hover. The fix
+// (Angular Material's own documented workaround) is to move the tooltip
+// onto an always-interactive wrapper instead of the button itself — used
+// by the lock toggle button and the Discard/Edit buttons above, all three
+// of which can render disabled. inline-flex so the wrapper hugs its
+// button's own size exactly rather than stretching to fill its row (this
+// sits as a flex item in both .asset-id-row and .actions above), and
+// matTooltip is simply skipped when the bound string is empty/falsy, same
+// as it already was on the button directly, so this is a no-op wrapper for
+// every other icon button here that has no lock-related tooltip to show.
+.tooltip-wrapper{
+  display: inline-flex;
+}
+
 // mat-dialog-content is kept only for its CdkScrollable host directive and
 // CSS hook, not because this ever renders inside a real dialog surface in
 // practice (see dialogRef's own doc comment) — so Material's own global
@@ -175,6 +191,22 @@ mat-dialog-content.mat-mdc-dialog-content{
       width: 1rem;
       height: 1rem;
     }
+  }
+}
+
+// Replaces the old full-width "Locked by X" banner (.retired-notice, still
+// used for the retired case below) as the item detail's own signal that
+// it's locked — a solid red circle behind a white lock icon, same
+// --app-danger-bg/--app-danger-on-bg pairing StudioOrgDetailComponent's own
+// "Retire organization" button uses for its own hardcoded (theme-
+// independent) red, so this reads as an unambiguous red regardless of the
+// org's own color preset (see THEME_PRESETS) the way a theme-following
+// color="warn" isn't guaranteed to.
+.lock-toggle-button-locked{
+  background-color: var(--app-danger-bg);
+
+  mat-icon{
+    color: var(--app-danger-on-bg);
   }
 }
 
@@ -323,6 +355,14 @@ mat-dialog-content.mat-mdc-dialog-content{
 // side padding — see that rule's own comment above) so the header band
 // reads as a full-width divider rather than being inset like the rest of
 // the section's content, which does keep its own small margin/padding.
+// border-radius mirrors the same rounded-header treatment
+// TaskDetailModalComponent's own .info-section-header already has
+// (duplicated there rather than shared, same convention as .actions-group
+// above) — sized to 0.5rem rather than that version's 0.375rem to match
+// this file's own existing radius scale (.existing-photo/.no-photos-
+// placeholder below use the same value). A plain background band with
+// square corners read as a stray rectangle rather than a deliberately
+// styled section divider.
 .info-section-header{
   display: flex;
   align-items: center;
@@ -332,6 +372,7 @@ mat-dialog-content.mat-mdc-dialog-content{
   // used to be — that read as cramped against the fields immediately
   // following, more like a label than a section divider.
   margin-bottom: 1.25rem;
+  border-radius: 0.5rem;
   background-color: var(--mat-sys-surface-container-high);
   color: var(--mat-sys-primary);
   font-weight: 600;
@@ -343,7 +384,11 @@ mat-dialog-content.mat-mdc-dialog-content{
 
 // Low/out-of-stock no longer has an equivalent full-width banner here — see
 // .asset-id-row + .status-pill above, the compact pill next to the GUID
-// that replaced it.
+// that replaced it. Locked no longer renders a banner here either — see
+// .lock-toggle-button-locked above and the Edit button's own [disabled]/
+// [matTooltip] bindings in the template for what replaced it — leaving
+// .retired-notice's name a little stale (it's genuinely retired-only now)
+// but not worth a rename for the one remaining caller.
 .retired-notice{
   display: flex;
   align-items: center;

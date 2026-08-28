@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, HostListener, OnInit, ViewChild, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -25,6 +25,8 @@ import { EmptyStateComponent } from '../shared/components/empty-state/empty-stat
 import { BulkActionToolbarComponent } from '../shared/components/bulk-action-toolbar/bulk-action-toolbar.component';
 import { PageIntroComponent } from '../shared/components/page-intro/page-intro.component';
 import { BulkReassignModalComponent, BulkReassignModalResult } from '../shared/components/bulk-reassign-modal/bulk-reassign-modal.component';
+import { HasUnsavedChanges } from '../core/guards/unsaved-changes.guard';
+import { confirmLeaveWithoutSaving } from '../shared/utils/confirm-leave';
 import { SupabaseService } from '../core/supabase.service';
 import { SiteSettingsService } from '../core/site-settings.service';
 import { InventoryFieldOptionsService } from '../core/inventory-field-options.service';
@@ -73,7 +75,7 @@ type StatusFilter = 'active' | 'include_retired' | 'retired_only';
     templateUrl: './inventory.component.html',
     styleUrl: './inventory.component.scss'
 })
-export class InventoryComponent implements OnInit{
+export class InventoryComponent implements OnInit, HasUnsavedChanges{
 
   private supabase = inject(SupabaseService).client;
   private dialog = inject(MatDialog);
@@ -90,11 +92,18 @@ export class InventoryComponent implements OnInit{
   /** Set by showDetails() below — while non-null, the template swaps the
    *  whole browsing UI (search bar, filter sidebar, bulk-edit toggle,
    *  card/table grid) out for this item's detail view instead, with a Back
-   *  button (rendered by ModalTableComponent itself — see its own
-   *  isEmbedded) returning here. Every filter/search/sort/page field below
-   *  stays untouched the whole time (this is a plain @if swap, not a route
-   *  change), so Back lands right back on the same filtered view. */
+   *  button (rendered here, right below the breadcrumbs — see
+   *  ModalTableComponent's own [showBackButton] doc comment for why it's
+   *  positioned here rather than by that component itself) returning here.
+   *  Every filter/search/sort/page field below stays untouched the whole
+   *  time (this is a plain @if swap, not a route change), so Back lands
+   *  right back on the same filtered view. */
   selectedItem: InventoryItem | null = null;
+  /** Only ever populated while selectedItem is set (see the template's own
+   *  @if) — queried so closeDetails() below can check for a dirty in-place
+   *  edit before actually leaving; see hasUnsavedChanges()'s own doc
+   *  comment. */
+  @ViewChild(ModalTableComponent) modalTable?: ModalTableComponent;
   /** Bound to app-breadcrumbs' own [parentOverride] whenever selectedItem is
    *  set, so the trail reads Home / Inventory / {item name} instead of the
    *  plain Home / Inventory this route's own static breadcrumb data
@@ -609,14 +618,63 @@ export class InventoryComponent implements OnInit{
   /** The detail view's own Back button — clears selectedItem and drops
    *  ?item= from the URL, landing back on this same filtered/searched/sorted
    *  view (none of that state lives in the URL or is touched by showDetails()
-   *  above, so there's nothing else to restore). */
+   *  above, so there's nothing else to restore). Confirms first if a
+   *  ModalTableComponent edit is actually dirty — a tab/view swap like this
+   *  is plain component state, not a route change, so unsavedChangesGuard
+   *  (route-level, see hasUnsavedChanges() below) never sees it; this is
+   *  that same protection's in-page counterpart, same "public gate +
+   *  private apply" split ManageInventoryComponent.setViewMode() already
+   *  establishes so the actual close stays directly testable without
+   *  faking the confirm dialog. */
   closeDetails() {
+    if (!this.hasUnsavedChanges()) {
+      this.applyCloseDetails();
+      return;
+    }
+
+    void confirmLeaveWithoutSaving(
+      this.dialog,
+      'You have unsaved changes on this item that will be lost if you leave it.'
+    ).then(confirmed => {
+      if (confirmed) {
+        this.applyCloseDetails();
+      }
+    });
+  }
+
+  private applyCloseDetails() {
     this.selectedItem = null;
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { item: null },
       queryParamsHandling: 'merge'
     });
+  }
+
+  /** Real, would-actually-lose-data input sitting in the item detail view's
+   *  own edit form right now — delegates to ModalTableComponent's own
+   *  hasUnsavedChanges(), which is false whenever it isn't mid-edit. Backs
+   *  both the route-level unsavedChangesGuard (navigating off this page
+   *  entirely) and closeDetails() above (leaving just this item view) — see
+   *  unsaved-changes.guard.ts's own doc comment for why this checks the
+   *  underlying state directly rather than also requiring selectedItem to
+   *  be set: modalTable is only ever populated while it is, so the
+   *  optional chain already covers that. */
+  hasUnsavedChanges(): boolean {
+    return this.modalTable?.hasUnsavedChanges() ?? false;
+  }
+
+  /** CanDeactivate guards never run for a tab close/refresh — only this
+   *  catches that case. Modern browsers ignore the custom message and show
+   *  their own generic "leave site?" wording; setting returnValue is what
+   *  actually triggers that prompt at all (an empty/unset handler does
+   *  nothing). */
+  @HostListener('window:beforeunload', ['$event'])
+  confirmBeforeUnload(event: BeforeUnloadEvent) {
+    if (this.hasUnsavedChanges()) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
   }
 
   toggleStockLevel(value: StockLevel, checked: boolean){

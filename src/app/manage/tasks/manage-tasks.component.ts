@@ -110,6 +110,49 @@ export class ManageTasksComponent implements OnInit, HasUnsavedChanges {
    *  ManageInventoryComponent shape, see its own selectedItemDetail doc
    *  comment. */
   selectedTask: Task | null = null;
+  /** Mirrors TaskDetailModalComponent's own relatedItemViewChange output —
+   *  see TasksComponent.viewingRelatedItem's own doc comment for the full
+   *  reasoning (redirects this page's own back-row button rather than
+   *  hiding it, so it stays in one consistent spot below the breadcrumbs). */
+  viewingRelatedItem = false;
+  /** Only ever populated while selectedTask is set (see the template's own
+   *  @if) — queried so the back-row button can reach closeRelatedItem()
+   *  directly; see viewingRelatedItem's own doc comment. */
+  @ViewChild(TaskDetailModalComponent) taskDetailModal?: TaskDetailModalComponent;
+
+  /** Bound to app-breadcrumbs' own [labelOverride] — undefined while nothing
+   *  is selected (falls back to the route's own static "Tasks" label),
+   *  otherwise the task's own title, or the related item's name instead
+   *  while viewingRelatedItem. This route already has a fixed
+   *  breadcrumbParent ("Manage" — see MANAGE_BREADCRUMB_PARENT), so unlike
+   *  TasksComponent's own plain /tasks page (which has room to promote
+   *  "Tasks" itself into a second parent segment once something's
+   *  selected), there's no second parent slot free here — the static
+   *  "Tasks" label is what gets replaced instead, same as
+   *  InventoryComponent's own "Inventory" heading getting replaced by the
+   *  selected item's name. */
+  get breadcrumbLabel(): string | undefined {
+    if (!this.selectedTask) {
+      return undefined;
+    }
+    if (this.viewingRelatedItem) {
+      return this.taskDetailModal?.selectedRelatedItem?.name;
+    }
+    return this.selectedTask.title;
+  }
+
+  /** Bound to app-breadcrumbs' own [secondaryLabel] — only set (to the
+   *  task's own title) while viewingRelatedItem, i.e. exactly when
+   *  breadcrumbLabel above has moved on to the item's name instead, so the
+   *  task doesn't disappear from the trail entirely once its own title
+   *  stops being the trailing label. Clicking it (the template's own
+   *  (secondaryLabelClick) binding) calls taskDetailModal.closeRelatedItem()
+   *  — the exact same call the page's own Back button makes while
+   *  viewingRelatedItem (see handleBackClick() below). Mirrors
+   *  TasksComponent.breadcrumbSecondaryLabel exactly. */
+  get breadcrumbSecondaryLabel(): string | undefined {
+    return this.viewingRelatedItem ? this.selectedTask?.title : undefined;
+  }
 
   viewMode: 'create' | 'all' = 'create';
 
@@ -167,18 +210,24 @@ export class ManageTasksComponent implements OnInit, HasUnsavedChanges {
     });
   }
 
-  /** Real, would-actually-lose-data input sitting in the create form right
-   *  now. Backs both the route-level unsavedChangesGuard (navigating off
-   *  this page entirely) and setViewMode() above (switching to All tasks)
-   *  — see unsaved-changes.guard.ts's own doc comment for why this checks
-   *  the underlying state directly rather than also requiring `viewMode
-   *  === 'create'`: the data doesn't stop being unsaved just because a
-   *  different tab happens to be showing at the moment.
+  /** Real, would-actually-lose-data input sitting in the create form, or in
+   *  a related-item edit opened from the task detail view, right now. Backs
+   *  both the route-level unsavedChangesGuard (navigating off this page
+   *  entirely) and setViewMode() above (switching to All tasks) — see
+   *  unsaved-changes.guard.ts's own doc comment for why this checks the
+   *  underlying state directly rather than also requiring `viewMode ===
+   *  'create'`: the data doesn't stop being unsaved just because a
+   *  different tab/view happens to be showing at the moment.
    *  relatedItemSearchControl (the autocomplete's own search box, not a
    *  submitted field) deliberately isn't checked — typing in it without
-   *  picking anything isn't real unsaved data. */
+   *  picking anything isn't real unsaved data. The task detail view's own
+   *  Back button (handleBackClick() below) is already covered directly by
+   *  TaskDetailModalComponent.closeRelatedItem()'s own confirm gate, so
+   *  taskDetailModal is folded in here only for navigation this page's own
+   *  click handlers don't otherwise catch (a nav link, browser back, tab
+   *  close). */
   hasUnsavedChanges(): boolean {
-    return this.taskForm.dirty;
+    return this.taskForm.dirty || (this.taskDetailModal?.hasUnsavedChanges() ?? false);
   }
 
   /** CanDeactivate guards never run for a tab close/refresh — only this
@@ -618,6 +667,7 @@ export class ManageTasksComponent implements OnInit, HasUnsavedChanges {
    *  when something actually changed. */
   closeTaskDetail(changed = false) {
     this.selectedTask = null;
+    this.viewingRelatedItem = false;
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { task: null },
@@ -625,6 +675,17 @@ export class ManageTasksComponent implements OnInit, HasUnsavedChanges {
     });
     if (changed) {
       void this.loadTasks();
+    }
+  }
+
+  /** The single back-row button's own click handler — see
+   *  viewingRelatedItem's own doc comment for why this branches instead of
+   *  binding closeTaskDetail() directly. */
+  handleBackClick() {
+    if (this.viewingRelatedItem) {
+      this.taskDetailModal?.closeRelatedItem();
+    } else {
+      this.closeTaskDetail();
     }
   }
 

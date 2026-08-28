@@ -13,18 +13,20 @@
       </div>
     }
 
-    <app-page-header icon="inventory_2" title="Manage Inventory">
-      <button
-          mat-stroked-button
-          type="button"
-          [disabled]="isLoadingInventoryList"
-          matTooltip="Export every item's current data and activity log as a CSV"
-          (click)="exportInventoryCsv()"
-        >
-        <mat-icon>download</mat-icon>
-        Export
-      </button>
-    </app-page-header>
+    @if (!selectedItemDetail) {
+      <app-page-header icon="inventory_2" title="Manage Inventory">
+        <button
+            mat-stroked-button
+            type="button"
+            [disabled]="isLoadingInventoryList"
+            matTooltip="Export every item's current data and activity log as a CSV"
+            (click)="exportInventoryCsv()"
+          >
+          <mat-icon>download</mat-icon>
+          Export
+        </button>
+      </app-page-header>
+    }
 
     @if (selectedItemDetail) {
       <app-modal-table [data]="selectedItemDetail" [showBackButton]="false" (back)="closeInventoryDetail()" />

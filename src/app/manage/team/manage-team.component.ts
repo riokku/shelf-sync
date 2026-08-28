@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, HostListener, OnInit, ViewChild, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -12,6 +12,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { SupabaseService } from '../../core/supabase.service';
 import { NotificationService } from '../../core/notification.service';
 import { AuthService, Profile } from '../../core/auth.service';
+import { HasUnsavedChanges } from '../../core/guards/unsaved-changes.guard';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { UserAvatarComponent } from '../../shared/components/user-avatar/user-avatar.component';
@@ -63,7 +64,7 @@ interface TeamMember {
   templateUrl: './manage-team.component.html',
   styleUrl: './manage-team.component.scss',
 })
-export class ManageTeamComponent implements OnInit {
+export class ManageTeamComponent implements OnInit, HasUnsavedChanges {
   private supabase = inject(SupabaseService).client;
   protected authService = inject(AuthService);
   private dialog = inject(MatDialog);
@@ -104,6 +105,38 @@ export class ManageTeamComponent implements OnInit {
    *  task views, since opening a task from here never supported a deep link
    *  before either. */
   selectedTask: Task | null = null;
+  /** Mirrors TaskDetailModalComponent's own relatedItemViewChange output —
+   *  see TasksComponent.viewingRelatedItem's own doc comment for the full
+   *  reasoning (redirects this page's own back-row button rather than
+   *  hiding it, so it stays in one consistent spot below the breadcrumbs). */
+  viewingRelatedItem = false;
+  /** Only ever populated while selectedTask is set (see the template's own
+   *  @if) — queried so the back-row button can reach closeRelatedItem()
+   *  directly; see viewingRelatedItem's own doc comment. */
+  @ViewChild(TaskDetailModalComponent) taskDetailModal?: TaskDetailModalComponent;
+
+  /** Bound to app-breadcrumbs' own [labelOverride] — see
+   *  ManageTasksComponent.breadcrumbLabel's own doc comment for the full
+   *  reasoning (identical shape: this route's own fixed "Manage" parent
+   *  leaves no second slot free, so the static "Team" label is what gets
+   *  replaced by the task's own title, or the related item's name while
+   *  viewingRelatedItem). */
+  get breadcrumbLabel(): string | undefined {
+    if (!this.selectedTask) {
+      return undefined;
+    }
+    if (this.viewingRelatedItem) {
+      return this.taskDetailModal?.selectedRelatedItem?.name;
+    }
+    return this.selectedTask.title;
+  }
+
+  /** Bound to app-breadcrumbs' own [secondaryLabel] — see
+   *  ManageTasksComponent.breadcrumbSecondaryLabel's own doc comment for the
+   *  full reasoning; identical shape. */
+  get breadcrumbSecondaryLabel(): string | undefined {
+    return this.viewingRelatedItem ? this.selectedTask?.title : undefined;
+  }
 
   teamSearchTerm = '';
   showOnlineOnly = false;
@@ -595,8 +628,42 @@ export class ManageTeamComponent implements OnInit {
    *  in TasksComponent, mirrored here without the URL sync it doesn't need. */
   closeTaskDetail(changed = false) {
     this.selectedTask = null;
+    this.viewingRelatedItem = false;
     if (changed) {
       void this.loadTeamTasks();
+    }
+  }
+
+  /** The single back-row button's own click handler — see
+   *  viewingRelatedItem's own doc comment for why this branches instead of
+   *  binding closeTaskDetail() directly. */
+  handleBackClick() {
+    if (this.viewingRelatedItem) {
+      this.taskDetailModal?.closeRelatedItem();
+    } else {
+      this.closeTaskDetail();
+    }
+  }
+
+  /** Real, would-actually-lose-data input sitting in a related-item edit
+   *  right now — see TasksComponent.hasUnsavedChanges()'s own doc comment
+   *  for the identical reasoning. Backs both the route-level
+   *  unsavedChangesGuard (navigating off this page entirely) and the
+   *  beforeunload listener below. */
+  hasUnsavedChanges(): boolean {
+    return this.taskDetailModal?.hasUnsavedChanges() ?? false;
+  }
+
+  /** CanDeactivate guards never run for a tab close/refresh — only this
+   *  catches that case. Modern browsers ignore the custom message and show
+   *  their own generic "leave site?" wording; setting returnValue is what
+   *  actually triggers that prompt at all (an empty/unset handler does
+   *  nothing). */
+  @HostListener('window:beforeunload', ['$event'])
+  confirmBeforeUnload(event: BeforeUnloadEvent) {
+    if (this.hasUnsavedChanges()) {
+      event.preventDefault();
+      event.returnValue = '';
     }
   }
 }

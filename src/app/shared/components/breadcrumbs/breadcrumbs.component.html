@@ -5,10 +5,19 @@
   </a>
   @if (parent) {
     <span class="breadcrumb-separator">/</span>
-    <a [routerLink]="parent.link" class="breadcrumb-link">{{ parent.label }}</a>
+    <a [routerLink]="parent.link" class="breadcrumb-link" [title]="parent.label" (click)="parent.onClick?.()">{{ truncate(parent.label) }}</a>
+  }
+  @if (secondaryLabel) {
+    <span class="breadcrumb-separator">/</span>
+    <button
+        type="button"
+        class="breadcrumb-link breadcrumb-link-button"
+        [title]="secondaryLabel"
+        (click)="secondaryLabelClick.emit()"
+      >{{ truncate(secondaryLabel) }}</button>
   }
   @if (label) {
     <span class="breadcrumb-separator">/</span>
-    <span class="breadcrumb-current">{{ label }}</span>
+    <span class="breadcrumb-current" [title]="label">{{ truncate(label) }}</span>
   }
 </nav>

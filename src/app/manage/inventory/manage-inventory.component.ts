@@ -30,6 +30,7 @@ import { HelpTooltipComponent } from '../../shared/components/help-tooltip/help-
 import { Database } from '../../shared/models/database.types';
 import { ActivityLogEntry, InventoryItem, MAX_INVENTORY_ITEM_IMAGES } from '../../shared/models/inventory-item.model';
 import { toIsoDateString } from '../../shared/utils/date';
+import { confirmLeaveWithoutSaving } from '../../shared/utils/confirm-leave';
 import { toInventoryItem } from '../../shared/utils/inventory-item.mapper';
 import { resolveProfileAvatarKey, resolveProfileName } from '../../shared/utils/profile-label';
 import { resolveSupplierName } from '../../shared/utils/supplier-label';
@@ -158,17 +159,24 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
     });
   }
 
-  /** Real, would-actually-lose-data input sitting in the create form right
-   *  now — a dirty field, a photo picked but not yet uploaded, or a
-   *  container/box added but not yet saved. Backs both the route-level
-   *  unsavedChangesGuard (navigating off this page entirely) and
-   *  setViewMode() above (switching to the Requests tab) — see
-   *  unsaved-changes.guard.ts's own doc comment for why this checks the
-   *  underlying state directly rather than also requiring `viewMode ===
-   *  'create'`: the data doesn't stop being unsaved just because a
-   *  different tab happens to be showing at the moment. */
+  /** Real, would-actually-lose-data input sitting in the create form, or in
+   *  the item detail view's own edit form, right now — a dirty field, a
+   *  photo picked but not yet uploaded, or a container/box added but not
+   *  yet saved, on either. Backs both the route-level unsavedChangesGuard
+   *  (navigating off this page entirely) and setViewMode() above (switching
+   *  to the Requests tab) — see unsaved-changes.guard.ts's own doc comment
+   *  for why this checks the underlying state directly rather than also
+   *  requiring `viewMode === 'create'`: the data doesn't stop being unsaved
+   *  just because a different tab/view happens to be showing at the
+   *  moment. closeInventoryDetail() below already has its own confirm gate
+   *  for leaving just the item view via its own Back button, so modalTable
+   *  is folded in here only for navigation that button doesn't otherwise
+   *  catch (a nav link, browser back, tab close). */
   hasUnsavedChanges(): boolean {
-    return this.inventoryForm.dirty || this.selectedImageFiles.length > 0 || this.newContainers.length > 0;
+    return this.inventoryForm.dirty
+      || this.selectedImageFiles.length > 0
+      || this.newContainers.length > 0
+      || (this.modalTable?.hasUnsavedChanges() ?? false);
   }
 
   /** CanDeactivate guards never run for a tab close/refresh — only this
@@ -193,12 +201,17 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
   isLoadingInventoryList = true;
   /** Set by openInventoryDetail() below — while non-null, the template
    *  swaps the tab strip and whichever tab's own content out for this item's
-   *  detail view instead, with a Back button (rendered by ModalTableComponent
-   *  itself — see its own isEmbedded) returning to whichever tab (viewMode)
-   *  was showing. Mirrored in the URL as ?item=<id>, merged alongside the
-   *  existing ?tab= param — same InventoryComponent shape, see its own
-   *  selectedItem doc comment. */
+   *  detail view instead, with a Back button (rendered here, right below
+   *  the breadcrumbs — see ModalTableComponent's own [showBackButton] doc
+   *  comment) returning to whichever tab (viewMode) was showing. Mirrored
+   *  in the URL as ?item=<id>, merged alongside the existing ?tab= param —
+   *  same InventoryComponent shape, see its own selectedItem doc comment. */
   selectedItemDetail: InventoryItem | null = null;
+  /** Only ever populated while selectedItemDetail is set (see the
+   *  template's own @if) — queried so closeInventoryDetail() below can
+   *  check for a dirty in-place edit before actually leaving; see
+   *  hasUnsavedChanges()'s own doc comment. */
+  @ViewChild(ModalTableComponent) modalTable?: ModalTableComponent;
   /** Set when loadInventoryItems()'s own query fails — see
    *  InventoryComponent's identical loadError field for the full reasoning.
    *  Left set (rather than cleared) across a later successful reload
@@ -635,8 +648,27 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
    *  DB rows, not InventoryItems, so nothing kept it in sync automatically
    *  while the detail view was showing, and a refetch of just this one row
    *  is genuinely needed, same as this used to happen via the dialog's own
-   *  afterClosed() before this was inline. */
+   *  afterClosed() before this was inline. Confirms first if a
+   *  ModalTableComponent edit is actually dirty — same "public gate +
+   *  private apply" split setViewMode() above already establishes, mirrored
+   *  here for the identical InventoryComponent.closeDetails() reasoning. */
   closeInventoryDetail() {
+    if (!(this.modalTable?.hasUnsavedChanges() ?? false)) {
+      this.applyCloseInventoryDetail();
+      return;
+    }
+
+    void confirmLeaveWithoutSaving(
+      this.dialog,
+      'You have unsaved changes on this item that will be lost if you leave it.'
+    ).then(confirmed => {
+      if (confirmed) {
+        this.applyCloseInventoryDetail();
+      }
+    });
+  }
+
+  private applyCloseInventoryDetail() {
     const itemId = this.selectedItemDetail?.id;
     this.selectedItemDetail = null;
     void this.router.navigate([], {

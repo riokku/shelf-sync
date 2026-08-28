@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output, inject } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, ViewChild, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatDialog, MatDialogContent, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
@@ -18,6 +18,7 @@ import { resolveProfileName } from '../../utils/profile-label';
 import { loadInventoryImagesByItemId } from '../../utils/inventory-item-images';
 import { loadInventoryActivityByItemId } from '../../utils/inventory-item-activity';
 import { getTodayIsoDate } from '../../utils/date';
+import { confirmLeaveWithoutSaving } from '../../utils/confirm-leave';
 import { ModalTableComponent } from '../modal-table/modal-table.component';
 import { PageHeaderComponent } from '../page-header/page-header.component';
 import { TransferTaskModalComponent } from '../transfer-task-modal/transfer-task-modal.component';
@@ -83,6 +84,16 @@ export class TaskDetailModalComponent implements OnInit {
    *  dialog — see this file's own git history — just via an @Output()
    *  instead, now that no real caller opens this as a dialog any more). */
   @Output() back = new EventEmitter<boolean>();
+  /** Mirrors whether selectedRelatedItem is set — lets whichever host page
+   *  embeds this component (TasksComponent/ManageTasksComponent/
+   *  ManageTeamComponent, all three of which render one "Back" row above
+   *  this component, in the same spot below the breadcrumbs, for as long as
+   *  a task is selected) redirect that single button's click to
+   *  closeRelatedItem() instead of the host's own "leave the task" handler
+   *  while this related-item view is showing — see selectedRelatedItem's own
+   *  doc comment for why the button itself lives up there rather than in
+   *  ModalTableComponent. */
+  @Output() relatedItemViewChange = new EventEmitter<boolean>();
 
   readonly statusLabels = TASK_STATUS_LABELS;
   readonly statuses = TASK_STATUSES;
@@ -106,11 +117,33 @@ export class TaskDetailModalComponent implements OnInit {
   /** Set by openRelatedItem() below — while non-null, the template swaps
    *  this dialog's own task-detail content out for the item's detail view
    *  instead (embedded inline via ModalTableComponent's own [data] input —
-   *  see its own doc comment), with a Back button returning to the task.
-   *  Avoids stacking a second dialog on top of this one, which is also what
-   *  originally surfaced the MatDialog DI-shadowing footgun documented in
-   *  CLAUDE.md for dialog-in-dialog components like this one. */
+   *  see its own doc comment). Avoids stacking a second dialog on top of
+   *  this one, which is also what originally surfaced the MatDialog
+   *  DI-shadowing footgun documented in CLAUDE.md for dialog-in-dialog
+   *  components like this one. ModalTableComponent's own [showBackButton] is
+   *  turned off here — the "Back" button returning to the task lives in
+   *  whichever host page embeds this component instead (TasksComponent/
+   *  ManageTasksComponent/ManageTeamComponent, via relatedItemViewChange
+   *  below), so it renders in one consistent spot below the breadcrumbs
+   *  regardless of whether "back" means leaving the task list or just this
+   *  item view — same convention InventoryComponent/ManageInventoryComponent
+   *  already established for their own selectedItem/selectedItemDetail. */
   selectedRelatedItem: InventoryItem | null = null;
+  /** Only ever populated while selectedRelatedItem is set (see the
+   *  template's own @if) — queried so hasUnsavedChanges() below can check
+   *  for a dirty in-place edit on the item view before whichever host page
+   *  lets its own Back button leave it. */
+  @ViewChild(ModalTableComponent) modalTable?: ModalTableComponent;
+
+  /** Delegates to the embedded ModalTableComponent's own hasUnsavedChanges()
+   *  — false whenever selectedRelatedItem isn't set at all, since modalTable
+   *  is only ever populated while it is. Called both by whichever host page
+   *  embeds this component (folded into its own hasUnsavedChanges(), for its
+   *  route-level guard/beforeunload listener) and by closeRelatedItem()
+   *  below, before actually discarding the related-item view. */
+  hasUnsavedChanges(): boolean {
+    return this.modalTable?.hasUnsavedChanges() ?? false;
+  }
 
   taskIdCopied = false;
   linkCopied = false;
@@ -348,12 +381,32 @@ export class TaskDetailModalComponent implements OnInit {
       resolveProfileName(item.checked_out_to, allProfiles),
       activityByItemId.get(item.id) ?? []
     );
+    this.relatedItemViewChange.emit(true);
   }
 
   /** The related-item view's own Back button — see selectedRelatedItem's own
-   *  doc comment. */
+   *  doc comment. Confirms first if the item's own edit form is actually
+   *  dirty, same "public gate + private apply" split
+   *  InventoryComponent.closeDetails() uses for the identical check. */
   closeRelatedItem() {
+    if (!this.hasUnsavedChanges()) {
+      this.applyCloseRelatedItem();
+      return;
+    }
+
+    void confirmLeaveWithoutSaving(
+      this.dialog,
+      'You have unsaved changes on this item that will be lost if you leave it.'
+    ).then(confirmed => {
+      if (confirmed) {
+        this.applyCloseRelatedItem();
+      }
+    });
+  }
+
+  private applyCloseRelatedItem() {
     this.selectedRelatedItem = null;
+    this.relatedItemViewChange.emit(false);
   }
 
   async saveStatus() {

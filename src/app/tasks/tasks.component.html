@@ -1,11 +1,16 @@
 <div class="tasks-wrapper">
   <div class="container">
   <div class="page-toolbar">
-    <app-breadcrumbs [parentOverride]="selectedTask ? tasksBreadcrumbParent : null" [labelOverride]="selectedTask?.title" />
+    <app-breadcrumbs
+        [parentOverride]="selectedTask ? tasksBreadcrumbParent : null"
+        [secondaryLabel]="breadcrumbSecondaryLabel"
+        [labelOverride]="breadcrumbLabel"
+        (secondaryLabelClick)="taskDetailModal?.closeRelatedItem()"
+      />
   </div>
   @if (selectedTask) {
     <div class="back-row">
-      <button mat-button type="button" (click)="closeTaskDetail()">
+      <button mat-button type="button" (click)="handleBackClick()">
         <mat-icon>arrow_back</mat-icon>
         Back
       </button>
@@ -21,7 +26,7 @@
     />
 
   @if (selectedTask) {
-    <app-task-detail-modal [task]="selectedTask" (back)="closeTaskDetail($event)" />
+    <app-task-detail-modal [task]="selectedTask" (back)="closeTaskDetail($event)" (relatedItemViewChange)="viewingRelatedItem = $event" />
   } @else if (loadError) {
     <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load your tasks. ' + loadError">
       <button mat-stroked-button type="button" (click)="retryLoad()">

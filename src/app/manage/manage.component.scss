@@ -50,9 +50,18 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.5rem;
-  padding: 1.75rem;
-  border-radius: 0.75rem;
+  // padding/border-radius match HomeComponent's own .home-card exactly —
+  // both grids are this app's "pick a card" moment (see the hover comment
+  // right below), but had drifted apart (this card ran looser padding and a
+  // smaller radius) since HomeComponent's own follow-up mockup-tightening
+  // pass never touched this file. No gap here, unlike an earlier version of
+  // this rule — spacing between the icon/heading/description below now
+  // comes from .manage-card-icon's own margin-bottom plus each element's
+  // own margin, the same "tighter near related text, looser after the
+  // icon" rhythm .home-card's own children already establish, rather than
+  // one flat gap applied uniformly between all three.
+  padding: 1.5rem 1.4rem;
+  border-radius: 0.9rem;
   background: var(--mat-sys-surface-container-low);
   border: 1px solid var(--mat-sys-outline-variant);
   color: inherit;
@@ -75,8 +84,13 @@
     box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.12);
   }
 
+  // font-size/weight match .home-card's own h3 — previously unset here, so
+  // this card's heading rendered at the browser's plain default h3 size
+  // instead, visibly larger/heavier than Home's own tuned-down cards.
   h3{
-    margin: 0;
+    margin: 0 0 0.3rem;
+    font-size: 1.0625rem;
+    font-weight: 700;
   }
 
   p{
@@ -125,6 +139,7 @@
   justify-content: center;
   width: 3rem;
   height: 3rem;
+  margin-bottom: 0.9rem;
   border-radius: 0.75rem;
 
   mat-icon{

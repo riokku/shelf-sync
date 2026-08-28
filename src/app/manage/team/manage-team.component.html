@@ -1,20 +1,26 @@
 <div class="manage-team-wrapper">
   <div class="container">
     <div class="page-toolbar">
-      <app-breadcrumbs />
+      <app-breadcrumbs
+          [secondaryLabel]="breadcrumbSecondaryLabel"
+          [labelOverride]="breadcrumbLabel"
+          (secondaryLabelClick)="taskDetailModal?.closeRelatedItem()"
+        />
     </div>
     @if (selectedTask) {
       <div class="back-row">
-        <button mat-button type="button" (click)="closeTaskDetail()">
+        <button mat-button type="button" (click)="handleBackClick()">
           <mat-icon>arrow_back</mat-icon>
           Back
         </button>
       </div>
     }
-    <app-page-header icon="group" title="Manage Team" />
+    @if (!selectedTask) {
+      <app-page-header icon="group" title="Manage Team" />
+    }
 
     @if (selectedTask) {
-      <app-task-detail-modal [task]="selectedTask" (back)="closeTaskDetail($event)" />
+      <app-task-detail-modal [task]="selectedTask" (back)="closeTaskDetail($event)" (relatedItemViewChange)="viewingRelatedItem = $event" />
     } @else {
     <div class="team-list">
       @if (membershipError) {

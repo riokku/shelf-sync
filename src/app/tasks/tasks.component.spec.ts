@@ -4,6 +4,7 @@ import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 import { TasksComponent } from './tasks.component';
 import { AuthService } from '../core/auth.service';
 import { SupabaseService } from '../core/supabase.service';
+import { TaskDetailModalComponent } from '../shared/components/task-detail-modal/task-detail-modal.component';
 import {
   createFakeActivatedRoute,
   createFakeAuthService,
@@ -34,6 +35,84 @@ describe('TasksComponent', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+});
+
+/** Covers tasksBreadcrumbParent's own onClick — see its doc comment for why
+ *  clicking "Tasks" in the breadcrumb needs a confirm gate identical to
+ *  closeRelatedItem()'s own, since it can skip straight past an
+ *  in-progress, unsaved related-item edit in one step. */
+describe('TasksComponent closeTaskDetailFromBreadcrumb', () => {
+  let component: TasksComponent;
+  let fixture: ComponentFixture<TasksComponent>;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [TasksComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService() }
+      ]
+    })
+    .compileComponents();
+
+    fixture = TestBed.createComponent(TasksComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
+
+  function stubDialog(confirmed: boolean) {
+    const dialog = (component as unknown as {
+      dialog: { open: (...args: unknown[]) => { afterClosed: () => { subscribe: (cb: (v: boolean) => void) => void } } };
+    }).dialog;
+    return spyOn(dialog, 'open').and.returnValue({ afterClosed: () => ({ subscribe: cb => cb(confirmed) }) });
+  }
+
+  it('closes directly when not viewing a related item', () => {
+    component.selectedTask = createTestTask();
+    component.viewingRelatedItem = false;
+    const openSpy = stubDialog(true);
+
+    component.closeTaskDetailFromBreadcrumb();
+
+    expect(openSpy).not.toHaveBeenCalled();
+    expect(component.selectedTask).toBeNull();
+  });
+
+  it('closes directly when viewing a related item with no unsaved changes', () => {
+    component.selectedTask = createTestTask();
+    component.viewingRelatedItem = true;
+    component.taskDetailModal = { hasUnsavedChanges: () => false } as unknown as TaskDetailModalComponent;
+    const openSpy = stubDialog(true);
+
+    component.closeTaskDetailFromBreadcrumb();
+
+    expect(openSpy).not.toHaveBeenCalled();
+    expect(component.selectedTask).toBeNull();
+  });
+
+  it('confirms first when viewing a related item with unsaved changes, and stays put if declined', fakeAsync(() => {
+    component.selectedTask = createTestTask();
+    component.viewingRelatedItem = true;
+    component.taskDetailModal = { hasUnsavedChanges: () => true } as unknown as TaskDetailModalComponent;
+    stubDialog(false);
+
+    component.closeTaskDetailFromBreadcrumb();
+    tick();
+
+    expect(component.selectedTask).not.toBeNull();
+  }));
+
+  it('closes once the user confirms leaving unsaved changes', fakeAsync(() => {
+    component.selectedTask = createTestTask();
+    component.viewingRelatedItem = true;
+    component.taskDetailModal = { hasUnsavedChanges: () => true } as unknown as TaskDetailModalComponent;
+    stubDialog(true);
+
+    component.closeTaskDetailFromBreadcrumb();
+    tick();
+
+    expect(component.selectedTask).toBeNull();
+  }));
 });
 
 describe('TasksComponent load errors', () => {
