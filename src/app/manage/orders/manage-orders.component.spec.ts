@@ -63,6 +63,29 @@ describe('ManageOrdersComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('No orders placed yet.');
   });
 
+  it('sets loadError instead of silently rendering an empty list when the orders query fails', async () => {
+    await setup({ error: { message: 'Network error' } });
+    fixture.detectChanges();
+
+    expect(component.loadError).toBe('Network error');
+    expect(component.orders).toEqual([]);
+    expect(fixture.nativeElement.textContent).toContain('Couldn\'t load orders. Network error');
+  });
+
+  it('retryLoad() clears loadError on a successful retry', async () => {
+    await setup({ error: { message: 'Network error' } });
+    expect(component.loadError).toBe('Network error');
+
+    (component as unknown as { supabase: SupabaseService['client'] }).supabase =
+      createFakeSupabaseService({ data: [], error: null }).client;
+
+    component.retryLoad();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(component.loadError).toBeNull();
+  });
+
   describe('filteredOrders', () => {
     it('returns every order when the filter is "all"', async () => {
       await setup();

@@ -6,11 +6,11 @@ import { createFakeProfile } from '../../testing/fakes';
  *  insert) — createFakeSupabaseService (testing/fakes.ts) is deliberately
  *  too generic for this: it returns the same fixed result for every `.from()`
  *  call, which can't express "these particular rows came back". */
-function createFakeSupabaseClient(options: { rows?: unknown[]; insertError?: { message: string } | null } = {}) {
+function createFakeSupabaseClient(options: { rows?: unknown[]; insertError?: { message: string } | null; selectError?: { message: string } | null } = {}) {
   const insertCalls: unknown[] = [];
   const builder: Record<string, unknown> = {
     then: (resolve: (value: { data: unknown; error: unknown }) => void) =>
-      resolve({ data: options.rows ?? [], error: null }),
+      resolve({ data: options.selectError ? null : (options.rows ?? []), error: options.selectError ?? null }),
   };
   for (const method of ['select', 'gte', 'lt', 'order']) {
     builder[method] = () => builder;
@@ -35,7 +35,7 @@ describe('loadActivityLog', () => {
       rows: [{ created_at: '2026-08-19T10:00:00.000Z', actor_id: 'user-1', entity_type: 'task', message: 'Created task "Restock"' }]
     });
 
-    const entries = await loadActivityLog(fake.client as never, profiles, { from: 'a', to: 'b' });
+    const { entries } = await loadActivityLog(fake.client as never, profiles, { from: 'a', to: 'b' });
 
     expect(entries).toEqual([
       { timestamp: '2026-08-19T10:00:00.000Z', actor: 'Kirsty', actorAvatarKey: 'ocean', entityType: 'task', message: 'Created task "Restock"' }
@@ -47,7 +47,7 @@ describe('loadActivityLog', () => {
       rows: [{ created_at: '2026-08-19T10:00:00.000Z', actor_id: null, entity_type: 'member', message: 'Purged expired org' }]
     });
 
-    const entries = await loadActivityLog(fake.client as never, profiles, { from: 'a', to: 'b' });
+    const { entries } = await loadActivityLog(fake.client as never, profiles, { from: 'a', to: 'b' });
 
     expect(entries[0].actor).toBe('System');
     expect(entries[0].actorAvatarKey).toBeNull();
@@ -58,7 +58,7 @@ describe('loadActivityLog', () => {
       rows: [{ created_at: '2026-08-19T10:00:00.000Z', actor_id: 'user-gone', entity_type: 'inventory_item', message: 'Created item "Widget"' }]
     });
 
-    const entries = await loadActivityLog(fake.client as never, profiles, { from: 'a', to: 'b' });
+    const { entries } = await loadActivityLog(fake.client as never, profiles, { from: 'a', to: 'b' });
 
     expect(entries[0].actor).toBe('Unknown user');
   });
@@ -66,8 +66,17 @@ describe('loadActivityLog', () => {
   it('returns an empty array when there are no rows in range', async () => {
     const fake = createFakeSupabaseClient({ rows: [] });
 
-    const entries = await loadActivityLog(fake.client as never, profiles, { from: 'a', to: 'b' });
+    const { entries } = await loadActivityLog(fake.client as never, profiles, { from: 'a', to: 'b' });
 
+    expect(entries).toEqual([]);
+  });
+
+  it('returns the error message and no entries when the query fails', async () => {
+    const fake = createFakeSupabaseClient({ selectError: { message: 'connection reset' } });
+
+    const { entries, error } = await loadActivityLog(fake.client as never, profiles, { from: 'a', to: 'b' });
+
+    expect(error).toBe('connection reset');
     expect(entries).toEqual([]);
   });
 });

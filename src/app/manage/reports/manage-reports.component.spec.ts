@@ -13,10 +13,13 @@ function createFakeSupabaseServiceForReports(data: {
   discards?: unknown[];
   tasks?: unknown[];
   profiles?: unknown[];
+  errors?: { items?: string; discards?: string; tasks?: string };
 }): SupabaseService {
-  function builderFor(rows: unknown[]) {
+  function builderFor(rows: unknown[], errorMessage: string | undefined) {
+    const error = errorMessage ? { message: errorMessage } : null;
     const builder: Record<string, unknown> = {
-      then: (resolve: (value: { data: unknown[]; error: null }) => void) => resolve({ data: rows, error: null }),
+      then: (resolve: (value: { data: unknown[] | null; error: { message: string } | null }) => void) =>
+        resolve({ data: error ? null : rows, error }),
     };
     for (const method of ['select', 'eq', 'neq', 'order']) {
       builder[method] = () => builder;
@@ -28,15 +31,15 @@ function createFakeSupabaseServiceForReports(data: {
     client: {
       from: (table: string) => {
         if (table === 'inventory_item_discards') {
-          return builderFor(data.discards ?? []);
+          return builderFor(data.discards ?? [], data.errors?.discards);
         }
         if (table === 'tasks') {
-          return builderFor(data.tasks ?? []);
+          return builderFor(data.tasks ?? [], data.errors?.tasks);
         }
         if (table === 'profiles') {
-          return builderFor(data.profiles ?? []);
+          return builderFor(data.profiles ?? [], undefined);
         }
-        return builderFor(data.items ?? []);
+        return builderFor(data.items ?? [], data.errors?.items);
       }
     }
   };
@@ -73,6 +76,7 @@ async function createComponent(data: {
   discards?: unknown[];
   tasks?: unknown[];
   profiles?: unknown[];
+  errors?: { items?: string; discards?: string; tasks?: string };
 }): Promise<ManageReportsComponent> {
   await TestBed.resetTestingModule().configureTestingModule({
     imports: [ManageReportsComponent],
@@ -93,6 +97,41 @@ describe('ManageReportsComponent', () => {
     const component = await createComponent({});
     expect(component).toBeTruthy();
     expect(component.isLoading).toBeFalse();
+  });
+
+  describe('load errors', () => {
+    it('sets loadError instead of silently rendering zeroed-out stats when the items query fails', async () => {
+      const component = await createComponent({ errors: { items: 'Network error' } });
+      expect(component.loadError).toBe('Network error');
+      expect(component.isLoading).toBeFalse();
+    });
+
+    it('sets loadError when the discards query fails', async () => {
+      const component = await createComponent({ errors: { discards: 'Network error' } });
+      expect(component.loadError).toBe('Network error');
+    });
+
+    it('sets loadError when the tasks query fails', async () => {
+      const component = await createComponent({ errors: { tasks: 'Network error' } });
+      expect(component.loadError).toBe('Network error');
+    });
+
+    it('retryLoad() clears loadError on a successful retry', async () => {
+      const component = await createComponent({ errors: { items: 'Network error' } });
+      expect(component.loadError).toBe('Network error');
+
+      (component as unknown as { supabase: SupabaseService['client'] }).supabase =
+        createFakeSupabaseServiceForReports({}).client;
+
+      component.retryLoad();
+      // A real macrotask boundary rather than a fixed number of
+      // Promise.resolve() ticks — loadReportData()'s own Promise.all resolves
+      // several microtasks deep (four chained query builders), which a
+      // couple of bare ticks doesn't reliably flush.
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(component.loadError).toBeNull();
+    });
   });
 
   describe('inventory value & stock health', () => {

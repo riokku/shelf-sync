@@ -35,8 +35,9 @@ describe('loadAllInventoryItemOrders', () => {
       received_at: '2026-01-18T00:00:00.000Z'
     }]);
 
-    const orders = await loadAllInventoryItemOrders(client as never, profiles, itemNamesById);
+    const { orders, error } = await loadAllInventoryItemOrders(client as never, profiles, itemNamesById);
 
+    expect(error).toBeNull();
     expect(orders).toEqual([{
       id: 'order-1',
       itemId: 'item-1',
@@ -66,7 +67,7 @@ describe('loadAllInventoryItemOrders', () => {
       received_at: null
     }]);
 
-    const orders = await loadAllInventoryItemOrders(client as never, profiles, itemNamesById);
+    const { orders } = await loadAllInventoryItemOrders(client as never, profiles, itemNamesById);
 
     expect(orders[0].itemName).toBe('Unknown item');
   });
@@ -74,8 +75,26 @@ describe('loadAllInventoryItemOrders', () => {
   it('returns an empty array when the org has no orders', async () => {
     const client = createFakeSupabaseClient([]);
 
-    const orders = await loadAllInventoryItemOrders(client as never, profiles, itemNamesById);
+    const { orders } = await loadAllInventoryItemOrders(client as never, profiles, itemNamesById);
 
+    expect(orders).toEqual([]);
+  });
+
+  it('returns the error message and no orders when the query fails', async () => {
+    const client = {
+      from: () => ({
+        select: () => ({
+          order: () => ({
+            then: (resolve: (value: { data: unknown; error: unknown }) => void) =>
+              resolve({ data: null, error: { message: 'connection reset' } })
+          })
+        })
+      })
+    } as unknown as { from: () => unknown };
+
+    const { orders, error } = await loadAllInventoryItemOrders(client as never, profiles, itemNamesById);
+
+    expect(error).toBe('connection reset');
     expect(orders).toEqual([]);
   });
 });

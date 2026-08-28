@@ -47,6 +47,12 @@ export class ManageSuppliersComponent implements OnInit {
     this.isLoading = false;
   }
 
+  /** The Retry button's handler once supplierService.loadError() is set —
+   *  see InventoryComponent's identical retryLoad() for the full reasoning. */
+  retryLoad() {
+    void this.supplierService.load();
+  }
+
   private openForm(data: SupplierFormModalData) {
     const dialogRef = this.dialog.open(SupplierFormModalComponent, {
       data,

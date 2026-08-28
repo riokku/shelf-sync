@@ -19,6 +19,13 @@
       <div class="loading-row">
         <mat-spinner diameter="32"></mat-spinner>
       </div>
+    } @else if (loadError) {
+      <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load reservations. ' + loadError">
+        <button mat-stroked-button type="button" (click)="retryLoad()">
+          <mat-icon>refresh</mat-icon>
+          Retry
+        </button>
+      </app-empty-state>
     } @else {
       <mat-button-toggle-group [(ngModel)]="statusFilter" class="status-toggle">
         <mat-button-toggle value="all">All</mat-button-toggle>

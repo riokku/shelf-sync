@@ -42,22 +42,35 @@ function toInventoryItemReservation(row: InventoryItemReservationRow, profiles: 
  *  policy, joined through item_id to inventory_items.organization_id) is
  *  what actually scopes this to the caller's org, same "no explicit
  *  organization_id filter, RLS alone does the scoping" convention every
- *  other unfiltered .from(...) query in this app already follows. */
+ *  other unfiltered .from(...) query in this app already follows.
+ *
+ *  Returns `{ reservations, error }` rather than a bare array — this is the
+ *  page's own primary content load, so its caller needs to distinguish a
+ *  genuine fetch failure from "no reservations yet" the same way
+ *  InventoryComponent/TasksComponent's own direct queries already do (see
+ *  their loadError field); a bare array can't carry that distinction. */
 export async function loadAllInventoryItemReservations(
   supabase: SupabaseClient<Database>,
   profiles: Profile[],
   itemNamesById: Map<string, string>
-): Promise<InventoryItemReservationWithItem[]> {
-  const { data } = await supabase
+): Promise<{ reservations: InventoryItemReservationWithItem[]; error: string | null }> {
+  const { data, error } = await supabase
     .from('inventory_item_reservations')
     .select('*')
     .order('reserved_at', { ascending: false });
 
-  return (data ?? []).map(row => ({
-    ...toInventoryItemReservation(row, profiles),
-    itemId: row.item_id,
-    itemName: itemNamesById.get(row.item_id) ?? 'Unknown item'
-  }));
+  if (error) {
+    return { reservations: [], error: error.message };
+  }
+
+  return {
+    reservations: (data ?? []).map(row => ({
+      ...toInventoryItemReservation(row, profiles),
+      itemId: row.item_id,
+      itemName: itemNamesById.get(row.item_id) ?? 'Unknown item'
+    })),
+    error: null
+  };
 }
 
 /** Lighter-weight than loadAllInventoryItemReservations() above — just this

@@ -32,6 +32,15 @@ export class ManageActivityComponent implements OnInit {
   private profiles: Profile[] = [];
   entries: OrgActivityLogEntry[] = [];
   isLoading = true;
+  /** Set when loadEntries()'s own query fails — see InventoryComponent's
+   *  identical loadError field for the full reasoning. Unlike that field's
+   *  usual "leave what's already loaded in place" background-refresh
+   *  behavior, a failed day-navigation reload here does clear entries —
+   *  loadEntries() already swaps the whole list out for a spinner on every
+   *  nav (isLoading), so there's no "stale but visible" list to preserve;
+   *  showing the error state cleanly instead of a leftover previous day's
+   *  entries is less confusing. */
+  loadError: string | null = null;
 
   /** Local midnight for the day currently shown — defaults to today. Day
    *  navigation (prev/next) below just adds/subtracts a day and reloads. */
@@ -51,16 +60,30 @@ export class ManageActivityComponent implements OnInit {
     await this.loadEntries();
   }
 
+  /** Re-runs loadEntries() after a failed load — the Retry button's handler
+   *  (see the template's own loadError branch). */
+  retryLoad() {
+    void this.loadEntries();
+  }
+
   private async loadEntries() {
     this.isLoading = true;
 
     const from = this.selectedDate;
     const to = new Date(from.getFullYear(), from.getMonth(), from.getDate() + 1);
-    this.entries = await loadActivityLog(this.supabase, this.profiles, {
+    const { entries, error } = await loadActivityLog(this.supabase, this.profiles, {
       from: from.toISOString(),
       to: to.toISOString()
     });
 
+    if (error) {
+      this.loadError = error;
+      this.entries = [];
+      this.isLoading = false;
+      return;
+    }
+    this.loadError = null;
+    this.entries = entries;
     this.isLoading = false;
   }
 

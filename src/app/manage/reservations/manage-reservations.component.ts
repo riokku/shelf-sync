@@ -67,6 +67,14 @@ export class ManageReservationsComponent implements OnInit {
   isLoading = true;
   isProcessingReservation = false;
   reservationError: string | null = null;
+  /** Set when loadReservations()'s own query fails — see InventoryComponent's
+   *  identical loadError field for the full reasoning. Only the reservations
+   *  query itself is checked, not the items/profiles lookups ngOnInit also
+   *  runs alongside it — those are supporting lookups for labels/the item
+   *  picker, not this page's own primary content, same "secondary loads
+   *  stay unchecked" line every other loadError rollout in this app already
+   *  draws (see TasksComponent's own profiles label lookup). */
+  loadError: string | null = null;
 
   /** Backs app-page-header's own subtitle — the one role-conditional bit of
    *  copy on this page (see this component's own route comment for why:
@@ -111,9 +119,25 @@ export class ManageReservationsComponent implements OnInit {
     this.isLoading = false;
   }
 
+  /** Re-runs loadReservations() after a failed load — the Retry button's
+   *  handler (see the template's own loadError branch). A failed
+   *  *background* refresh (e.g. after an action below) leaves whatever was
+   *  already loaded in place rather than clearing it — same
+   *  "don't lose what the user was already looking at" reasoning
+   *  ManageTeamComponent's own loadError paragraph in CLAUDE.md describes. */
+  retryLoad() {
+    void this.loadReservations();
+  }
+
   private async loadReservations() {
     const itemNamesById = new Map(this.allItems.map(item => [item.id, item.name]));
-    this.reservations = await loadAllInventoryItemReservations(this.supabase, this.profiles, itemNamesById);
+    const { reservations, error } = await loadAllInventoryItemReservations(this.supabase, this.profiles, itemNamesById);
+    if (error) {
+      this.loadError = error;
+      return;
+    }
+    this.loadError = null;
+    this.reservations = reservations;
   }
 
   openPlaceReservation() {

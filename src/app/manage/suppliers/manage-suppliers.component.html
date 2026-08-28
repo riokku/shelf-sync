@@ -23,6 +23,13 @@
       <div class="loading-row">
         <mat-spinner diameter="32"></mat-spinner>
       </div>
+    } @else if (supplierService.loadError()) {
+      <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load suppliers. ' + supplierService.loadError()">
+        <button mat-stroked-button type="button" (click)="retryLoad()">
+          <mat-icon>refresh</mat-icon>
+          Retry
+        </button>
+      </app-empty-state>
     } @else if (supplierService.suppliers().length === 0) {
       <app-empty-state icon="storefront" message="No suppliers yet — add your first one." />
     } @else {

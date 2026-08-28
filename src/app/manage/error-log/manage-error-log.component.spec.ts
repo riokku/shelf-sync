@@ -90,3 +90,43 @@ describe('ManageErrorLogComponent', () => {
     });
   });
 });
+
+describe('ManageErrorLogComponent load errors', () => {
+  async function createComponent(supabaseService: SupabaseService): Promise<ManageErrorLogComponent> {
+    await TestBed.configureTestingModule({
+      imports: [ManageErrorLogComponent],
+      providers: [
+        provideRouter([]),
+        { provide: SupabaseService, useValue: supabaseService }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ManageErrorLogComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    return fixture.componentInstance;
+  }
+
+  it('sets loadError instead of silently rendering "No errors logged" when the query fails', async () => {
+    const failingSupabase = createFakeSupabaseService({ data: null, error: { message: 'Network error' } });
+    const component = await createComponent(failingSupabase);
+
+    expect(component.loadError).toBe('Network error');
+    expect(component.errorLog).toEqual([]);
+  });
+
+  it('retryLoad() clears loadError on a successful retry', async () => {
+    const failingSupabase = createFakeSupabaseService({ data: null, error: { message: 'Network error' } });
+    const component = await createComponent(failingSupabase);
+    expect(component.loadError).toBe('Network error');
+
+    (component as unknown as { supabase: SupabaseService['client'] }).supabase =
+      createFakeSupabaseService({ data: [], error: null }).client;
+
+    component.retryLoad();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(component.loadError).toBeNull();
+  });
+});

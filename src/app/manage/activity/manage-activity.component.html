@@ -17,6 +17,13 @@
 
     @if (isLoading) {
       <mat-spinner diameter="32" />
+    } @else if (loadError) {
+      <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load the activity log. ' + loadError">
+        <button mat-stroked-button type="button" (click)="retryLoad()">
+          <mat-icon>refresh</mat-icon>
+          Retry
+        </button>
+      </app-empty-state>
     } @else if (entries.length === 0) {
       <app-empty-state icon="history" message="No activity on this day." />
     } @else {
