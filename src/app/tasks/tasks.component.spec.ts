@@ -99,12 +99,14 @@ describe('TasksComponent ?task= deep link', () => {
   it('opens the task directly when it is in this user\'s own list', async () => {
     const task = createTestTask({ id: 'task-1' });
     const fixture = await createComponent('task-1', [task], 'staff');
-    const openTaskSpy = spyOn(fixture.componentInstance, 'openTask');
 
     fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(openTaskSpy).toHaveBeenCalledWith(jasmine.objectContaining({ id: 'task-1' }));
+    // Sets selectedTask directly rather than going through openTask() — see
+    // that method's own doc comment — since the URL already has ?task= on
+    // it and there's nothing left to navigate.
+    expect(fixture.componentInstance.selectedTask).toEqual(jasmine.objectContaining({ id: 'task-1' }));
   });
 
   it('falls back to /manage/tasks for a manager+ viewer when the task is not in their own list', async () => {

@@ -327,8 +327,8 @@ mat-icon{
 // Default dialog title/body color for any dialog that doesn't set its own
 // (like CreateTaskModalComponent) — belt-and-suspenders alongside the
 // --mat-dialog-subhead-color/-supporting-text-color tokens above. The more
-// specific .item-details-dialog/.task-details-dialog rule below still wins
-// for dialogs that intentionally use a colored title band instead.
+// specific .task-details-dialog rule below still wins for a dialog that
+// intentionally uses a colored title band instead.
 .mat-mdc-dialog-title{
   color: var(--mat-sys-on-surface);
 }
@@ -367,7 +367,6 @@ mat-icon{
   --mat-snack-bar-supporting-text-color: var(--app-success-on-bg);
 }
 
-.item-details-dialog,
 .task-details-dialog{
   .mat-mdc-dialog-title{
     background-color: var(--mat-sys-primary-container);
@@ -429,59 +428,12 @@ mat-icon{
   color: var(--mat-sys-error);
 }
 
-// The item details dialog's content (several info tables) exceeds Material's
-// default 65vh content cap on typical screens, forcing an internal scrollbar.
-// The dialog itself is opened with maxHeight: '90vh' (see showDetails() in
-// inventory.component.ts), which bounds the *whole* dialog including the
-// title/GUID bar; letting content grow unconstrained here means it only
-// takes whatever room is left within that outer cap, and the dialog surface
-// falls back to its own scrollbar (rather than clipping content off-screen)
-// on viewports too short to fit everything. The explicit padding value here
-// is also what modal-table.component.scss's section headers bleed against
-// to span full width.
-.item-details-dialog{
-  .mat-mdc-dialog-content{
-    max-height: none;
-    padding: 1.75rem;
-    // Material's default is `overflow: auto` on both axes. Long unbroken
-    // strings (URLs in the info tables) are wrapped at the cell level
-    // (table-layout: fixed + overflow-wrap in modal-table.component.scss),
-    // but keep horizontal scroll off entirely as a hard guarantee rather
-    // than relying solely on content never overflowing sideways.
-    overflow-x: hidden;
-    overflow-y: auto;
-  }
-}
-
 // Full-bleed image viewer: no title bar, no default surface padding — the
 // component's own .lightbox fills the whole dialog surface edge-to-edge.
 .image-lightbox-dialog{
   .mat-mdc-dialog-surface{
     padding: 0;
     background: #000;
-  }
-}
-
-// mat-tab-group normally resizes its body to match whichever tab is active
-// (animating `.mat-mdc-tab-body-wrapper`'s height via an inline style), so
-// the item details dialog would grow/shrink switching between the Info and
-// Activity Log tabs. Give it a minimum height instead — !important is
-// needed to beat that inline style — so a short tab (Activity Log) doesn't
-// leave the dialog looking cramped, without hard-clipping a tall one.
-.item-details-dialog{
-  .mat-mdc-tab-body-wrapper{
-    min-height: min(45rem, 65vh) !important;
-  }
-
-  // Material gives each tab's own content area an independent `overflow:
-  // auto`, which — stacked on top of the dialog content's own scroll region
-  // below — produced two nested scrollbars once a tab's content ran long.
-  // Let content overflow visibly here instead; the single scrollbar on
-  // .mat-mdc-dialog-content (below) ends up as the only one, since it isn't
-  // clipped off from measuring this content's real height anymore.
-  .mat-mdc-tab-body-content{
-    overflow-x: hidden;
-    overflow-y: visible;
   }
 }
 

@@ -1,4 +1,38 @@
-<h2 mat-dialog-title>{{ task.title }}</h2>
+@if (selectedRelatedItem) {
+  <app-modal-table [data]="selectedRelatedItem" (back)="closeRelatedItem()" />
+} @else {
+<app-page-header [title]="showTitle ? task.title : undefined" alignActions="center">
+  <div class="task-id-row" headerMeta>
+    <mat-icon>tag</mat-icon>
+    <code>{{ task.id }}</code>
+    <button mat-icon-button type="button" (click)="copyTaskId()" [attr.aria-label]="'Copy task ID'">
+      <mat-icon>{{ taskIdCopied ? 'check' : 'content_copy' }}</mat-icon>
+    </button>
+    <button mat-icon-button type="button" (click)="copyLink()" [attr.aria-label]="'Copy link'">
+      <mat-icon>{{ linkCopied ? 'check' : 'link' }}</mat-icon>
+    </button>
+  </div>
+  @if (!isPendingRecipient) {
+    <div class="actions-group">
+      <span class="actions-label">Actions</span>
+      <div class="actions">
+        @if (canShowTransferPanel && !task.pending_transfer_to && !isPickingTransferTarget) {
+          <button mat-stroked-button type="button" class="start-transfer-button" (click)="startTransfer()">
+            <mat-icon>swap_horiz</mat-icon>
+            Transfer
+          </button>
+        }
+        <button mat-flat-button color="primary" type="button" (click)="saveStatus()" [disabled]="isSaving">
+          @if (isSaving) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            Save
+          }
+        </button>
+      </div>
+    </div>
+  }
+</app-page-header>
 <mat-dialog-content>
   @if (task.related_item_name) {
     <button
@@ -25,6 +59,12 @@
   }
 
   <dl class="task-meta">
+    <dt>Assigned to</dt>
+    <dd>{{ assigneeLabel() }}</dd>
+    @if (isPendingRecipient) {
+      <dt>Status</dt>
+      <dd>{{ statusLabels[task.status] }}</dd>
+    }
     @if (task.due_date) {
       <dt>Due date</dt>
       <dd [class.overdue]="isOverdue">
@@ -38,20 +78,11 @@
     <dd>{{ task.created_at | date: 'M/d/yy' }}</dd>
     <dt>Created by</dt>
     <dd>{{ createdByLabel() }}</dd>
-    <dt>Task ID</dt>
-    <dd class="task-id-row">
-      <code>{{ task.id }}</code>
-      <button mat-icon-button type="button" (click)="copyTaskId()" [attr.aria-label]="'Copy task ID'">
-        <mat-icon>{{ taskIdCopied ? 'check' : 'content_copy' }}</mat-icon>
-      </button>
-      <button mat-icon-button type="button" (click)="copyLink()" [attr.aria-label]="'Copy link'">
-        <mat-icon>{{ linkCopied ? 'check' : 'link' }}</mat-icon>
-      </button>
-    </dd>
   </dl>
 
   @if (!isPendingRecipient) {
     <mat-form-field appearance="outline" class="status-field">
+      <mat-label>Status</mat-label>
       <mat-icon matPrefix>flag</mat-icon>
       <mat-select [(ngModel)]="selectedStatus">
         @for (status of statuses; track status) {
@@ -136,21 +167,4 @@
     <p class="error-message">{{ transferError }}</p>
   }
 </mat-dialog-content>
-<mat-dialog-actions align="end">
-  @if (!isPendingRecipient && canShowTransferPanel && !task.pending_transfer_to && !isPickingTransferTarget) {
-    <button mat-stroked-button type="button" class="start-transfer-button" (click)="startTransfer()">
-      <mat-icon>swap_horiz</mat-icon>
-      Transfer
-    </button>
-  }
-  <button mat-button type="button" (click)="closeModal()">{{ isPendingRecipient ? 'Close' : 'Cancel' }}</button>
-  @if (!isPendingRecipient) {
-    <button mat-flat-button color="primary" type="button" (click)="saveStatus()" [disabled]="isSaving">
-      @if (isSaving) {
-        <mat-spinner diameter="20"></mat-spinner>
-      } @else {
-        Save
-      }
-    </button>
-  }
-</mat-dialog-actions>
+}

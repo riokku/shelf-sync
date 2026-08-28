@@ -1,7 +1,7 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MatDialog, MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatDialogContent, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
@@ -11,6 +11,7 @@ import { SupabaseService } from '../../../core/supabase.service';
 import { NotificationService } from '../../../core/notification.service';
 import { AuthService, Profile } from '../../../core/auth.service';
 import { Database } from '../../models/database.types';
+import { InventoryItem } from '../../models/inventory-item.model';
 import { TASK_STATUSES, TASK_STATUS_LABELS } from '../../models/task-status';
 import { toInventoryItem } from '../../utils/inventory-item.mapper';
 import { profileDisplayName, resolveProfileName } from '../../utils/profile-label';
@@ -18,6 +19,7 @@ import { loadInventoryImagesByItemId } from '../../utils/inventory-item-images';
 import { loadInventoryActivityByItemId } from '../../utils/inventory-item-activity';
 import { getTodayIsoDate } from '../../utils/date';
 import { ModalTableComponent } from '../modal-table/modal-table.component';
+import { PageHeaderComponent } from '../page-header/page-header.component';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
 
@@ -26,23 +28,62 @@ type Task = Database['public']['Tables']['tasks']['Row'];
   imports: [
     DatePipe,
     FormsModule,
-    MatDialogModule,
+    // Just the one directive still needed (mat-dialog-content, for its
+    // CdkScrollable host + CSS hook — see the padding/overflow override in
+    // this component's own stylesheet) rather than the whole
+    // MatDialogModule — mat-dialog-title/-actions are no longer used
+    // anywhere in this template, replaced by app-page-header below. Same
+    // "avoid importing provider baggage this component doesn't need"
+    // reasoning ModalTableComponent's own identical switch already
+    // documents.
+    MatDialogContent,
     MatIconModule,
     MatFormFieldModule,
     MatSelectModule,
     MatButtonModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    ModalTableComponent,
+    PageHeaderComponent
   ],
   templateUrl: './task-detail-modal.component.html',
   styleUrl: './task-detail-modal.component.scss',
 })
 export class TaskDetailModalComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
-  private dialog = inject(MatDialog);
   private notification = inject(NotificationService);
   protected authService = inject(AuthService);
-  dialogRef = inject(MatDialogRef<TaskDetailModalComponent>);
-  task = inject<Task>(MAT_DIALOG_DATA);
+  // Both optional — every real caller now embeds this component inline with
+  // a plain [task] binding (TasksComponent, ManageTeamComponent,
+  // ManageTasksComponent — see each's own doc comment) rather than opening
+  // it as its own top-level MatDialog, so neither token resolves to
+  // anything in practice any more. Kept (rather than dropped in favor of a
+  // plain required @Input()) so this can still be opened as a real dialog
+  // if some future caller wants that, and so the existing spec's
+  // MAT_DIALOG_DATA/MatDialogRef-based TestBed setup keeps working
+  // unmodified — same shape ModalTableComponent's own dialogRef/data
+  // already establishes.
+  dialogRef = inject(MatDialogRef<TaskDetailModalComponent>, { optional: true });
+  private dialogData = inject<Task | null>(MAT_DIALOG_DATA, { optional: true });
+  /** The task being shown. Defaults to whatever MAT_DIALOG_DATA resolved to
+   *  (null when there's no enclosing dialog) — an inline caller's [task]
+   *  binding overwrites this before ngOnInit runs, same as any other
+   *  @Input(). */
+  @Input() task: Task = this.dialogData as Task;
+  /** Whether the task's title renders as its own heading here (via
+   *  app-page-header) — off for TasksComponent's own usage, since that
+   *  page's own outer heading already shows the same title once a task is
+   *  selected (mirrors ModalTableComponent's own showTitle/InventoryComponent
+   *  pairing). ManageTeamComponent/ManageTasksComponent have no such outer
+   *  heading of their own, so this stays true — the default — for those. */
+  @Input() showTitle = true;
+  /** Emits once this task's own detail view should close — true when
+   *  something about the task actually changed (a status save, or any
+   *  transfer action), so the caller knows to reload its own list; false
+   *  for a plain "leave without changing anything" (mirrors each of this
+   *  component's own dialogRef.close(...) calls from when this was a real
+   *  dialog — see this file's own git history — just via an @Output()
+   *  instead, now that no real caller opens this as a dialog any more). */
+  @Output() back = new EventEmitter<boolean>();
 
   readonly statusLabels = TASK_STATUS_LABELS;
   readonly statuses = TASK_STATUSES;
@@ -53,6 +94,14 @@ export class TaskDetailModalComponent implements OnInit {
 
   isLoadingRelatedItem = false;
   relatedItemError: string | null = null;
+  /** Set by openRelatedItem() below — while non-null, the template swaps
+   *  this dialog's own task-detail content out for the item's detail view
+   *  instead (embedded inline via ModalTableComponent's own [data] input —
+   *  see its own doc comment), with a Back button returning to the task.
+   *  Avoids stacking a second dialog on top of this one, which is also what
+   *  originally surfaced the MatDialog DI-shadowing footgun documented in
+   *  CLAUDE.md for dialog-in-dialog components like this one. */
+  selectedRelatedItem: InventoryItem | null = null;
 
   taskIdCopied = false;
   linkCopied = false;
@@ -171,7 +220,7 @@ export class TaskDetailModalComponent implements OnInit {
     }
 
     this.notification.success('Transfer requested');
-    this.dialogRef.close({ ...this.task, pending_transfer_to: this.transferTarget });
+    this.back.emit(true);
   }
 
   async cancelTransfer() {
@@ -192,7 +241,7 @@ export class TaskDetailModalComponent implements OnInit {
     }
 
     this.notification.success('Transfer cancelled');
-    this.dialogRef.close({ ...this.task, pending_transfer_to: null });
+    this.back.emit(true);
   }
 
   async acceptTransfer() {
@@ -213,7 +262,7 @@ export class TaskDetailModalComponent implements OnInit {
     }
 
     this.notification.success('Task accepted');
-    this.dialogRef.close({ ...this.task, assigned_to: this.currentUserId, pending_transfer_to: null });
+    this.back.emit(true);
   }
 
   async declineTransfer() {
@@ -234,7 +283,7 @@ export class TaskDetailModalComponent implements OnInit {
     }
 
     this.notification.success('Transfer declined');
-    this.dialogRef.close({ ...this.task, pending_transfer_to: null });
+    this.back.emit(true);
   }
 
   async copyTaskId() {
@@ -286,23 +335,23 @@ export class TaskDetailModalComponent implements OnInit {
 
     this.isLoadingRelatedItem = false;
 
-    this.dialog.open(ModalTableComponent, {
-      data: toInventoryItem(
-        item,
-        imagesByItemId.get(item.id) ?? [],
-        resolveProfileName(item.checked_out_to, allProfiles),
-        activityByItemId.get(item.id) ?? []
-      ),
-      width: 'clamp(45rem, 78vw, 70rem)',
-      maxWidth: '90vw',
-      maxHeight: '95vh',
-      panelClass: 'item-details-dialog'
-    });
+    this.selectedRelatedItem = toInventoryItem(
+      item,
+      imagesByItemId.get(item.id) ?? [],
+      resolveProfileName(item.checked_out_to, allProfiles),
+      activityByItemId.get(item.id) ?? []
+    );
+  }
+
+  /** The related-item view's own Back button — see selectedRelatedItem's own
+   *  doc comment. */
+  closeRelatedItem() {
+    this.selectedRelatedItem = null;
   }
 
   async saveStatus() {
     if (this.selectedStatus === this.task.status) {
-      this.dialogRef.close();
+      this.back.emit(false);
       return;
     }
 
@@ -325,10 +374,6 @@ export class TaskDetailModalComponent implements OnInit {
       return;
     }
 
-    this.dialogRef.close({ ...this.task, status: this.selectedStatus });
-  }
-
-  closeModal() {
-    this.dialogRef.close();
+    this.back.emit(true);
   }
 }

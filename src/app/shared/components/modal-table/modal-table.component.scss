@@ -1,42 +1,187 @@
-.asset-id-row{
+// A real MatDialog wraps its content in a block-level container regardless
+// of this component's own default display, but nothing does that for the
+// embedded case (this renders as a plain sibling in the page's own normal
+// flow — see dialogRef's own doc comment for why that's the only real case
+// today) — custom elements default to `display: inline` otherwise.
+:host{
+  display: block;
+}
+
+// Only rendered when isEmbedded (see the component's own doc comment) — a
+// real dialog already has its own way out (backdrop click / Escape). Sits
+// below app-page-header now (title/GUID/actions first, Back last) rather
+// than above it — no top margin needed since that component's own :host
+// already carries a 1.5rem margin-bottom ahead of this; negative left
+// margin so this button's own padding doesn't visibly indent it past
+// whatever sits below (the lockError/retired/low-stock notices, or the
+// Info/Activity Log toggle itself). Same overall shape
+// StudioOrgDetailComponent's own .back-row establishes, just reordered
+// relative to its own page-header.
+.back-row{
+  margin: 0 0 1rem -0.75rem;
+}
+
+// The CTAs that used to sit in a bottom mat-dialog-actions bar now render
+// inside app-page-header's own trailing-action slot instead — top-right,
+// next to the title, so they're visible without scrolling past a (now
+// potentially long, full-width) page's worth of content first. Boxed as its
+// own visually distinct group (bordered card, labeled "Actions") rather
+// than just a loose row of buttons floating in the header's corner — same
+// "a named group of controls reads as its own thing" reasoning the GUID
+// pill and low/out-of-stock pill beside it already establish for the
+// header's other two areas.
+.actions-group{
+  flex: 0 0 auto;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 0.75rem;
+  padding: 0.5rem 0.75rem 0.625rem;
+  background: var(--mat-sys-surface-container-low);
+}
+
+.actions-label{
+  display: block;
+  margin-bottom: 0.375rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+// PageHeaderComponent's own .page-header-actions slot is just flex:0 0 auto,
+// sized to whatever it's given — this is what actually lays the buttons
+// themselves out in a row.
+.actions{
   display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+// mat-dialog-content is kept only for its CdkScrollable host directive and
+// CSS hook, not because this ever renders inside a real dialog surface in
+// practice (see dialogRef's own doc comment) — so Material's own global
+// `.mat-mdc-dialog-content { max-height: 65vh; overflow: auto }` rule
+// (tuned for a dialog's own fixed, viewport-bound surface) is wrong here:
+// it would clip this into its own small inner scrollbar instead of letting
+// the page itself scroll, the way every other full-width page in this app
+// already does. mat-dialog-content.mat-mdc-dialog-content beats that rule's
+// specificity (element + class vs. class alone) regardless of stylesheet
+// load order.
+mat-dialog-content.mat-mdc-dialog-content{
+  max-height: none;
+  padding: 0;
+  overflow: visible;
+}
+
+// Info vs. Activity Log — a mat-button-toggle-group instead of the
+// mat-tab-group this used to be, matching every other "switch between a
+// couple of sections" control in this app (Inventory's own card/table
+// toggle, Settings' tabs, etc.) rather than Material's own tab strip.
+.detail-subtab-toggle{
+  margin-bottom: 1.25rem;
+}
+
+// Photos no longer need to stretch edge-to-edge now that this renders on a
+// full-width page rather than inside a ~70rem-capped dialog — a
+// fixed-height gallery image (see image-gallery.component.scss) stretched
+// across that width reads as a thin letterboxed strip rather than an actual
+// photo. Sits beside General information instead, so the extra width goes
+// toward showing more at a glance rather than one full-width section
+// stacked on top of another.
+.detail-top-row{
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+  // .info-section's own margin-bottom is lost on whichever of these two
+  // sections ends up last-child within this row (see that rule's own
+  // comment) — restore the same rhythm before Quantity information below.
+  margin-bottom: 1.25rem;
+}
+
+.photos-section{
+  flex: 0 0 22rem;
+  max-width: 22rem;
+}
+
+.detail-top-row > .info-section:last-child{
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+@media (max-width: 56rem){
+  .detail-top-row{
+    flex-direction: column;
+  }
+
+  .photos-section{
+    flex-basis: auto;
+    max-width: none;
+    width: 100%;
+  }
+}
+
+// Projected into app-page-header's [headerMeta] slot — sits right below the
+// title, within that same text column, rather than as a separate full-width
+// band the way this used to render underneath the whole header row (title +
+// trailing action buttons together). Holds .asset-id-row and the low/out-of-
+// stock pill beside it as flex children — flex-wrap so a narrow viewport
+// drops the pill to its own line under the GUID rather than overflowing,
+// and a single margin-top/gap here (rather than on each pill individually)
+// is what actually spaces this row from the title above and the two pills
+// from each other, so they always land in the same place relative to one
+// another regardless of which line they end up on.
+.header-meta-row{
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 1.5rem;
+  margin-top: 0.625rem;
+}
+
+// inline-flex (not flex) so it hugs its own content width instead of
+// stretching to fill its row, reading as a compact identity chip rather
+// than a bar.
+.asset-id-row{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  // Explicit (rather than left to the row's own tallest child — the
+  // 1.75rem copy/lock buttons — plus padding to size it implicitly) so the
+  // low/out-of-stock pill beside it (see .asset-id-row + .status-pill
+  // below) can match it exactly rather than guessing the same number.
+  height: 2.5rem;
+  box-sizing: border-box;
+  padding: 0.375rem 0.75rem;
+  border-radius: 999px;
   background-color: var(--mat-sys-primary-container);
   color: var(--mat-sys-on-primary-container);
 
   .asset-id{
     font-family: monospace;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     opacity: 0.85;
     overflow-wrap: anywhere;
     min-width: 0;
   }
 
   button{
-    width: 2rem;
-    height: 2rem;
+    width: 1.75rem;
+    height: 1.75rem;
     padding: 0;
 
-    // Only the first button absorbs the row's free space — with two
-    // buttons now (copy ID, copy link), giving both margin-left: auto
-    // would split that space between them instead of grouping them
-    // together at the row's right edge.
-    &:first-of-type{
-      margin-left: auto;
-    }
-
     mat-icon{
-      font-size: 1.125rem;
-      width: 1.125rem;
-      height: 1.125rem;
+      font-size: 1rem;
+      width: 1rem;
+      height: 1rem;
     }
   }
 }
 
+// No padding-top — .detail-subtab-toggle's own margin-bottom above already
+// provides that gap now (this used to also need its own on top of that, to
+// clear mat-tab-group's tab-strip header before this existed).
 .tab-panel{
-  padding-top: 1.25rem;
   padding-right: 1.25rem;
 }
 
@@ -174,9 +319,10 @@
   }
 }
 
-// Bleeds out to the dialog content's own padding (see .item-details-dialog
-// in styles.scss) so the header band reads as a full-width divider rather
-// than being inset like the rest of the section's content.
+// Reaches the full width of .tab-panel (mat-dialog-content itself carries no
+// side padding — see that rule's own comment above) so the header band
+// reads as a full-width divider rather than being inset like the rest of
+// the section's content, which does keep its own small margin/padding.
 .info-section-header{
   display: flex;
   align-items: center;
@@ -195,27 +341,9 @@
   }
 }
 
-.low-stock-warning{
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0;
-  padding: 0.5rem 1.5rem;
-  background: var(--app-warning-bg);
-  color: var(--app-warning-on-bg);
-  font-size: 0.875rem;
-  font-weight: 600;
-
-  mat-icon{
-    flex-shrink: 0;
-  }
-}
-
-// Same layout as .low-stock-warning, neutral tone instead of amber —
-// retired isn't a problem to flag, just a status to state, and takes
-// priority over the low-stock notice (retired items are always at or under
-// their low quantity threshold too, having necessarily hit zero to get
-// there).
+// Low/out-of-stock no longer has an equivalent full-width banner here — see
+// .asset-id-row + .status-pill above, the compact pill next to the GUID
+// that replaced it.
 .retired-notice{
   display: flex;
   align-items: center;
@@ -274,6 +402,45 @@
     background: var(--mat-sys-surface-variant);
     color: var(--mat-sys-on-surface-variant);
   }
+
+  // Same warning color pair .pending-retirement above already uses — kept
+  // as its own named variant rather than reused directly for clarity, same
+  // as every other variant here declaring its own colors even where two
+  // happen to coincide.
+  &.low-stock{
+    background: var(--app-warning-bg);
+    color: var(--app-warning-on-bg);
+  }
+}
+
+// Who requested/actioned the retirement — sits right in the same "Retirement"
+// cell as its own status-pill above (rather than its own separate
+// full-width table row below, which this used to be) since it's directly
+// about that same pill's state. block so it wraps onto its own line under
+// the pill within that cell rather than fighting it for width in an
+// already-narrow (33%) column.
+.retirement-meta{
+  display: block;
+  margin-top: 0.375rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8125rem;
+}
+
+// The one .status-pill usage outside the info table below — a flex child of
+// .header-meta-row above, alongside .asset-id-row (that row's own gap
+// handles the space between them, no margin needed here). Since
+// .status-pill's own base padding sizes it shorter than .asset-id-row (that
+// row's own height is driven by its 1.75rem copy/lock buttons, taller than
+// a pill's plain icon+text), it gets the same explicit height here, with
+// vertical padding zeroed out so flex centering (already on the base
+// .status-pill rule) does the vertical centering instead of padding
+// fighting a fixed height. Scoped via the adjacent-sibling combinator
+// rather than a new class, so every other .status-pill (inside the info
+// table, a plain inline label there) is unaffected.
+.asset-id-row + .status-pill{
+  height: 2.5rem;
+  box-sizing: border-box;
+  padding: 0 0.75rem;
 }
 
 .info-table{

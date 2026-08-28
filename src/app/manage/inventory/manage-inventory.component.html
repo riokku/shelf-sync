@@ -4,6 +4,15 @@
       <app-breadcrumbs />
     </div>
 
+    @if (selectedItemDetail) {
+      <div class="back-row">
+        <button mat-button type="button" (click)="closeInventoryDetail()">
+          <mat-icon>arrow_back</mat-icon>
+          Back
+        </button>
+      </div>
+    }
+
     <app-page-header icon="inventory_2" title="Manage Inventory">
       <button
           mat-stroked-button
@@ -17,6 +26,9 @@
       </button>
     </app-page-header>
 
+    @if (selectedItemDetail) {
+      <app-modal-table [data]="selectedItemDetail" [showBackButton]="false" (back)="closeInventoryDetail()" />
+    } @else {
     <mat-button-toggle-group [ngModel]="viewMode" (ngModelChange)="setViewMode($event)" class="view-toggle">
       <mat-button-toggle value="create">
         <mat-icon>add</mat-icon>
@@ -406,6 +418,7 @@
           </div>
         }
       </div>
+    }
     }
   </div>
 </div>

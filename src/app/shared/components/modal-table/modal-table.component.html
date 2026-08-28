@@ -1,40 +1,113 @@
-<h2 mat-dialog-title>{{ data.name }}</h2>
-<div class="asset-id-row">
-  <mat-icon>tag</mat-icon>
-  <span class="asset-id">{{ data.id }}</span>
-  <button
-      mat-icon-button
-      type="button"
-      [matTooltip]="idCopied ? 'Copied!' : 'Copy ID'"
-      (click)="copyId()"
-    >
-    <mat-icon>{{ idCopied ? 'check' : 'content_copy' }}</mat-icon>
-  </button>
-  <button
-      mat-icon-button
-      type="button"
-      [matTooltip]="linkCopied ? 'Copied!' : 'Copy link'"
-      (click)="copyLink()"
-    >
-    <mat-icon>{{ linkCopied ? 'check' : 'link' }}</mat-icon>
-  </button>
-  @if (barcodeFeatureEnabled) {
-    <button mat-icon-button type="button" matTooltip="View/print item label" (click)="openQrLabel()">
-      <mat-icon>qr_code_2</mat-icon>
+<app-page-header [title]="showTitle ? data.name : undefined" alignActions="center">
+  <div class="header-meta-row" headerMeta>
+    <div class="asset-id-row">
+      <mat-icon>tag</mat-icon>
+      <span class="asset-id">{{ data.id }}</span>
+      <button
+          mat-icon-button
+          type="button"
+          [matTooltip]="idCopied ? 'Copied!' : 'Copy ID'"
+          (click)="copyId()"
+        >
+        <mat-icon>{{ idCopied ? 'check' : 'content_copy' }}</mat-icon>
+      </button>
+      <button
+          mat-icon-button
+          type="button"
+          [matTooltip]="linkCopied ? 'Copied!' : 'Copy link'"
+          (click)="copyLink()"
+        >
+        <mat-icon>{{ linkCopied ? 'check' : 'link' }}</mat-icon>
+      </button>
+      @if (barcodeFeatureEnabled) {
+        <button mat-icon-button type="button" matTooltip="View/print item label" (click)="openQrLabel()">
+          <mat-icon>qr_code_2</mat-icon>
+        </button>
+      }
+      @if (authService.canManage()) {
+        <button
+            mat-icon-button
+            type="button"
+            [matTooltip]="data.isLocked ? 'Unlock item' : 'Lock item'"
+            [disabled]="isProcessingLock"
+            (click)="toggleLock()"
+          >
+          <mat-icon>{{ data.isLocked ? 'lock_open' : 'lock' }}</mat-icon>
+        </button>
+      }
+    </div>
+    @if (isOutOfStock) {
+      <span class="status-pill low-stock">
+        <mat-icon>remove_shopping_cart</mat-icon>
+        Out of stock
+      </span>
+    } @else if (isLowStock) {
+      <span class="status-pill low-stock">
+        <mat-icon>warning</mat-icon>
+        Low stock
+      </span>
+    }
+  </div>
+  <div class="actions-group">
+    <span class="actions-label">Actions</span>
+    <div class="actions">
+    @if (isEditing) {
+      <button mat-button type="button" (click)="cancelEdit()" [disabled]="isSaving">
+        Cancel
+      </button>
+      <button mat-flat-button color="primary" type="button" (click)="saveEdit()" [disabled]="isSaving">
+        @if (isSaving) {
+          <mat-spinner diameter="20"></mat-spinner>
+        } @else {
+          <ng-container>
+            <mat-icon>check</mat-icon>
+            Save
+          </ng-container>
+        }
+      </button>
+    } @else {
+      @if (data.status === 'retirement_pending') {
+        @if (canCancelRetirementRequest) {
+          <button mat-button type="button" (click)="cancelRetirementRequest()" [disabled]="isProcessingRetirement">
+            Cancel retirement request
+          </button>
+        }
+      } @else if (canRequestRetirement) {
+        <button mat-stroked-button type="button" (click)="openRequestRetirement()" [disabled]="isProcessingRetirement">
+          <mat-icon>inventory_2</mat-icon>
+          Request retirement
+        </button>
+      }
+      @if (canDiscard) {
+        <button mat-stroked-button type="button" color="warn" (click)="openDiscard()" [disabled]="isDiscarding">
+          <mat-icon>delete_sweep</mat-icon>
+          Discard
+        </button>
+      }
+      @if (!data.isLocked || authService.canManage()) {
+        <button mat-stroked-button type="button" (click)="startEdit()">
+          <mat-icon>edit</mat-icon>
+          Edit
+        </button>
+      }
+      @if (authService.canManage()) {
+        <button mat-flat-button color="primary" type="button" (click)="createTask()">
+          <mat-icon>add_task</mat-icon>
+          Create task
+        </button>
+      }
+    }
+    </div>
+  </div>
+</app-page-header>
+@if (isEmbedded && showBackButton) {
+  <div class="back-row">
+    <button mat-button type="button" (click)="back.emit()">
+      <mat-icon>arrow_back</mat-icon>
+      Back
     </button>
-  }
-  @if (authService.canManage()) {
-    <button
-        mat-icon-button
-        type="button"
-        [matTooltip]="data.isLocked ? 'Unlock item' : 'Lock item'"
-        [disabled]="isProcessingLock"
-        (click)="toggleLock()"
-      >
-      <mat-icon>{{ data.isLocked ? 'lock_open' : 'lock' }}</mat-icon>
-    </button>
-  }
-</div>
+  </div>
+}
 @if (lockError) {
   <p class="error-message save-error">{{ lockError }}</p>
 }
@@ -54,19 +127,23 @@
     <mat-icon>lock</mat-icon>
     Locked by {{ data.lockedByLabel || 'a manager' }} — only admins and managers can edit it.
   </p>
-} @else if (isLowStock) {
-  <p class="low-stock-warning">
-    <mat-icon>warning</mat-icon>
-    Remaining quantity ({{ data.quantityRemaining }}) is below the low quantity threshold ({{ data.lowQuantityThreshold }}).
-  </p>
 }
 <mat-dialog-content>
   <form [formGroup]="editForm">
-    <mat-tab-group>
-      <mat-tab label="Info">
-        <div class="tab-panel">
+    <mat-button-toggle-group
+        class="detail-subtab-toggle"
+        [value]="activeSubTab"
+        (change)="activeSubTab = $event.value"
+        aria-label="Item detail view"
+      >
+      <mat-button-toggle value="info">Info</mat-button-toggle>
+      <mat-button-toggle value="activity">Activity Log</mat-button-toggle>
+    </mat-button-toggle-group>
+    @if (activeSubTab === 'info') {
+      <div class="tab-panel">
+        <div class="detail-top-row">
           @if (isEditing) {
-            <section class="info-section">
+            <section class="info-section photos-section">
               <label class="image-upload-label" for="item-detail-photos-input">
                 <mat-icon>image</mat-icon>
                 Photos (up to {{ maxInventoryItemImages }})
@@ -109,11 +186,11 @@
               }
             </section>
           } @else if (data.images.length > 0) {
-            <section class="info-section">
+            <section class="info-section photos-section">
               <app-image-gallery [images]="data.images" [itemName]="data.name" />
             </section>
           } @else {
-            <section class="info-section">
+            <section class="info-section photos-section">
               <div class="no-photos-placeholder">
                 <mat-icon>inventory_2</mat-icon>
                 <p>No photos yet</p>
@@ -229,6 +306,7 @@
               </table>
             }
           </section>
+          </div>
 
           <section class="info-section">
             <header class="info-section-header">
@@ -545,50 +623,35 @@
                         <mat-icon>hourglass_top</mat-icon>
                         Pending retirement
                       </span>
+                      <span class="retirement-meta">
+                        Requested by {{ data.retirementRequestedByLabel || '—' }}
+                        @if (data.retirementRequestedAt) {
+                          &middot; {{ data.retirementRequestedAt | date: 'M/d/yy' }}
+                        }
+                      </span>
                     } @else if (data.status === 'retired') {
                       <span class="semibold">Retirement:</span>
                       <span class="status-pill retired">
                         <mat-icon>inventory_2</mat-icon>
                         Retired
                       </span>
+                      <span class="retirement-meta">
+                        Retired by {{ data.retiredByLabel || '—' }}
+                        @if (data.retiredAt) {
+                          &middot; {{ data.retiredAt | date: 'M/d/yy' }}
+                        }
+                      </span>
                     } @else {
                       &nbsp;
                     }
                   </td>
                 </tr>
-                @if (data.status === 'retirement_pending') {
-                  <tr>
-                    <td colspan="3">
-                      <span class="semibold">Requested by:</span>
-                      {{ data.retirementRequestedByLabel || '—' }}
-                      @if (data.retirementRequestedAt) {
-                        &middot; {{ data.retirementRequestedAt | date: 'M/d/yy' }}
-                      }
-                      @if (data.retirementRequestNote) {
-                        <br />
-                        <span class="semibold">Reason:</span> {{ data.retirementRequestNote }}
-                      }
-                    </td>
-                  </tr>
-                } @else if (data.status === 'retired') {
-                  <tr>
-                    <td colspan="3">
-                      <span class="semibold">Retired by:</span>
-                      {{ data.retiredByLabel || '—' }}
-                      @if (data.retiredAt) {
-                        &middot; {{ data.retiredAt | date: 'M/d/yy' }}
-                      }
-                    </td>
-                  </tr>
-                }
               </table>
             }
           </section>
         </div>
-      </mat-tab>
-
-      <mat-tab label="Activity Log">
-        <div class="tab-panel">
+    } @else {
+      <div class="tab-panel">
           @if (data.activityLog.length === 0) {
             <p class="empty-hint">No activity recorded yet.</p>
           } @else {
@@ -607,9 +670,8 @@
               }
             </ul>
           }
-        </div>
-      </mat-tab>
-    </mat-tab-group>
+      </div>
+    }
   </form>
 </mat-dialog-content>
 @if (saveError) {
@@ -621,67 +683,3 @@
 @if (discardError) {
   <p class="error-message save-error">{{ discardError }}</p>
 }
-<mat-dialog-actions align="end">
-  @if (isEditing) {
-    <button mat-button type="button" (click)="cancelEdit()" [disabled]="isSaving">
-      Cancel
-    </button>
-    <button mat-flat-button color="primary" type="button" (click)="saveEdit()" [disabled]="isSaving">
-      @if (isSaving) {
-        <mat-spinner diameter="20"></mat-spinner>
-      } @else {
-        <ng-container>
-          <mat-icon>check</mat-icon>
-          Save
-        </ng-container>
-      }
-    </button>
-  } @else {
-    @if (data.status === 'retirement_pending') {
-      @if (canCancelRetirementRequest) {
-        <button mat-button type="button" (click)="cancelRetirementRequest()" [disabled]="isProcessingRetirement">
-          Cancel request
-        </button>
-      }
-      @if (authService.canManage()) {
-        <button mat-stroked-button type="button" color="warn" (click)="declineRetirement()" [disabled]="isProcessingRetirement">
-          <mat-icon>close</mat-icon>
-          Decline
-        </button>
-        <button mat-flat-button color="primary" type="button" (click)="approveRetirement()" [disabled]="isProcessingRetirement">
-          @if (isProcessingRetirement) {
-            <mat-spinner diameter="20"></mat-spinner>
-          } @else {
-            <ng-container>
-              <mat-icon>check</mat-icon>
-              Approve
-            </ng-container>
-          }
-        </button>
-      }
-    } @else if (canRequestRetirement) {
-      <button mat-stroked-button type="button" (click)="openRequestRetirement()" [disabled]="isProcessingRetirement">
-        <mat-icon>inventory_2</mat-icon>
-        Request retirement
-      </button>
-    }
-    @if (canDiscard) {
-      <button mat-stroked-button type="button" color="warn" (click)="openDiscard()" [disabled]="isDiscarding">
-        <mat-icon>delete_sweep</mat-icon>
-        Discard
-      </button>
-    }
-    @if (!data.isLocked || authService.canManage()) {
-      <button mat-stroked-button type="button" (click)="startEdit()">
-        <mat-icon>edit</mat-icon>
-        Edit
-      </button>
-    }
-    @if (authService.canManage()) {
-      <button mat-flat-button color="primary" type="button" (click)="createTask()">
-        <mat-icon>add_task</mat-icon>
-        Create task
-      </button>
-    }
-  }
-</mat-dialog-actions>

@@ -17,10 +17,10 @@ import { MatTableModule } from '@angular/material/table';
 import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { InventoryItem, isLowStock, isOutOfStock } from '../shared/models/inventory-item.model';
 import { ModalTableComponent } from '../shared/components/modal-table/modal-table.component';
-import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
+import { BreadcrumbParent, BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 import { EmptyStateComponent } from '../shared/components/empty-state/empty-state.component';
 import { BulkActionToolbarComponent } from '../shared/components/bulk-action-toolbar/bulk-action-toolbar.component';
 import { PageIntroComponent } from '../shared/components/page-intro/page-intro.component';
@@ -67,7 +67,8 @@ type StatusFilter = 'active' | 'include_retired' | 'retired_only';
         BreadcrumbsComponent,
         EmptyStateComponent,
         BulkActionToolbarComponent,
-        PageIntroComponent
+        PageIntroComponent,
+        ModalTableComponent
     ],
     templateUrl: './inventory.component.html',
     styleUrl: './inventory.component.scss'
@@ -77,6 +78,7 @@ export class InventoryComponent implements OnInit{
   private supabase = inject(SupabaseService).client;
   private dialog = inject(MatDialog);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   protected siteSettings = inject(SiteSettingsService);
   private destroyRef = inject(DestroyRef);
   private authService = inject(AuthService);
@@ -85,6 +87,23 @@ export class InventoryComponent implements OnInit{
   private supplierService = inject(SupplierService);
 
   inventoryList: InventoryItem[] = [];
+  /** Set by showDetails() below — while non-null, the template swaps the
+   *  whole browsing UI (search bar, filter sidebar, bulk-edit toggle,
+   *  card/table grid) out for this item's detail view instead, with a Back
+   *  button (rendered by ModalTableComponent itself — see its own
+   *  isEmbedded) returning here. Every filter/search/sort/page field below
+   *  stays untouched the whole time (this is a plain @if swap, not a route
+   *  change), so Back lands right back on the same filtered view. */
+  selectedItem: InventoryItem | null = null;
+  /** Bound to app-breadcrumbs' own [parentOverride] whenever selectedItem is
+   *  set, so the trail reads Home / Inventory / {item name} instead of the
+   *  plain Home / Inventory this route's own static breadcrumb data
+   *  produces on its own — see BreadcrumbsComponent.parentOverride's own
+   *  doc comment for why this needs an override at all rather than just
+   *  labelOverride alone (this is the same route, not a separate detail
+   *  page, so "Inventory" itself has to become the parent link rather than
+   *  being replaced outright). */
+  protected readonly inventoryBreadcrumbParent: BreadcrumbParent = { label: 'Inventory', link: '/inventory' };
   isLoading = true;
   /** Just a repeat-count for the loading-state skeleton grid's @for — the
    *  values themselves are never read, only the array length (6 fills a
@@ -417,15 +436,17 @@ export class InventoryComponent implements OnInit{
     ]);
 
     // Supports deep links (?item=<id>), e.g. from the "Copy link" button in
-    // ModalTableComponent — opens straight to that item's detail popup if a
+    // ModalTableComponent — opens straight to that item's detail view if a
     // match is found. Read once from the snapshot rather than subscribing,
     // same as RegisterComponent's ?org= handling: this only ever matters on
-    // initial load of this route, not on later query-param changes.
+    // initial load of this route, not on later query-param changes. Sets
+    // selectedItem directly rather than going through showDetails() — the
+    // URL already has ?item= on it, so there's nothing to navigate.
     const itemId = this.route.snapshot.queryParamMap.get('item');
     if (itemId) {
       const item = this.inventoryList.find(candidate => candidate.id === itemId);
       if (item) {
-        this.showDetails(item);
+        this.selectedItem = item;
       }
     }
 
@@ -559,23 +580,42 @@ export class InventoryComponent implements OnInit{
     this.isLoading = false;
   }
 
-  /** No afterClosed() reload needed — `item` here is the exact same
+  /** No reload needed once back — `item` here is the exact same
    *  InventoryItem instance living in `inventoryList` (filteredInventoryList/
    *  sortedInventoryList/pagedInventoryList all filter/sort/slice that same
    *  array without ever cloning its elements), and every write path in
    *  ModalTableComponent (saveEdit, the retirement actions, container/photo
    *  saves) mutates `this.data` in place rather than replacing it. So a save
-   *  in the modal already updates this list live, through that shared
-   *  reference, the moment it happens — reloading the whole inventory again
-   *  on close was pure waste (a full items+images+activity refetch on every
-   *  close, even just opening an item to look at it and clicking away). */
-  showDetails(item:InventoryItem){
-    this.dialog.open(ModalTableComponent, {
-      data: item,
-      width: 'clamp(45rem, 78vw, 70rem)',
-      maxWidth: '90vw',
-      maxHeight: '95vh',
-      panelClass: 'item-details-dialog'
+   *  in the detail view already updates this list live, through that shared
+   *  reference, the moment it happens — refetching the whole inventory again
+   *  on Back would be pure waste (a full items+images+activity refetch just
+   *  to look at an item and click back).
+   *
+   *  Swaps the browsing UI out for the detail view inline (see selectedItem's
+   *  own doc comment) rather than opening ModalTableComponent as a MatDialog,
+   *  and mirrors that in the URL (?item=<id>) so the deep link this page
+   *  already supports on load also works from a plain click — including the
+   *  browser's own Back button, since this pushes a new history entry rather
+   *  than replacing the current one. */
+  showDetails(item: InventoryItem) {
+    this.selectedItem = item;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { item: item.id },
+      queryParamsHandling: 'merge'
+    });
+  }
+
+  /** The detail view's own Back button — clears selectedItem and drops
+   *  ?item= from the URL, landing back on this same filtered/searched/sorted
+   *  view (none of that state lives in the URL or is touched by showDetails()
+   *  above, so there's nothing else to restore). */
+  closeDetails() {
+    this.selectedItem = null;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { item: null },
+      queryParamsHandling: 'merge'
     });
   }
 

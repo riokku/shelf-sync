@@ -11,13 +11,17 @@ import { MatIconModule } from '@angular/material/icon';
  *  those were duplicated near-verbatim across seven-plus component
  *  stylesheets before this existed.
  *
- *  Two content-projection slots cover the two shapes that existed before
- *  this: `[headerTitleExtra]` renders inline right after the title text
- *  (e.g. Orders' own help tooltip, previously inline inside its `<h2>`),
- *  and the default slot renders trailing action content (e.g. Suppliers'/
- *  Orders' "Add"/"Place order" buttons, previously a flex sibling in
- *  `.page-header-row`). Both are optional — a page with neither still
- *  renders correctly, the actions column just has nothing in it. */
+ *  Three content-projection slots cover the shapes that existed before this
+ *  (plus one added since): `[headerTitleExtra]` renders inline right after
+ *  the title text (e.g. Orders' own help tooltip, previously inline inside
+ *  its `<h2>`), `[headerMeta]` renders a block below the title/subtitle,
+ *  still within the text column (e.g. ModalTableComponent's own asset-id
+ *  row — GUID plus its copy/lock buttons — sitting right under an item's
+ *  name), and the default slot renders trailing action content (e.g.
+ *  Suppliers'/Orders' "Add"/"Place order" buttons, previously a flex
+ *  sibling in `.page-header-row`). All three are optional — a page using
+ *  none of them still renders correctly, each slot's column/row just has
+ *  nothing in it. */
 @Component({
   selector: 'app-page-header',
   imports: [MatIconModule],
@@ -25,8 +29,18 @@ import { MatIconModule } from '@angular/material/icon';
   styleUrl: './page-header.component.scss',
 })
 export class PageHeaderComponent {
-  @Input({ required: true }) icon!: string;
-  @Input({ required: true }) title!: string;
+  /** Optional — every existing page-level usage still passes one (a fixed
+   *  icon glyph is what "this page announces itself" means for those), but
+   *  ModalTableComponent's own item-detail usage renders no icon chip at
+   *  all, just the title/meta/actions columns. The chip itself (see the
+   *  template) only renders when this or logoUrl is set. */
+  @Input() icon?: string;
+  /** Optional too, for the same reason as icon above — ModalTableComponent
+   *  skips both when its caller already shows the item's name elsewhere
+   *  (InventoryComponent's own page heading — see its showTitle input's own
+   *  doc comment), so there's no second, redundant heading right above the
+   *  GUID/status pills. The `<h2>` itself only renders when this is set. */
+  @Input() title?: string;
   @Input() subtitle?: string;
   /** When set, renders in place of the generic Material `icon` above — for
    *  a page whose own identity is a specific org's uploaded logo
@@ -43,4 +57,13 @@ export class PageHeaderComponent {
    *  this page is a deliberate outlier meant to read as riskier than every
    *  other page, not another destination in the same set. */
   @Input() variant: 'default' | 'danger' = 'default';
+  /** 'start' (the default, every existing page-level usage) top-aligns the
+   *  trailing action column with the title — right for a short single-line
+   *  title next to one or two buttons. 'center' instead centers it against
+   *  the *whole* text column's height, title/subtitle/headerMeta combined —
+   *  ModalTableComponent's own usage wants this, since its own actions
+   *  group would otherwise sit pinned to the top of the row while the
+   *  title+GUID+status-pill block below it takes up real height of its
+   *  own, reading as misaligned rather than as one cohesive header row. */
+  @Input() alignActions: 'start' | 'center' = 'start';
 }

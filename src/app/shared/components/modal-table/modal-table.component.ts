@@ -1,24 +1,24 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, inject } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatDialogModule, MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatDialogContent, MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatTabsModule } from '@angular/material/tabs';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import { InventoryItem, MAX_INVENTORY_ITEM_IMAGES, isLowStock } from '../../models/inventory-item.model';
+import { InventoryItem, MAX_INVENTORY_ITEM_IMAGES, isLowStock, isOutOfStock } from '../../models/inventory-item.model';
 import { InventoryItemContainer } from '../../models/inventory-item-container.model';
 import { ImageGalleryComponent } from '../image-gallery/image-gallery.component';
 import { UserAvatarComponent } from '../user-avatar/user-avatar.component';
+import { PageHeaderComponent } from '../page-header/page-header.component';
 import { CreateTaskModalComponent } from '../create-task-modal/create-task-modal.component';
 import { RequestRetirementModalComponent, RequestRetirementModalResult } from '../request-retirement-modal/request-retirement-modal.component';
 import { DiscardModalComponent, DiscardModalResult } from '../discard-modal/discard-modal.component';
-import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.component';
 import { AuthService, Profile } from '../../../core/auth.service';
 import { SupabaseService } from '../../../core/supabase.service';
 import { NotificationService } from '../../../core/notification.service';
@@ -80,26 +80,70 @@ const FIELD_LABELS: Record<string, string> = {
         CurrencyPipe,
         ReactiveFormsModule,
         FormsModule,
-        MatDialogModule,
+        // The individual MatDialogContent directive rather than the whole
+        // MatDialogModule — mat-dialog-title/-actions are no longer used
+        // anywhere in this template (see the header/CTA rework below), and
+        // MatDialogModule's own NgModule carries `providers: [MatDialog]`,
+        // which would otherwise shadow the root MatDialog singleton for this
+        // component's own `inject(MatDialog)` below (this is the dialog-in-
+        // dialog DI footgun CLAUDE.md documents — this component both opens
+        // further dialogs of its own and, still today, can be opened via
+        // MAT_DIALOG_DATA/MatDialogRef in tests).
+        MatDialogContent,
         MatIconModule,
         MatButtonModule,
         MatTooltipModule,
-        MatTabsModule,
+        MatButtonToggleModule,
         MatFormFieldModule,
         MatInputModule,
         MatSelectModule,
         MatProgressSpinnerModule,
         MatDatepickerModule,
         ImageGalleryComponent,
-        UserAvatarComponent
+        UserAvatarComponent,
+        PageHeaderComponent
     ],
     templateUrl: './modal-table.component.html',
     styleUrl: './modal-table.component.scss'
 })
 
 export class ModalTableComponent implements OnInit {
-  dialogRef = inject(MatDialogRef<ModalTableComponent>);
-  data = inject<InventoryItem>(MAT_DIALOG_DATA);
+  // Both optional — every real caller now embeds this component inline with
+  // a plain [data] binding (InventoryComponent, ManageInventoryComponent,
+  // and TaskDetailModalComponent's own related-item view — see each's own
+  // doc comment) rather than opening it as its own top-level MatDialog, so
+  // neither token resolves to anything in practice any more. Kept (rather
+  // than dropped in favor of a plain required @Input()) so this can still be
+  // opened as a real dialog if some future caller wants that, and so the
+  // existing spec's MAT_DIALOG_DATA/MatDialogRef-based TestBed setup keeps
+  // working unmodified.
+  dialogRef = inject(MatDialogRef<ModalTableComponent>, { optional: true });
+  private dialogData = inject<InventoryItem | null>(MAT_DIALOG_DATA, { optional: true });
+  /** The item being shown. Defaults to whatever MAT_DIALOG_DATA resolved to
+   *  (null when there's no enclosing dialog) — an inline caller's [data]
+   *  binding overwrites this before ngOnInit runs, same as any other
+   *  @Input(). */
+  @Input() data: InventoryItem = this.dialogData as InventoryItem;
+  /** Whether the item's name renders as its own heading here (via
+   *  app-page-header) at all — off for InventoryComponent's own usage,
+   *  since that page's own outer heading already shows the same name once
+   *  an item is selected (see InventoryComponent.selectedItem's own doc
+   *  comment), so showing it a second time right above the GUID/status
+   *  pills would just be redundant. Every other embedding (Manage >
+   *  Inventory, a task's related-item view) has no such outer heading of
+   *  its own, so this stays true — the default — for those. */
+  @Input() showTitle = true;
+  /** Whether this renders its own Back button at all — off for
+   *  InventoryComponent's and ManageInventoryComponent's own usages, both
+   *  of which want it positioned right below their own page's breadcrumbs
+   *  (above their own heading/page-header) rather than here, above
+   *  app-page-header — a position outside what this component itself
+   *  renders, so those two pages render their own instead, still wired to
+   *  the same (back) output the button here would otherwise emit. Stays
+   *  true — the default — for a task's related-item view, which has no
+   *  breadcrumbs of its own to sit below. */
+  @Input() showBackButton = true;
+  @Output() back = new EventEmitter<void>();
   protected authService = inject(AuthService);
   protected inventoryFieldOptions = inject(InventoryFieldOptionsService);
   protected siteSettings = inject(SiteSettingsService);
@@ -111,6 +155,15 @@ export class ModalTableComponent implements OnInit {
   idCopied = false;
   linkCopied = false;
 
+  /** True whenever this component is embedded inline rather than opened as
+   *  its own top-level MatDialog — true for every real caller today (see
+   *  dialogRef's own doc comment), false only for the existing spec's
+   *  MAT_DIALOG_DATA/MatDialogRef-based TestBed setup. Drives the Back
+   *  button below. */
+  get isEmbedded(): boolean {
+    return !this.dialogRef;
+  }
+
   /** Template-facing flag for the barcode display row, edit field/scan
    *  button, and QR label button's own kill switch — see
    *  BARCODE_FEATURE_ENABLED's own doc comment. */
@@ -120,9 +173,25 @@ export class ModalTableComponent implements OnInit {
     return isLowStock(this.data);
   }
 
+  /** Out of stock is the stricter, more severe case of low stock (see that
+   *  util's own doc comment) — checked first in the template so the pill
+   *  next to the GUID reads "Out of stock" rather than the less specific
+   *  "Low stock" once quantityRemaining actually hits zero. */
+  get isOutOfStock(): boolean {
+    return isOutOfStock(this.data);
+  }
+
   isEditing = false;
   isSaving = false;
   saveError: string | null = null;
+
+  /** Which of the two sub-views is showing — a mat-button-toggle-group, same
+   *  as every other "switch between a couple of sections" spot in this app
+   *  (Inventory's own card/table toggle, Settings' tabs, etc.), replacing
+   *  what used to be a mat-tab-group here specifically. Plain component
+   *  state rather than URL-synced — this is a sub-view of an already-
+   *  embedded item detail view, not a routed page section of its own. */
+  activeSubTab: 'info' | 'activity' = 'info';
 
   /** Loaded once when the modal opens (not just while editing) since the
    *  container breakdown is shown in view mode too, not only Edit. */
@@ -271,7 +340,7 @@ export class ModalTableComponent implements OnInit {
   });
 
   closeModal(){
-    this.dialogRef.close();
+    this.dialogRef?.close();
   }
 
   createTask(){
@@ -383,45 +452,14 @@ export class ModalTableComponent implements OnInit {
     );
   }
 
-  // Confirmed first, unlike the other three retirement actions — this is
-  // the one that's actually irreversible (retires the item org-wide, no
-  // "cancel" the way a pending request has), same bar as ConfirmDialog's
-  // other danger: true uses (delete task, remove member).
-  approveRetirement(){
-    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
-      data: {
-        title: 'Approve retirement?',
-        message: `Retire "${this.data.name}"? It'll be hidden from the default inventory view. This can't be undone.`,
-        confirmLabel: 'Approve',
-        danger: true
-      },
-      width: 'clamp(75%, 25rem, 60%)'
-    });
-
-    dialogRef.afterClosed().subscribe(confirmed => {
-      if (!confirmed) {
-        return;
-      }
-      void this.runRetirementAction(
-        () => this.supabase.rpc('approve_item_retirement', { item_id: this.data.id }),
-        () => {
-          const profile = this.authService.profile();
-          this.data.status = 'retired';
-          this.data.retiredByLabel = profile ? profileDisplayName(profile) : '';
-          this.data.retiredAt = new Date().toISOString();
-        },
-        'Item retired'
-      );
-    });
-  }
-
-  declineRetirement(){
-    void this.runRetirementAction(
-      () => this.supabase.rpc('decline_item_retirement', { item_id: this.data.id }),
-      () => this.resetRetirementToActive(),
-      'Retirement request declined'
-    );
-  }
+  // Approving/declining a pending request is no longer offered here — an
+  // admin/manager makes that call from manage/inventory's own Requests tab
+  // instead (which already shows every pending request org-wide, not just
+  // whichever one happens to be open), not from a single item's own detail
+  // view. This item detail view still shows the request is pending, and its
+  // own requester (or an admin/manager) can still cancel it from here — see
+  // cancelRetirementRequest()/canCancelRetirementRequest above — since
+  // withdrawing a request isn't the same as deciding someone else's.
 
   private resetRetirementToActive(){
     this.data.status = 'active';

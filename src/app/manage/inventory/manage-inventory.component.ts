@@ -28,7 +28,7 @@ import { EmptyStateComponent } from '../../shared/components/empty-state/empty-s
 import { BulkActionToolbarComponent } from '../../shared/components/bulk-action-toolbar/bulk-action-toolbar.component';
 import { HelpTooltipComponent } from '../../shared/components/help-tooltip/help-tooltip.component';
 import { Database } from '../../shared/models/database.types';
-import { ActivityLogEntry, MAX_INVENTORY_ITEM_IMAGES } from '../../shared/models/inventory-item.model';
+import { ActivityLogEntry, InventoryItem, MAX_INVENTORY_ITEM_IMAGES } from '../../shared/models/inventory-item.model';
 import { toIsoDateString } from '../../shared/utils/date';
 import { toInventoryItem } from '../../shared/utils/inventory-item.mapper';
 import { resolveProfileAvatarKey, resolveProfileName } from '../../shared/utils/profile-label';
@@ -65,7 +65,8 @@ type InventoryItemRow = Database['public']['Tables']['inventory_items']['Row'];
     PageHeaderComponent,
     EmptyStateComponent,
     BulkActionToolbarComponent,
-    HelpTooltipComponent
+    HelpTooltipComponent,
+    ModalTableComponent
   ],
   templateUrl: './manage-inventory.component.html',
   styleUrl: './manage-inventory.component.scss',
@@ -190,6 +191,14 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
   // of which need every item, not just the ones with a pending request.
   allInventoryItems: InventoryItemRow[] = [];
   isLoadingInventoryList = true;
+  /** Set by openInventoryDetail() below — while non-null, the template
+   *  swaps the tab strip and whichever tab's own content out for this item's
+   *  detail view instead, with a Back button (rendered by ModalTableComponent
+   *  itself — see its own isEmbedded) returning to whichever tab (viewMode)
+   *  was showing. Mirrored in the URL as ?item=<id>, merged alongside the
+   *  existing ?tab= param — same InventoryComponent shape, see its own
+   *  selectedItem doc comment. */
+  selectedItemDetail: InventoryItem | null = null;
   /** Set when loadInventoryItems()'s own query fails — see
    *  InventoryComponent's identical loadError field for the full reasoning.
    *  Left set (rather than cleared) across a later successful reload
@@ -303,6 +312,19 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
       this.supplierService.load()
     ]);
     await this.loadInventoryItems();
+
+    // Supports deep links (?item=<id>), same shape as InventoryComponent's
+    // own — see its ngOnInit()'s identical block for the full reasoning.
+    // Sets selectedItemDetail directly rather than going through
+    // openInventoryDetail(): the URL already has ?item= on it, so there's
+    // nothing to navigate.
+    const itemParam = this.route.snapshot.queryParamMap.get('item');
+    if (itemParam) {
+      const row = this.allInventoryItems.find(candidate => candidate.id === itemParam);
+      if (row) {
+        this.selectedItemDetail = this.buildItemDetail(row);
+      }
+    }
 
     // Live updates from other users/tabs — reuses refreshInventoryItem()
     // verbatim (already handles insert/update/delete correctly, since
@@ -576,35 +598,55 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
     this.notification.success(successMessage);
   }
 
-  openInventoryDetail(row: InventoryItemRow) {
+  private buildItemDetail(row: InventoryItemRow): InventoryItem {
     const images = this.inventoryImagesByItemId.get(row.id) ?? [];
     const activityLog = this.inventoryActivityByItemId.get(row.id) ?? [];
-    const dialogRef = this.dialog.open(ModalTableComponent, {
-      data: toInventoryItem(
-        row,
-        images,
-        resolveProfileName(row.checked_out_to, this.assignableProfiles),
-        activityLog,
-        resolveProfileAvatarKey(row.checked_out_to, this.assignableProfiles),
-        resolveProfileName(row.retirement_requested_by, this.assignableProfiles),
-        resolveProfileName(row.retired_by, this.assignableProfiles),
-        resolveProfileName(row.locked_by, this.assignableProfiles),
-        resolveSupplierName(row.supplier_id, this.supplierService.suppliers())
-      ),
-      width: 'clamp(45rem, 78vw, 70rem)',
-      maxWidth: '90vw',
-      maxHeight: '95vh',
-      panelClass: 'item-details-dialog'
-    });
+    return toInventoryItem(
+      row,
+      images,
+      resolveProfileName(row.checked_out_to, this.assignableProfiles),
+      activityLog,
+      resolveProfileAvatarKey(row.checked_out_to, this.assignableProfiles),
+      resolveProfileName(row.retirement_requested_by, this.assignableProfiles),
+      resolveProfileName(row.retired_by, this.assignableProfiles),
+      resolveProfileName(row.locked_by, this.assignableProfiles),
+      resolveSupplierName(row.supplier_id, this.supplierService.suppliers())
+    );
+  }
 
-    // Just this one row, not the whole list — unlike InventoryComponent
-    // (whose showDetails() passes the same InventoryItem instance that's
-    // still sitting in its list, so edits already show up live with no
-    // reload at all), toInventoryItem() above builds ModalTableComponent a
-    // disconnected InventoryItem; allInventoryItems here holds the raw DB
-    // rows that fed it, so nothing keeps them in sync automatically and a
-    // refetch is genuinely needed — just not of every other row too.
-    dialogRef.afterClosed().subscribe(() => this.refreshInventoryItem(row.id));
+  /** Swaps the tab strip/content out for this item's detail view inline
+   *  (see selectedItemDetail's own doc comment) rather than opening
+   *  ModalTableComponent as a MatDialog, and mirrors that in the URL
+   *  (?item=<id>, merged alongside ?tab=) the same way InventoryComponent's
+   *  own showDetails() does. */
+  openInventoryDetail(row: InventoryItemRow) {
+    this.selectedItemDetail = this.buildItemDetail(row);
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { item: row.id },
+      queryParamsHandling: 'merge'
+    });
+  }
+
+  /** The detail view's own Back button. toInventoryItem() built
+   *  selectedItemDetail a disconnected InventoryItem (unlike
+   *  InventoryComponent's own showDetails(), which hands over the exact
+   *  instance still sitting in its list) — allInventoryItems here holds raw
+   *  DB rows, not InventoryItems, so nothing kept it in sync automatically
+   *  while the detail view was showing, and a refetch of just this one row
+   *  is genuinely needed, same as this used to happen via the dialog's own
+   *  afterClosed() before this was inline. */
+  closeInventoryDetail() {
+    const itemId = this.selectedItemDetail?.id;
+    this.selectedItemDetail = null;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { item: null },
+      queryParamsHandling: 'merge'
+    });
+    if (itemId) {
+      void this.refreshInventoryItem(itemId);
+    }
   }
 
   // Also the realtime change handler wired up in ngOnInit() — a single-row
@@ -616,7 +658,7 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
 
     const index = this.allInventoryItems.findIndex(item => item.id === itemId);
     if (!row) {
-      // Not expected from openInventoryDetail()'s own dialog (it never
+      // Not expected from openInventoryDetail()'s own detail view (it never
       // deletes items) and inventory_items has no hard-delete path in the
       // app today either — but the realtime handler above will still see a
       // DELETE if a row is ever removed some other way (Studio, a future
@@ -624,6 +666,9 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
       // it can't happen.
       if (index !== -1) {
         this.allInventoryItems = this.allInventoryItems.filter(item => item.id !== itemId);
+      }
+      if (this.selectedItemDetail?.id === itemId) {
+        this.selectedItemDetail = null;
       }
       return;
     }
@@ -638,6 +683,14 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
     ]);
     this.inventoryImagesByItemId.set(itemId, imagesByItemId.get(itemId) ?? []);
     this.inventoryActivityByItemId.set(itemId, activityByItemId.get(itemId) ?? []);
+
+    // Keep the open detail view's own data current too — it's a disconnected
+    // clone (see buildItemDetail()'s own doc comment), so patching
+    // allInventoryItems/the image/activity maps above doesn't reach it on
+    // its own the way InventoryComponent's shared-reference list does.
+    if (this.selectedItemDetail?.id === itemId) {
+      this.selectedItemDetail = this.buildItemDetail(row);
+    }
   }
 
   /** Scans either a manufacturer barcode (matched against

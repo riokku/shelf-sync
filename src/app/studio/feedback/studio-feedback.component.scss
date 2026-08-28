@@ -19,19 +19,96 @@
 
 .feedback-controls{
   display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
   margin-bottom: 1rem;
 }
 
 .search-field{
-  flex: 1 1 20rem;
+  width: 100%;
   max-width: 28rem;
 }
 
 .feedback-list{
-  display: block;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+// Same app-wide "1px outline-variant" card border the home page's own
+// tiles use (see home.component.scss's .home-list-card), applied per
+// panel here rather than relying on Material's default (border-less,
+// divider-only) accordion chrome.
+mat-expansion-panel{
+  border-radius: 0.75rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  box-shadow: none;
+  overflow: hidden;
+
+  // ::ng-deep: .mat-expansion-panel-body is DOM MatExpansionPanel's own
+  // template renders (the wrapper around our projected content), not
+  // reachable without piercing encapsulation. Its Material-default 24px
+  // left/right padding reads as too much now that feedback-detail is a
+  // two-column layout rather than a single stack of lines starting flush
+  // with the header's own icon/badges above it.
+  ::ng-deep .mat-expansion-panel-body{
+    padding-left: 16px;
+  }
+}
+
+// Header padding matches .mat-expansion-panel-body's own left padding
+// (overridden above) so the status badge lines up with the copy in
+// feedback-meta/feedback-report directly below it once expanded, rather
+// than sitting outboard of it at Material's wider default 24px. Scoped
+// through .feedback-list (a class ancestor) rather than the bare element
+// selector, which loses on specificity to Material's own ".mat-expansion-
+// panel-header" class rule regardless of stylesheet order.
+.feedback-list mat-expansion-panel-header{
+  padding-left: 16px;
+}
+
+// A step up from plain surface-container-high, with a slight wash of the
+// app's own primary blue mixed in (same color-mix-over-a-surface-token
+// technique HeaderComponent's own ".unread" notification row background
+// already uses) rather than a flat neutral gray — ties the "active" header
+// to the same blue the rest of this app's UI (buttons, links, the reviewed/
+// resolved badges' own accents) already reads as "on"/interactive.
+$feedback-header-active-bg: color-mix(in srgb, var(--mat-sys-primary) 14%, var(--mat-sys-surface-container-high));
+
+// An expanded panel's header is otherwise visually identical to a collapsed
+// one (Material only changes its height on expand, not its background) —
+// this gives the currently-open row's header its own clearly lighter
+// "active" background, so it reads as a distinct band from the body copy
+// sitting directly below it rather than blending into it. Background
+// alone, no divider line — the panel's own outer border already frames
+// the card. The base ".mat-expansion-panel-header" rule sets
+// `border-radius: inherit` (all four corners, matching the panel's own
+// 12px), which reads fine on a transparent collapsed header but looks like
+// a gap once this one has its own background — squaring off just the
+// bottom two corners here lets the header's colored band run flush into
+// the body below while the top two corners stay rounded to match the
+// panel's own top edge.
+mat-expansion-panel-header.mat-expanded{
+  background: $feedback-header-active-bg;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+// Material's own default styling resets an expanded header's background to
+// `inherit` on :hover/:focus (".mat-expansion-panel-header.mat-expanded:
+// hover/:focus { background: inherit; }") — meant to suppress the ordinary
+// hover state-layer once a panel is already open, but it also erases the
+// active background above the moment the cursor moves over it. Collapsed
+// headers are left alone (still get Material's normal hover highlight);
+// this only re-asserts the active color for the expanded case, so hovering
+// an already-open row no longer visibly changes anything. Needs three
+// class-level selectors (.feedback-list, .mat-expanded, :hover/:focus) to
+// match Material's own rule's specificity, plus the mat-expansion-panel-
+// header type selector to win the tiebreak.
+.feedback-list mat-expansion-panel-header.mat-expanded:hover,
+.feedback-list mat-expansion-panel-header.mat-expanded:focus{
+  background: $feedback-header-active-bg;
 }
 
 mat-panel-title{
@@ -84,7 +161,24 @@ mat-panel-description{
   font-size: 0.8125rem;
 }
 
+// Left column (who/where/when this came from, plus the review actions) vs.
+// right column (the actual report text) — two visually distinct halves
+// rather than one run-on stack, per this page's own request. Grid's default
+// `align-items: stretch` (rather than the `start` this used before the
+// actions moved into the left column) is what's wanted now: the left
+// column's own content decides the row's height, and the report column —
+// via the flex treatment below — stretches to fill it, so the message reads
+// as a full-height panel rather than a text block trailing off partway down.
 .feedback-detail{
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 0 1.5rem;
+  // .mat-expansion-panel-body has no top padding (Material's own default
+  // is `0 24px 16px`), so this content used to butt right up against the
+  // header above it — a little breathing room now that the header has its
+  // own active background to visually separate from.
+  margin-top: 1rem;
+
   p{
     margin: 0 0 0.5rem;
   }
@@ -94,12 +188,77 @@ mat-panel-description{
   }
 }
 
+.feedback-column-label{
+  display: block;
+  margin-bottom: 0.375rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.feedback-meta{
+  display: flex;
+  flex-direction: column;
+  padding-right: 1.5rem;
+  border-right: 1px solid var(--mat-sys-outline-variant);
+}
+
+// The review actions, now living at the bottom of the left column instead
+// of a full-width bar below both columns (previously <mat-action-row>) —
+// stacked rather than side-by-side, since a single ~1/3-width column has
+// little room to spare for two buttons in a row. `margin-top: auto` on
+// .feedback-meta (a flex column) pushes this down to the bottom of
+// whatever height the grid row ends up at (set by the report column's own
+// content on the right), rather than sitting immediately under the
+// "Submitted"/"Marked reviewed" text on a short report.
+.feedback-actions{
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 1rem;
+
+  button{
+    justify-content: center;
+  }
+}
+
+// Flex column so .feedback-message (its only real child) can be told to
+// grow and fill the full height the grid row above hands this column,
+// rather than shrinking to just its own text content's height.
+.feedback-report{
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .feedback-message{
+  flex: 1 1 auto;
+  margin: 0;
   padding: 0.75rem 1rem;
   background: var(--mat-sys-surface-container-low);
   border-radius: 0.5rem;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+// Below this, side-by-side columns leave too little room for either one —
+// same collapse-to-stack treatment ManageTeamComponent/ManageTasksComponent
+// already use at their own narrow breakpoints.
+@media (max-width: 600px){
+  .feedback-detail{
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .feedback-meta{
+    padding-right: 0;
+    padding-bottom: 1rem;
+    border-right: none;
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+  }
 }
 
 .reviewed-note{

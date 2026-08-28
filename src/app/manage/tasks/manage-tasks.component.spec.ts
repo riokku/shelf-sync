@@ -559,11 +559,13 @@ describe('ManageTasksComponent ?task= deep link', () => {
     }).compileComponents();
 
     const fixture = TestBed.createComponent(ManageTasksComponent);
-    const openTaskDetailSpy = spyOn(fixture.componentInstance, 'openTaskDetail');
     fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(openTaskDetailSpy).toHaveBeenCalledWith(jasmine.objectContaining({ id: 'task-1' }));
+    // Sets selectedTask directly rather than going through
+    // openTaskDetail() — see that method's own doc comment — since the URL
+    // already has ?task= on it and there's nothing left to navigate.
+    expect(fixture.componentInstance.selectedTask).toEqual(jasmine.objectContaining({ id: 'task-1' }));
     expect(fixture.componentInstance.viewMode).toBe('all');
   });
 

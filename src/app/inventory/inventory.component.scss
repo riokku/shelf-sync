@@ -3,6 +3,17 @@
 @use '../shared/styles/skeleton';
 @use '../shared/styles/stagger';
 
+// Only rendered while an item's detail view is showing (see selectedItem's
+// own doc comment) — sits right below the breadcrumbs, above the heading
+// that becomes the item's own name in that state. Same shape
+// StudioOrgDetailComponent's own .back-row already establishes: negative
+// top margin snugs it up against .page-toolbar's own 1.5rem margin-bottom,
+// negative left margin so the button's own padding doesn't visibly indent
+// it past the breadcrumbs above.
+.back-row{
+  margin: -1rem 0 1rem -0.75rem;
+}
+
 .inventory-wrapper{
   color: var(--mat-sys-on-surface);
   padding: 3rem 1.5rem;

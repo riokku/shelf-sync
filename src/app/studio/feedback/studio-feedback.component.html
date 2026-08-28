@@ -18,17 +18,17 @@
       </div>
     } @else {
       <div class="feedback-controls">
+        <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput placeholder="Search org, person, type, or message…" [(ngModel)]="searchTerm" />
+        </mat-form-field>
+
         <mat-button-toggle-group [(ngModel)]="statusFilter" class="status-toggle">
           <mat-button-toggle value="all">All</mat-button-toggle>
           <mat-button-toggle value="new">New</mat-button-toggle>
           <mat-button-toggle value="reviewed">Reviewed</mat-button-toggle>
           <mat-button-toggle value="resolved">Resolved</mat-button-toggle>
         </mat-button-toggle-group>
-
-        <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
-          <mat-icon matPrefix>search</mat-icon>
-          <input matInput placeholder="Search org, person, type, or message…" [(ngModel)]="searchTerm" />
-        </mat-form-field>
       </div>
 
       @if (filteredFeedback.length === 0) {
@@ -52,39 +52,45 @@
               </mat-expansion-panel-header>
 
               <div class="feedback-detail">
-                <p><span class="semibold">Organization:</span> {{ row.orgName }}</p>
-                <p>
-                  <span class="semibold">From:</span> {{ row.submitterLabel }}
-                  @if (row.submitterEmail) {
-                    ({{ row.submitterEmail }})
-                  }
-                </p>
-                <p><span class="semibold">Submitted:</span> {{ row.created_at | date: 'M/d/yy, h:mm a' }}</p>
-                <p class="feedback-message">{{ row.message }}</p>
-                @if (row.reviewedByLabel) {
-                  <p class="reviewed-note">
-                    Marked {{ statusLabel(row) }} by {{ row.reviewedByLabel }}
-                    @if (row.reviewed_at) {
-                      on {{ row.reviewed_at | date: 'M/d/yy, h:mm a' }}
+                <div class="feedback-meta">
+                  <span class="feedback-column-label">Submitted by</span>
+                  <p><span class="semibold">Organization:</span> {{ row.orgName }}</p>
+                  <p>
+                    <span class="semibold">From:</span> {{ row.submitterLabel }}
+                    @if (row.submitterEmail) {
+                      ({{ row.submitterEmail }})
                     }
                   </p>
-                }
-              </div>
+                  <p><span class="semibold">Submitted:</span> {{ row.created_at | date: 'M/d/yy, h:mm a' }}</p>
+                  @if (row.reviewedByLabel) {
+                    <p class="reviewed-note">
+                      Marked {{ statusLabel(row) }} by {{ row.reviewedByLabel }}
+                      @if (row.reviewed_at) {
+                        on {{ row.reviewed_at | date: 'M/d/yy, h:mm a' }}
+                      }
+                    </p>
+                  }
 
-              <mat-action-row>
-                @if (row.status !== 'reviewed' && row.status !== 'resolved') {
-                  <button mat-stroked-button type="button" [disabled]="isUpdating(row.id)" (click)="markStatus(row, 'reviewed')">
-                    <mat-icon>visibility</mat-icon>
-                    Mark reviewed
-                  </button>
-                }
-                @if (row.status !== 'resolved') {
-                  <button mat-flat-button color="primary" type="button" [disabled]="isUpdating(row.id)" (click)="markStatus(row, 'resolved')">
-                    <mat-icon>check_circle</mat-icon>
-                    Mark resolved
-                  </button>
-                }
-              </mat-action-row>
+                  @if (row.status !== 'resolved') {
+                    <div class="feedback-actions">
+                      @if (row.status !== 'reviewed') {
+                        <button mat-stroked-button type="button" [disabled]="isUpdating(row.id)" (click)="markStatus(row, 'reviewed')">
+                          <mat-icon>visibility</mat-icon>
+                          Mark reviewed
+                        </button>
+                      }
+                      <button mat-flat-button color="primary" type="button" [disabled]="isUpdating(row.id)" (click)="markStatus(row, 'resolved')">
+                        <mat-icon>check_circle</mat-icon>
+                        Mark resolved
+                      </button>
+                    </div>
+                  }
+                </div>
+                <div class="feedback-report">
+                  <span class="feedback-column-label">Report</span>
+                  <p class="feedback-message">{{ row.message }}</p>
+                </div>
+              </div>
             </mat-expansion-panel>
           }
         </mat-accordion>

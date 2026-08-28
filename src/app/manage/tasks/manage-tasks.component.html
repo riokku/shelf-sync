@@ -3,8 +3,19 @@
     <div class="page-toolbar">
       <app-breadcrumbs />
     </div>
+    @if (selectedTask) {
+      <div class="back-row">
+        <button mat-button type="button" (click)="closeTaskDetail()">
+          <mat-icon>arrow_back</mat-icon>
+          Back
+        </button>
+      </div>
+    }
     <app-page-header icon="checklist" title="Manage Tasks" />
 
+    @if (selectedTask) {
+      <app-task-detail-modal [task]="selectedTask" (back)="closeTaskDetail($event)" />
+    } @else {
     <div class="tasks-header-row">
       <mat-button-toggle-group [ngModel]="viewMode" (ngModelChange)="setViewMode($event)" class="view-toggle">
         <mat-button-toggle value="create">
@@ -269,6 +280,7 @@
           </div>
         }
       </div>
+    }
     }
   </div>
 </div>

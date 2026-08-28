@@ -1,16 +1,26 @@
 <div class="tasks-wrapper">
   <div class="container">
   <div class="page-toolbar">
-    <app-breadcrumbs />
+    <app-breadcrumbs [parentOverride]="selectedTask ? tasksBreadcrumbParent : null" [labelOverride]="selectedTask?.title" />
   </div>
-  <h2>My Tasks</h2>
+  @if (selectedTask) {
+    <div class="back-row">
+      <button mat-button type="button" (click)="closeTaskDetail()">
+        <mat-icon>arrow_back</mat-icon>
+        Back
+      </button>
+    </div>
+  }
+  <h2>{{ selectedTask ? selectedTask.title : 'My Tasks' }}</h2>
   <app-page-intro
       pageKey="tasks"
       icon="checklist"
       text="This is your personal task queue — anything assigned to you, plus any transfer offers waiting on your response. Open a task to update its status as you work on it."
     />
 
-  @if (loadError) {
+  @if (selectedTask) {
+    <app-task-detail-modal [task]="selectedTask" [showTitle]="false" (back)="closeTaskDetail($event)" />
+  } @else if (loadError) {
     <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load your tasks. ' + loadError">
       <button mat-stroked-button type="button" (click)="retryLoad()">
         <mat-icon>refresh</mat-icon>

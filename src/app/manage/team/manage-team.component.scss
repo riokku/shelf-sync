@@ -1,5 +1,14 @@
 @use '../../shared/styles/page-toolbar';
 
+// Only rendered while a task's detail view is showing (see selectedTask's
+// own doc comment) — sits right below the breadcrumbs, above this page's
+// own "Manage Team" page-header (which stays put regardless of whether a
+// detail view is open). Same shape StudioOrgDetailComponent's own
+// .back-row already establishes.
+.back-row{
+  margin: -1rem 0 1rem -0.75rem;
+}
+
 .manage-team-wrapper{
   color: var(--mat-sys-on-surface);
   padding: 3rem 1.5rem;

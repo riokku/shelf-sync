@@ -9,6 +9,12 @@
   gap: 1rem;
 }
 
+// See alignActions' own doc comment — centers the trailing action column
+// against the whole text column's height instead of pinning it to the top.
+.page-header-align-center{
+  align-items: center;
+}
+
 // Same two-tone gradient-of-container-tokens chip Home's own nav cards and
 // the Manage hub's own cards use (see HomeComponent's own doc comment for
 // why *-container tokens specifically, not the bare primary/tertiary

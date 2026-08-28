@@ -1,6 +1,18 @@
 @use '../../shared/styles/page-toolbar';
 @use '../../shared/styles/realtime-flash';
 
+// Only rendered while an item's detail view is showing (see
+// selectedItemDetail's own doc comment) — sits right below the breadcrumbs,
+// above this page's own "Manage Inventory" page-header (which stays put
+// regardless of whether a detail view is open). Same shape
+// StudioOrgDetailComponent's own .back-row already establishes: negative
+// top margin snugs it up against .page-toolbar's own 1.5rem margin-bottom,
+// negative left margin so the button's own padding doesn't visibly indent
+// it past the breadcrumbs above.
+.back-row{
+  margin: -1rem 0 1rem -0.75rem;
+}
+
 .manage-inventory-wrapper{
   color: var(--mat-sys-on-surface);
   padding: 3rem 1.5rem;

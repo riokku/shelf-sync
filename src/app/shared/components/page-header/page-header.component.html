@@ -1,16 +1,21 @@
-<div class="page-header">
-  <span class="page-header-icon" [class.page-header-icon-danger]="variant === 'danger'" [class.page-header-icon-logo]="logoUrl">
-    @if (logoUrl) {
-      <img [src]="logoUrl" alt="" />
-    } @else {
-      <mat-icon>{{ icon }}</mat-icon>
-    }
-  </span>
+<div class="page-header" [class.page-header-align-center]="alignActions === 'center'">
+  @if (icon || logoUrl) {
+    <span class="page-header-icon" [class.page-header-icon-danger]="variant === 'danger'" [class.page-header-icon-logo]="logoUrl">
+      @if (logoUrl) {
+        <img [src]="logoUrl" alt="" />
+      } @else {
+        <mat-icon>{{ icon }}</mat-icon>
+      }
+    </span>
+  }
   <div class="page-header-text">
-    <h2>{{ title }}<ng-content select="[headerTitleExtra]" /></h2>
+    @if (title) {
+      <h2>{{ title }}<ng-content select="[headerTitleExtra]" /></h2>
+    }
     @if (subtitle) {
       <p class="page-header-subtitle">{{ subtitle }}</p>
     }
+    <ng-content select="[headerMeta]" />
   </div>
   <div class="page-header-actions">
     <ng-content />

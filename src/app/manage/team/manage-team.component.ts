@@ -56,6 +56,7 @@ interface TeamMember {
     PageHeaderComponent,
     UserAvatarComponent,
     TaskCardComponent,
+    TaskDetailModalComponent,
     EmptyStateComponent,
     BulkActionToolbarComponent
   ],
@@ -94,6 +95,15 @@ export class ManageTeamComponent implements OnInit {
   /** Set when loadProfiles()'s own query fails — see InventoryComponent's
    *  identical loadError field for the full reasoning. */
   loadError: string | null = null;
+
+  /** Set by openTaskDetail() below — while non-null, the template swaps the
+   *  whole team list out for this task's detail view instead, with a Back
+   *  button (right below the breadcrumbs) returning here. Mirrors
+   *  ManageInventoryComponent.selectedItemDetail's own doc comment — no
+   *  ?task= URL sync here, unlike TasksComponent/ManageTasksComponent's own
+   *  task views, since opening a task from here never supported a deep link
+   *  before either. */
+  selectedTask: Task | null = null;
 
   teamSearchTerm = '';
   showOnlineOnly = false;
@@ -577,17 +587,16 @@ export class ManageTeamComponent implements OnInit {
   }
 
   openTaskDetail(task: Task) {
-    const dialogRef = this.dialog.open(TaskDetailModalComponent, {
-      data: task,
-      width: 'clamp(75%, 25rem, 60%)',
-      panelClass: 'task-details-dialog'
-    });
+    this.selectedTask = task;
+  }
 
-    dialogRef.afterClosed().subscribe((updated: Task | undefined) => {
-      if (!updated) {
-        return;
-      }
-      this.loadTeamTasks();
-    });
+  /** The detail view's own Back button, and (back) handler for
+   *  TaskDetailModalComponent itself — see closeTaskDetail's own reasoning
+   *  in TasksComponent, mirrored here without the URL sync it doesn't need. */
+  closeTaskDetail(changed = false) {
+    this.selectedTask = null;
+    if (changed) {
+      void this.loadTeamTasks();
+    }
   }
 }

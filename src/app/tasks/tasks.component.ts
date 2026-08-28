@@ -2,14 +2,13 @@ import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SupabaseService } from '../core/supabase.service';
 import { AuthService, Profile } from '../core/auth.service';
 import { Database } from '../shared/models/database.types';
 import { TaskDetailModalComponent } from '../shared/components/task-detail-modal/task-detail-modal.component';
 import { TaskCardComponent } from './task-card/task-card.component';
-import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
+import { BreadcrumbParent, BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 import { EmptyStateComponent } from '../shared/components/empty-state/empty-state.component';
 import { PageIntroComponent } from '../shared/components/page-intro/page-intro.component';
 import { resolveProfileName } from '../shared/utils/profile-label';
@@ -23,7 +22,7 @@ type Task = Database['public']['Tables']['tasks']['Row'];
   selector: 'app-tasks',
   imports: [
     MatProgressSpinnerModule, MatButtonModule, MatIconModule, TaskCardComponent, BreadcrumbsComponent,
-    EmptyStateComponent, PageIntroComponent
+    EmptyStateComponent, PageIntroComponent, TaskDetailModalComponent
   ],
   templateUrl: './tasks.component.html',
   styleUrl: './tasks.component.scss',
@@ -31,7 +30,6 @@ type Task = Database['public']['Tables']['tasks']['Row'];
 export class TasksComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
   private authService = inject(AuthService);
-  private dialog = inject(MatDialog);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
@@ -59,6 +57,18 @@ export class TasksComponent implements OnInit {
    *  separate from `tasks` since they don't belong to this user's queue
    *  (and don't count toward assigned_to) until accepted. */
   incomingTransfers: Task[] = [];
+  /** Set by openTask() below — while non-null, the template swaps the whole
+   *  browsing UI (both task-row sections) out for this task's detail view
+   *  instead, with a Back button (rendered here — see the template's own
+   *  back-row, right below the breadcrumbs) returning here. Mirrors
+   *  InventoryComponent.selectedItem's own doc comment exactly. */
+  selectedTask: Task | null = null;
+  /** Bound to app-breadcrumbs' own [parentOverride] whenever selectedTask is
+   *  set — see BreadcrumbsComponent.parentOverride's own doc comment for why
+   *  this needs an override at all (same route, not a separate detail page,
+   *  so "Tasks" itself has to become the parent link rather than being
+   *  replaced outright). */
+  protected readonly tasksBreadcrumbParent: BreadcrumbParent = { label: 'Tasks', link: '/tasks' };
   isLoading = true;
   /** Repeat-count for the loading-state skeleton rows — see
    *  InventoryComponent.skeletonCards' own identical doc comment. */
@@ -106,12 +116,14 @@ export class TasksComponent implements OnInit {
     // it directly; no match falls back to /manage/tasks for a manager+
     // viewer, who can see any task in the org — the two-page equivalent of
     // InventoryComponent's single-page ?item= handling, which this
-    // otherwise mirrors (read once from the snapshot, not subscribed).
+    // otherwise mirrors (read once from the snapshot, not subscribed). Sets
+    // selectedTask directly rather than going through openTask() — the URL
+    // already has ?task= on it, so there's nothing to navigate.
     const taskId = this.route.snapshot.queryParamMap.get('task');
     if (taskId) {
       const task = [...this.tasks, ...this.incomingTransfers].find(candidate => candidate.id === taskId);
       if (task) {
-        this.openTask(task);
+        this.selectedTask = task;
       } else {
         // getProfile() rather than authService.canManage() — the profile
         // signal populates asynchronously (see AuthService's own note on
@@ -212,21 +224,40 @@ export class TasksComponent implements OnInit {
       : null;
   }
 
+  /** Swaps the browsing UI out for the task's detail view inline (see
+   *  selectedTask's own doc comment) rather than opening
+   *  TaskDetailModalComponent as a MatDialog, and mirrors that in the URL
+   *  (?task=<id>) so the deep link this page already supports on load also
+   *  works from a plain click — including the browser's own Back button,
+   *  since this pushes a new history entry rather than replacing the
+   *  current one. Mirrors InventoryComponent.showDetails() exactly. */
   openTask(task: Task) {
-    const dialogRef = this.dialog.open(TaskDetailModalComponent, {
-      data: task,
-      width: 'clamp(75%, 25rem, 60%)',
-      panelClass: 'task-details-dialog'
+    this.selectedTask = task;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { task: task.id },
+      queryParamsHandling: 'merge'
     });
+  }
 
-    // A transfer request/response can move a task in or out of either list
-    // (incoming -> mine on accept, out of both on decline, etc.), so a full
-    // reload is simpler and more robust here than patching one array in place.
-    dialogRef.afterClosed().subscribe((updated: Task | undefined) => {
-      if (!updated) {
-        return;
-      }
-      this.loadTasks();
+  /** The detail view's own Back button, and (back) handler for
+   *  TaskDetailModalComponent itself — see that component's own back
+   *  output doc comment for what `changed` means. A transfer
+   *  request/response can move a task in or out of either list (incoming
+   *  -> mine on accept, out of both on decline, etc.), so a full reload is
+   *  simpler and more robust here than patching one array in place —
+   *  mirrors this page's own pre-existing dialog-close reasoning exactly,
+   *  just triggered by `changed` instead of the dialog closing with a
+   *  truthy value. */
+  closeTaskDetail(changed = false) {
+    this.selectedTask = null;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { task: null },
+      queryParamsHandling: 'merge'
     });
+    if (changed) {
+      void this.loadTasks();
+    }
   }
 }

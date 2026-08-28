@@ -58,7 +58,8 @@ type RelatedItemOption = Pick<Database['public']['Tables']['inventory_items']['R
     PageHeaderComponent,
     UserAvatarComponent,
     EmptyStateComponent,
-    BulkActionToolbarComponent
+    BulkActionToolbarComponent,
+    TaskDetailModalComponent
   ],
   templateUrl: './manage-tasks.component.html',
   styleUrl: './manage-tasks.component.scss',
@@ -100,6 +101,15 @@ export class ManageTasksComponent implements OnInit, HasUnsavedChanges {
    *  successfully loaded list instead of going blank. */
   loadError: string | null = null;
   deleteTaskError: string | null = null;
+
+  /** Set by openTaskDetail() below — while non-null, the template swaps the
+   *  tab strip and whichever tab's own content out for this task's detail
+   *  view instead, with a Back button (right below the breadcrumbs)
+   *  returning to whichever tab (viewMode) was showing. Mirrored in the URL
+   *  as ?task=<id>, merged alongside the existing ?tab= param — same
+   *  ManageInventoryComponent shape, see its own selectedItemDetail doc
+   *  comment. */
+  selectedTask: Task | null = null;
 
   viewMode: 'create' | 'all' = 'create';
 
@@ -457,14 +467,16 @@ export class ManageTasksComponent implements OnInit, HasUnsavedChanges {
     // ?task= fallback for a task that wasn't in *that* viewer's personal
     // list. Read once from the snapshot, same as InventoryComponent's own
     // ?item= handling. Switches off the create-form default view so
-    // closing the dialog doesn't leave the deep-linked task's context
-    // behind a blank "create task" form.
+    // closing the detail view doesn't leave the deep-linked task's context
+    // behind a blank "create task" form. Sets selectedTask directly rather
+    // than going through openTaskDetail() — the URL already has ?task= on
+    // it, so there's nothing to navigate.
     const taskId = this.route.snapshot.queryParamMap.get('task');
     if (taskId) {
       const task = this.allTasks.find(candidate => candidate.id === taskId);
       if (task) {
         this.viewMode = 'all';
-        this.openTaskDetail(task);
+        this.selectedTask = task;
       }
     }
 
@@ -585,19 +597,35 @@ export class ManageTasksComponent implements OnInit, HasUnsavedChanges {
     this.taskFilterDueBefore = null;
   }
 
+  /** Swaps the tab strip/content out for this task's detail view inline
+   *  (see selectedTask's own doc comment) rather than opening
+   *  TaskDetailModalComponent as a MatDialog, and mirrors that in the URL
+   *  (?task=<id>, merged alongside ?tab=) the same way
+   *  ManageInventoryComponent's own openInventoryDetail() does. */
   openTaskDetail(task: Task) {
-    const dialogRef = this.dialog.open(TaskDetailModalComponent, {
-      data: task,
-      width: 'clamp(75%, 25rem, 60%)',
-      panelClass: 'task-details-dialog'
+    this.selectedTask = task;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { task: task.id },
+      queryParamsHandling: 'merge'
     });
+  }
 
-    dialogRef.afterClosed().subscribe((updated: Task | undefined) => {
-      if (!updated) {
-        return;
-      }
-      this.loadTasks();
+  /** The detail view's own Back button, and (back) handler for
+   *  TaskDetailModalComponent itself — see that component's own back
+   *  output doc comment for what `changed` means, and TasksComponent's own
+   *  closeTaskDetail() for the identical reasoning behind reloading only
+   *  when something actually changed. */
+  closeTaskDetail(changed = false) {
+    this.selectedTask = null;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { task: null },
+      queryParamsHandling: 'merge'
     });
+    if (changed) {
+      void this.loadTasks();
+    }
   }
 
   deleteTask(task: Task) {

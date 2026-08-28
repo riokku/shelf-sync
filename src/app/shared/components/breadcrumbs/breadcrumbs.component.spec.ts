@@ -54,13 +54,13 @@ describe('BreadcrumbsComponent with a breadcrumbParent', () => {
     }).compileComponents();
 
     const fixture = TestBed.createComponent(BreadcrumbsComponent);
-    // Route data (routeLabel/parent) is read once from ActivatedRoute's
+    // Route data (routeLabel/routeParent) is read once from ActivatedRoute's
     // constructor-time snapshot, so it's easier to drive this test via the
-    // public labelOverride input (which the label getter prefers anyway)
-    // than to fight TestBed's ActivatedRoute provider order for a two-field
-    // object; parent has no such override, so it's still assigned directly.
+    // public labelOverride/parentOverride inputs (which the label/parent
+    // getters prefer anyway) than to fight TestBed's ActivatedRoute provider
+    // order for a two-field object.
     fixture.componentInstance.labelOverride = 'Inventory';
-    fixture.componentInstance.parent = { label: 'Manage', link: '/manage' };
+    fixture.componentInstance.parentOverride = { label: 'Manage', link: '/manage' };
     fixture.detectChanges();
 
     const parentLink = fixture.debugElement.query(By.css('a[href="/manage"]'));

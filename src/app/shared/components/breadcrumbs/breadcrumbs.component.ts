@@ -37,5 +37,25 @@ export class BreadcrumbsComponent {
     return this.labelOverride || this.routeLabel;
   }
 
-  parent: BreadcrumbParent | null = this.route.snapshot.data['breadcrumbParent'] ?? null;
+  /** Same idea as labelOverride above, but for the parent segment — a page
+   *  that's both a top-level destination in its own right (its route's own
+   *  static breadcrumb label, read below, already renders a plain "Home /
+   *  X" on its own) and an entity-detail view layered on top of that same
+   *  route rather than a separate one (e.g. InventoryComponent swapping its
+   *  own item detail in over the browsing UI, no route change involved) sets
+   *  this once a specific entity is showing, so the trailing label
+   *  (labelOverride, e.g. the item's name) reads as a child of the page's
+   *  own normal label instead of replacing it outright the way
+   *  labelOverride alone would on a genuinely separate detail route (e.g.
+   *  StudioOrgDetailComponent, which has no need for this — its own parent
+   *  is fixed, set once via the static route data below). Pass `null`
+   *  explicitly (not just leave unset) once nothing is selected, to fall
+   *  back to the route's own default. */
+  @Input() parentOverride?: BreadcrumbParent | null;
+
+  private readonly routeParent: BreadcrumbParent | null = this.route.snapshot.data['breadcrumbParent'] ?? null;
+
+  get parent(): BreadcrumbParent | null {
+    return this.parentOverride ?? this.routeParent;
+  }
 }
