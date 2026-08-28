@@ -1,0 +1,27 @@
+<h2 mat-dialog-title>
+  <mat-icon class="transfer-title-icon">swap_horiz</mat-icon>
+  Transfer task
+</h2>
+<mat-dialog-content>
+  <p class="transfer-hint">
+    They'll need to accept this transfer before it takes effect — the task stays assigned to
+    you, and keeps showing up in your queue, until they do.
+  </p>
+
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>Who do you want to transfer this to?</mat-label>
+    <mat-icon matPrefix>swap_horiz</mat-icon>
+    <mat-select [(ngModel)]="targetId">
+      @for (profile of data.people; track profile.id) {
+        <mat-option [value]="profile.id">{{ profileLabel(profile) }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="cancel()">Cancel</button>
+  <button mat-flat-button color="primary" type="button" [disabled]="!targetId" (click)="submit()">
+    <mat-icon>swap_horiz</mat-icon>
+    Request transfer
+  </button>
+</mat-dialog-actions>

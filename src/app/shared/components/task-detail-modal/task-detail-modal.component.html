@@ -1,7 +1,7 @@
 @if (selectedRelatedItem) {
   <app-modal-table [data]="selectedRelatedItem" (back)="closeRelatedItem()" />
 } @else {
-<app-page-header [title]="showTitle ? task.title : undefined" alignActions="center">
+<app-page-header [title]="task.title">
   <div class="task-id-row" headerMeta>
     <mat-icon>tag</mat-icon>
     <code>{{ task.id }}</code>
@@ -16,8 +16,14 @@
     <div class="actions-group">
       <span class="actions-label">Actions</span>
       <div class="actions">
-        @if (canShowTransferPanel && !task.pending_transfer_to && !isPickingTransferTarget) {
-          <button mat-stroked-button type="button" class="start-transfer-button" (click)="startTransfer()">
+        @if (canShowTransferPanel && !task.pending_transfer_to) {
+          <button
+              mat-stroked-button
+              type="button"
+              class="start-transfer-button"
+              [disabled]="isRequestingTransfer"
+              (click)="startTransfer()"
+            >
             <mat-icon>swap_horiz</mat-icon>
             Transfer
           </button>
@@ -34,137 +40,131 @@
   }
 </app-page-header>
 <mat-dialog-content>
-  @if (task.related_item_name) {
-    <button
-        type="button"
-        class="related-item-banner"
-        [disabled]="isLoadingRelatedItem"
-        (click)="openRelatedItem()"
-      >
-      <mat-icon>inventory_2</mat-icon>
-      <span class="semibold">{{ task.related_item_name }}</span>
-      @if (isLoadingRelatedItem) {
-        <mat-spinner diameter="16"></mat-spinner>
-      } @else {
-        <mat-icon class="related-item-arrow">arrow_forward</mat-icon>
-      }
-    </button>
-    @if (relatedItemError) {
-      <p class="error-message">{{ relatedItemError }}</p>
-    }
-  }
+  <div class="detail-columns">
+    <div class="detail-column detail-column-left">
+      <section class="info-section">
+        <header class="info-section-header">
+          <mat-icon class="me-2">info</mat-icon>
+          Task information
+        </header>
 
-  @if (task.description) {
-    <p class="task-description">{{ task.description }}</p>
-  }
-
-  <dl class="task-meta">
-    <dt>Assigned to</dt>
-    <dd>{{ assigneeLabel() }}</dd>
-    @if (isPendingRecipient) {
-      <dt>Status</dt>
-      <dd>{{ statusLabels[task.status] }}</dd>
-    }
-    @if (task.due_date) {
-      <dt>Due date</dt>
-      <dd [class.overdue]="isOverdue">
-        @if (isOverdue) {
-          <mat-icon>error</mat-icon>
-        }
-        {{ task.due_date | date: 'M/d/yy' }}
-      </dd>
-    }
-    <dt>Created</dt>
-    <dd>{{ task.created_at | date: 'M/d/yy' }}</dd>
-    <dt>Created by</dt>
-    <dd>{{ createdByLabel() }}</dd>
-  </dl>
-
-  @if (!isPendingRecipient) {
-    <mat-form-field appearance="outline" class="status-field">
-      <mat-label>Status</mat-label>
-      <mat-icon matPrefix>flag</mat-icon>
-      <mat-select [(ngModel)]="selectedStatus">
-        @for (status of statuses; track status) {
-          <mat-option [value]="status">{{ statusLabels[status] }}</mat-option>
-        }
-      </mat-select>
-    </mat-form-field>
-
-    @if (error) {
-      <p class="error-message">{{ error }}</p>
-    }
-  }
-
-  @if (isPendingRecipient) {
-    <div class="transfer-panel transfer-incoming">
-      <p>
-        <mat-icon>swap_horiz</mat-icon>
-        This task was offered to you by <span class="semibold">{{ assigneeLabel() }}</span>.
-      </p>
-      <div class="transfer-actions">
-        <button mat-stroked-button type="button" (click)="declineTransfer()" [disabled]="isRespondingToTransfer">
-          Decline
-        </button>
-        <button mat-flat-button color="primary" type="button" (click)="acceptTransfer()" [disabled]="isRespondingToTransfer">
-          @if (isRespondingToTransfer) {
-            <mat-spinner diameter="20"></mat-spinner>
-          } @else {
-            Accept
+        <dl class="task-meta">
+          <dt>Assigned to</dt>
+          <dd>{{ assigneeLabel() }}</dd>
+          @if (isPendingRecipient) {
+            <dt>Status</dt>
+            <dd>{{ statusLabels[task.status] }}</dd>
           }
-        </button>
-      </div>
-    </div>
-  } @else if (canShowTransferPanel) {
-    @if (task.pending_transfer_to) {
-      <div class="transfer-panel">
-        <p>
-          <mat-icon>hourglass_top</mat-icon>
-          Transfer pending — waiting on <span class="semibold">{{ pendingTransferLabel() }}</span> to accept.
-        </p>
-        <button mat-button type="button" (click)="cancelTransfer()" [disabled]="isRequestingTransfer">
-          @if (isRequestingTransfer) {
-            <mat-spinner diameter="20"></mat-spinner>
-          } @else {
-            Cancel transfer
+          @if (task.due_date) {
+            <dt>Due date</dt>
+            <dd [class.overdue]="isOverdue">
+              @if (isOverdue) {
+                <mat-icon>error</mat-icon>
+              }
+              {{ task.due_date | date: 'M/d/yy' }}
+            </dd>
           }
-        </button>
-      </div>
-    } @else if (isPickingTransferTarget) {
-      <div class="transfer-panel">
-        <div class="transfer-request-row">
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-icon matPrefix>swap_horiz</mat-icon>
-            <mat-select placeholder="Transfer to" [(ngModel)]="transferTarget">
-              @for (profile of transferablePeople; track profile.id) {
-                <mat-option [value]="profile.id">{{ profileLabel(profile) }}</mat-option>
+          <dt>Created</dt>
+          <dd>{{ task.created_at | date: 'M/d/yy' }}</dd>
+          <dt>Created by</dt>
+          <dd>{{ createdByLabel() }}</dd>
+        </dl>
+
+        @if (!isPendingRecipient) {
+          <mat-form-field appearance="outline" class="status-field">
+            <mat-label>Status</mat-label>
+            <mat-icon matPrefix>flag</mat-icon>
+            <mat-select [(ngModel)]="selectedStatus">
+              @for (status of statuses; track status) {
+                <mat-option [value]="status">{{ statusLabels[status] }}</mat-option>
               }
             </mat-select>
           </mat-form-field>
-          <div class="transfer-request-actions">
-            <button mat-button type="button" (click)="cancelPickingTransferTarget()" [disabled]="isRequestingTransfer">
-              Cancel
+
+          @if (error) {
+            <p class="error-message">{{ error }}</p>
+          }
+        }
+      </section>
+
+      @if (isPendingRecipient) {
+        <div class="transfer-panel transfer-incoming">
+          <p>
+            <mat-icon>swap_horiz</mat-icon>
+            This task was offered to you by <span class="semibold">{{ assigneeLabel() }}</span>.
+          </p>
+          <div class="transfer-actions">
+            <button mat-stroked-button type="button" (click)="declineTransfer()" [disabled]="isRespondingToTransfer">
+              Decline
             </button>
-            <button
-                mat-stroked-button
-                type="button"
-                (click)="requestTransfer()"
-                [disabled]="!transferTarget || isRequestingTransfer"
-              >
-              @if (isRequestingTransfer) {
+            <button mat-flat-button color="primary" type="button" (click)="acceptTransfer()" [disabled]="isRespondingToTransfer">
+              @if (isRespondingToTransfer) {
                 <mat-spinner diameter="20"></mat-spinner>
               } @else {
-                Request transfer
+                Accept
               }
             </button>
           </div>
         </div>
-      </div>
-    }
-  }
+      } @else if (canShowTransferPanel) {
+        @if (task.pending_transfer_to) {
+          <div class="transfer-panel">
+            <p>
+              <mat-icon>hourglass_top</mat-icon>
+              Transfer pending — waiting on <span class="semibold">{{ pendingTransferLabel() }}</span> to accept.
+            </p>
+            <button mat-button type="button" (click)="cancelTransfer()" [disabled]="isRequestingTransfer">
+              @if (isRequestingTransfer) {
+                <mat-spinner diameter="20"></mat-spinner>
+              } @else {
+                Cancel transfer
+              }
+            </button>
+          </div>
+        }
+      }
 
-  @if (transferError) {
-    <p class="error-message">{{ transferError }}</p>
-  }
+      @if (transferError) {
+        <p class="error-message">{{ transferError }}</p>
+      }
+    </div>
+
+    <div class="detail-column detail-column-right">
+      @if (task.description || task.related_item_name) {
+        <section class="info-section">
+          <header class="info-section-header">
+            <mat-icon class="me-2">checklist</mat-icon>
+            Task details
+          </header>
+
+          @if (task.description) {
+            <p class="task-description">{{ task.description }}</p>
+          }
+
+          @if (task.related_item_name) {
+            <div class="related-item-section">
+              <p class="related-item-heading">Associated item(s)</p>
+              <button
+                  type="button"
+                  class="related-item-banner"
+                  [disabled]="isLoadingRelatedItem"
+                  (click)="openRelatedItem()"
+                >
+                <span class="semibold">{{ task.related_item_name }}</span>
+                @if (isLoadingRelatedItem) {
+                  <mat-spinner diameter="16"></mat-spinner>
+                } @else {
+                  <mat-icon class="related-item-arrow">arrow_forward</mat-icon>
+                }
+              </button>
+              @if (relatedItemError) {
+                <p class="error-message">{{ relatedItemError }}</p>
+              }
+            </div>
+          }
+        </section>
+      }
+    </div>
+  </div>
 </mat-dialog-content>
 }

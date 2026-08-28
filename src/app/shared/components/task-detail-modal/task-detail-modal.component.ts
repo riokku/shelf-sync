@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, OnInit, Output, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MatDialogContent, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatDialog, MatDialogContent, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
@@ -14,12 +14,13 @@ import { Database } from '../../models/database.types';
 import { InventoryItem } from '../../models/inventory-item.model';
 import { TASK_STATUSES, TASK_STATUS_LABELS } from '../../models/task-status';
 import { toInventoryItem } from '../../utils/inventory-item.mapper';
-import { profileDisplayName, resolveProfileName } from '../../utils/profile-label';
+import { resolveProfileName } from '../../utils/profile-label';
 import { loadInventoryImagesByItemId } from '../../utils/inventory-item-images';
 import { loadInventoryActivityByItemId } from '../../utils/inventory-item-activity';
 import { getTodayIsoDate } from '../../utils/date';
 import { ModalTableComponent } from '../modal-table/modal-table.component';
 import { PageHeaderComponent } from '../page-header/page-header.component';
+import { TransferTaskModalComponent } from '../transfer-task-modal/transfer-task-modal.component';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
 
@@ -52,6 +53,11 @@ export class TaskDetailModalComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
   private notification = inject(NotificationService);
   protected authService = inject(AuthService);
+  // The plain service, not the whole MatDialogModule (see this component's
+  // own imports array comment above) — importing that module would provide
+  // a second MatDialog instance that shadows the root singleton for this
+  // exact inject() call, the dialog-in-dialog footgun CLAUDE.md documents.
+  private dialog = inject(MatDialog);
   // Both optional — every real caller now embeds this component inline with
   // a plain [task] binding (TasksComponent, ManageTeamComponent,
   // ManageTasksComponent — see each's own doc comment) rather than opening
@@ -69,13 +75,6 @@ export class TaskDetailModalComponent implements OnInit {
    *  binding overwrites this before ngOnInit runs, same as any other
    *  @Input(). */
   @Input() task: Task = this.dialogData as Task;
-  /** Whether the task's title renders as its own heading here (via
-   *  app-page-header) — off for TasksComponent's own usage, since that
-   *  page's own outer heading already shows the same title once a task is
-   *  selected (mirrors ModalTableComponent's own showTitle/InventoryComponent
-   *  pairing). ManageTeamComponent/ManageTasksComponent have no such outer
-   *  heading of their own, so this stays true — the default — for those. */
-  @Input() showTitle = true;
   /** Emits once this task's own detail view should close — true when
    *  something about the task actually changed (a status save, or any
    *  transfer action), so the caller knows to reload its own list; false
@@ -88,7 +87,17 @@ export class TaskDetailModalComponent implements OnInit {
   readonly statusLabels = TASK_STATUS_LABELS;
   readonly statuses = TASK_STATUSES;
 
-  selectedStatus: Task['status'] = this.task.status;
+  // Set in ngOnInit(), not here — a field initializer runs during
+  // construction, which is *before* Angular applies an inline caller's
+  // [task] binding (that only happens between construction and
+  // ngOnChanges/ngOnInit). Reading this.task.status this early crashed the
+  // component outright for every real caller (TasksComponent/
+  // ManageTasksComponent/ManageTeamComponent), all of which now provide
+  // `task` via a plain @Input() rather than MAT_DIALOG_DATA — this.task
+  // was still null (dialogData's own default) when this line ran during
+  // construction, throwing "Cannot read properties of null (reading
+  // 'status')" and leaving the whole detail view blank.
+  selectedStatus!: Task['status'];
   isSaving = false;
   error: string | null = null;
 
@@ -109,17 +118,9 @@ export class TaskDetailModalComponent implements OnInit {
   currentUserId: string | null = null;
   orgProfiles: Profile[] = [];
 
-  transferTarget: string | null = null;
   isRequestingTransfer = false;
   isRespondingToTransfer = false;
   transferError: string | null = null;
-
-  /** Starts false so the not-yet-requested case is just a plain "Transfer"
-   *  button rather than the recipient picker sitting permanently open
-   *  next to the status field — the picker (and its boxed .transfer-panel
-   *  styling, same treatment the pending/incoming states already use) only
-   *  appears once someone actually means to start one. */
-  isPickingTransferTarget = false;
 
   // Same rule TaskCardComponent/ManageTasksComponent already badge list
   // rows with — flags it here too now that opening the dialog is the other
@@ -164,15 +165,13 @@ export class TaskDetailModalComponent implements OnInit {
   }
 
   async ngOnInit() {
+    this.selectedStatus = this.task.status;
+
     const session = await this.authService.getSession();
     this.currentUserId = session?.user.id ?? null;
 
     const { data } = await this.supabase.from('profiles').select('*').order('full_name');
     this.orgProfiles = data ?? [];
-  }
-
-  profileLabel(profile: Profile): string {
-    return profileDisplayName(profile);
   }
 
   assigneeLabel(): string {
@@ -187,20 +186,28 @@ export class TaskDetailModalComponent implements OnInit {
     return resolveProfileName(this.task.pending_transfer_to, this.orgProfiles) || 'Unknown user';
   }
 
+  /** Opens the picker as its own popup (TransferTaskModalComponent) rather
+   *  than expanding an inline panel next to the status field — a pure
+   *  data-collector, same pattern ModalTableComponent.openRequestRetirement()
+   *  already establishes: it just returns the picked target's id (or
+   *  nothing, on Cancel), and requestTransfer() below still owns the actual
+   *  RPC call/error state once the dialog closes. */
   startTransfer() {
-    this.isPickingTransferTarget = true;
+    const dialogRef = this.dialog.open(TransferTaskModalComponent, {
+      data: { people: this.transferablePeople },
+      width: 'clamp(24rem, 45vw, 30rem)',
+      maxWidth: '90vw'
+    });
+
+    dialogRef.afterClosed().subscribe((targetId: string | undefined) => {
+      if (targetId) {
+        void this.requestTransfer(targetId);
+      }
+    });
   }
 
-  /** Backs out of the picker without touching the server — distinct from
-   *  cancelTransfer() below, which cancels a transfer already requested. */
-  cancelPickingTransferTarget() {
-    this.isPickingTransferTarget = false;
-    this.transferTarget = null;
-    this.transferError = null;
-  }
-
-  async requestTransfer() {
-    if (!this.transferTarget || this.isRequestingTransfer) {
+  async requestTransfer(targetId: string) {
+    if (this.isRequestingTransfer) {
       return;
     }
 
@@ -209,7 +216,7 @@ export class TaskDetailModalComponent implements OnInit {
 
     const { error } = await this.supabase.rpc('request_task_transfer', {
       task_id: this.task.id,
-      target_id: this.transferTarget
+      target_id: targetId
     });
 
     this.isRequestingTransfer = false;

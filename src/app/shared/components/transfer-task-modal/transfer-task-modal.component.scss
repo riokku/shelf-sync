@@ -1,0 +1,22 @@
+.full-width{
+  width: 100%;
+}
+
+.transfer-title-icon{
+  vertical-align: middle;
+  margin-right: 0.375rem;
+  color: var(--mat-sys-primary);
+}
+
+// Material's own mat-dialog-title has only 6px of top padding by default —
+// see RequestRetirementModalComponent's own identical fix for the full
+// reasoning.
+[mat-dialog-title]{
+  padding-top: 1.5rem;
+}
+
+.transfer-hint{
+  margin: 0 0 1rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+}

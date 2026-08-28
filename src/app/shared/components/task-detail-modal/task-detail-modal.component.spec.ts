@@ -1,9 +1,23 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { of } from 'rxjs';
 
 import { TaskDetailModalComponent } from './task-detail-modal.component';
+import { TransferTaskModalComponent } from '../transfer-task-modal/transfer-task-modal.component';
 import { AuthService } from '../../../core/auth.service';
-import { createFakeAuthService, createFakeMatDialogRef, createFakeProfile, createTestTask } from '../../../testing/fakes';
+import { SupabaseService } from '../../../core/supabase.service';
+import { NotificationService } from '../../../core/notification.service';
+import {
+  createFakeAuthService,
+  createFakeMatDialogRef,
+  createFakeProfile,
+  createFakeSupabaseService,
+  createTestTask
+} from '../../../testing/fakes';
+
+function createFakeDialogRef(result: unknown): MatDialogRef<unknown> {
+  return { afterClosed: () => of(result) } as unknown as MatDialogRef<unknown>;
+}
 
 describe('TaskDetailModalComponent', () => {
   let component: TaskDetailModalComponent;
@@ -36,6 +50,36 @@ describe('TaskDetailModalComponent', () => {
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(`${window.location.origin}/tasks?task=task-1`);
     expect(component.linkCopied).toBeTrue();
+  });
+});
+
+/** Regression test for the crash that shipped with the "inline pages"
+ *  conversion — TasksComponent/ManageTasksComponent/ManageTeamComponent all
+ *  embed this component with a plain [task] binding and no enclosing
+ *  MatDialog, so MAT_DIALOG_DATA/MatDialogRef both resolve to null via their
+ *  optional injects (see dialogRef's own doc comment). The describe block
+ *  above always provides MAT_DIALOG_DATA, which masked this: selectedStatus
+ *  used to read this.task.status in a field initializer, which runs during
+ *  construction — *before* Angular applies an @Input() binding — so
+ *  this.task was still null and the read threw, leaving the whole detail
+ *  view blank (only the caller's own outer heading rendered, since that
+ *  lives in the parent's own template). */
+describe('TaskDetailModalComponent inline embedding (no enclosing dialog)', () => {
+  it('constructs and renders without an enclosing MatDialog, resolving selectedStatus from the [task] input', async () => {
+    await TestBed.configureTestingModule({
+      imports: [TaskDetailModalComponent],
+      providers: [
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: SupabaseService, useValue: createFakeSupabaseService() }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(TaskDetailModalComponent);
+    const task = createTestTask({ status: 'in_progress' });
+    fixture.componentRef.setInput('task', task);
+
+    expect(() => fixture.detectChanges()).not.toThrow();
+    expect(fixture.componentInstance.selectedStatus).toBe('in_progress');
   });
 });
 
@@ -73,46 +117,75 @@ describe('TaskDetailModalComponent createdByLabel', () => {
   });
 });
 
-/** Covers the collapsed-by-default transfer picker — a plain "Transfer"
- *  button until clicked, rather than the recipient select sitting
- *  permanently open next to the status field. */
-describe('TaskDetailModalComponent transfer picker', () => {
-  let component: TaskDetailModalComponent;
-
-  beforeEach(async () => {
+/** Picking a transfer target now happens in its own popup
+ *  (TransferTaskModalComponent) rather than an inline panel next to the
+ *  status field — startTransfer() just opens it (same pure
+ *  data-collector/afterClosed() pattern ManageSuppliersComponent's own
+ *  dialog-opening methods already establish), and requestTransfer() makes
+ *  the actual RPC call once it closes with a picked id. */
+describe('TaskDetailModalComponent transfer popup', () => {
+  async function createComponentWithTask(overrides: Parameters<typeof createTestTask>[0] = {}) {
     await TestBed.configureTestingModule({
       imports: [TaskDetailModalComponent],
       providers: [
         { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: SupabaseService, useValue: createFakeSupabaseService() },
         { provide: MatDialogRef, useValue: createFakeMatDialogRef() },
-        { provide: MAT_DIALOG_DATA, useValue: createTestTask() }
+        { provide: MAT_DIALOG_DATA, useValue: createTestTask(overrides) }
       ]
     }).compileComponents();
 
     const fixture = TestBed.createComponent(TaskDetailModalComponent);
-    component = fixture.componentInstance;
     fixture.detectChanges();
-  });
+    return { component: fixture.componentInstance, fixture };
+  }
 
-  it('starts collapsed', () => {
-    expect(component.isPickingTransferTarget).toBeFalse();
-  });
+  it('startTransfer() opens TransferTaskModalComponent with the transferable people', async () => {
+    const { component } = await createComponentWithTask();
+    component.orgProfiles = [
+      createFakeProfile({ id: 'user-1' }),
+      createFakeProfile({ id: 'user-2' })
+    ];
+    const dialog = TestBed.inject(MatDialog);
+    const openSpy = spyOn(dialog, 'open').and.returnValue(createFakeDialogRef(undefined));
 
-  it('startTransfer() expands the picker', () => {
     component.startTransfer();
-    expect(component.isPickingTransferTarget).toBeTrue();
+
+    expect(openSpy).toHaveBeenCalledWith(
+      TransferTaskModalComponent,
+      jasmine.objectContaining({ data: { people: component.transferablePeople } })
+    );
   });
 
-  it('cancelPickingTransferTarget() collapses it again and clears any picked target/error', () => {
+  it('requests the transfer once the popup closes with a picked target', async () => {
+    const { component, fixture } = await createComponentWithTask();
+    const dialog = TestBed.inject(MatDialog);
+    spyOn(dialog, 'open').and.returnValue(createFakeDialogRef('user-2'));
+    const notification = TestBed.inject(NotificationService);
+    const successSpy = spyOn(notification, 'success');
+    const backSpy = spyOn(component.back, 'emit');
+
     component.startTransfer();
-    component.transferTarget = 'user-2';
-    component.transferError = 'something went wrong';
+    // requestTransfer() is fire-and-forget from the afterClosed() subscriber
+    // (see startTransfer()'s own doc comment) — let it settle before
+    // asserting.
+    await fixture.whenStable();
 
-    component.cancelPickingTransferTarget();
+    expect(successSpy).toHaveBeenCalledWith('Transfer requested');
+    expect(backSpy).toHaveBeenCalledWith(true);
+  });
 
-    expect(component.isPickingTransferTarget).toBeFalse();
-    expect(component.transferTarget).toBeNull();
-    expect(component.transferError).toBeNull();
+  it('does not request a transfer when the popup closes without picking anyone (Cancel)', async () => {
+    const { component, fixture } = await createComponentWithTask();
+    const dialog = TestBed.inject(MatDialog);
+    spyOn(dialog, 'open').and.returnValue(createFakeDialogRef(undefined));
+    const notification = TestBed.inject(NotificationService);
+    const successSpy = spyOn(notification, 'success');
+
+    component.startTransfer();
+    await fixture.whenStable();
+
+    expect(successSpy).not.toHaveBeenCalled();
   });
 });
 

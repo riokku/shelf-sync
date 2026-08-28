@@ -11,7 +11,9 @@
       </button>
     </div>
   }
-  <h2>{{ selectedTask ? selectedTask.title : 'My Tasks' }}</h2>
+  @if (!selectedTask) {
+    <h2>My Tasks</h2>
+  }
   <app-page-intro
       pageKey="tasks"
       icon="checklist"
@@ -19,7 +21,7 @@
     />
 
   @if (selectedTask) {
-    <app-task-detail-modal [task]="selectedTask" [showTitle]="false" (back)="closeTaskDetail($event)" />
+    <app-task-detail-modal [task]="selectedTask" (back)="closeTaskDetail($event)" />
   } @else if (loadError) {
     <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load your tasks. ' + loadError">
       <button mat-stroked-button type="button" (click)="retryLoad()">
