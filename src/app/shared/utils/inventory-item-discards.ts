@@ -40,10 +40,19 @@ export async function logInventoryItemDiscard(
  *  rather than pre-aggregated, since ManageReportsComponent is the only
  *  consumer and what it groups by (reason, category via a join against the
  *  inventory items it's already loaded) is report-specific, not something
- *  worth baking into a shared loader. */
+ *  worth baking into a shared loader.
+ *
+ *  Returns `{ discards, error }` rather than a bare array — this feeds the
+ *  "Stock movement & loss" section of manage/reports' own primary content
+ *  load, so its caller needs to distinguish a genuine fetch failure from
+ *  "nothing discarded yet," same reasoning loadAllInventoryItemReservations()
+ *  gives for its own identical shape. */
 export async function loadAllInventoryItemDiscards(
   supabase: SupabaseClient<Database>
-): Promise<InventoryItemDiscardRow[]> {
-  const { data } = await supabase.from('inventory_item_discards').select('*');
-  return data ?? [];
+): Promise<{ discards: InventoryItemDiscardRow[]; error: string | null }> {
+  const { data, error } = await supabase.from('inventory_item_discards').select('*');
+  if (error) {
+    return { discards: [], error: error.message };
+  }
+  return { discards: data ?? [], error: null };
 }

@@ -152,9 +152,10 @@ export function createFakeInventoryFieldOptionsService(
  *  backed list plus no-op writes, for any component that injects
  *  SupplierService (the supplier picker on the item create/edit forms, and
  *  manage/suppliers itself). */
-export function createFakeSupplierService(suppliers: Supplier[] = []): SupplierService {
+export function createFakeSupplierService(suppliers: Supplier[] = [], loadError: string | null = null): SupplierService {
   const fake = {
     suppliers: signal(suppliers).asReadonly(),
+    loadError: signal(loadError).asReadonly(),
     load: async () => {},
     create: async () => null,
     update: async () => null,

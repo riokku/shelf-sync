@@ -18,26 +18,38 @@ export interface OrgActivityLogEntry {
  *  one organization, so no explicit org filter is needed here. Mirrors
  *  loadInventoryActivityByItemId()'s shape (shared/utils/inventory-item-activity.ts):
  *  resolve each actor_id against an already-loaded profiles array rather
- *  than joining, same reasoning (profiles is cheap to load once up front). */
+ *  than joining, same reasoning (profiles is cheap to load once up front).
+ *
+ *  Returns `{ entries, error }` rather than a bare array — this is the
+ *  page's own primary content load, so its caller needs to distinguish a
+ *  genuine fetch failure from "no activity today," same reasoning
+ *  loadAllInventoryItemReservations() gives for its own identical shape. */
 export async function loadActivityLog(
   supabase: SupabaseClient<Database>,
   profiles: Profile[],
   range: { from: string; to: string }
-): Promise<OrgActivityLogEntry[]> {
-  const { data } = await supabase
+): Promise<{ entries: OrgActivityLogEntry[]; error: string | null }> {
+  const { data, error } = await supabase
     .from('activity_log')
     .select('*')
     .gte('created_at', range.from)
     .lt('created_at', range.to)
     .order('created_at', { ascending: false });
 
-  return (data ?? []).map(row => ({
-    timestamp: row.created_at,
-    actor: row.actor_id ? (resolveProfileName(row.actor_id, profiles) || 'Unknown user') : 'System',
-    actorAvatarKey: row.actor_id ? resolveProfileAvatarKey(row.actor_id, profiles) : null,
-    entityType: row.entity_type,
-    message: row.message
-  }));
+  if (error) {
+    return { entries: [], error: error.message };
+  }
+
+  return {
+    entries: (data ?? []).map(row => ({
+      timestamp: row.created_at,
+      actor: row.actor_id ? (resolveProfileName(row.actor_id, profiles) || 'Unknown user') : 'System',
+      actorAvatarKey: row.actor_id ? resolveProfileAvatarKey(row.actor_id, profiles) : null,
+      entityType: row.entity_type,
+      message: row.message
+    })),
+    error: null
+  };
 }
 
 /** Thin insert wrapper, same shape as logInventoryItemActivity() — organization_id

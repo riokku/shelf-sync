@@ -45,11 +45,29 @@ export class SupplierService {
   private readonly _suppliers = signal<Supplier[]>([]);
   readonly suppliers = this._suppliers.asReadonly();
 
+  /** Set when load()'s own query fails — see InventoryComponent's identical
+   *  loadError field for the full reasoning. Lives here rather than on
+   *  ManageSuppliersComponent since this service (not the component) owns
+   *  the actual query; the page reads it straight off the service the same
+   *  way it already reads `suppliers` itself. A failure here leaves
+   *  whatever was already loaded in place, same background-refresh-safe
+   *  behavior every other loadError field in this app already has — this
+   *  service is also read by the item create/edit forms' supplier picker,
+   *  which shouldn't lose its options out from under an in-progress edit
+   *  just because a later reload failed. */
+  private readonly _loadError = signal<string | null>(null);
+  readonly loadError = this._loadError.asReadonly();
+
   /** Safe to call from any component that renders the directory or the
    *  picker — cheap, and each caller can't assume another component already
    *  loaded it (same reasoning InventoryFieldOptionsService.load() gives). */
   async load() {
-    const { data } = await this.supabase.from('suppliers').select('*').order('name');
+    const { data, error } = await this.supabase.from('suppliers').select('*').order('name');
+    if (error) {
+      this._loadError.set(error.message);
+      return;
+    }
+    this._loadError.set(null);
     this._suppliers.set((data ?? []).map(toSupplier));
   }
 

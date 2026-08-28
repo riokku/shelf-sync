@@ -37,20 +37,32 @@ function toInventoryItemOrder(row: InventoryItemOrderRow, profiles: Profile[]): 
  *  inventory_items.organization_id) is what actually scopes this to the
  *  caller's org; there's no explicit organization_id filter here, matching
  *  every other unfiltered .from(...) query in this app that relies on RLS
- *  alone (see shared/utils/realtime.ts's own comment on this convention). */
+ *  alone (see shared/utils/realtime.ts's own comment on this convention).
+ *
+ *  Returns `{ orders, error }` rather than a bare array — this is the page's
+ *  own primary content load, so its caller needs to distinguish a genuine
+ *  fetch failure from "no orders yet," same reasoning
+ *  loadAllInventoryItemReservations() gives for its own identical shape. */
 export async function loadAllInventoryItemOrders(
   supabase: SupabaseClient<Database>,
   profiles: Profile[],
   itemNamesById: Map<string, string>
-): Promise<InventoryItemOrderWithItem[]> {
-  const { data } = await supabase
+): Promise<{ orders: InventoryItemOrderWithItem[]; error: string | null }> {
+  const { data, error } = await supabase
     .from('inventory_item_orders')
     .select('*')
     .order('ordered_at', { ascending: false });
 
-  return (data ?? []).map(row => ({
-    ...toInventoryItemOrder(row, profiles),
-    itemId: row.item_id,
-    itemName: itemNamesById.get(row.item_id) ?? 'Unknown item'
-  }));
+  if (error) {
+    return { orders: [], error: error.message };
+  }
+
+  return {
+    orders: (data ?? []).map(row => ({
+      ...toInventoryItemOrder(row, profiles),
+      itemId: row.item_id,
+      itemName: itemNamesById.get(row.item_id) ?? 'Unknown item'
+    })),
+    error: null
+  };
 }

@@ -1,11 +1,13 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SupabaseService } from '../../core/supabase.service';
 import { Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { DonutChartComponent } from '../../shared/components/donut-chart/donut-chart.component';
 import { RingStatComponent } from '../../shared/components/ring-stat/ring-stat.component';
 import { Database } from '../../shared/models/database.types';
@@ -68,7 +70,7 @@ interface AssigneeWorkloadRow {
  *  need one. */
 @Component({
   selector: 'app-manage-reports',
-  imports: [CurrencyPipe, DecimalPipe, MatIconModule, MatProgressSpinnerModule, BreadcrumbsComponent, PageHeaderComponent, DonutChartComponent, RingStatComponent],
+  imports: [CurrencyPipe, DecimalPipe, MatButtonModule, MatIconModule, MatProgressSpinnerModule, BreadcrumbsComponent, PageHeaderComponent, EmptyStateComponent, DonutChartComponent, RingStatComponent],
   templateUrl: './manage-reports.component.html',
   styleUrl: './manage-reports.component.scss',
 })
@@ -76,6 +78,14 @@ export class ManageReportsComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
 
   isLoading = true;
+  /** Set when any of the three primary queries ngOnInit runs
+   *  (inventory_items, inventory_item_discards, tasks) fails — see
+   *  InventoryComponent's identical loadError field for the full reasoning.
+   *  The profiles lookup alongside them is a secondary label lookup (just
+   *  resolving assignee names for workloadByAssignee), not this page's own
+   *  primary content, so it's left unchecked, same "secondary loads stay
+   *  unchecked" line ManageReservationsComponent's own loadError draws. */
+  loadError: string | null = null;
 
   // --- Inventory value & stock health ---
   totalValue = 0;
@@ -132,8 +142,20 @@ export class ManageReportsComponent implements OnInit {
     return rest > 0 ? [...top, { label: 'Other', value: rest }] : top;
   }
 
+  /** Re-runs ngOnInit()'s own loads after a failed one — the Retry button's
+   *  handler (see the template's own loadError branch). */
+  retryLoad() {
+    void this.loadReportData();
+  }
+
   async ngOnInit() {
-    const [{ data: items }, discards, { data: tasks }, { data: profiles }] = await Promise.all([
+    await this.loadReportData();
+  }
+
+  private async loadReportData() {
+    this.isLoading = true;
+
+    const [itemsResult, discardsResult, tasksResult, { data: profiles }] = await Promise.all([
       this.supabase
         .from('inventory_items')
         .select('id, category, physical_location, quantity_remaining, low_quantity_threshold, price_per_unit, price_per_container, quantity_per_container, status'),
@@ -142,9 +164,18 @@ export class ManageReportsComponent implements OnInit {
       this.supabase.from('profiles').select('*')
     ]);
 
-    this.buildStockHealth(items ?? []);
-    this.buildMovementAndLoss(items ?? [], discards);
-    this.buildTaskThroughput(tasks ?? [], profiles ?? []);
+    const error = itemsResult.error?.message ?? discardsResult.error ?? tasksResult.error?.message ?? null;
+    if (error) {
+      this.loadError = error;
+      this.isLoading = false;
+      return;
+    }
+    this.loadError = null;
+
+    const items = itemsResult.data ?? [];
+    this.buildStockHealth(items);
+    this.buildMovementAndLoss(items, discardsResult.discards);
+    this.buildTaskThroughput(tasksResult.data ?? [], profiles ?? []);
 
     this.isLoading = false;
   }

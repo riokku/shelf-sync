@@ -49,12 +49,13 @@ describe('loadAllInventoryItemReservations', () => {
       cancelled_at: null
     }]);
 
-    const reservations = await loadAllInventoryItemReservations(
+    const { reservations, error } = await loadAllInventoryItemReservations(
       fake.client as never,
       profiles,
       new Map([['item-1', 'Chiavari Chairs']])
     );
 
+    expect(error).toBeNull();
     expect(reservations).toEqual([{
       id: 'reservation-1',
       itemId: 'item-1',
@@ -96,7 +97,7 @@ describe('loadAllInventoryItemReservations', () => {
       cancelled_at: null
     }]);
 
-    const reservations = await loadAllInventoryItemReservations(fake.client as never, [], new Map());
+    const { reservations } = await loadAllInventoryItemReservations(fake.client as never, [], new Map());
 
     expect(reservations[0].itemName).toBe('Unknown item');
     expect(reservations[0].reservedByLabel).toBe('Unknown user');
@@ -104,7 +105,24 @@ describe('loadAllInventoryItemReservations', () => {
 
   it('returns an empty array when there are no reservations', async () => {
     const fake = createFakeSupabaseClient([]);
-    const reservations = await loadAllInventoryItemReservations(fake.client as never, profiles, new Map());
+    const { reservations } = await loadAllInventoryItemReservations(fake.client as never, profiles, new Map());
+    expect(reservations).toEqual([]);
+  });
+
+  it('returns the error message and no reservations when the query fails', async () => {
+    const fake = createFakeSupabaseClient([]);
+    fake.client.from = () => ({
+      select: () => ({
+        order: () => ({
+          then: (resolve: (value: { data: unknown; error: unknown }) => void) =>
+            resolve({ data: null, error: { message: 'connection reset' } })
+        })
+      })
+    }) as unknown as ReturnType<typeof fake.client.from>;
+
+    const { reservations, error } = await loadAllInventoryItemReservations(fake.client as never, profiles, new Map());
+
+    expect(error).toBe('connection reset');
     expect(reservations).toEqual([]);
   });
 });

@@ -32,12 +32,12 @@ describe('ManageSuppliersComponent', () => {
   let component: ManageSuppliersComponent;
   let fixture: ComponentFixture<ManageSuppliersComponent>;
 
-  async function setup(suppliers: Supplier[] = []) {
+  async function setup(suppliers: Supplier[] = [], loadError: string | null = null) {
     await TestBed.configureTestingModule({
       imports: [ManageSuppliersComponent],
       providers: [
         provideRouter([]),
-        { provide: SupplierService, useValue: createFakeSupplierService(suppliers) }
+        { provide: SupplierService, useValue: createFakeSupplierService(suppliers, loadError) }
       ]
     }).compileComponents();
 
@@ -56,6 +56,23 @@ describe('ManageSuppliersComponent', () => {
     await setup();
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('No suppliers yet');
+  });
+
+  it('shows an error state with a Retry button instead of the empty state when the load failed', async () => {
+    await setup([], 'Network error');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Couldn\'t load suppliers. Network error');
+    expect(fixture.nativeElement.textContent).not.toContain('No suppliers yet');
+  });
+
+  it('retryLoad() re-runs supplierService.load()', async () => {
+    await setup([], 'Network error');
+    const loadSpy = spyOn(TestBed.inject(SupplierService), 'load').and.resolveTo();
+
+    component.retryLoad();
+
+    expect(loadSpy).toHaveBeenCalled();
   });
 
   it('renders a row for each supplier in the directory', async () => {

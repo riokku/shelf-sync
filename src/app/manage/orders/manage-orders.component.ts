@@ -59,6 +59,12 @@ export class ManageOrdersComponent implements OnInit {
   isLoading = true;
   isProcessingOrder = false;
   orderError: string | null = null;
+  /** Set when loadOrders()'s own query fails — see InventoryComponent's
+   *  identical loadError field for the full reasoning. Only the orders
+   *  query itself is checked, not the items/profiles/supplier lookups
+   *  ngOnInit also runs alongside it — same "secondary loads stay
+   *  unchecked" line ManageReservationsComponent's own loadError draws. */
+  loadError: string | null = null;
 
   statusFilter: OrderStatusFilter = 'all';
 
@@ -102,9 +108,21 @@ export class ManageOrdersComponent implements OnInit {
     this.isLoading = false;
   }
 
+  /** Re-runs loadOrders() after a failed load — the Retry button's handler
+   *  (see the template's own loadError branch). */
+  retryLoad() {
+    void this.loadOrders();
+  }
+
   private async loadOrders() {
     const itemNamesById = new Map(this.allItems.map(item => [item.id, item.name]));
-    this.orders = await loadAllInventoryItemOrders(this.supabase, this.profiles, itemNamesById);
+    const { orders, error } = await loadAllInventoryItemOrders(this.supabase, this.profiles, itemNamesById);
+    if (error) {
+      this.loadError = error;
+      return;
+    }
+    this.loadError = null;
+    this.orders = orders;
   }
 
   openPlaceOrder() {

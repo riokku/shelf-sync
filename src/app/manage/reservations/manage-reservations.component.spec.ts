@@ -69,6 +69,29 @@ describe('ManageReservationsComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('No reservations yet.');
   });
 
+  it('sets loadError instead of silently rendering an empty list when the reservations query fails', async () => {
+    await setup({ error: { message: 'Network error' } });
+    fixture.detectChanges();
+
+    expect(component.loadError).toBe('Network error');
+    expect(component.reservations).toEqual([]);
+    expect(fixture.nativeElement.textContent).toContain('Couldn\'t load reservations. Network error');
+  });
+
+  it('retryLoad() clears loadError on a successful retry', async () => {
+    await setup({ error: { message: 'Network error' } });
+    expect(component.loadError).toBe('Network error');
+
+    (component as unknown as { supabase: SupabaseService['client'] }).supabase =
+      createFakeSupabaseService({ data: [], error: null }).client;
+
+    component.retryLoad();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(component.loadError).toBeNull();
+  });
+
   describe('page subtitle', () => {
     it('tells a staff viewer they only see their own reservations', async () => {
       await setup({ role: 'staff' });

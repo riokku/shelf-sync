@@ -1,8 +1,10 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
+import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatIconModule } from '@angular/material/icon';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SupabaseService } from '../../core/supabase.service';
@@ -28,8 +30,10 @@ type ClientErrorLogRow = Database['public']['Tables']['client_error_log']['Row']
   imports: [
     FormsModule,
     DatePipe,
+    MatButtonModule,
     MatCheckboxModule,
     MatExpansionModule,
+    MatIconModule,
     MatPaginatorModule,
     MatProgressSpinnerModule,
     BreadcrumbsComponent,
@@ -45,6 +49,13 @@ export class ManageErrorLogComponent implements OnInit {
   isLoading = true;
   errorLog: ClientErrorLogRow[] = [];
   private profiles: Profile[] = [];
+  /** Set when loadErrorLog()'s own query fails — see InventoryComponent's
+   *  identical loadError field for the full reasoning. Particularly worth
+   *  having *here*: this is the diagnostic page an admin checks *after*
+   *  something's already gone wrong, so a silent "No errors logged — nice."
+   *  on a genuine fetch failure would be actively misleading rather than
+   *  just unhelpful. */
+  loadError: string | null = null;
 
   /** Off by default — a dev running against the same hosted project locally
    *  (see CLAUDE.md's Supabase hosted-project workflow) logs errors here
@@ -79,10 +90,16 @@ export class ManageErrorLogComponent implements OnInit {
     await this.loadErrorLog();
   }
 
+  /** Re-runs loadErrorLog() after a failed load — the Retry button's handler
+   *  (see the template's own loadError branch). */
+  retryLoad() {
+    void this.loadErrorLog();
+  }
+
   private async loadErrorLog() {
     this.isLoading = true;
 
-    const [{ data: rows }, { data: profiles }] = await Promise.all([
+    const [{ data: rows, error }, { data: profiles }] = await Promise.all([
       // Most recent first, capped at 200 — this is a diagnostic feed, not
       // exhaustive audit history; the table's own index (organization_id,
       // created_at desc) makes this cheap regardless of how large the log
@@ -91,6 +108,12 @@ export class ManageErrorLogComponent implements OnInit {
       this.supabase.from('profiles').select('*')
     ]);
 
+    if (error) {
+      this.loadError = error.message;
+      this.isLoading = false;
+      return;
+    }
+    this.loadError = null;
     this.errorLog = rows ?? [];
     this.profiles = profiles ?? [];
     this.isLoading = false;
