@@ -1,4 +1,4 @@
-import { Component, Input, inject } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -9,6 +9,19 @@ import { MatIconModule } from '@angular/material/icon';
 export interface BreadcrumbParent {
   label: string;
   link: string;
+  /** Only needed when `link` points back at the *same* route this
+   *  component is already on (e.g. TasksComponent's own tasksBreadcrumbParent,
+   *  `/tasks` while already on `/tasks`) — Angular reuses the existing
+   *  component instance for a same-route navigation and doesn't re-run
+   *  ngOnInit, so nothing re-reads the URL to notice `?task=` is now gone;
+   *  the page would otherwise keep showing whatever detail view was open
+   *  even though the URL itself updated correctly. Called alongside the
+   *  routerLink's own navigation (not instead of it) so the caller can
+   *  reset that state directly rather than relying on the URL change
+   *  alone. Unnecessary (and unset) for a parent linking to a genuinely
+   *  different route — a route change destroys this component outright,
+   *  which already resets everything on its own. */
+  onClick?: () => void;
 }
 
 @Component({
@@ -57,5 +70,38 @@ export class BreadcrumbsComponent {
 
   get parent(): BreadcrumbParent | null {
     return this.parentOverride ?? this.routeParent;
+  }
+
+  /** An extra segment between parent and the trailing label — for a detail
+   *  view nested two levels deep under a page that already uses
+   *  parentOverride above (today, only TasksComponent's own related-item
+   *  view: Home / Tasks / {task title} / {item name}, the "task title"
+   *  piece is this). Deliberately not a second BreadcrumbParent (i.e. not a
+   *  routerLink) — unlike parent, which always links to a real, separate
+   *  page/route, "this task" has no route of its own to link back to; it's
+   *  just a different view of the same page swapped back in. Clicking it
+   *  instead fires secondaryLabelClick below, which the host page wires up
+   *  to whatever actually reverses that swap (e.g.
+   *  TaskDetailModalComponent.closeRelatedItem(), the same call its own
+   *  page-level Back button already makes) — same reasoning
+   *  labelOverride's own click-to-navigate is skipped for the trailing
+   *  label too, since that one's already on screen. */
+  @Input() secondaryLabel?: string | null;
+
+  /** Fires when secondaryLabel is clicked — see its own doc comment. No-op
+   *  if the host page doesn't bind it (a plain unhandled EventEmitter.emit()
+   *  is always safe), though every real usage should. */
+  @Output() secondaryLabelClick = new EventEmitter<void>();
+
+  /** Every rendered crumb segment goes through this — a long task/item name
+   *  next to two other segments plus the Home link risks wrapping onto a
+   *  second line or overflowing a narrow toolbar, and a breadcrumb reads
+   *  fine abbreviated (unlike a page's own heading, which shows the full
+   *  name elsewhere already). [title] on each segment (see the template)
+   *  surfaces the untruncated text on hover for whichever ones a click
+   *  wouldn't have already made obvious. */
+  protected truncate(text: string): string {
+    const maxLength = 24;
+    return text.length > maxLength ? `${text.slice(0, maxLength)}…` : text;
   }
 }

@@ -23,6 +23,18 @@
   }
 }
 
+// Resets a plain <button> back to reading as the same inline link .a already
+// establishes above — used for secondaryLabel (see its own doc comment for
+// why that one's a button rather than a routerLink).
+.breadcrumb-link-button{
+  border: none;
+  margin: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
 .breadcrumb-separator{
   margin: 0 0.5rem;
   color: var(--mat-sys-outline);

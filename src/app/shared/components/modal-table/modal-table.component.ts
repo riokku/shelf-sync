@@ -125,23 +125,30 @@ export class ModalTableComponent implements OnInit {
    *  @Input(). */
   @Input() data: InventoryItem = this.dialogData as InventoryItem;
   /** Whether the item's name renders as its own heading here (via
-   *  app-page-header) at all — off for InventoryComponent's own usage,
-   *  since that page's own outer heading already shows the same name once
-   *  an item is selected (see InventoryComponent.selectedItem's own doc
-   *  comment), so showing it a second time right above the GUID/status
-   *  pills would just be redundant. Every other embedding (Manage >
-   *  Inventory, a task's related-item view) has no such outer heading of
-   *  its own, so this stays true — the default — for those. */
+   *  app-page-header) at all — true, the default, for every real embedding
+   *  today (InventoryComponent, ManageInventoryComponent, a task's
+   *  related-item view). InventoryComponent used to render its own outer
+   *  heading with the same name and pass false here to avoid a redundant
+   *  second one, but that meant this header's own actions-group (which
+   *  aligns with whatever text sits at the top of app-page-header's own
+   *  text column) ended up aligned with the GUID/status-pill row instead of
+   *  a title — same footgun `alignActions` centering used to paper over
+   *  rather than fix. InventoryComponent now leaves the name to this
+   *  header instead, only showing its own outer "Inventory" heading while
+   *  browsing (see InventoryComponent.selectedItem's own doc comment).
+   *  Kept as an @Input() (rather than dropped) in case some future embedding
+   *  needs the old behavior back. */
   @Input() showTitle = true;
-  /** Whether this renders its own Back button at all — off for
-   *  InventoryComponent's and ManageInventoryComponent's own usages, both
-   *  of which want it positioned right below their own page's breadcrumbs
-   *  (above their own heading/page-header) rather than here, above
-   *  app-page-header — a position outside what this component itself
-   *  renders, so those two pages render their own instead, still wired to
-   *  the same (back) output the button here would otherwise emit. Stays
-   *  true — the default — for a task's related-item view, which has no
-   *  breadcrumbs of its own to sit below. */
+  /** Whether this renders its own Back button at all — off for every real
+   *  embedding today (InventoryComponent, ManageInventoryComponent, and now
+   *  a task's related-item view via TaskDetailModalComponent), all of which
+   *  want it positioned right below their own page's breadcrumbs (above
+   *  their own heading/page-header) rather than here, above app-page-header
+   *  — a position outside what this component itself renders, so each of
+   *  those pages renders its own instead, still wired to the same (back)
+   *  output the button here would otherwise emit. Stays true — the default
+   *  — only for the existing spec's own MatDialog-based TestBed setup,
+   *  where there's no host page's back-row for it to defer to. */
   @Input() showBackButton = true;
   @Output() back = new EventEmitter<void>();
   protected authService = inject(AuthService);
@@ -472,16 +479,29 @@ export class ModalTableComponent implements OnInit {
   isDiscarding = false;
   discardError: string | null = null;
 
-  /** Same edit-access gate the Edit button itself uses, plus nothing left
-   *  to discard once the item's already at zero and no longer active — same
-   *  reasoning canRequestRetirement's own doc comment gives for its own
-   *  gate. Deliberately not admin/manager-only: discarding stock is just a
-   *  reason-carrying variant of the same quantity edit any authenticated
-   *  user can already make directly, not a stricter action. */
+  /** Whether Discard is even relevant to this item at all — nothing left to
+   *  discard once it's already at zero and no longer active, same reasoning
+   *  canRequestRetirement's own doc comment gives for its own gate. Backs
+   *  the button's own @if (see the template): unlike the lock check below,
+   *  this is an object-state gate, not a permission one, so there's no
+   *  "show it disabled" value in it — a permanently-inapplicable Discard
+   *  button would just be clutter regardless of who's looking at it. */
+  get showDiscardButton(): boolean {
+    return this.data.status === 'active' && this.data.quantityRemaining > 0;
+  }
+
+  /** Same underlying lock/canManage() access rule the Edit button's own
+   *  [disabled] binding checks (see the template) — discarding stock is
+   *  just a reason-carrying variant of the same quantity edit any
+   *  authenticated user can already make directly, not a stricter,
+   *  admin/manager-only action, so it's gated the same way editing is:
+   *  blocked only while locked, and only for a viewer who can't override
+   *  that lock. Combined with showDiscardButton above in the button's own
+   *  [disabled] binding (see the template) — this alone doesn't account for
+   *  "is there anything to discard," only "is the viewer currently allowed
+   *  to." Also reused by openDiscard()'s own guard below. */
   get canDiscard(): boolean {
-    return (!this.data.isLocked || this.authService.canManage())
-      && this.data.status === 'active'
-      && this.data.quantityRemaining > 0;
+    return !this.data.isLocked || this.authService.canManage();
   }
 
   /** Mirrors the enforce_price_supplier_edit_restriction() trigger's own
@@ -496,7 +516,7 @@ export class ModalTableComponent implements OnInit {
   }
 
   openDiscard(){
-    if (!this.canDiscard || this.isDiscarding) {
+    if (!this.showDiscardButton || !this.canDiscard || this.isDiscarding) {
       return;
     }
 
@@ -641,6 +661,22 @@ export class ModalTableComponent implements OnInit {
     this.data.activityLog = activityByItemId.get(this.data.id) ?? [];
   }
 
+  /** The lock toggle button's own tooltip — always rendered now (not just
+   *  for authService.canManage(), see the template), so staff sees the same
+   *  icon in the same place a manager does, just disabled: this branch is
+   *  what tells them why. Managers get the plain "Lock item"/"Unlock item
+   *  (locked by X)" pair unchanged. */
+  get lockToggleTooltip(): string {
+    if (!this.authService.canManage()) {
+      return this.data.isLocked
+        ? `Locked by ${this.data.lockedByLabel || 'a manager'} — only admins and managers can lock or unlock it`
+        : 'Only admins and managers can lock an item.';
+    }
+    return this.data.isLocked
+      ? `Unlock item (locked by ${this.data.lockedByLabel || 'a manager'})`
+      : 'Lock item';
+  }
+
   /** admin/manager only — set_inventory_item_lock() enforces this same
    *  check server-side, this is just the UI-level mirror of it (same
    *  reasoning canRequestRetirement's own doc comment gives). Locking an
@@ -769,6 +805,42 @@ export class ModalTableComponent implements OnInit {
     this.clearNewImages();
     this.editableContainers = [];
     this.removedContainerIds.clear();
+  }
+
+  /** Real, would-actually-lose-data input sitting in the edit form right now
+   *  — a dirty field, a photo staged to add/remove, or a container/box
+   *  added/edited/removed but not yet saved. Not itself wired to a route
+   *  (this component is never routed to directly), but every host page that
+   *  embeds it — InventoryComponent, ManageInventoryComponent, and a task's
+   *  related-item view via TaskDetailModalComponent — reaches this through
+   *  its own ViewChild to fold into its own HasUnsavedChanges shape, same
+   *  "checks the underlying state directly, not which tab/view happens to
+   *  be showing" reasoning those pages' own create-form hasUnsavedChanges()
+   *  already documents. */
+  hasUnsavedChanges(): boolean {
+    return this.isEditing && (
+      this.editForm.dirty
+      || this.newImageFiles.length > 0
+      || this.removedImageIds.size > 0
+      || this.containersDirty
+    );
+  }
+
+  /** editableContainers diffed against existingContainers (the state
+   *  startEdit() seeded it from) — an added box has id: null, a removed one
+   *  is already tracked in removedContainerIds, and an edited one has a
+   *  matching id but a changed quantity/location. */
+  private get containersDirty(): boolean {
+    if (this.removedContainerIds.size > 0) {
+      return true;
+    }
+    return this.editableContainers.some(current => {
+      if (current.id === null) {
+        return true;
+      }
+      const original = this.existingContainers.find(c => c.id === current.id);
+      return !original || original.quantity !== current.quantity || original.location !== current.location;
+    });
   }
 
   onNewImagesSelected(event: Event){

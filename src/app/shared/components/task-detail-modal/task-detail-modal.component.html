@@ -1,5 +1,5 @@
 @if (selectedRelatedItem) {
-  <app-modal-table [data]="selectedRelatedItem" (back)="closeRelatedItem()" />
+  <app-modal-table [data]="selectedRelatedItem" [showBackButton]="false" (back)="closeRelatedItem()" />
 } @else {
 <app-page-header [title]="task.title">
   <div class="task-id-row" headerMeta>

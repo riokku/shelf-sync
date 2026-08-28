@@ -13,7 +13,9 @@
           </button>
         </div>
       }
-      <h2>{{ selectedItem ? selectedItem.name : 'Inventory' }}</h2>
+      @if (!selectedItem) {
+        <h2>Inventory</h2>
+      }
       <app-page-intro
           pageKey="inventory"
           icon="inventory_2"
@@ -24,7 +26,7 @@
   @if (selectedItem) {
     <div class="row">
       <div class="col-12">
-        <app-modal-table [data]="selectedItem" [showTitle]="false" [showBackButton]="false" (back)="closeDetails()" />
+        <app-modal-table [data]="selectedItem" [showBackButton]="false" (back)="closeDetails()" />
       </div>
     </div>
   } @else {
@@ -283,6 +285,11 @@
                         </div>
                       }
                       <div class="image-badges">
+                        @if (item.isLocked) {
+                          <span class="lock-badge" [matTooltip]="'Locked' + (item.lockedByLabel ? ' by ' + item.lockedByLabel : '') + ' — only admins and managers can edit this item'">
+                            <mat-icon>lock</mat-icon>
+                          </span>
+                        }
                         @if (item.status === 'retired') {
                           <span class="retired-badge">
                             <mat-icon>inventory_2</mat-icon>

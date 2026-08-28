@@ -4,12 +4,14 @@
 @use '../shared/styles/stagger';
 
 // Only rendered while an item's detail view is showing (see selectedItem's
-// own doc comment) — sits right below the breadcrumbs, above the heading
-// that becomes the item's own name in that state. Same shape
-// StudioOrgDetailComponent's own .back-row already establishes: negative
-// top margin snugs it up against .page-toolbar's own 1.5rem margin-bottom,
-// negative left margin so the button's own padding doesn't visibly indent
-// it past the breadcrumbs above.
+// own doc comment) — sits right below the breadcrumbs; the "Inventory"
+// heading below is hidden in that same state (the item's own name renders
+// inside app-modal-table's own header instead — see ModalTableComponent's
+// own showTitle doc comment for why). Same shape StudioOrgDetailComponent's
+// own .back-row already establishes: negative top margin snugs it up
+// against .page-toolbar's own 1.5rem margin-bottom, negative left margin so
+// the button's own padding doesn't visibly indent it past the breadcrumbs
+// above.
 .back-row{
   margin: -1rem 0 1rem -0.75rem;
 }
@@ -497,7 +499,8 @@ table[mat-table]{
 .out-of-stock-badge,
 .pending-retirement-badge,
 .retired-badge,
-.quantity-badge{
+.quantity-badge,
+.lock-badge{
   position: absolute;
   display: inline-flex;
   align-items: center;
@@ -511,6 +514,37 @@ table[mat-table]{
     font-size: 1rem;
     width: 1rem;
     height: 1rem;
+  }
+}
+
+// Centered on the image itself rather than tucked into a corner like the
+// other badges — a lock is a more fundamental "you can't touch this" state
+// than checked-out/low-stock/etc, and sits independently of whichever
+// status/other-corner badges also render (retired included — a locked item
+// can be retired too). Round rather than pill-shaped, sized up around just
+// the icon (no label text) since a centered badge has no natural reading
+// direction the way a corner pill does. .image-badges itself is
+// pointer-events: none (decorative, so it doesn't intercept clicks meant
+// for the card underneath); this one exception re-enables them so its own
+// matTooltip can actually respond to hover.
+.lock-badge{
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 0.75rem;
+  // Hardcoded red/white rather than the other badges' themed tokens — same
+  // "deliberately reads as riskier/more blocking than everything around it"
+  // reasoning this app's other hardcoded-red treatments already establish
+  // (e.g. Danger Zone's own icon chip), not just a muted dark overlay like
+  // retired-badge/quantity-badge use.
+  background: var(--app-danger-bg);
+  color: var(--app-danger-on-bg);
+  pointer-events: auto;
+
+  mat-icon{
+    font-size: 2rem;
+    width: 2rem;
+    height: 2rem;
   }
 }
 

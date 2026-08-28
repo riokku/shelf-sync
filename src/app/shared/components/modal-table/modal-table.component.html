@@ -1,4 +1,4 @@
-<app-page-header [title]="showTitle ? data.name : undefined" alignActions="center">
+<app-page-header [title]="showTitle ? data.name : undefined">
   <div class="header-meta-row" headerMeta>
     <div class="asset-id-row">
       <mat-icon>tag</mat-icon>
@@ -24,17 +24,18 @@
           <mat-icon>qr_code_2</mat-icon>
         </button>
       }
-      @if (authService.canManage()) {
+      <span class="tooltip-wrapper" [matTooltip]="lockToggleTooltip">
         <button
             mat-icon-button
             type="button"
-            [matTooltip]="data.isLocked ? 'Unlock item' : 'Lock item'"
-            [disabled]="isProcessingLock"
+            class="lock-toggle-button"
+            [class.lock-toggle-button-locked]="data.isLocked"
+            [disabled]="isProcessingLock || !authService.canManage()"
             (click)="toggleLock()"
           >
           <mat-icon>{{ data.isLocked ? 'lock_open' : 'lock' }}</mat-icon>
         </button>
-      }
+      </span>
     </div>
     @if (isOutOfStock) {
       <span class="status-pill low-stock">
@@ -78,18 +79,37 @@
           Request retirement
         </button>
       }
-      @if (canDiscard) {
-        <button mat-stroked-button type="button" color="warn" (click)="openDiscard()" [disabled]="isDiscarding">
-          <mat-icon>delete_sweep</mat-icon>
-          Discard
-        </button>
+      @if (showDiscardButton) {
+        <span
+            class="tooltip-wrapper"
+            [matTooltip]="!canDiscard ? ('Locked by ' + (data.lockedByLabel || 'a manager') + ' — only admins and managers can discard from a locked item') : ''"
+          >
+          <button
+              mat-stroked-button
+              type="button"
+              color="warn"
+              [disabled]="isDiscarding || !canDiscard"
+              (click)="openDiscard()"
+            >
+            <mat-icon>delete_sweep</mat-icon>
+            Discard
+          </button>
+        </span>
       }
-      @if (!data.isLocked || authService.canManage()) {
-        <button mat-stroked-button type="button" (click)="startEdit()">
+      <span
+          class="tooltip-wrapper"
+          [matTooltip]="data.isLocked && !authService.canManage() ? ('Locked by ' + (data.lockedByLabel || 'a manager') + ' — only admins and managers can edit it') : ''"
+        >
+        <button
+            mat-stroked-button
+            type="button"
+            [disabled]="data.isLocked && !authService.canManage()"
+            (click)="startEdit()"
+          >
           <mat-icon>edit</mat-icon>
           Edit
         </button>
-      }
+      </span>
       @if (authService.canManage()) {
         <button mat-flat-button color="primary" type="button" (click)="createTask()">
           <mat-icon>add_task</mat-icon>
@@ -121,11 +141,6 @@
   <p class="retired-notice">
     <mat-icon>inventory_2</mat-icon>
     This item has been retired and is no longer active inventory.
-  </p>
-} @else if (data.isLocked) {
-  <p class="retired-notice">
-    <mat-icon>lock</mat-icon>
-    Locked by {{ data.lockedByLabel || 'a manager' }} — only admins and managers can edit it.
   </p>
 }
 <mat-dialog-content>

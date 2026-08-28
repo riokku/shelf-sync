@@ -35,11 +35,10 @@ export class PageHeaderComponent {
    *  all, just the title/meta/actions columns. The chip itself (see the
    *  template) only renders when this or logoUrl is set. */
   @Input() icon?: string;
-  /** Optional too, for the same reason as icon above — ModalTableComponent
-   *  skips both when its caller already shows the item's name elsewhere
-   *  (InventoryComponent's own page heading — see its showTitle input's own
-   *  doc comment), so there's no second, redundant heading right above the
-   *  GUID/status pills. The `<h2>` itself only renders when this is set. */
+  /** Optional too, for the same reason as icon above — ModalTableComponent's
+   *  own item-detail usage is the one real caller that can skip it (see its
+   *  showTitle input's own doc comment for when/why). The `<h2>` itself only
+   *  renders when this is set. */
   @Input() title?: string;
   @Input() subtitle?: string;
   /** When set, renders in place of the generic Material `icon` above — for
@@ -57,13 +56,16 @@ export class PageHeaderComponent {
    *  this page is a deliberate outlier meant to read as riskier than every
    *  other page, not another destination in the same set. */
   @Input() variant: 'default' | 'danger' = 'default';
-  /** 'start' (the default, every existing page-level usage) top-aligns the
-   *  trailing action column with the title — right for a short single-line
-   *  title next to one or two buttons. 'center' instead centers it against
-   *  the *whole* text column's height, title/subtitle/headerMeta combined —
-   *  ModalTableComponent's own usage wants this, since its own actions
-   *  group would otherwise sit pinned to the top of the row while the
-   *  title+GUID+status-pill block below it takes up real height of its
-   *  own, reading as misaligned rather than as one cohesive header row. */
+  /** 'start' (the default) top-aligns the trailing action column with the
+   *  title — right for a short single-line title next to one or two
+   *  buttons, and what every current usage renders with (including
+   *  ModalTableComponent's own item-detail header — its actions sit inline
+   *  with the item name, same as TaskDetailModalComponent's own task-title
+   *  row, rather than centered against the taller GUID/status-pill block
+   *  below it). 'center' instead centers the action column against the
+   *  *whole* text column's height, title/subtitle/headerMeta combined — kept
+   *  as an option for a future header whose own text column is tall enough
+   *  that top-aligning its actions would read as misaligned, not currently
+   *  used by any caller. */
   @Input() alignActions: 'start' | 'center' = 'start';
 }

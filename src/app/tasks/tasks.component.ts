@@ -1,10 +1,12 @@
-import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, HostListener, OnInit, ViewChild, inject } from '@angular/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SupabaseService } from '../core/supabase.service';
 import { AuthService, Profile } from '../core/auth.service';
+import { HasUnsavedChanges } from '../core/guards/unsaved-changes.guard';
 import { Database } from '../shared/models/database.types';
 import { TaskDetailModalComponent } from '../shared/components/task-detail-modal/task-detail-modal.component';
 import { TaskCardComponent } from './task-card/task-card.component';
@@ -15,6 +17,7 @@ import { resolveProfileName } from '../shared/utils/profile-label';
 import { subscribeToTableChanges } from '../shared/utils/realtime';
 import { debounce } from '../shared/utils/debounce';
 import { FlashTracker } from '../shared/utils/flash-tracker';
+import { confirmLeaveWithoutSaving } from '../shared/utils/confirm-leave';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
 
@@ -27,12 +30,13 @@ type Task = Database['public']['Tables']['tasks']['Row'];
   templateUrl: './tasks.component.html',
   styleUrl: './tasks.component.scss',
 })
-export class TasksComponent implements OnInit {
+export class TasksComponent implements OnInit, HasUnsavedChanges {
   private supabase = inject(SupabaseService).client;
   private authService = inject(AuthService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
+  private dialog = inject(MatDialog);
 
   private currentUserId: string | null = null;
   private orgProfiles: Profile[] = [];
@@ -63,12 +67,63 @@ export class TasksComponent implements OnInit {
    *  back-row, right below the breadcrumbs) returning here. Mirrors
    *  InventoryComponent.selectedItem's own doc comment exactly. */
   selectedTask: Task | null = null;
+  /** Mirrors TaskDetailModalComponent's own relatedItemViewChange output —
+   *  true while that component has swapped its content for an inventory
+   *  item's detail view. Doesn't hide this page's own back-row (below) —
+   *  it stays in the one consistent spot below the breadcrumbs regardless —
+   *  but redirects its click to taskDetailModal.closeRelatedItem() instead
+   *  of closeTaskDetail() while this is true, so "Back" means "back to the
+   *  task" rather than skipping past it straight to the task list. */
+  viewingRelatedItem = false;
+  /** Only ever populated while selectedTask is set (see the template's own
+   *  @if) — queried so the back-row button above can reach
+   *  closeRelatedItem() directly; see viewingRelatedItem's own doc comment. */
+  @ViewChild(TaskDetailModalComponent) taskDetailModal?: TaskDetailModalComponent;
   /** Bound to app-breadcrumbs' own [parentOverride] whenever selectedTask is
    *  set — see BreadcrumbsComponent.parentOverride's own doc comment for why
    *  this needs an override at all (same route, not a separate detail page,
    *  so "Tasks" itself has to become the parent link rather than being
-   *  replaced outright). */
-  protected readonly tasksBreadcrumbParent: BreadcrumbParent = { label: 'Tasks', link: '/tasks' };
+   *  replaced outright). Its own onClick (see BreadcrumbParent's own doc
+   *  comment for why a same-route parent link needs one at all) is
+   *  closeTaskDetailFromBreadcrumb() below, not closeTaskDetail() directly
+   *  — clicking this can skip straight past an in-progress, unsaved
+   *  related-item edit (see viewingRelatedItem), which needs its own
+   *  confirm first, the same way clicking Back twice in a row would catch
+   *  it once on the way. */
+  protected readonly tasksBreadcrumbParent: BreadcrumbParent = {
+    label: 'Tasks',
+    link: '/tasks',
+    onClick: () => this.closeTaskDetailFromBreadcrumb()
+  };
+  /** Bound to app-breadcrumbs' own [labelOverride] whenever selectedTask is
+   *  set — the task's own title normally, but the related item's name
+   *  instead while viewingRelatedItem, so drilling into an item from a task
+   *  (see TaskDetailModalComponent.selectedRelatedItem's own doc comment)
+   *  reads as "Home / Tasks / {task title} / {item name}" (the task title
+   *  piece is breadcrumbSecondaryLabel below), matching what's actually on
+   *  screen, the same way InventoryComponent's own breadcrumb tracks
+   *  whichever item is currently showing. */
+  get breadcrumbLabel(): string | undefined {
+    if (this.viewingRelatedItem) {
+      return this.taskDetailModal?.selectedRelatedItem?.name;
+    }
+    return this.selectedTask?.title;
+  }
+
+  /** Bound to app-breadcrumbs' own [secondaryLabel] — only set (to the
+   *  task's own title) while viewingRelatedItem, i.e. exactly when
+   *  breadcrumbLabel above has moved on to the item's name instead, so the
+   *  task doesn't disappear from the trail entirely once its own title
+   *  stops being the trailing label. Clicking it (the template's own
+   *  (secondaryLabelClick) binding) calls taskDetailModal.closeRelatedItem()
+   *  — the exact same call the page's own Back button makes while
+   *  viewingRelatedItem (see handleBackClick() below) — so the breadcrumb
+   *  segment is a genuine second way back to the task, not just a label.
+   *  See BreadcrumbsComponent.secondaryLabel's own doc comment for why this
+   *  is a button rather than a second BreadcrumbParent routerLink. */
+  get breadcrumbSecondaryLabel(): string | undefined {
+    return this.viewingRelatedItem ? this.selectedTask?.title : undefined;
+  }
   isLoading = true;
   /** Repeat-count for the loading-state skeleton rows — see
    *  InventoryComponent.skeletonCards' own identical doc comment. */
@@ -251,6 +306,7 @@ export class TasksComponent implements OnInit {
    *  truthy value. */
   closeTaskDetail(changed = false) {
     this.selectedTask = null;
+    this.viewingRelatedItem = false;
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { task: null },
@@ -258,6 +314,65 @@ export class TasksComponent implements OnInit {
     });
     if (changed) {
       void this.loadTasks();
+    }
+  }
+
+  /** The single back-row button's own click handler — see
+   *  viewingRelatedItem's own doc comment for why this branches instead of
+   *  binding closeTaskDetail() directly. */
+  handleBackClick() {
+    if (this.viewingRelatedItem) {
+      this.taskDetailModal?.closeRelatedItem();
+    } else {
+      this.closeTaskDetail();
+    }
+  }
+
+  /** tasksBreadcrumbParent's own onClick — see its own doc comment for why
+   *  clicking "Tasks" in the breadcrumb needs this at all rather than just
+   *  the routerLink it also carries. Unlike handleBackClick() above (which
+   *  only ever steps back one level at a time), this can skip straight from
+   *  the related-item view all the way out, so it has to run
+   *  closeRelatedItem()'s own unsaved-changes check itself first rather
+   *  than relying on that method ever actually being called. */
+  closeTaskDetailFromBreadcrumb() {
+    if (!this.viewingRelatedItem || !(this.taskDetailModal?.hasUnsavedChanges() ?? false)) {
+      this.closeTaskDetail();
+      return;
+    }
+
+    void confirmLeaveWithoutSaving(
+      this.dialog,
+      'You have unsaved changes on this item that will be lost if you leave it.'
+    ).then(confirmed => {
+      if (confirmed) {
+        this.closeTaskDetail();
+      }
+    });
+  }
+
+  /** Real, would-actually-lose-data input sitting in a related-item edit
+   *  right now — delegates to TaskDetailModalComponent's own
+   *  hasUnsavedChanges(), which is false whenever no task is even selected
+   *  (taskDetailModal is only populated while selectedTask is). Backs the
+   *  route-level unsavedChangesGuard (navigating off this page entirely) —
+   *  the Back button's own click (handleBackClick() above) is already
+   *  covered directly by TaskDetailModalComponent.closeRelatedItem()'s own
+   *  confirm gate, so this page needs no separate one of its own. */
+  hasUnsavedChanges(): boolean {
+    return this.taskDetailModal?.hasUnsavedChanges() ?? false;
+  }
+
+  /** CanDeactivate guards never run for a tab close/refresh — only this
+   *  catches that case. Modern browsers ignore the custom message and show
+   *  their own generic "leave site?" wording; setting returnValue is what
+   *  actually triggers that prompt at all (an empty/unset handler does
+   *  nothing). */
+  @HostListener('window:beforeunload', ['$event'])
+  confirmBeforeUnload(event: BeforeUnloadEvent) {
+    if (this.hasUnsavedChanges()) {
+      event.preventDefault();
+      event.returnValue = '';
     }
   }
 }

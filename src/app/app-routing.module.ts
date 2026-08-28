@@ -104,6 +104,7 @@ const routes: Routes = [
     path: 'inventory',
     loadComponent: () => import('./inventory/inventory.component').then(m => m.InventoryComponent),
     canActivate: [approvedGuard],
+    canDeactivate: [unsavedChangesGuard],
     data: { breadcrumb: 'Inventory' },
     title: 'ShelfSync | Inventory'
   },
@@ -125,6 +126,7 @@ const routes: Routes = [
     path: 'tasks',
     loadComponent: () => import('./tasks/tasks.component').then(m => m.TasksComponent),
     canActivate: [approvedGuard],
+    canDeactivate: [unsavedChangesGuard],
     data: { breadcrumb: 'Tasks' },
     title: 'ShelfSync | Tasks'
   },
@@ -155,6 +157,7 @@ const routes: Routes = [
     path: 'manage/team',
     loadComponent: () => import('./manage/team/manage-team.component').then(m => m.ManageTeamComponent),
     canActivate: [approvedGuard, manageGuard],
+    canDeactivate: [unsavedChangesGuard],
     data: { breadcrumb: 'Team', breadcrumbParent: MANAGE_BREADCRUMB_PARENT },
     title: 'ShelfSync | Manage Team'
   },
