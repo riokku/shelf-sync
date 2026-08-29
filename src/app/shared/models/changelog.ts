@@ -15,6 +15,11 @@ export interface ChangelogEntry {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: '2026-08-28',
+    title: 'Fewer silent failures',
+    description: 'Home, Billing, and Studio now show a "couldn\'t load, try again" message with a Retry button if a page fails to load, instead of just looking empty.'
+  },
+  {
+    date: '2026-08-28',
     title: 'Platform account locking',
     description: 'Studio > Users now opens a full page for each person, with a toggle to lock their account across every organization — for abuse, not org-level issues.'
   },

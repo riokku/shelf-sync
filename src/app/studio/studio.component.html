@@ -25,6 +25,13 @@
           }
         </div>
       </div>
+    } @else if (loadError) {
+      <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load platform stats. ' + loadError">
+        <button mat-stroked-button type="button" (click)="retryLoad()">
+          <mat-icon>refresh</mat-icon>
+          Retry
+        </button>
+      </app-empty-state>
     } @else {
       <div class="studio-stats-card">
         <div class="stat-grid">

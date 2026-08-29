@@ -63,6 +63,13 @@
           </dl>
         </section>
       </div>
+    } @else if (loadError) {
+      <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load billing info. ' + loadError">
+        <button mat-stroked-button type="button" (click)="retryLoad()">
+          <mat-icon>refresh</mat-icon>
+          Retry
+        </button>
+      </app-empty-state>
     } @else {
       <div class="billing-card">
         <section class="billing-section">

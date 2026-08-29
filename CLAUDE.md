@@ -1140,6 +1140,29 @@ mid-session. This pass deliberately covers the five highest-value pages rather t
 `.select()` call in the app; other pages' load paths remain a natural future extension of the same
 `loadError`/`retryLoad()`/`variant="error"` shape.
 
+A follow-up pass picked this shape up across nearly every other data-fetching page in the app as
+each one shipped or was revisited afterward (Suppliers, Orders, Reservations, Reports, Activity
+Log, both Manage's and Studio's own Error Log, Studio's Feedback/Organizations/Users and their two
+entity-detail pages, Broadcasts, `ModalTableComponent`'s own supplementary loads, and the rest of
+Manage Tasks'/Team's own pages beyond the one tab/section the original pass singled out) — the same
+incremental, by-attrition adoption `_skeleton.scss`'s own doc comment above describes for the
+skeleton-loading sweep, rather than a second coordinated pass. `HomeComponent`'s personal "What's on
+your plate" section, `ManageBillingComponent`, and `StudioComponent`'s own headline stat-grid close
+out three of the remaining gaps this way — Home in particular is the app's single highest-traffic
+page, where "nothing assigned to you" vs. "the query silently failed" is the most consequential
+place in the app for that ambiguity to exist. `HomeComponent.personalStatsError` covers just its
+three-list section specifically (loadPersonalStats()'s three queries) — the rest of the page (hero,
+nav-card grid, getting-started card) renders regardless of whether that section's own load
+succeeded, so there's no single whole-page `isLoading`/`loadError` gate the way a plain list page
+has. `StudioComponent.loadError` is scoped to `loadStats()` specifically, not `loadPendingBadge()`'s
+own independent feedback-count query — the same "just a badge, no real empty-vs-broken ambiguity"
+reasoning `ManageComponent`'s own hub-card counts and `HeaderComponent`'s own badges are left out of
+this pattern for. `ManageDangerZoneComponent`, `AccountComponent`, `ManageComponent`'s hub badges,
+and `SettingsComponent` (which doesn't own a `site_settings` fetch itself at all — that's
+`SiteSettingsService`'s job once at app startup, not this page's own `ngOnInit()`) remain
+deliberately out of scope: none of them render a list whose "empty" and "broken" states are
+actually ambiguous the way this pattern exists to resolve.
+
 A first motion-polish pass touches three things app-wide/on the two highest-traffic pages. Route
 changes now get a brief fade+rise (`router-outlet + *` in `src/styles.scss`, deliberately global
 rather than component-scoped — Angular's emulated view encapsulation appends a per-component

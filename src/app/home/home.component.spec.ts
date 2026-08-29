@@ -301,6 +301,82 @@ describe('HomeComponent personal lists', () => {
   });
 });
 
+/** Fails the tasks query the first time it's called (so the initial load
+ *  hits personalStatsError), then succeeds on the next call — lets one
+ *  test cover both the failure and a subsequent successful retry without
+ *  swapping providers mid-test. */
+function createFakeSupabaseServiceFailingTasksOnce(): SupabaseService {
+  function builder(result: { data: unknown[] | null; error: { message: string } | null }) {
+    const b: Record<string, unknown> = {
+      then: (resolve: (value: typeof result) => void) => resolve(result),
+    };
+    for (const method of ['select', 'eq', 'neq', 'in', 'gte', 'order']) {
+      b[method] = () => b;
+    }
+    return b;
+  }
+
+  let tasksCallCount = 0;
+
+  const fake = {
+    client: {
+      from: (table: string) => {
+        if (table === 'tasks') {
+          tasksCallCount++;
+          return tasksCallCount === 1
+            ? builder({ data: null, error: { message: 'network error' } })
+            : builder({ data: [{ id: 'task-1', title: 'Recovered', due_date: null }], error: null });
+        }
+        return builder({ data: [], error: null });
+      }
+    }
+  };
+  return fake as unknown as SupabaseService;
+}
+
+describe('HomeComponent personal stats load errors', () => {
+  // 'staff' so loadGettingStarted() never fires its own inventory_items/
+  // tasks/profiles queries and collides with the fake's own tasks-call
+  // counter, same reasoning 'HomeComponent personal lists' above uses.
+  async function createComponent() {
+    await TestBed.resetTestingModule().configureTestingModule({
+      imports: [HomeComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: 'staff' })) },
+        { provide: SupabaseService, useValue: createFakeSupabaseServiceFailingTasksOnce() }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(HomeComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    return fixture;
+  }
+
+  it('sets personalStatsError on a failed load rather than showing empty lists', async () => {
+    const fixture = await createComponent();
+
+    expect(fixture.componentInstance.personalStatsError).toBe('network error');
+    expect(fixture.componentInstance.outstandingTasks).toEqual([]);
+  });
+
+  it('clears personalStatsError and loads real data once retryPersonalStats() succeeds', async () => {
+    const fixture = await createComponent();
+    const { componentInstance: component } = fixture;
+    expect(component.personalStatsError).toBe('network error');
+
+    component.retryPersonalStats();
+    // A real macrotask boundary rather than fixture.whenStable() — see
+    // ManageReportsComponent's own retryLoad() spec for why a couple of bare
+    // ticks doesn't reliably flush a Promise.all this many microtasks deep.
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(component.personalStatsError).toBeNull();
+    expect(component.outstandingTasks).toEqual([{ id: 'task-1', title: 'Recovered', dueDate: null }]);
+  });
+});
+
 describe('HomeComponent getting-started card', () => {
   async function createComponent(
     role: 'admin' | 'manager' | 'staff',

@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { SupabaseService } from '../core/supabase.service';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
+import { EmptyStateComponent } from '../shared/components/empty-state/empty-state.component';
 
 /** A card hub, same shape as ManageComponent, for a genuinely different
  *  audience: the app's own maintainer, not any org's own admin/manager.
@@ -17,7 +18,7 @@ import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrum
  *  gated the same way, so nobody else ever sees either exists. */
 @Component({
   selector: 'app-studio',
-  imports: [RouterModule, MatBadgeModule, MatButtonModule, MatIconModule, BreadcrumbsComponent],
+  imports: [RouterModule, MatBadgeModule, MatButtonModule, MatIconModule, BreadcrumbsComponent, EmptyStateComponent],
   templateUrl: './studio.component.html',
   styleUrl: './studio.component.scss',
 })
@@ -38,6 +39,16 @@ export class StudioComponent implements OnInit {
   /** Fixed at 5 — the real .stat-grid below always renders exactly this many
    *  tiles, unlike a data-driven list's own skeletonRows count. */
   readonly skeletonStatTiles = [1, 2, 3, 4, 5];
+  /** Set when any of loadStats()'s own four queries fails — see
+   *  ManageReportsComponent's identical loadError field for the full
+   *  reasoning (a failed load otherwise renders indistinguishably from a
+   *  genuinely-empty platform). Deliberately scoped to loadStats() only,
+   *  not loadPendingBadge() — that one already feeds newFeedbackCount
+   *  independently and has no "is this really zero" ambiguity worth a
+   *  retry UI of its own, the same "just a badge" reasoning
+   *  ManageComponent's own hub-card counts are left out of this pattern
+   *  for. */
+  loadError: string | null = null;
   /** Active (non-soft-deleted) organizations — the number that actually
    *  matters day to day, separate from newOrgCount below which is a gross
    *  signup count and deliberately doesn't exclude an org that signed up
@@ -66,6 +77,12 @@ export class StudioComponent implements OnInit {
     this.newFeedbackCount = count ?? 0;
   }
 
+  /** Re-runs the stat-grid's own load after a failed one — the Retry
+   *  button's handler (see the template's own loadError branch). */
+  retryLoad() {
+    void this.loadStats();
+  }
+
   private async loadStats() {
     this.isLoadingStats = true;
 
@@ -73,22 +90,26 @@ export class StudioComponent implements OnInit {
     const weekAgoIso = new Date(now - 7 * 86400000).toISOString();
     const dayAgoIso = new Date(now - 86400000).toISOString();
 
-    const [
-      { count: totalOrgCount },
-      { count: newOrgCount },
-      { count: approvedUserCount },
-      { data: recentErrors }
-    ] = await Promise.all([
+    const [orgCountResult, newOrgCountResult, userCountResult, errorsResult] = await Promise.all([
       this.supabase.from('organizations').select('id', { count: 'exact', head: true }).is('deleted_at', null),
       this.supabase.from('organizations').select('id', { count: 'exact', head: true }).gte('created_at', weekAgoIso),
       this.supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('membership_status', 'approved'),
       this.supabase.from('client_error_log').select('app_env').gte('created_at', dayAgoIso)
     ]);
 
-    this.totalOrgCount = totalOrgCount ?? 0;
-    this.newOrgCount = newOrgCount ?? 0;
-    this.approvedUserCount = approvedUserCount ?? 0;
-    this.recentErrorCount = (recentErrors ?? []).filter(row => row.app_env !== 'development').length;
+    const error = orgCountResult.error?.message ?? newOrgCountResult.error?.message
+      ?? userCountResult.error?.message ?? errorsResult.error?.message ?? null;
+    if (error) {
+      this.loadError = error;
+      this.isLoadingStats = false;
+      return;
+    }
+    this.loadError = null;
+
+    this.totalOrgCount = orgCountResult.count ?? 0;
+    this.newOrgCount = newOrgCountResult.count ?? 0;
+    this.approvedUserCount = userCountResult.count ?? 0;
+    this.recentErrorCount = (errorsResult.data ?? []).filter(row => row.app_env !== 'development').length;
     this.isLoadingStats = false;
   }
 }

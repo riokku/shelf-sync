@@ -131,6 +131,14 @@
 
     <span class="home-kicker">For you</span>
     <h3 class="home-lists-heading">What's on your plate</h3>
+    @if (personalStatsError) {
+      <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load your tasks, checkouts, and reservations. ' + personalStatsError">
+        <button mat-stroked-button type="button" (click)="retryPersonalStats()">
+          <mat-icon>refresh</mat-icon>
+          Retry
+        </button>
+      </app-empty-state>
+    } @else {
     <div class="home-lists">
       <div class="home-list-card">
         <div class="home-list-header">
@@ -234,5 +242,6 @@
         }
       </div>
     </div>
+    }
   </div>
 </div>

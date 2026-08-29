@@ -6,6 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { AuthService } from '../core/auth.service';
 import { SupabaseService } from '../core/supabase.service';
 import { RingStatComponent } from '../shared/components/ring-stat/ring-stat.component';
+import { EmptyStateComponent } from '../shared/components/empty-state/empty-state.component';
 import { needsRestockAttention } from '../shared/utils/inventory-stock';
 import { getTodayIsoDate, parseIsoDate, toIsoDateString } from '../shared/utils/date';
 
@@ -45,7 +46,7 @@ const HOME_LIST_VISIBLE_CAP = 4;
 
 @Component({
   selector: 'app-home',
-  imports: [RouterModule, MatIconModule, MatButtonModule, DatePipe, RingStatComponent],
+  imports: [RouterModule, MatIconModule, MatButtonModule, DatePipe, RingStatComponent, EmptyStateComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
 })
@@ -96,6 +97,13 @@ export class HomeComponent implements OnInit {
   outstandingTasks: HomeTaskSummary[] = [];
   checkedOutItems: HomeCheckedOutItemSummary[] = [];
   upcomingReservations: HomeReservationSummary[] = [];
+  /** Set when any of loadPersonalStats()'s own three queries fails — see
+   *  ManageReportsComponent's identical loadError field for the full
+   *  reasoning. Without this, a genuine fetch failure here renders
+   *  indistinguishably from the three lists' own "nothing assigned to you"/
+   *  "nothing checked out"/"no upcoming reservations" empty text, on the
+   *  very first page every user sees after signing in. */
+  personalStatsError: string | null = null;
 
   get visibleOutstandingTasks(): HomeTaskSummary[] {
     return this.outstandingTasks.slice(0, HOME_LIST_VISIBLE_CAP);
@@ -226,6 +234,13 @@ export class HomeComponent implements OnInit {
     this.restockCount = (data ?? []).filter(needsRestockAttention).length;
   }
 
+  /** Retries loadPersonalStats() after a failed load — the "What's on your
+   *  plate" section's own Retry button handler (see the template's own
+   *  personalStatsError branch). */
+  retryPersonalStats() {
+    void this.loadPersonalStats();
+  }
+
   /** The personal "what's on your plate" section's three lists — see
    *  outstandingTasks' own doc comment for why these are user-scoped rather
    *  than org-wide. Skipped entirely (all three stay empty) for a
@@ -243,7 +258,7 @@ export class HomeComponent implements OnInit {
     }
     const userId = session.user.id;
 
-    const [{ data: tasks }, { data: checkedOutItems }, { data: reservations }] = await Promise.all([
+    const [tasksResult, checkedOutItemsResult, reservationsResult] = await Promise.all([
       this.supabase
         .from('tasks')
         .select('id, title, due_date')
@@ -263,6 +278,18 @@ export class HomeComponent implements OnInit {
         .gte('end_date', getTodayIsoDate())
         .order('start_date', { ascending: true })
     ]);
+
+    const error = tasksResult.error?.message ?? checkedOutItemsResult.error?.message
+      ?? reservationsResult.error?.message ?? null;
+    if (error) {
+      this.personalStatsError = error;
+      return;
+    }
+    this.personalStatsError = null;
+
+    const tasks = tasksResult.data;
+    const checkedOutItems = checkedOutItemsResult.data;
+    const reservations = reservationsResult.data;
 
     this.outstandingTasks = (tasks ?? []).map(task => ({ id: task.id, title: task.title, dueDate: task.due_date }));
     this.checkedOutItems = (checkedOutItems ?? []).map(item => ({ id: item.id, name: item.name }));
