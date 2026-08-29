@@ -84,6 +84,97 @@ export type Database = {
           },
         ]
       }
+      broadcast_references: {
+        Row: {
+          broadcast_id: string
+          id: string
+          item_id: string | null
+          member_id: string | null
+          reference_type: string
+        }
+        Insert: {
+          broadcast_id: string
+          id?: string
+          item_id?: string | null
+          member_id?: string | null
+          reference_type: string
+        }
+        Update: {
+          broadcast_id?: string
+          id?: string
+          item_id?: string | null
+          member_id?: string | null
+          reference_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broadcast_references_broadcast_id_fkey"
+            columns: ["broadcast_id"]
+            isOneToOne: false
+            referencedRelation: "broadcasts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broadcast_references_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broadcast_references_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      broadcasts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          message: string
+          organization_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          message: string
+          organization_id?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          message?: string
+          organization_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broadcasts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broadcasts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_error_log: {
         Row: {
           app_env: string | null
@@ -1070,6 +1161,15 @@ export type Database = {
         Returns: undefined
       }
       cancel_task_transfer: { Args: { task_id: string }; Returns: undefined }
+      create_broadcast: {
+        Args: {
+          p_item_ids?: string[]
+          p_member_ids?: string[]
+          p_message: string
+          p_title: string
+        }
+        Returns: string
+      }
       create_reservation: {
         Args: {
           end_date: string

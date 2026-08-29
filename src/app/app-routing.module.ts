@@ -214,6 +214,18 @@ const routes: Routes = [
     title: 'ShelfSync | Reservations'
   },
   {
+    path: 'broadcasts',
+    loadComponent: () => import('./broadcasts/broadcasts.component').then(m => m.BroadcastsComponent),
+    // approvedGuard only, not manageGuard — every approved org member reads
+    // the feed (same tier as manage/reservations right above, see that
+    // route's own comment); posting is gated to admin/manager inside the
+    // page itself and, for real, by create_broadcast() server-side. No
+    // breadcrumbParent for the same reason reservations has none.
+    canActivate: [approvedGuard],
+    data: { breadcrumb: 'Broadcasts' },
+    title: 'ShelfSync | Broadcasts'
+  },
+  {
     path: 'manage/reports',
     loadComponent: () => import('./manage/reports/manage-reports.component').then(m => m.ManageReportsComponent),
     canActivate: [approvedGuard, manageGuard],

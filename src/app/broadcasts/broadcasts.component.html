@@ -1,0 +1,104 @@
+<div class="broadcasts-wrapper">
+  <div class="container">
+    <div class="page-toolbar">
+      <app-breadcrumbs />
+    </div>
+    <div class="back-row">
+      <button mat-button type="button" routerLink="/home">
+        <mat-icon>arrow_back</mat-icon>
+        Back
+      </button>
+    </div>
+
+    <app-page-header
+        icon="campaign"
+        title="Broadcasts"
+        subtitle="Announcements from admins and managers, posted to the whole team."
+        zone="team"
+      >
+      @if (authService.canManage()) {
+        <button mat-flat-button color="primary" type="button" (click)="newBroadcast()">
+          <mat-icon>campaign</mat-icon>
+          New broadcast
+        </button>
+      }
+    </app-page-header>
+
+    @if (deleteError) {
+      <p class="error-message">{{ deleteError }}</p>
+    }
+
+    @if (isLoading) {
+      <!-- Mirrors .broadcast-card's own title/meta/message layout rather
+           than a bare spinner. -->
+      <ul class="broadcast-list" aria-hidden="true">
+        @for (i of skeletonRows; track i) {
+          <li class="broadcast-card skeleton-broadcast-card">
+            <div class="skeleton-line skeleton-broadcast-title"></div>
+            <div class="skeleton-line skeleton-broadcast-meta"></div>
+            <div class="skeleton-line skeleton-broadcast-message"></div>
+            <div class="skeleton-line skeleton-broadcast-message-short"></div>
+          </li>
+        }
+      </ul>
+    } @else if (loadError) {
+      <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load broadcasts. ' + loadError">
+        <button mat-stroked-button type="button" (click)="retryLoad()">
+          <mat-icon>refresh</mat-icon>
+          Retry
+        </button>
+      </app-empty-state>
+    } @else if (broadcasts.length === 0) {
+      <app-empty-state icon="campaign" message="No broadcasts yet." />
+    } @else {
+      <ul class="broadcast-list">
+        @for (broadcast of broadcasts; track broadcast.id) {
+          <li class="broadcast-card" [class.realtime-flash]="isFlashing(broadcast.id)">
+            <div class="broadcast-header">
+              <div class="broadcast-header-text">
+                <h3 class="broadcast-title">
+                  {{ broadcast.title }}
+                  @if (broadcast.isEdited) {
+                    <span class="broadcast-edited-tag">Edited</span>
+                  }
+                </h3>
+                <div class="broadcast-meta">
+                  Posted by {{ broadcast.createdByLabel }} &middot; {{ broadcast.createdAt | date: 'M/d/yy, h:mm a' }}
+                </div>
+              </div>
+              @if (canEdit(broadcast)) {
+                <div class="broadcast-actions">
+                  <button mat-icon-button type="button" matTooltip="Edit" (click)="editBroadcast(broadcast)">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button type="button" matTooltip="Delete" (click)="removeBroadcast(broadcast)">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
+              }
+            </div>
+
+            <p class="broadcast-message">{{ broadcast.message }}</p>
+
+            @if (broadcast.referencedMembers.length > 0 || broadcast.referencedItems.length > 0) {
+              <div class="broadcast-references">
+                @for (member of broadcast.referencedMembers; track member.id) {
+                  <span class="broadcast-reference-chip">
+                    <app-user-avatar [avatarKey]="member.avatarKey" size="sm" />
+                    {{ member.name }}
+                  </span>
+                }
+                @for (item of broadcast.referencedItems; track item.id) {
+                  <a class="broadcast-reference-chip broadcast-reference-item" routerLink="/inventory" [queryParams]="{ item: item.id }">
+                    <mat-icon>inventory_2</mat-icon>
+                    <span class="broadcast-reference-item-name">{{ item.name }}</span>
+                  </a>
+                }
+              </div>
+            }
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</div>

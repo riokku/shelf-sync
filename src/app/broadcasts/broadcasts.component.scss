@@ -1,0 +1,136 @@
+@use '../shared/styles/page-toolbar';
+@use '../shared/styles/realtime-flash';
+@use '../shared/styles/skeleton';
+
+.broadcasts-wrapper{
+  color: var(--mat-sys-on-surface);
+  padding: 3rem 1.5rem;
+  max-width: 100%;
+
+  .container{
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+.error-message{
+  color: var(--app-error-text);
+  margin: 0 0 1rem;
+}
+
+.broadcast-list{
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.broadcast-card{
+  padding: 1rem 1.25rem;
+  background: var(--mat-sys-surface-container-low);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 0.75rem;
+}
+
+// Loading-state placeholders only — sized to roughly match this page's own
+// real content shapes above (.broadcast-title/-meta/-message).
+.skeleton-broadcast-card{
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.skeleton-broadcast-title{
+  width: 12rem;
+  height: 1.25rem;
+}
+
+.skeleton-broadcast-meta{
+  width: 16rem;
+}
+
+.skeleton-broadcast-message{
+  width: 100%;
+}
+
+.skeleton-broadcast-message-short{
+  width: 60%;
+}
+
+.broadcast-header{
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.broadcast-header-text{
+  min-width: 0;
+}
+
+.broadcast-title{
+  margin: 0 0 0.25rem;
+  font-size: 1.0625rem;
+}
+
+.broadcast-edited-tag{
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.broadcast-meta{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8125rem;
+}
+
+.broadcast-actions{
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.25rem;
+}
+
+.broadcast-message{
+  margin: 0 0 0.75rem;
+  white-space: pre-line;
+}
+
+.broadcast-references{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.broadcast-reference-chip{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  background: var(--mat-sys-surface-container-high);
+  font-size: 0.8125rem;
+
+  mat-icon{
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+.broadcast-reference-item{
+  color: var(--mat-sys-primary);
+  font-weight: 600;
+  // A plain <a> underlines its whole line box by default, including the
+  // icon glyph beside the name — not just the linked text. Turn that off
+  // here and put the underline back only on the name itself below.
+  text-decoration: none;
+}
+
+.broadcast-reference-item-name{
+  text-decoration: underline;
+}
