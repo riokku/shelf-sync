@@ -8,8 +8,8 @@ import { createFakeMatDialogRef, createFakeSupabaseService } from '../../../test
 import { InventoryItemReservationWithItem } from '../../utils/inventory-item-reservations';
 
 const ITEMS: ReservableItem[] = [
-  { id: 'item-1', name: 'Chiavari Chairs', quantityRemaining: 100 },
-  { id: 'item-2', name: 'Table Runners', quantityRemaining: 40 }
+  { id: 'item-1', name: 'Chiavari Chairs', quantityRemaining: 100, isLocked: false },
+  { id: 'item-2', name: 'Table Runners', quantityRemaining: 40, isLocked: false }
 ];
 
 function createTestReservation(overrides: Partial<InventoryItemReservationWithItem> = {}): InventoryItemReservationWithItem {
@@ -79,6 +79,17 @@ describe('PlaceReservationModalComponent', () => {
       await setup();
       component.itemSearchControl.setValue('item-2');
       expect(component.filteredItems).toEqual([ITEMS[1]]);
+    });
+
+    // Filtering out an unpickable item entirely would leave someone unable
+    // to tell "not in this org" apart from "locked" — the template's own
+    // [disabled] binding (plus the lock icon next to it) is what actually
+    // blocks the pick, so this list still needs to include it.
+    it('still includes a locked item — the template disables it rather than this list hiding it', async () => {
+      const lockedItem: ReservableItem = { id: 'item-3', name: 'Vintage Arch', quantityRemaining: 1, isLocked: true };
+      await setup({ data: { items: [...ITEMS, lockedItem] } });
+
+      expect(component.filteredItems).toContain(lockedItem);
     });
   });
 

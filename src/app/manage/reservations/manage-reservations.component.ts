@@ -93,7 +93,7 @@ export class ManageReservationsComponent implements OnInit {
 
   statusFilter: ReservationStatusFilter = 'all';
 
-  private allItems: { id: string; name: string; quantity_remaining: number }[] = [];
+  private allItems: { id: string; name: string; quantity_remaining: number; is_locked: boolean }[] = [];
   private profiles: Profile[] = [];
   reservations: InventoryItemReservationWithItem[] = [];
 
@@ -116,13 +116,14 @@ export class ManageReservationsComponent implements OnInit {
     return this.allItems.map(item => ({
       id: item.id,
       name: item.name,
-      quantityRemaining: item.quantity_remaining
+      quantityRemaining: item.quantity_remaining,
+      isLocked: item.is_locked
     }));
   }
 
   async ngOnInit() {
     const [{ data: items }, { data: profiles }] = await Promise.all([
-      this.supabase.from('inventory_items').select('id, name, quantity_remaining').order('name'),
+      this.supabase.from('inventory_items').select('id, name, quantity_remaining, is_locked').order('name'),
       this.supabase.from('profiles').select('*').order('full_name')
     ]);
 

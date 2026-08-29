@@ -481,8 +481,8 @@
               <ul class="reservation-summary-list">
                 @for (reservation of upcomingReservations; track reservation.id) {
                   <li class="reservation-summary-row">
-                    <span class="semibold">{{ reservation.quantity }}</span>
-                    for {{ reservation.reservedFor }}
+                    <span class="reservation-summary-quantity">{{ reservation.quantity }}</span>
+                    reserved by {{ reservation.reservedByLabel }}
                     <span class="reservation-summary-dates">
                       {{ reservation.startDate | date: 'M/d/yy' }} – {{ reservation.endDate | date: 'M/d/yy' }}
                     </span>

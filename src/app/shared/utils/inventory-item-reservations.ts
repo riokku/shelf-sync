@@ -76,9 +76,12 @@ export async function loadAllInventoryItemReservations(
 /** Lighter-weight than loadAllInventoryItemReservations() above — just this
  *  one item's still-relevant bookings (not yet returned/cancelled, and not
  *  already in the past), oldest start date first. Backs
- *  ModalTableComponent's read-only "Upcoming reservations" summary, which
- *  has no need for actor-name resolution the way the full manage page does
- *  — it's a glance, not an audit trail.
+ *  ModalTableComponent's read-only "Upcoming reservations" summary. Takes a
+ *  pre-loaded `profiles` the same way loadAllInventoryItemReservations()
+ *  above does, to resolve reservedByLabel — the caller fetches it alongside
+ *  this rather than this function loading its own copy, same "this popup
+ *  fetches its own supplementary data" precedent its other queries already
+ *  follow.
  *
  *  Goes through get_item_upcoming_reservations() rather than a direct
  *  .from(...) select — inventory_item_reservations' own SELECT policy
@@ -93,9 +96,10 @@ export async function loadAllInventoryItemReservations(
  *  purpose (see that RPC's own migration for the full reasoning). */
 export async function loadUpcomingReservationsForItem(
   supabase: SupabaseClient<Database>,
-  itemId: string
+  itemId: string,
+  profiles: Profile[]
 ): Promise<InventoryItemReservation[]> {
   const { data } = await supabase.rpc('get_item_upcoming_reservations', { p_item_id: itemId });
 
-  return (data ?? []).map(row => toInventoryItemReservation(row, []));
+  return (data ?? []).map(row => toInventoryItemReservation(row, profiles));
 }

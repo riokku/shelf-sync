@@ -7,6 +7,7 @@ import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/ma
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SupabaseService } from '../../../core/supabase.service';
 import { InventoryItemReservationWithItem } from '../../utils/inventory-item-reservations';
@@ -15,11 +16,18 @@ import { HelpTooltipComponent } from '../help-tooltip/help-tooltip.component';
 
 /** Every item is reservable (unlike PlaceOrderModalComponent's items, which
  *  need a linked supplier first) — quantityRemaining is carried along so
- *  the live availability hint below doesn't need a second query per pick. */
+ *  the live availability hint below doesn't need a second query per pick.
+ *  isLocked is surfaced (not filtered out beforehand) so a locked item still
+ *  shows up in the picker with a lock icon next to it, same "visible but
+ *  unselectable, not hidden" treatment the bulk-edit checkbox gives a locked
+ *  item elsewhere in this app — create_reservation() itself is the real
+ *  enforcement (see its own migration), this is purely a UX nicety so
+ *  picking one doesn't silently fail on submit instead. */
 export interface ReservableItem {
   id: string;
   name: string;
   quantityRemaining: number;
+  isLocked: boolean;
 }
 
 export interface PlaceReservationModalData {
@@ -40,6 +48,7 @@ export interface PlaceReservationModalData {
     MatDatepickerModule,
     MatButtonModule,
     MatIconModule,
+    MatTooltipModule,
     MatProgressSpinnerModule,
     HelpTooltipComponent
   ],

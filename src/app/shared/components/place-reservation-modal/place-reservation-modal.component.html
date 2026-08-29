@@ -16,7 +16,12 @@
         />
       <mat-autocomplete #itemAuto="matAutocomplete" (optionSelected)="onItemSelected($event)">
         @for (item of filteredItems; track item.id) {
-          <mat-option [value]="item.id">{{ item.name }}</mat-option>
+          <mat-option [value]="item.id" [disabled]="item.isLocked">
+            {{ item.name }}
+            @if (item.isLocked) {
+              <mat-icon class="locked-item-icon" matTooltip="Locked — this item can't be reserved">lock</mat-icon>
+            }
+          </mat-option>
         } @empty {
           <mat-option disabled>No items match.</mat-option>
         }

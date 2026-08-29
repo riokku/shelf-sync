@@ -212,14 +212,19 @@ export class ModalTableComponent implements OnInit {
    *  this file already follow. Only reserved/picked_up bookings whose end
    *  date hasn't passed — a glance at "is this already spoken for," not an
    *  audit trail (that's what manage/reservations, the page that actually
-   *  creates/actions these, is for). */
+   *  creates/actions these, is for). Each row shows reservedByLabel (who
+   *  placed the booking) rather than reservedFor (who/what it's for, e.g. an
+   *  external customer or event name) — the org member is the more useful
+   *  glance here since they're who you'd actually ask about it. */
   upcomingReservations: InventoryItemReservation[] = [];
 
   async ngOnInit(){
-    [this.existingContainers, this.upcomingReservations] = await Promise.all([
+    const [existingContainers, { data: profiles }] = await Promise.all([
       loadInventoryItemContainers(this.supabase, this.data.id),
-      loadUpcomingReservationsForItem(this.supabase, this.data.id)
+      this.supabase.from('profiles').select('*').order('full_name')
     ]);
+    this.existingContainers = existingContainers;
+    this.upcomingReservations = await loadUpcomingReservationsForItem(this.supabase, this.data.id, profiles ?? []);
   }
 
   containerSum(containers: { quantity: number }[]): number {

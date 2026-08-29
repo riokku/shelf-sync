@@ -27,6 +27,19 @@ form{
   color: var(--mat-sys-primary);
 }
 
+// A locked item still shows up in the picker (not filtered out) so it's
+// obvious *why* it can't be picked rather than just silently missing — see
+// ReservableItem.isLocked's own doc comment. mat-option itself carries
+// [disabled] to actually block the pick; this is just the visual cue.
+.locked-item-icon{
+  margin-left: 0.5rem;
+  font-size: 1rem;
+  width: 1rem;
+  height: 1rem;
+  vertical-align: text-bottom;
+  color: var(--mat-sys-on-surface-variant);
+}
+
 .availability-hint{
   display: flex;
   align-items: center;
