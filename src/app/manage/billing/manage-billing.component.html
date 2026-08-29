@@ -3,6 +3,12 @@
     <div class="page-toolbar">
       <app-breadcrumbs />
     </div>
+    <div class="back-row">
+      <button mat-button type="button" routerLink="/manage">
+        <mat-icon>arrow_back</mat-icon>
+        Back
+      </button>
+    </div>
     <app-page-header title="Billing" zone="admin">
       <app-ring-stat headerFigure [percent]="usagePercent(storageUsedMb, currentTier.limits.storageLimitMb)" label="Storage used" />
     </app-page-header>

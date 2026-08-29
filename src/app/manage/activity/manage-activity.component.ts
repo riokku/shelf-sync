@@ -1,5 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { SupabaseService } from '../../core/supabase.service';
@@ -21,7 +22,7 @@ const ENTITY_ICONS: Record<ActivityEntityType, string> = {
 
 @Component({
   selector: 'app-manage-activity',
-  imports: [DatePipe, MatButtonModule, MatIconModule, BreadcrumbsComponent, PageHeaderComponent, UserAvatarComponent, EmptyStateComponent],
+  imports: [DatePipe, RouterLink, MatButtonModule, MatIconModule, BreadcrumbsComponent, PageHeaderComponent, UserAvatarComponent, EmptyStateComponent],
   templateUrl: './manage-activity.component.html',
   styleUrl: './manage-activity.component.scss',
 })

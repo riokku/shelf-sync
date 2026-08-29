@@ -50,6 +50,14 @@
   background: linear-gradient(120deg, color-mix(in srgb, var(--mat-sys-primary) 9%, var(--mat-sys-surface)), color-mix(in srgb, var(--mat-sys-tertiary) 10%, var(--mat-sys-surface)));
 }
 
+// Studio's own single wash — see the `zone` input's own doc comment for why
+// this is one flat combo rather than a per-page one the way Manage's four
+// section washes are: Studio's hub has no equivalent sub-sections to tie
+// into.
+.page-header-zone-studio{
+  background: linear-gradient(120deg, color-mix(in srgb, var(--mat-sys-secondary) 10%, var(--mat-sys-surface)), color-mix(in srgb, var(--mat-sys-tertiary) 9%, var(--mat-sys-surface)));
+}
+
 // The same glyph the icon chip already renders meaningfully, blown up and
 // bled off the header's own right edge at low opacity — a bold-but-quiet
 // identity marker that costs no new data, since every zone-tinted header

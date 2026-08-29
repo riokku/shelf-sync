@@ -1,6 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -45,6 +46,7 @@ type StatusFilter = 'all' | FeedbackStatus;
   imports: [
     FormsModule,
     DatePipe,
+    RouterLink,
     MatButtonModule,
     MatButtonToggleModule,
     MatExpansionModule,

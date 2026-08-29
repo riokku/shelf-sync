@@ -1,6 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -40,6 +40,7 @@ type OrganizationRow = Database['public']['Tables']['organizations']['Row'];
   selector: 'app-studio-users',
   imports: [
     FormsModule,
+    RouterLink,
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,
