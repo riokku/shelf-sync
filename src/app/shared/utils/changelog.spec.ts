@@ -29,16 +29,18 @@ describe('changelog', () => {
   });
 
   it('only counts entries strictly newer than the recorded last-seen date', () => {
-    const newestDate = CHANGELOG_ENTRIES[0].date;
-    const entriesOnNewestDate = CHANGELOG_ENTRIES.filter(entry => entry.date === newestDate).length;
-    const oldestDate = CHANGELOG_ENTRIES[CHANGELOG_ENTRIES.length - 1].date;
-    // A date strictly before the newest date but not before every entry —
-    // rather than assuming any two adjacent entries fall on different
-    // days, since several can (and do) ship the same day.
-    expect(oldestDate < newestDate).toBeTrue();
-    localStorage.setItem('shelf-sync:changelog-last-seen:user-1', oldestDate);
+    // Derived from CHANGELOG_ENTRIES itself rather than assuming it has
+    // only two distinct dates total (true only by coincidence at one
+    // point — the list keeps growing across more than two ship dates) —
+    // the expected count is whatever a plain string-date filter says,
+    // computed independently of getUnseenChangelogCount()'s own logic.
+    const distinctDates = Array.from(new Set(CHANGELOG_ENTRIES.map(entry => entry.date))).sort();
+    expect(distinctDates.length).toBeGreaterThan(1);
+    const cutoffDate = distinctDates[0];
+    const expectedUnseenCount = CHANGELOG_ENTRIES.filter(entry => entry.date > cutoffDate).length;
+    localStorage.setItem('shelf-sync:changelog-last-seen:user-1', cutoffDate);
 
-    expect(getUnseenChangelogCount('user-1')).toBe(entriesOnNewestDate);
+    expect(getUnseenChangelogCount('user-1')).toBe(expectedUnseenCount);
   });
 
   it('tracks each user independently', () => {

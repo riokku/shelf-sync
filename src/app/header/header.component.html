@@ -172,6 +172,13 @@
       <mat-icon>event</mat-icon>
       Reservations
     </a>
+    <!-- Same "every approved member, not just admin/manager" tier as
+         Reservations right above — see that route's own comment in
+         app-routing.module.ts. -->
+    <a mat-button routerLink="/broadcasts" routerLinkActive="active">
+      <mat-icon>campaign</mat-icon>
+      Broadcasts
+    </a>
     @if (authService.canManage()) {
       <a mat-button routerLink="/manage" routerLinkActive="active">
         <mat-icon>admin_panel_settings</mat-icon>

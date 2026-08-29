@@ -1,0 +1,111 @@
+<div class="studio-user-detail-wrapper">
+  <div class="container">
+    <div class="page-toolbar">
+      <app-breadcrumbs [labelOverride]="displayName" [secondaryParent]="organizationBreadcrumbParent" />
+    </div>
+    <div class="back-row">
+      <button mat-button type="button" routerLink="/studio/users">
+        <mat-icon>arrow_back</mat-icon>
+        Back
+      </button>
+    </div>
+    <app-page-header [title]="displayName || 'User'">
+      <app-user-avatar headerFigure [avatarKey]="profile?.avatar_key" size="lg" />
+    </app-page-header>
+
+    @if (loadError) {
+      <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load this user. ' + loadError">
+        <button mat-stroked-button type="button" (click)="retryLoad()">
+          <mat-icon>refresh</mat-icon>
+          Retry
+        </button>
+      </app-empty-state>
+    } @else if (isLoading) {
+      <!-- Mirrors the meta dl and Platform actions' own toggle row below —
+           same tricks StudioOrgDetailComponent's own skeleton already
+           established. -->
+      <div class="user-detail-content" aria-hidden="true">
+        <div class="user-detail-header">
+          <dl class="user-meta">
+            <dt><div class="skeleton-line skeleton-user-meta-label"></div></dt>
+            <dd><div class="skeleton-line skeleton-user-meta-value"></div></dd>
+            <dt><div class="skeleton-line skeleton-user-meta-label"></div></dt>
+            <dd><div class="skeleton-block skeleton-cell-badge"></div></dd>
+          </dl>
+        </div>
+        <section class="user-section">
+          <div class="skeleton-block skeleton-user-toggle"></div>
+        </section>
+      </div>
+    } @else if (notFound) {
+      <app-empty-state icon="person_off" message="This user doesn't exist, or you no longer have access to them." />
+    } @else if (profile) {
+      <div class="user-detail-content">
+        <div class="user-detail-header">
+          <dl class="user-meta">
+            <dt>Email</dt>
+            <dd>{{ profile.email }}</dd>
+            <dt>Role</dt>
+            <dd><span class="member-role-badge" [class]="'role-' + profile.role">{{ profile.role }}</span></dd>
+            <dt>Organization</dt>
+            <dd>
+              @if (organization) {
+                <a [routerLink]="['/studio/organizations', organization.id]">{{ organization.name }}</a>
+              } @else {
+                Unknown organization
+              }
+            </dd>
+            <dt>Membership</dt>
+            <dd>
+              @if (profile.membership_status === 'pending') {
+                <span class="status-badge status-badge-pending">Pending</span>
+              } @else {
+                <span class="status-badge status-badge-active">Approved</span>
+              }
+            </dd>
+            <dt>Joined</dt>
+            <dd>{{ profile.created_at | date: 'MMMM d, y' }}</dd>
+            <dt>Presence</dt>
+            <dd>
+              @if (isOnline) {
+                <span class="online-dot"></span>
+                Online
+              } @else {
+                {{ lastSeenLabel }}
+              }
+            </dd>
+            @if (isLocked) {
+              <dt>Status</dt>
+              <dd>
+                <span class="status-badge status-badge-locked">Locked {{ profile.account_locked_at | date: 'M/d/yy' }}</span>
+                @if (profile.account_locked_reason) {
+                  <span class="section-hint"> — {{ profile.account_locked_reason }}</span>
+                }
+                @if (lockedByName) {
+                  <span class="section-hint"> (by {{ lockedByName }})</span>
+                }
+              </dd>
+            }
+          </dl>
+        </div>
+
+        <section class="user-section platform-actions">
+          <h3>Platform actions</h3>
+          @if (actionError) {
+            <p class="error-message">{{ actionError }}</p>
+          }
+          @if (isViewingOwnAccount) {
+            <p class="section-hint">You can't lock your own account.</p>
+          }
+          <mat-slide-toggle
+              [checked]="isLocked"
+              [disabled]="isActionPending || isViewingOwnAccount"
+              (change)="onLockToggleChange($event)"
+            >
+            Lock account
+          </mat-slide-toggle>
+        </section>
+      </div>
+    }
+  </div>
+</div>

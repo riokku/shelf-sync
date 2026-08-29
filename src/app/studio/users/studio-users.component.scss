@@ -72,7 +72,7 @@
   font-weight: 600;
 }
 
-// Whole row navigates to this user's own org page (StudioOrgDetailComponent)
+// Whole row navigates to this person's own page (StudioUserDetailComponent)
 // — same affordance StudioOrganizationsComponent's own .org-row-clickable
 // establishes.
 .user-row-clickable{
@@ -121,4 +121,12 @@
 .status-badge-pending{
   background: var(--app-warning-bg);
   color: var(--app-warning-on-bg);
+}
+
+// Same hardcoded red every other one-way-or-consequential platform-admin
+// status badge in this app uses — see StudioUserDetailComponent's own
+// identical .status-badge-locked for the full reasoning.
+.status-badge-locked{
+  background: var(--app-danger-bg);
+  color: var(--app-danger-on-bg);
 }

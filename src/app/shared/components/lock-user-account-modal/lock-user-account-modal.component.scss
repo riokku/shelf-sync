@@ -1,0 +1,19 @@
+form{
+  display: flex;
+  flex-direction: column;
+}
+
+// Same top-padding fix SuspendOrganizationModalComponent's own identical
+// rule already establishes — see that component's own comment.
+[mat-dialog-title]{
+  padding-top: 1.5rem;
+}
+
+.full-width{
+  width: 100%;
+}
+
+.semibold{
+  color: var(--mat-sys-on-surface);
+  font-weight: 600;
+}

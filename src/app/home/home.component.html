@@ -1,35 +1,35 @@
 <div class="home-wrapper">
   <div class="container">
-    <div class="home-hero">
-      <span class="home-hero-backdrop" aria-hidden="true"></span>
-      <span class="home-hero-glow home-hero-glow-1" aria-hidden="true"></span>
-      <span class="home-hero-glow home-hero-glow-2" aria-hidden="true"></span>
-      <span class="home-hero-kicker">
+    <div class="page-hero">
+      <span class="page-hero-backdrop" aria-hidden="true"></span>
+      <span class="page-hero-glow page-hero-glow-1" aria-hidden="true"></span>
+      <span class="page-hero-glow page-hero-glow-2" aria-hidden="true"></span>
+      <span class="page-hero-kicker">
         <mat-icon>wb_sunny</mat-icon>
         {{ todayLabel }}
       </span>
       <h2>Welcome back{{ greetingName ? ', ' + greetingName : '' }}.</h2>
-      <p class="home-subtitle">{{ heroSubtitle }}</p>
-      <div class="home-pulse-row">
-        <div class="home-pulse-chip">
+      <p class="page-hero-subtitle">{{ heroSubtitle }}</p>
+      <div class="page-hero-pulse-row">
+        <div class="page-hero-pulse-chip">
           <mat-icon>checklist</mat-icon>
           <span>
-            <span class="home-pulse-value mono">{{ tasksDueTodayCount }}</span>
-            <span class="home-pulse-label">Tasks due today</span>
+            <span class="page-hero-pulse-value mono">{{ tasksDueTodayCount }}</span>
+            <span class="page-hero-pulse-label">Tasks due today</span>
           </span>
         </div>
-        <div class="home-pulse-chip">
+        <div class="page-hero-pulse-chip">
           <mat-icon>warning</mat-icon>
           <span>
-            <span class="home-pulse-value mono">{{ restockCount }}</span>
-            <span class="home-pulse-label">Low or out of stock</span>
+            <span class="page-hero-pulse-value mono">{{ restockCount }}</span>
+            <span class="page-hero-pulse-label">Low or out of stock</span>
           </span>
         </div>
-        <div class="home-pulse-chip">
+        <div class="page-hero-pulse-chip">
           <mat-icon>event</mat-icon>
           <span>
-            <span class="home-pulse-value mono">{{ reservationsStartingSoonCount }}</span>
-            <span class="home-pulse-label">Reservations this week</span>
+            <span class="page-hero-pulse-value mono">{{ reservationsStartingSoonCount }}</span>
+            <span class="page-hero-pulse-label">Reservations this week</span>
           </span>
         </div>
       </div>

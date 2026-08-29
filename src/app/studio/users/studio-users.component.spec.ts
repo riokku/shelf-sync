@@ -23,6 +23,9 @@ function createTestProfile(overrides: Partial<Profile> = {}): Profile {
     last_active_at: null,
     quick_menu_enabled: false,
     quick_menu_items: [],
+    account_locked_at: null,
+    account_locked_by: null,
+    account_locked_reason: null,
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
     ...overrides,
@@ -129,18 +132,30 @@ describe('StudioUsersComponent', () => {
     expect(component.organizationName(component.filteredResults[0])).toBe('Gatherwell Events Co.');
   });
 
-  it('openOrganization() navigates to the profile\'s org page', async () => {
+  it('openUser() navigates to the profile\'s own detail page', async () => {
     await createComponent({
-      profiles: [createTestProfile({ full_name: 'Alex Rivera', organization_id: 'org-1' })],
+      profiles: [createTestProfile({ id: 'profile-1', full_name: 'Alex Rivera', organization_id: 'org-1' })],
       organizations: [createTestOrg({ id: 'org-1', name: 'Gatherwell Events Co.' })]
     });
     component.searchTerm = 'Alex';
     const router = TestBed.inject(Router);
     const navigateSpy = spyOn(router, 'navigate');
 
-    component.openOrganization(component.filteredResults[0]);
+    component.openUser(component.filteredResults[0]);
 
-    expect(navigateSpy).toHaveBeenCalledWith(['/studio/organizations', 'org-1']);
+    expect(navigateSpy).toHaveBeenCalledWith(['/studio/users', 'profile-1']);
+  });
+
+  it('shows a Locked badge instead of Approved/Pending for a locked account', async () => {
+    await createComponent({
+      profiles: [createTestProfile({ full_name: 'Alex Rivera', account_locked_at: '2026-01-01T00:00:00.000Z' })],
+      organizations: [createTestOrg()]
+    });
+    component.searchTerm = 'Alex';
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Locked');
+    expect(fixture.nativeElement.textContent).not.toContain('Approved');
   });
 
   it('surfaces a failed load rather than reading as an empty directory', async () => {

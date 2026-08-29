@@ -3,8 +3,48 @@
     <div class="page-toolbar">
       <app-breadcrumbs />
     </div>
-    <h2>Manage</h2>
-    <p class="manage-subtitle">What do you want to manage?</p>
+    <div class="back-row">
+      <button mat-button type="button" routerLink="/home">
+        <mat-icon>arrow_back</mat-icon>
+        Back
+      </button>
+    </div>
+    <div class="page-hero page-hero-quiet">
+      <span class="page-hero-backdrop" aria-hidden="true"></span>
+      <span class="page-hero-glow page-hero-glow-1" aria-hidden="true"></span>
+      <span class="page-hero-glow page-hero-glow-2" aria-hidden="true"></span>
+      @if (authService.organizationName()) {
+        <span class="page-hero-kicker">
+          <mat-icon>apartment</mat-icon>
+          Managing {{ authService.organizationName() }}
+        </span>
+      }
+      <h2>Manage</h2>
+      <p class="page-hero-subtitle">What do you want to manage?</p>
+      <div class="page-hero-pulse-row">
+        <div class="page-hero-pulse-chip">
+          <mat-icon>inventory_2</mat-icon>
+          <span>
+            <span class="page-hero-pulse-value mono">{{ pendingRetirementCount }}</span>
+            <span class="page-hero-pulse-label">Retirement requests</span>
+          </span>
+        </div>
+        <div class="page-hero-pulse-chip">
+          <mat-icon>swap_horiz</mat-icon>
+          <span>
+            <span class="page-hero-pulse-value mono">{{ pendingTaskTransferCount }}</span>
+            <span class="page-hero-pulse-label">Task transfers</span>
+          </span>
+        </div>
+        <div class="page-hero-pulse-chip">
+          <mat-icon>new_releases</mat-icon>
+          <span>
+            <span class="page-hero-pulse-value mono">{{ unseenReleaseNotesCount }}</span>
+            <span class="page-hero-pulse-label">What's new</span>
+          </span>
+        </div>
+      </div>
+    </div>
     <app-page-intro
         pageKey="manage"
         icon="admin_panel_settings"

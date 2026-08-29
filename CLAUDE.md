@@ -1161,9 +1161,18 @@ so paging through a full grid doesn't leave the last couple items waiting on a d
 sluggish rather than deliberate. Tasks' own "Completed" section is deliberately left out of the
 cascade — those are already-done items, and animating them in draws attention away from the two
 sections above it a visitor actually needs to act on. All three respect
-`prefers-reduced-motion` the same way every other animation in this app already does. This is a
-first pass on the two busiest pages, not an app-wide sweep — every other page's own bare
-`mat-spinner` loading state remains a natural future extension of the same skeleton shape.
+`prefers-reduced-motion` the same way every other animation in this app already does. This started
+as a first pass on just the two busiest pages, not a coordinated app-wide sweep — but the same
+`.skeleton-line`/`-block`/`-circle` shape (each page composing its own bespoke card/row/table
+arrangement, per that partial's own doc comment) was picked up incrementally by nearly every other
+data-fetching page as it shipped or got revisited afterward (Reservations, Orders, Suppliers,
+Reports, Billing, Activity Log, Error Log, Team, Account, every Studio page, Broadcasts), and
+`PendingApprovalComponent` — the join-request "awaiting approval" screen, the last page-level
+loading state anywhere in the app still showing a bare `mat-spinner` — was converted to the same
+shape once it was the only one left, closing out what had been an unfinished sweep by attrition
+rather than by design. The cascade-in stagger paired with the skeleton on Inventory/Tasks above is
+a separate, deliberately narrower touch (see its own paragraph just above) — picking up the
+skeleton shape elsewhere never implied picking up the stagger too, and it hasn't spread the same way.
 
 A shared `HelpTooltipComponent` (`shared/components/help-tooltip`) — a small keyboard-focusable "?"
 icon button wired to `matTooltip` (this app's existing tooltip mechanism, already used by
@@ -1319,7 +1328,9 @@ it does. `STUDIO_ORGANIZATIONS_BREADCRUMB_PARENT` (`app-routing.module.ts`) give
 "Home / Organizations / {org name}" crumb — the list you actually drilled in from, one level short
 of the full "Home / Studio / Organizations / {name}" chain, since `BreadcrumbParent` only ever
 supports a single hop (same limit `MANAGE_BREADCRUMB_PARENT`/`STUDIO_BREADCRUMB_PARENT` already
-accept for every other nested page in this schema).
+accept for every other nested page in this schema). That single-hop limit was later lifted, just
+for `StudioUserDetailComponent` — see its own paragraph further down for `BreadcrumbsComponent`'s
+new `secondaryParent` input, a second, genuinely linkable hop.
 
 A fourth Studio card, **Users** (`StudioUsersComponent`, `studio/users`), is the opposite direction
 from Organizations' own org-first browse — a support conversation usually starts from a name or an
@@ -1699,6 +1710,195 @@ inviting a teammate from `manage/team`, etc.), so by the time a visitor is back 
 "just completed" moment inside `HomeComponent`'s own lifecycle left to animate. Worth revisiting if
 this card ever gains its own live/realtime updates rather than a load-once snapshot.
 
+A follow-up design pass gave Home's own hero band — previously unique to that one page — to
+Inventory, Tasks, and the Manage hub too, the three other pages one tap away from it in the nav
+drawer, on the reasoning that a bold, "this is a real destination" entrance shouldn't be reserved
+for the app's front door alone. The gradient/glow-blob backdrop, kicker chip, and pulse-row stat
+chips (previously hand-rolled directly in `home.component.scss`/`.html`) moved out to a new
+`shared/styles/_page-hero.scss` partial — same `@use`-per-consumer convention `_skeleton.scss`/
+`_stagger.scss`/`_realtime-flash.scss` already established — so `HomeComponent` itself was
+refactored onto the shared classes rather than kept as a fourth, slightly-different copy. Each
+consumer's kicker/pulse-row content is its own, drawn from data that page already has loaded rather
+than a new query: Inventory's kicker is its own active item count, its pulse row low/out-of-stock
+plus checked-out counts; Tasks' kicker is its open task count, its pulse row overdue/due-today/
+transfer-offer counts; the Manage hub's kicker is the signed-in org's own name
+(`authService.organizationName()`), its pulse row retirement-request/task-transfer/unseen-release-note
+counts (the same three badge counts `ManageComponent.ngOnInit()` already loaded for its own cards).
+The Manage hub's own hero is a quieter cut — `.page-hero-quiet`, less padding and a capped heading
+size — since it's one click deeper than the other three and reads as competing with them at full
+strength.
+
+`PageHeaderComponent` — the compact icon-chip header every `manage/*` sub-page already used —
+picked up a matching but lighter-weight upgrade of its own via a new opt-in `zone` input
+(`'inventory' | 'team' | 'insights' | 'admin'`, matching `ManageComponent`'s own four card groupings
+exactly): a diluted two-tone gradient wash behind the whole header, an oversized low-opacity
+watermark of the page's own `icon` bleeding off its right edge, and a thin primary->tertiary
+gradient rule under the title. Unset by default (every existing usage keeps rendering exactly as
+before), it's now set on all 13 real page usages of this component — Inventory/Suppliers/Orders/
+Reservations get `zone="inventory"`, Tasks/Team get `zone="team"`, Activity/Release Notes/Reports/
+Error Log get `zone="insights"`, Billing/Settings get `zone="admin"` — while Danger Zone keeps its
+own distinct flat-red `variant="danger"` treatment instead of joining the Admin wash (same
+"deliberately reads as riskier than its siblings" reasoning its icon chip already had), and every
+dialog-content usage (`ModalTableComponent`, `TaskDetailModalComponent`) leaves `zone` unset
+entirely, since a colored wash/watermark suits a full page, not a dialog. Studio's own five
+`PageHeaderComponent` usages were left out of this pass too — Studio has no equivalent four-section
+grouping to key a zone off of, a natural extension once/if it does.
+
+A second new `[headerFigure]` content-projection slot lets a caller swap the header's plain icon
+chip for a live figure instead — wired up on the three pages that already had one obvious headline
+stat previously buried in a card below the fold: `RingStatComponent` now sits directly in Reports'
+own header (`completionRatePercent`, the same figure its "Task throughput" card already showed and
+still does — duplicating a headline number into the header rather than moving it, the same "echo up
+top, detail below" shape `HomeComponent`'s own pulse row already has with its own list cards),
+Billing's (`usagePercent(storageUsedMb, currentTier.limits.storageLimitMb)`, reusing that page's own
+existing helper), and Team's (a new `onlinePercent` getter — approved members currently online, as a
+percentage of the whole team).
+
+Every top-level page reachable directly from the header's nav drawer/quick menu — Inventory, Tasks,
+Manage, Reservations, Help, Account, and Studio — now also shows a plain "Back" button
+(`routerLink="/home"`) right above its heading/hero, alongside (not replacing) the breadcrumb trail
+that was already there; Home itself is the one exception, same "nowhere to go back to" reasoning its
+own missing breadcrumbs already have. Inventory and Tasks already had a `.back-row` for leaving an
+item/task's own in-place detail view — the new "back to Home" button reuses that identical class
+rather than inventing a second one, since the two meanings are mutually exclusive (a page only ever
+shows one at a time: leaving a detail view, or browsing). `.back-row`'s own layout (previously
+copy-pasted identically into seven-plus component stylesheets, `StudioOrgDetailComponent` first)
+moved into the shared `_page-toolbar.scss` partial alongside `.page-toolbar` itself, since every
+consumer already `@use`s that partial for its breadcrumb row anyway — `ModalTableComponent` is the
+one holdout, keeping its own local rule (a different margin, no `.page-toolbar` of its own to sit
+under).
+
+Admins and managers can post org-wide "Broadcast" announcements — a title, a message, and
+optionally references to specific team members and/or inventory items — via a new `/broadcasts`
+route (`BroadcastsComponent`). Same tier as `manage/reservations`: `approvedGuard` only, not
+`manageGuard` — every approved org member reads the feed, but the "New broadcast" button
+(`authService.canManage()`) and, for real, `create_broadcast()` server-side both gate who can
+actually post one. Posting fans out to every other approved org member as an in-app notification
+(a new `'broadcast'` `notifications.kind`, reusing the existing bell dropdown — see that feature's
+own paragraph above) and an `activity_log` entry, all as one atomic `SECURITY DEFINER` RPC call
+(`create_broadcast()`) rather than a plain insert, since a plain RLS `with check` can't express
+fanning out to two other tables — same reasoning `create_reservation()` already established.
+Deliberately **in-app only, no email** — unlike the four email-backed notification kinds
+(`add_notification_email_webhooks`), the bell already covers "seen it or not" for this one, and a
+broadcast is inherently a lower-urgency, browse-when-you-get-to-it kind of message than "a task was
+just assigned to you." An author can edit or delete their own post afterward (a typo shouldn't need
+a follow-up broadcast to fix) — plain RLS scoped to `created_by = auth.uid()`, no RPC needed for
+either, unlike creation itself. References are stored in `broadcast_references`, a polymorphic
+child table (`reference_type` `'member'` or `'inventory_item'`, exactly one of `member_id`/`item_id`
+set) rather than two `uuid[]` columns directly on `broadcasts` — same "child table, org isolation
+via the parent join" shape `inventory_item_containers`/`orders`/`discards` already use, so each
+reference keeps a real FK (cascading away cleanly if the referenced member/item is later removed)
+instead of an unenforced array of ids. The page itself (`BroadcastsComponent`) follows the same
+realtime-subscribe-plus-flash/`loadError`-retry/skeleton-card shape `ManageReservationsComponent`
+already established — one live-updating feed, newest first, each card showing its references as
+small chips (a referenced member's avatar+name, or a referenced item deep-linking to
+`/inventory?item=<id>`, the same personal-stats deep link `HomeComponent`'s own "what's on your
+plate" section already uses). `BroadcastModalComponent` (self-contained, like
+`PlaceOrderModalComponent`/`PlaceReservationModalComponent` — it does the actual write itself)
+serves both create and edit, same optional-`data.broadcast`-means-create shape
+`SupplierFormModalComponent` already uses; its two reference pickers are plain `mat-select multiple`
+lists (this app's first multi-select-with-more-than-a-handful-of-options case, but consistent with
+`DiscardModalComponent`'s own reason field rather than introducing a chip-autocomplete pattern this
+app has never used anywhere else). Linked from the nav drawer and available as a Quick Menu option,
+both right alongside Reservations, matching that page's own "every approved member can reach it"
+tier.
+
+A platform admin can lock a specific person's account across every org — for a malicious
+individual, as opposed to `platform_suspend_organization()` (blocks a whole org). Reached via a new
+`studio/users/:id` route (`StudioUserDetailComponent`) — the first per-*user* Studio detail page
+(Studio's info drill-downs had only ever gone as far as per-*org*, `StudioOrgDetailComponent`).
+`StudioUsersComponent`'s own search results now link here instead of straight to the matched
+person's org page, and a member row on `StudioOrgDetailComponent` itself is now clickable too,
+landing on the same page — so both the "start from a name/email" and "start from an org" paths this
+app already had converge on one place to actually see a person's own info, which is where the lock
+toggle lives. That page itself mirrors `StudioOrgDetailComponent`'s own shape closely (meta list,
+"Platform actions" section at the bottom, same skeleton-loading/`loadError`-retry/`notFound`-empty-
+state treatment) but with a `mat-slide-toggle` instead of that page's own plain suspend/retire
+buttons — a single "can this person use ShelfSync right now" boolean reads more naturally as a
+toggle than an org's own three-state suspend/retire ladder does. Toggling it on opens
+`LockUserAccountModalComponent` for a mandatory reason (the same "consequential but reversible, so
+just ask why" shape `SuspendOrganizationModalComponent` already established); toggling it off is a
+plain `ConfirmDialogComponent`, same asymmetry `StudioOrgDetailComponent`'s own suspend/unsuspend
+pair already has. The toggle's own visual state is reverted synchronously in `onLockToggleChange()`
+before either dialog even opens, rather than left showing Material's own optimistic click-flip
+while the async round-trip is still pending, and `lockAccount()`/`unlockAccount()` each set
+`toggle.checked` again explicitly once their own RPC genuinely succeeds — both direct writes to the
+`MatSlideToggle` instance itself (the `change` event's own `source`), not left to the parent
+template's `[checked]="isLocked"` binding to notice the profile mutation and re-push the value on
+its own; that indirect path is what let the toggle visibly drift out of sync with the real,
+already-committed lock state in practice, caught after this shipped. A platform admin can't lock
+their own account (checked both server-side in
+`platform_lock_user_account()` and client-side via the toggle's own `disabled` binding, so it fails
+loud from the RPC instead of silently if that guard is ever bypassed) — there'd be no way back in
+to undo it.
+
+Building `LockUserAccountModalComponent` also surfaced a real, pre-existing bug — its own
+`<form (ngSubmit)="confirm()">` has no `[formGroup]` (`reasonControl` is a bare `FormControl`, not
+wrapped in one), so nothing actually provided Angular's `ngSubmit` output without `FormsModule`
+imported alongside `ReactiveFormsModule`: `NgForm`'s own selector
+(`form:not([ngNoForm]):not([formGroup])`) is what listens for the native `submit` event and calls
+`preventDefault()` before emitting `ngSubmit`, and it comes only from `FormsModule`, not
+`ReactiveFormsModule`. Angular's `strictTemplates` checking (on in this project) doesn't catch a
+missing *event* binding the way it does a missing property one — any string is a legal event name
+to listen for via `addEventListener`, so `(ngSubmit)="confirm()"` compiled fine while silently never
+firing. In practice this meant clicking the submit button fell through to the browser's own native
+form submission instead — a real page reload, with `confirm()` never actually running — the exact
+"why did the page just reload, and why didn't my change take effect" report that caught it. This
+turned out not to be unique to this new component: `SuspendOrganizationModalComponent` and
+`DeleteOrganizationModalComponent`, both templates this one was directly copied from, had the
+identical bare-`<form>`-no-`FormsModule` shape and the identical latent bug — never caught by their
+own existing tests, since those call `confirm()` directly rather than dispatching a real `submit`
+event, the same gap that let this ship unnoticed in the first place. All three now import
+`FormsModule` alongside `ReactiveFormsModule` (a safe, standard combination — `NgForm` doesn't
+require any `ngModel`-bound children to do its native-submit-interception job, so it coexists fine
+with each of these forms' own reactive-driven `[formControl]`s), and all three gained a real
+DOM-level regression test (dispatching an actual `submit` event and asserting both
+`defaultPrevented` and that the dialog closed with the right value) precisely because a
+direct-method-call test can't catch this class of bug. Every *other* form-bearing component in this
+app was swept for the same shape at the time and confirmed safe — each already binds `[formGroup]`
+on its own `<form>`, which provides `ngSubmit` via `FormGroupDirective` regardless of whether
+`FormsModule` is imported.
+
+Enforcement is the same choke point every other fail-closed state in this schema already uses:
+`account_locked_at is null` is folded into `current_user_org_id()` right alongside its existing
+`deleted_at`/`suspended_at`/`membership_status` checks (see `add_platform_account_lock`), so a
+locked user's every org-scoped query is blocked schema-wide the instant they're locked, even in a
+session that's already open — no forced sign-out needed (and none is attempted; that would need the
+`service_role` admin API, out of scope for a plain migration). `approvedGuard` was the one place
+that needed an explicit new check rather than relying on that alone, though: `profiles`' own SELECT
+policy always lets a caller read their *own* row regardless of lock state (`create_organizations.sql`'s
+"Users can always view their own profile" policy), so `getProfile()` never fails for a locked user
+the way `current_user_org_id()` failing would suggest — without the explicit
+`profile.account_locked_at` check the guard now also makes, a locked-but-still-`approved` profile
+would sail straight past it into a page full of silently-empty, RLS-blocked queries instead of a
+clear "you're locked out" message. `PendingApprovalComponent` (already the landing spot for a
+pending or denied/removed profile) picked up a third state for this — `isLocked`, checked ahead of
+the existing pending-approval branch in the template, since `membership_status` stays `'approved'`
+the whole time an account is locked, which is also why `ngOnInit()`'s own "already approved, nothing
+pending to show, bounce to `/home`" redirect had to gain a `&& !profile.account_locked_at` guard —
+without it, a locked user landing on `/pending-approval` (via `approvedGuard`'s own redirect) would
+immediately bounce right back to `/home`, which would just re-trigger the same redirect in a loop.
+In practice this means signing in with a locked account still succeeds at the Supabase Auth layer
+(a locked account's password still works) — `LoginComponent` unchanged, no new check added there —
+but the post-login `/home` navigation immediately redirects to this same locked-out screen via
+`approvedGuard`, the identical "sign-in succeeds, the very next navigation bounces you back out"
+shape a pending member's own login already has.
+
+A follow-up polish pass touched `StudioUserDetailComponent`'s own identity twice. First, the page
+header's plain icon chip (`icon="person"`) is now this person's own chosen avatar instead —
+`UserAvatarComponent`, projected via `PageHeaderComponent`'s `[headerFigure]` slot (the same slot
+`RingStatComponent` already uses on Reports/Billing/Team to stand in for a plain icon) — which also
+meant dropping the identical, now-redundant avatar that used to sit a second time, inline with the
+meta list right below it. Second, the breadcrumb trail gained a real middle hop for the org this
+person belongs to: `BreadcrumbsComponent`'s new `secondaryParent` input (distinct from the existing
+`secondaryLabel`, which is deliberately *not* a link — see that input's own doc comment) renders as
+a genuine `routerLink`, the same way `parent` itself already does, so `StudioUserDetailComponent`'s
+own `organizationBreadcrumbParent` getter (null until the org has loaded, same "nothing to show yet"
+gap this page's own `suspendedByName`-equivalent fields already have elsewhere) produces "Home /
+Studio / Users / {org name} / {user name}" — a real link to that org's own `StudioOrgDetailComponent`
+page, not just inert text, so this page always reads as belonging to a specific org without a second
+lookup to find out which.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -1815,7 +2015,9 @@ The app mixes two Angular module styles, which is important to know before addin
   reasoning and why this is deliberately not nested under `manage` itself.
   `studio/organizations/:id` (`StudioOrgDetailComponent`) is this app's first parameterized
   detail-page route — see its own Project Overview paragraph below for why Studio's info
-  drill-downs moved from a popup to a real page. Every route uses
+  drill-downs moved from a popup to a real page. `studio/users/:id` (`StudioUserDetailComponent`)
+  is the second, following the same shape for a person rather than an org — see its own Project
+  Overview paragraph for the account-lock feature it backs. Every route uses
   `loadComponent` rather than a top-level `component` import, so each page (and whatever it
   imports) only ships once actually navigated to instead of all bundling into one initial chunk;
   no resolvers exist yet.
@@ -1846,6 +2048,7 @@ privacy/, terms/                                            # standalone legal p
 home/                                                        # post-login landing hub: cards linking to the pages below
 inventory/                                                  # standalone inventory page: filters, item table, opens modal
 tasks/                                                      # standalone personal "My Tasks" list (row-styled task-card)
+broadcasts/                                                  # every approved member: org-wide announcements feed, see Project Overview above
 manage/                                                     # card hub (ManageComponent) linking to the pages below
   inventory/, tasks/, team/, activity/, suppliers/, orders/ # admin/manager only: inventory (+ CSV export), tasks, team administration, the cross-entity activity feed, the supplier directory, and restock orders
   reservations/                                             # admin/manager only: date-ranged reservations of an item's stock
@@ -1873,6 +2076,8 @@ shared/
   components/ring-stat/ # hand-rolled SVG percentage ring gauge — backs manage/reports' completion-rate stat
   components/page-header/ # icon-chip + title/subtitle header, shared across most manage/* sub-pages
   components/feedback-modal/ # self-contained feedback-type + message dialog backing the Help page's "Send feedback" button
+  components/broadcast-modal/ # self-contained title/message + member/item reference picker dialog backing /broadcasts, create and edit alike
+  components/lock-user-account-modal/ # mandatory-reason dialog backing StudioUserDetailComponent's account-lock toggle
   models/inventory-item.model.ts   # InventoryItem class (constructor-based, no defaults)
   models/supplier.model.ts   # Supplier — a directory entry inventory_items.supplier_id can point at
   models/inventory-item-order.model.ts # InventoryItemOrder — one restock order against an item's linked supplier
@@ -1885,6 +2090,7 @@ shared/
   models/help-faq.ts         # HELP_FAQ_SECTIONS — question/answer/links data backing the searchable Help page
   models/quick-menu.ts       # QUICK_MENU_OPTIONS / MAX_QUICK_MENU_ITEMS — backs AccountComponent's picker and HeaderComponent's own icon row
   models/feedback.ts         # FeedbackType / FEEDBACK_TYPE_LABELS — backs FeedbackModalComponent, mirrored by hand in the send-notification-email Edge Function
+  models/broadcast.model.ts  # Broadcast / BroadcastReferencedMember / BroadcastReferencedItem — backs /broadcasts
   models/database.types.ts   # generated via `npm run supabase:gen:types` — regenerate, don't hand-edit
   utils/inventory-item.mapper.ts   # toInventoryItem(row, images, checkedOutToLabel, activityLog?, ..., supplierLabel?) — DB row -> InventoryItem
   utils/inventory-item-images.ts   # loadInventoryImagesByItemId() / uploadInventoryItemImages() / deleteInventoryItemImage()
@@ -1892,6 +2098,7 @@ shared/
   utils/inventory-item-discards.ts # logInventoryItemDiscard() / loadAllInventoryItemDiscards() — structured counterpart to the free-text discard activity line, backs manage/reports
   utils/inventory-item-orders.ts # loadAllInventoryItemOrders() — every org order, backs manage/orders
   utils/inventory-item-reservations.ts # loadAllInventoryItemReservations() / loadUpcomingReservationsForItem() — backs manage/reservations and ModalTableComponent's read-only summary
+  utils/broadcasts.ts        # loadBroadcasts() / createBroadcast() / updateBroadcast() / deleteBroadcast() — backs /broadcasts and BroadcastModalComponent
   utils/inventory-export.ts  # buildInventoryExportCsv() / downloadCsv() — backs manage/inventory's "Export" button
   utils/activity-log.ts      # loadActivityLog() / logActivity() — org-wide activity_log, backs Manage > Activity Log
   utils/profile-label.ts     # profileDisplayName()/resolveProfileName() — shared profiles-array lookup
@@ -1907,6 +2114,8 @@ shared/
                              # login/register no longer share a partial like this — each owns its own layout now
   styles/_skeleton.scss     # .skeleton-line/-block/-circle shimmer placeholders, backing Inventory/Tasks' loading states
   styles/_stagger.scss      # .cascade-in fade+rise, staggered per-item via [style.animation-delay.ms] — Inventory cards, Tasks rows
+  styles/_page-hero.scss    # .page-hero gradient/glow-blob band — Home, Inventory, Tasks, the Manage hub
+  styles/_page-toolbar.scss # .page-toolbar (breadcrumb row) + .back-row, shared by every authenticated page
 ```
 `src/environments/environment.ts` and `environment.prod.ts` hold `supabaseUrl` and
 `supabaseAnonKey` (the publishable key — safe to commit, it's constrained by RLS).
@@ -2318,6 +2527,40 @@ yet on a hard refresh of `/inventory`.
   own) — still gates `postgres_changes` delivery correctly, but the join needs `item_id` present
   on a DELETE's old-row payload to evaluate at all, which is exactly what `REPLICA IDENTITY FULL`
   (not the default primary-key-only identity) provides.
+- `add_broadcasts` — adds `broadcasts` (`organization_id`, `title`, `message`, `created_by`,
+  `created_at`/`updated_at`) and `broadcast_references` (a polymorphic child table — `reference_type`
+  `'member'`/`'inventory_item'`, exactly one of `member_id`/`item_id` set — same org-isolation-via-
+  parent-join shape `inventory_item_containers`/`orders`/`discards` already use), backing
+  `/broadcasts` (see the Project Overview section above for the full feature). Widens
+  `notifications.kind`'s check constraint (`add_notifications`) to add `'broadcast'` and
+  `activity_log.entity_type`'s (`add_activity_log`) to add `'broadcast'` — both check constraints,
+  dropped and recreated same as `add_more_avatar_presets`/`add_inventory_item_discard_reasons`
+  already do for theirs. No insert grant for `authenticated` on `broadcasts` at all — creation goes
+  through `create_broadcast()` (`SECURITY DEFINER`, admin/manager gated like `create_reservation()`),
+  since it has to atomically write the broadcast row, its references, and one `notifications` row
+  per other approved org member, which a plain RLS `with check` can't express. `UPDATE`/`DELETE` on
+  `broadcasts`, and `INSERT`/`DELETE` on `broadcast_references`, are plain RLS scoped to
+  `created_by = auth.uid()` instead (no RPC needed for editing/deleting an existing post, unlike
+  creation) — `UPDATE` is additionally column-scoped (`grant update (title, message)`, same shape
+  `add_inventory_item_retirement` established for `inventory_items`) so only those two fields are
+  ever editable this way. Adds `broadcasts` (not `broadcast_references`) to the `supabase_realtime`
+  publication with `REPLICA IDENTITY FULL`, same two-part mechanism
+  `enable_realtime_for_inventory_and_tasks` established — `broadcast_references` doesn't need its
+  own subscription since every reference-row change happens alongside a `broadcasts` row write
+  (creation or edit) that the parent subscription already catches.
+- `add_platform_account_lock` — adds `profiles.account_locked_at`/`account_locked_by`/
+  `account_locked_reason` (RPC/manual-only, same excluded-from-the-ordinary-column-grant shape
+  `role`/`membership_status`/`is_platform_admin` already have) and
+  `platform_lock_user_account()`/`platform_unlock_user_account()` (`SECURITY DEFINER`,
+  `is_platform_admin()`-gated, mirroring `platform_suspend_organization()`/
+  `platform_unsuspend_organization()`'s own shape), backing `StudioUserDetailComponent`'s account-lock
+  toggle (see the Project Overview section above for the full feature). Folds
+  `account_locked_at is null` into `current_user_org_id()` right alongside its existing
+  `deleted_at`/`suspended_at`/`membership_status` checks (diffed against
+  `add_platform_org_suspension_and_retirement`'s version, the latest at the time) — same single
+  choke point, so a locked user's data access is blocked schema-wide the instant they're locked, no
+  per-policy changes needed. `platform_lock_user_account()` also refuses to let a platform admin
+  lock their own account (`target_id = auth.uid()`) — there'd be no way back in to undo it.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

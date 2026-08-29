@@ -58,4 +58,23 @@ describe('SuspendOrganizationModalComponent', () => {
 
     expect(closeSpy).toHaveBeenCalledWith(undefined);
   });
+
+  // Regression test — see LockUserAccountModalComponent's own identical test
+  // for the full story: this template's bare <form (ngSubmit)> (no
+  // [formGroup]) silently fell through to a native, page-reloading form
+  // submission without FormsModule imported alongside ReactiveFormsModule,
+  // uncaught by every test above since calling confirm() directly bypasses
+  // the DOM/(ngSubmit) binding entirely.
+  it('intercepts the native form submit (via NgForm) rather than letting the browser navigate', async () => {
+    await setup();
+    const closeSpy = spyOn(dialogRef, 'close');
+    component.reasonControl.setValue('Repeated abuse reports');
+
+    const formEl: HTMLFormElement = fixture.nativeElement.querySelector('form');
+    const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+    formEl.dispatchEvent(submitEvent);
+
+    expect(submitEvent.defaultPrevented).toBeTrue();
+    expect(closeSpy).toHaveBeenCalledWith('Repeated abuse reports');
+  });
 });

@@ -12,16 +12,12 @@
   }
 }
 
-// A plain text button (lower emphasis than the page's own stroked/flat
-// action buttons further down) sitting above the org's own name/logo —
-// negative top margin pulls it up snug against the breadcrumbs above
-// (countering .page-toolbar's own 1.5rem margin-bottom, a shared style
-// this shouldn't touch directly), while the positive bottom margin gives
-// it clear room from the icon chip/title below rather than reading as
-// part of the same header row.
-.back-row{
-  margin: -1rem 0 1rem -0.75rem;
-}
+// .back-row itself (the layout, including its own positive bottom margin
+// giving it clear room from the icon chip/title below rather than reading
+// as part of the same header row) comes from the shared page-toolbar
+// partial above — a plain text button (lower emphasis than the page's own
+// stroked/flat action buttons further down) sitting above the org's own
+// name/logo.
 
 // The container itself stays full width (same as every sibling Studio page)
 // so the breadcrumbs/page-header sit at the same horizontal position across
@@ -118,6 +114,14 @@
 .status-badge-suspended{
   background: var(--app-warning-bg);
   color: var(--app-warning-on-bg);
+}
+
+// Same hardcoded red every other one-way-or-consequential platform-admin
+// status badge in this app uses — see StudioUserDetailComponent's own
+// identical .status-badge-locked for the full reasoning.
+.status-badge-locked{
+  background: var(--app-danger-bg);
+  color: var(--app-danger-on-bg);
 }
 
 .error-message{
@@ -230,6 +234,21 @@
     &:first-child > *{
       border-top: none;
     }
+  }
+}
+
+// Whole row navigates to that member's own page (StudioUserDetailComponent)
+// — same affordance StudioUsersComponent's own .user-row-clickable
+// establishes. The <li> itself generates no box at all (display: contents
+// above), so :hover/:focus-visible here can't paint a background directly
+// on it — painting each of its own boxed children instead reads as an
+// equivalent whole-row highlight.
+.member-row-clickable{
+  cursor: pointer;
+
+  &:hover > *,
+  &:focus-visible > *{
+    background: var(--mat-sys-surface-container-high);
   }
 }
 

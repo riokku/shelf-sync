@@ -72,6 +72,19 @@ export class BreadcrumbsComponent {
     return this.parentOverride ?? this.routeParent;
   }
 
+  /** A second, genuinely linkable hop between parent and the trailing
+   *  label — e.g. StudioUserDetailComponent's own Home / Studio / Users /
+   *  {org name} / {user name}, where {org name} links to that org's own
+   *  StudioOrgDetailComponent page. Distinct from secondaryLabel below
+   *  (which is deliberately *not* a link, for a view-swap with no route of
+   *  its own to point at) — this one always has a real destination, so it
+   *  renders as a routerLink the same way parent itself does. Only ever set
+   *  dynamically via this input (unlike parent, which has a static
+   *  route-data fallback) since every current use of it depends on data
+   *  that isn't known until the page's own async load resolves — pass
+   *  `null`/leave unset until then. */
+  @Input() secondaryParent?: BreadcrumbParent | null;
+
   /** An extra segment between parent and the trailing label — for a detail
    *  view nested two levels deep under a page that already uses
    *  parentOverride above (today, only TasksComponent's own related-item

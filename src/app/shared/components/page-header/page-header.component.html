@@ -1,4 +1,18 @@
-<div class="page-header" [class.page-header-align-center]="alignActions === 'center'">
+<div
+    class="page-header"
+    [class.page-header-align-center]="alignActions === 'center'"
+    [class.page-header-zone]="!!zone"
+    [class.page-header-zone-inventory]="zone === 'inventory'"
+    [class.page-header-zone-team]="zone === 'team'"
+    [class.page-header-zone-insights]="zone === 'insights'"
+    [class.page-header-zone-admin]="zone === 'admin'"
+  >
+  @if (zone && icon) {
+    <!-- The oversized watermark — see the `zone` input's own doc comment.
+         Purely decorative (the real icon chip below already carries the
+         same glyph meaningfully), so it's hidden from assistive tech. -->
+    <mat-icon class="page-header-ghost-icon" aria-hidden="true">{{ icon }}</mat-icon>
+  }
   @if (icon || logoUrl) {
     <span class="page-header-icon" [class.page-header-icon-danger]="variant === 'danger'" [class.page-header-icon-logo]="logoUrl">
       @if (logoUrl) {
@@ -8,12 +22,26 @@
       }
     </span>
   }
+  <!-- A caller-provided figure (e.g. app-ring-stat) standing in for the
+       plain icon chip above — see the `zone` input's own doc comment's
+       sibling note on Reports/Billing/Team. Collapses to zero width when
+       nothing's projected, same as page-header-actions below. The wrapping
+       span (rather than styling the projected content directly) is what
+       lets this component's own scoped styles keep it stacked above
+       page-header-ghost-icon — Angular's emulated encapsulation attributes
+       projected content with the *consumer's* template attribute, not this
+       component's own, so a bare [headerFigure] selector in this
+       component's stylesheet would silently never match. -->
+  <span class="page-header-figure"><ng-content select="[headerFigure]" /></span>
   <div class="page-header-text">
     @if (title) {
       <h2>{{ title }}<ng-content select="[headerTitleExtra]" /></h2>
     }
     @if (subtitle) {
       <p class="page-header-subtitle">{{ subtitle }}</p>
+    }
+    @if (zone) {
+      <span class="page-header-rule" aria-hidden="true"></span>
     }
     <ng-content select="[headerMeta]" />
   </div>

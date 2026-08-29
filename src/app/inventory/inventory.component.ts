@@ -17,7 +17,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { InventoryItem, isLowStock, isOutOfStock } from '../shared/models/inventory-item.model';
 import { ModalTableComponent } from '../shared/components/modal-table/modal-table.component';
 import { BreadcrumbParent, BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
@@ -66,6 +66,7 @@ type StatusFilter = 'active' | 'include_retired' | 'retired_only';
         MatTableModule,
         MatSortModule,
         MatTooltipModule,
+        RouterLink,
         BreadcrumbsComponent,
         EmptyStateComponent,
         BulkActionToolbarComponent,
@@ -220,6 +221,24 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
     // never changes *which* items are in it, and selection is scoped to
     // the filtered set now (see selectedItemIds' own comment), not to
     // whatever page/order they happen to be sorted into.
+  }
+
+  // The hero band's own pulse-row figures (see the template) — deliberately
+  // read straight off the full inventoryList rather than filteredInventoryList,
+  // since these are meant as an org-wide "state of your stock" glance that
+  // stays stable while someone's narrowing the list below with a filter, the
+  // same "count everything, not just what's currently visible" reasoning
+  // HeaderComponent's/HomeComponent's own restock badges already use.
+  get heroItemCount(): number {
+    return this.inventoryList.filter(item => item.status !== 'retired').length;
+  }
+
+  get heroRestockCount(): number {
+    return this.inventoryList.filter(item => item.status !== 'retired' && (isLowStock(item) || isOutOfStock(item))).length;
+  }
+
+  get heroCheckedOutCount(): number {
+    return this.inventoryList.filter(item => item.isCheckedOut).length;
   }
 
   get filteredInventoryList(): InventoryItem[] {

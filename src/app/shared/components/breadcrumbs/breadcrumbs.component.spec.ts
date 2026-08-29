@@ -169,3 +169,61 @@ describe('BreadcrumbsComponent with a breadcrumbParent', () => {
     expect(onClick).toHaveBeenCalled();
   });
 });
+
+/** Covers the Home / Studio / Users / {org name} / {user name} shape
+ *  StudioUserDetailComponent's own organizationBreadcrumbParent uses — see
+ *  BreadcrumbsComponent.secondaryParent's own doc comment for why this is a
+ *  separate, genuinely-linkable input rather than reusing secondaryLabel. */
+describe('BreadcrumbsComponent with a secondaryParent', () => {
+  it('renders parent / secondaryParent / label, with secondaryParent as a real routerLink', async () => {
+    await TestBed.configureTestingModule({
+      imports: [BreadcrumbsComponent],
+      providers: [provideRouter([])]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(BreadcrumbsComponent);
+    fixture.componentInstance.parentOverride = { label: 'Users', link: '/studio/users' };
+    fixture.componentInstance.secondaryParent = { label: 'Acme Events', link: '/studio/organizations/org-1' };
+    fixture.componentInstance.labelOverride = 'Alex Rivera';
+    fixture.detectChanges();
+
+    const parentLink = fixture.debugElement.query(By.css('a[href="/studio/users"]'));
+    expect(parentLink.nativeElement.textContent.trim()).toBe('Users');
+
+    const secondaryParentLink = fixture.debugElement.query(By.css('a[href="/studio/organizations/org-1"]'));
+    expect(secondaryParentLink.nativeElement.textContent.trim()).toBe('Acme Events');
+
+    const current = fixture.debugElement.query(By.css('.breadcrumb-current'));
+    expect(current.nativeElement.textContent.trim()).toBe('Alex Rivera');
+  });
+
+  it('calls the secondaryParent segment\'s own onClick on click, alongside its routerLink navigation', async () => {
+    await TestBed.configureTestingModule({
+      imports: [BreadcrumbsComponent],
+      providers: [provideRouter([])]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(BreadcrumbsComponent);
+    const onClick = jasmine.createSpy('onClick');
+    fixture.componentInstance.secondaryParent = { label: 'Acme Events', link: '/studio/organizations/org-1', onClick };
+    fixture.detectChanges();
+
+    fixture.debugElement.query(By.css('a[href="/studio/organizations/org-1"]')).nativeElement.click();
+
+    expect(onClick).toHaveBeenCalled();
+  });
+
+  it('omits the secondaryParent segment entirely when unset (e.g. the org hasn\'t loaded yet)', async () => {
+    await TestBed.configureTestingModule({
+      imports: [BreadcrumbsComponent],
+      providers: [provideRouter([])]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(BreadcrumbsComponent);
+    fixture.componentInstance.parentOverride = { label: 'Users', link: '/studio/users' };
+    fixture.componentInstance.labelOverride = 'Alex Rivera';
+    fixture.detectChanges();
+
+    expect(fixture.debugElement.query(By.css('a[href^="/studio/organizations"]'))).toBeNull();
+  });
+});

@@ -9,3 +9,22 @@
   padding-bottom: 1.5rem;
   margin-bottom: 1.5rem;
 }
+
+// A plain "Back" button sitting directly below .page-toolbar, above
+// whatever heading/hero/page-header comes next — negative top margin snugs
+// it up against that toolbar's own 1.5rem margin-bottom, negative left
+// margin so the button's own padding doesn't visibly indent it past the
+// breadcrumbs above. What "back" means is entirely up to the page: on a
+// top-level destination reachable straight from the nav drawer (Inventory,
+// Tasks, Manage, Reservations, Help, Account, Studio) it's a plain
+// routerLink="/home"; on a page with its own in-place detail view
+// (Inventory/Tasks swapping their browsing UI for an item/task's detail,
+// StudioOrgDetailComponent, ModalTableComponent) it's a (click) handler
+// closing that view instead — the same class either way, since a page only
+// ever renders one of the two at a time. First established by
+// StudioOrgDetailComponent, then generalized here once enough pages wanted
+// the identical layout that duplicating this one rule stopped paying for
+// itself.
+.back-row{
+  margin: -1rem 0 1rem -0.75rem;
+}

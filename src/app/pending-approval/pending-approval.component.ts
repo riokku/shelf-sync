@@ -2,14 +2,13 @@ import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../core/auth.service';
 import { SupabaseService } from '../core/supabase.service';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 
 @Component({
   selector: 'app-pending-approval',
-  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, BreadcrumbsComponent],
+  imports: [MatButtonModule, MatIconModule, BreadcrumbsComponent],
   templateUrl: './pending-approval.component.html',
   styleUrl: './pending-approval.component.scss',
 })
@@ -23,17 +22,24 @@ export class PendingApprovalComponent implements OnInit {
    *  found at all" (denied/removed) — the template tells those apart via
    *  isLoading. */
   organizationName: string | null = null;
+  /** True for an approved (not pending) profile that's been platform-locked
+   *  (see approvedGuard's own doc comment) — takes priority over the
+   *  pending-approval branch below in the template, since membership_status
+   *  stays 'approved' the whole time a profile is locked; this is what
+   *  actually tells the two states apart. */
+  isLocked = false;
 
   async ngOnInit() {
     const profile = await this.authService.getProfile();
 
-    if (profile?.membership_status === 'approved') {
+    if (profile?.membership_status === 'approved' && !profile.account_locked_at) {
       // Stale bookmark/back-button case — nothing pending to show.
       this.router.navigate(['/home']);
       return;
     }
 
     if (profile) {
+      this.isLocked = !!profile.account_locked_at;
       const { data } = await this.supabase
         .from('organizations')
         .select('name')

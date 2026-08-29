@@ -3,7 +3,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { SupabaseService } from '../core/supabase.service';
 import { AuthService, Profile } from '../core/auth.service';
 import { HasUnsavedChanges } from '../core/guards/unsaved-changes.guard';
@@ -15,6 +15,7 @@ import { EmptyStateComponent } from '../shared/components/empty-state/empty-stat
 import { PageIntroComponent } from '../shared/components/page-intro/page-intro.component';
 import { resolveProfileName } from '../shared/utils/profile-label';
 import { subscribeToTableChanges } from '../shared/utils/realtime';
+import { getTodayIsoDate } from '../shared/utils/date';
 import { debounce } from '../shared/utils/debounce';
 import { FlashTracker } from '../shared/utils/flash-tracker';
 import { confirmLeaveWithoutSaving } from '../shared/utils/confirm-leave';
@@ -24,7 +25,7 @@ type Task = Database['public']['Tables']['tasks']['Row'];
 @Component({
   selector: 'app-tasks',
   imports: [
-    MatProgressSpinnerModule, MatButtonModule, MatIconModule, TaskCardComponent, BreadcrumbsComponent,
+    MatProgressSpinnerModule, MatButtonModule, MatIconModule, RouterLink, TaskCardComponent, BreadcrumbsComponent,
     EmptyStateComponent, PageIntroComponent, TaskDetailModalComponent
   ],
   templateUrl: './tasks.component.html',
@@ -148,6 +149,20 @@ export class TasksComponent implements OnInit, HasUnsavedChanges {
 
   get completedTasks(): Task[] {
     return this.tasks.filter(task => task.status === 'done');
+  }
+
+  // The hero band's own pulse-row figures (see the template) — same
+  // overdue/due-today reasoning TaskCardComponent.severity() already uses
+  // per-row, just counted across the whole queue instead of judging one
+  // task at a time.
+  get heroOverdueCount(): number {
+    const today = getTodayIsoDate();
+    return this.tasks.filter(task => task.status !== 'done' && !!task.due_date && task.due_date < today).length;
+  }
+
+  get heroDueTodayCount(): number {
+    const today = getTodayIsoDate();
+    return this.tasks.filter(task => task.status !== 'done' && task.due_date === today).length;
   }
 
   async ngOnInit() {

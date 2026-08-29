@@ -1,24 +1,20 @@
 @use '../shared/styles/page-toolbar';
+@use '../shared/styles/page-hero';
+
+// .back-row itself (the layout) comes from the shared page-toolbar partial
+// above. Unlike Inventory/Tasks' own .back-row (conditional on a detail
+// view being open), this hub has no such state — it's unconditionally
+// "back to Home", always rendered right above the hero.
 
 .manage-wrapper{
   color: var(--mat-sys-on-surface);
   padding: 3rem 1.5rem;
   max-width: 100%;
 
-  h2{
-    text-transform: uppercase;
-    margin-bottom: 0.5rem;
-  }
-
   .container{
     padding-left: 0;
     padding-right: 0;
   }
-}
-
-.manage-subtitle{
-  color: var(--mat-sys-on-surface-variant);
-  margin: 0 0 2rem;
 }
 
 // Cards grouped into labeled sections (Inventory, Team & tasks, Insights,

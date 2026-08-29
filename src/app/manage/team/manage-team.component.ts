@@ -15,6 +15,7 @@ import { AuthService, Profile } from '../../core/auth.service';
 import { HasUnsavedChanges } from '../../core/guards/unsaved-changes.guard';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { RingStatComponent } from '../../shared/components/ring-stat/ring-stat.component';
 import { UserAvatarComponent } from '../../shared/components/user-avatar/user-avatar.component';
 import { TaskCardComponent } from '../../tasks/task-card/task-card.component';
 import { TaskDetailModalComponent } from '../../shared/components/task-detail-modal/task-detail-modal.component';
@@ -55,6 +56,7 @@ interface TeamMember {
     MatCheckboxModule,
     BreadcrumbsComponent,
     PageHeaderComponent,
+    RingStatComponent,
     UserAvatarComponent,
     TaskCardComponent,
     TaskDetailModalComponent,
@@ -286,6 +288,18 @@ export class ManageTeamComponent implements OnInit, HasUnsavedChanges {
 
   isOnline(profile: Profile): boolean {
     return isProfileOnline(profile.last_active_at);
+  }
+
+  // The header's own headerFigure gauge (see the template) — % of the
+  // current team (approved members only, same population this.teamMembers
+  // itself already holds) who are online right now. Guarded against 0
+  // members so a brand-new org doesn't render a NaN%.
+  get onlinePercent(): number {
+    if (this.teamMembers.length === 0) {
+      return 0;
+    }
+    const onlineCount = this.teamMembers.filter(member => this.isOnline(member.profile)).length;
+    return (onlineCount / this.teamMembers.length) * 100;
   }
 
   lastSeenLabel(profile: Profile): string {

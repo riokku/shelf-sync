@@ -4,6 +4,7 @@
 }
 
 .page-header{
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 1rem;
@@ -13,6 +14,98 @@
 // against the whole text column's height instead of pinning it to the top.
 .page-header-align-center{
   align-items: center;
+}
+
+// The `zone` input's own bold treatment — see its doc comment on
+// PageHeaderComponent. A self-contained rounded panel (not a true
+// edge-to-edge bleed past the page's own container padding, which would
+// need knowing that padding per caller) rather than bare text, so the wash
+// reads as a deliberate "zone" rather than a stray tint on the page
+// background. overflow:hidden here (not on .page-header generally) is what
+// clips .page-header-ghost-icon's own off-edge bleed below.
+.page-header-zone{
+  overflow: hidden;
+  padding: 1.25rem 1.5rem;
+  border-radius: 0.85rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+}
+
+// One diluted two-tone wash per Manage-hub section, echoing that section's
+// own card-icon gradient (ManageComponent's manage-card-icon-a/-b/-c/-d)
+// at a fraction of the strength — enough to read as "this page belongs to
+// that section" without competing with the page's own content below it.
+.page-header-zone-inventory{
+  background: linear-gradient(120deg, color-mix(in srgb, var(--mat-sys-primary) 10%, var(--mat-sys-surface)), color-mix(in srgb, var(--mat-sys-tertiary) 8%, var(--mat-sys-surface)));
+}
+
+.page-header-zone-team{
+  background: linear-gradient(120deg, color-mix(in srgb, var(--mat-sys-tertiary) 9%, var(--mat-sys-surface)), color-mix(in srgb, var(--mat-sys-secondary) 10%, var(--mat-sys-surface)));
+}
+
+.page-header-zone-insights{
+  background: linear-gradient(120deg, color-mix(in srgb, var(--mat-sys-secondary) 10%, var(--mat-sys-surface)), color-mix(in srgb, var(--mat-sys-primary) 8%, var(--mat-sys-surface)));
+}
+
+.page-header-zone-admin{
+  background: linear-gradient(120deg, color-mix(in srgb, var(--mat-sys-primary) 9%, var(--mat-sys-surface)), color-mix(in srgb, var(--mat-sys-tertiary) 10%, var(--mat-sys-surface)));
+}
+
+// The same glyph the icon chip already renders meaningfully, blown up and
+// bled off the header's own right edge at low opacity — a bold-but-quiet
+// identity marker that costs no new data, since every zone-tinted header
+// already passes an `icon`. z-index keeps it behind the chip/text/actions
+// (all of which are plain flex siblings with no z-index of their own, so
+// the ghost icon only needs to sit behind via source order plus a negative
+// index, not a stacking context fight).
+.page-header-ghost-icon{
+  position: absolute;
+  top: 50%;
+  right: -0.75rem;
+  z-index: 0;
+  transform: translateY(-50%);
+  font-size: 7rem;
+  width: 7rem;
+  height: 7rem;
+  opacity: 0.07;
+  color: var(--mat-sys-primary);
+  pointer-events: none;
+}
+
+.page-header-icon, .page-header-figure, .page-header-text, .page-header-actions{
+  position: relative;
+  z-index: 1;
+}
+
+// Empty and takes up no space when nothing's projected into [headerFigure]
+// — same collapses-to-zero-width reasoning .page-header-actions' own
+// comment already gives, a bare <span> with no content contributes nothing
+// to flex layout. display:none when :empty on top of that, though — a
+// zero-width flex item still counts as an item for .page-header's own
+// `gap`, so left as flex:0 0 auto alone this still opened up a stray 1rem
+// gap in front of the title on a header with neither an icon chip nor a
+// projected figure (e.g. ModalTableComponent's own item-detail usage, which
+// sets neither). :empty is reliable here since Angular renders no
+// whitespace text nodes around a bare <ng-content> with no matching
+// projected content.
+.page-header-figure{
+  flex: 0 0 auto;
+
+  &:empty{
+    display: none;
+  }
+}
+
+// A thin two-tone rule under the title/subtitle text, only on a zone-tinted
+// header — the same primary->tertiary combo .page-hero-glow's own colors
+// draw from, just as a flat line instead of a blurred glow (that treatment
+// is reserved for the bolder, pinned-dark hero band).
+.page-header-rule{
+  display: block;
+  height: 3px;
+  width: 3.5rem;
+  margin-top: 0.85rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--mat-sys-primary), var(--mat-sys-tertiary));
 }
 
 // Same two-tone gradient-of-container-tokens chip Home's own nav cards and

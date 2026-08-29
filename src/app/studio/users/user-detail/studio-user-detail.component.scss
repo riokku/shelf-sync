@@ -1,0 +1,159 @@
+@use '../../../shared/styles/page-toolbar';
+@use '../../../shared/styles/skeleton';
+
+.studio-user-detail-wrapper{
+  color: var(--mat-sys-on-surface);
+  padding: 3rem 1.5rem;
+  max-width: 100%;
+
+  .container{
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+// Same "wide container, narrower content" split StudioOrgDetailComponent's
+// own .org-detail-content already establishes.
+.user-detail-content{
+  max-width: 42rem;
+}
+
+// The person's own avatar used to sit here too, inline with the meta list —
+// moved into the page header itself instead (see the template's own
+// [headerFigure] usage), since it's the same avatar shown twice otherwise.
+.user-detail-header{
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+
+.user-meta{
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.75rem;
+  row-gap: 0.375rem;
+  margin: 0;
+  font-size: 0.875rem;
+
+  dt{
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  dd{
+    margin: 0;
+    min-width: 0;
+  }
+}
+
+// Loading-state placeholders only, sized to roughly match .user-meta's own
+// dt/dd text above.
+.skeleton-user-meta-label{
+  width: 5rem;
+}
+
+.skeleton-user-meta-value{
+  width: 10rem;
+}
+
+.skeleton-user-toggle{
+  width: 10rem;
+  height: 2rem;
+  border-radius: 999px;
+}
+
+.user-section{
+  h3{
+    margin: 0 0 0.75rem;
+    font-size: 1.125rem;
+  }
+}
+
+.section-hint{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8125rem;
+}
+
+.error-message{
+  color: var(--app-error-text);
+  margin: 0 0 1rem;
+}
+
+// Same badge shapes StudioOrgDetailComponent's own .status-badge/
+// .member-role-badge establish — duplicated per this app's own
+// small-presentational-pattern convention, not shared.
+.status-badge{
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.status-badge-active{
+  background: var(--app-success-bg);
+  color: var(--app-success-on-bg);
+}
+
+.status-badge-pending{
+  background: var(--app-warning-bg);
+  color: var(--app-warning-on-bg);
+}
+
+// Same hardcoded red every other one-way-or-consequential platform-admin
+// status badge in this app uses (.status-badge-deleted's own identical
+// pairing) — a locked account is exactly that category of state.
+.status-badge-locked{
+  background: var(--app-danger-bg);
+  color: var(--app-danger-on-bg);
+}
+
+.member-role-badge{
+  display: inline-flex;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  background: var(--mat-sys-surface-container-highest);
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+
+  &.role-admin{
+    background: var(--mat-sys-primary-container);
+    color: var(--mat-sys-on-primary-container);
+  }
+
+  &.role-manager{
+    background: var(--mat-sys-tertiary-container);
+    color: var(--mat-sys-on-tertiary-container);
+  }
+
+  &.role-staff{
+    background: var(--mat-sys-surface-variant);
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.online-dot{
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.375rem;
+  border-radius: 50%;
+  background: var(--app-success-bg);
+  animation: online-dot-pulse 2s ease-in-out infinite;
+}
+
+@keyframes online-dot-pulse{
+  0%, 100%{ opacity: 1; }
+  50%{ opacity: 0.4; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .online-dot{
+    animation: none;
+  }
+}

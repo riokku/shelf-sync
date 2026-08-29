@@ -22,6 +22,7 @@ export const QUICK_MENU_OPTIONS: QuickMenuOption[] = [
   { key: 'inventory', label: 'Inventory', icon: 'inventory_2', routerLink: '/inventory' },
   { key: 'tasks', label: 'Tasks', icon: 'checklist', routerLink: '/tasks' },
   { key: 'reservations', label: 'Reservations', icon: 'event', routerLink: '/manage/reservations' },
+  { key: 'broadcasts', label: 'Broadcasts', icon: 'campaign', routerLink: '/broadcasts' },
   { key: 'manage', label: 'Manage', icon: 'admin_panel_settings', routerLink: '/manage', requiresManage: true },
   { key: 'help', label: 'Help', icon: 'help_outline', routerLink: '/help' },
   { key: 'account', label: 'Account', icon: 'account_circle', routerLink: '/account' }

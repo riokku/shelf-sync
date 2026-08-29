@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -10,9 +10,17 @@ export interface DeleteOrganizationModalData {
   organizationName: string;
 }
 
+// FormsModule is imported alongside ReactiveFormsModule purely for NgForm —
+// see LockUserAccountModalComponent's own doc comment for the full
+// reasoning: the template's `<form (ngSubmit)="confirm()">` has no
+// `[formGroup]` (confirmationControl is a bare FormControl), so nothing
+// provided the `ngSubmit` output without this — the submit button silently
+// fell through to a native, page-reloading form submission instead, with
+// confirm() never actually running.
 @Component({
   selector: 'app-delete-organization-modal',
   imports: [
+    FormsModule,
     ReactiveFormsModule,
     MatDialogModule,
     MatFormFieldModule,

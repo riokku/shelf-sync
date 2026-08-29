@@ -1,0 +1,62 @@
+<h2 mat-dialog-title>
+  <mat-icon class="broadcast-title-icon">campaign</mat-icon>
+  {{ isEditing ? 'Edit broadcast' : 'New broadcast' }}
+</h2>
+<form [formGroup]="form" (ngSubmit)="save()">
+  <mat-dialog-content>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Title</mat-label>
+      <input matInput formControlName="title" maxlength="120" />
+      @if (form.controls.title.hasError('required') && form.controls.title.touched) {
+        <mat-error>A title is required.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Message</mat-label>
+      <textarea matInput formControlName="message" rows="5" placeholder="What should the team know?"></textarea>
+      @if (form.controls.message.hasError('required') && form.controls.message.touched) {
+        <mat-error>A message is required.</mat-error>
+      }
+    </mat-form-field>
+
+    @if (data.profiles.length > 0) {
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Reference team members (optional)</mat-label>
+        <mat-select formControlName="memberIds" multiple>
+          @for (profile of data.profiles; track profile.id) {
+            <mat-option [value]="profile.id">{{ profileDisplayName(profile) }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    }
+
+    @if (data.items.length > 0) {
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Reference inventory items (optional)</mat-label>
+        <mat-select formControlName="itemIds" multiple>
+          @for (item of data.items; track item.id) {
+            <mat-option [value]="item.id">{{ item.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    }
+
+    @if (error) {
+      <p class="error-message">{{ error }}</p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancel()">Cancel</button>
+    <button mat-flat-button color="primary" type="submit" [disabled]="isSaving || form.invalid">
+      @if (isSaving) {
+        <mat-spinner diameter="20"></mat-spinner>
+      } @else {
+        <ng-container>
+          <mat-icon class="send-icon">campaign</mat-icon>
+          {{ isEditing ? 'Save changes' : 'Post broadcast' }}
+        </ng-container>
+      }
+    </button>
+  </mat-dialog-actions>
+</form>
