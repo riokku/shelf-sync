@@ -1,5 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { SupabaseService } from '../../core/supabase.service';
@@ -69,7 +70,7 @@ interface AssigneeWorkloadRow {
  *  need one. */
 @Component({
   selector: 'app-manage-reports',
-  imports: [CurrencyPipe, DecimalPipe, MatButtonModule, MatIconModule, BreadcrumbsComponent, PageHeaderComponent, EmptyStateComponent, DonutChartComponent, RingStatComponent],
+  imports: [CurrencyPipe, DecimalPipe, RouterLink, MatButtonModule, MatIconModule, BreadcrumbsComponent, PageHeaderComponent, EmptyStateComponent, DonutChartComponent, RingStatComponent],
   templateUrl: './manage-reports.component.html',
   styleUrl: './manage-reports.component.scss',
 })

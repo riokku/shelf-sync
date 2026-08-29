@@ -128,7 +128,9 @@ describe('loadAllInventoryItemReservations', () => {
 });
 
 describe('loadUpcomingReservationsForItem', () => {
-  it('maps rows without needing profiles resolved', async () => {
+  const profiles = [createFakeProfile({ id: 'user-1', nickname: 'Kirsty' })];
+
+  it('maps rows and resolves reservedByLabel from the given profiles', async () => {
     const fake = createFakeSupabaseClient([{
       id: 'reservation-1',
       item_id: 'item-1',
@@ -138,7 +140,7 @@ describe('loadUpcomingReservationsForItem', () => {
       reserved_for: 'Smith wedding',
       note: 'Deliver by 8am',
       status: 'picked_up',
-      reserved_by: null,
+      reserved_by: 'user-1',
       reserved_at: '2026-01-15T00:00:00.000Z',
       picked_up_by: null,
       picked_up_at: '2026-06-01T09:00:00.000Z',
@@ -148,13 +150,39 @@ describe('loadUpcomingReservationsForItem', () => {
       cancelled_at: null
     }]);
 
-    const reservations = await loadUpcomingReservationsForItem(fake.client as never, 'item-1');
+    const reservations = await loadUpcomingReservationsForItem(fake.client as never, 'item-1', profiles);
 
     expect(reservations.length).toBe(1);
     expect(reservations[0].quantity).toBe(30);
     expect(reservations[0].reservedFor).toBe('Smith wedding');
+    expect(reservations[0].reservedByLabel).toBe('Kirsty');
     expect(reservations[0].note).toBe('Deliver by 8am');
     expect(reservations[0].status).toBe('picked_up');
+  });
+
+  it('falls back to "Unknown user" when reserved_by has no matching profile', async () => {
+    const fake = createFakeSupabaseClient([{
+      id: 'reservation-1',
+      item_id: 'item-1',
+      start_date: '2026-06-01',
+      end_date: '2026-06-03',
+      quantity: 5,
+      reserved_for: 'Someone',
+      note: null,
+      status: 'reserved',
+      reserved_by: null,
+      reserved_at: '2026-01-15T00:00:00.000Z',
+      picked_up_by: null,
+      picked_up_at: null,
+      returned_by: null,
+      returned_at: null,
+      cancelled_by: null,
+      cancelled_at: null
+    }]);
+
+    const reservations = await loadUpcomingReservationsForItem(fake.client as never, 'item-1', profiles);
+
+    expect(reservations[0].reservedByLabel).toBe('Unknown user');
   });
 
   // Goes through the get_item_upcoming_reservations RPC rather than a
@@ -165,7 +193,7 @@ describe('loadUpcomingReservationsForItem', () => {
   it('calls the RPC scoped by item id, not a direct table select', async () => {
     const fake = createFakeSupabaseClient([]);
 
-    await loadUpcomingReservationsForItem(fake.client as never, 'item-1');
+    await loadUpcomingReservationsForItem(fake.client as never, 'item-1', []);
 
     expect(fake.rpcCalls).toEqual([{ name: 'get_item_upcoming_reservations', args: { p_item_id: 'item-1' } }]);
   });

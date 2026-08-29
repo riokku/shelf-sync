@@ -3,6 +3,12 @@
     <div class="page-toolbar">
       <app-breadcrumbs />
     </div>
+    <div class="back-row">
+      <button mat-button type="button" routerLink="/manage">
+        <mat-icon>arrow_back</mat-icon>
+        Back
+      </button>
+    </div>
     <app-page-header title="Billing" zone="admin">
       <app-ring-stat headerFigure [percent]="usagePercent(storageUsedMb, currentTier.limits.storageLimitMb)" label="Storage used" />
     </app-page-header>
@@ -57,6 +63,13 @@
           </dl>
         </section>
       </div>
+    } @else if (loadError) {
+      <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load billing info. ' + loadError">
+        <button mat-stroked-button type="button" (click)="retryLoad()">
+          <mat-icon>refresh</mat-icon>
+          Retry
+        </button>
+      </app-empty-state>
     } @else {
       <div class="billing-card">
         <section class="billing-section">

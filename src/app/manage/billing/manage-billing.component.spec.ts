@@ -4,7 +4,7 @@ import { provideRouter } from '@angular/router';
 import { ManageBillingComponent } from './manage-billing.component';
 import { AuthService } from '../../core/auth.service';
 import { SupabaseService } from '../../core/supabase.service';
-import { createFakeAuthService, createFakeProfile, createFakeSupabaseService } from '../../testing/fakes';
+import { createFakeAuthService, createFakeProfile, createFakeQueryBuilder, createFakeSupabaseService } from '../../testing/fakes';
 
 describe('ManageBillingComponent', () => {
   let component: ManageBillingComponent;
@@ -78,5 +78,71 @@ describe('ManageBillingComponent', () => {
       expect(component.storageUsedMb).toBe(10);
       expect(component.storageUsageLabel()).toBe('10MB of 500MB');
     });
+  });
+});
+
+/** Fails the team-member count query the first time it's called, then
+ *  succeeds on the next call — same "one fake covers both the failure and a
+ *  subsequent successful retry" shape HomeComponent's own
+ *  createFakeSupabaseServiceFailingTasksOnce() uses. */
+function createFakeSupabaseServiceFailingProfilesOnce(): SupabaseService {
+  let profilesCallCount = 0;
+  return {
+    client: {
+      from: (table: string) => {
+        if (table === 'organizations') {
+          return createFakeQueryBuilder({ data: { created_at: '2026-01-15T00:00:00.000Z' }, error: null });
+        }
+        if (table === 'profiles') {
+          profilesCallCount++;
+          return profilesCallCount === 1
+            ? createFakeQueryBuilder({ data: null, count: undefined, error: { message: 'network error' } })
+            : createFakeQueryBuilder({ data: [], count: 5, error: null });
+        }
+        return createFakeQueryBuilder({ data: [], count: 3, error: null });
+      },
+      rpc: () => Promise.resolve({ data: 10 * 1024 * 1024, error: null })
+    }
+  } as unknown as SupabaseService;
+}
+
+describe('ManageBillingComponent load errors', () => {
+  async function createComponent() {
+    await TestBed.resetTestingModule().configureTestingModule({
+      imports: [ManageBillingComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: 'admin' })) },
+        { provide: SupabaseService, useValue: createFakeSupabaseServiceFailingProfilesOnce() }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ManageBillingComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    return fixture;
+  }
+
+  it('sets loadError on a failed query rather than showing all-zero usage stats', async () => {
+    const fixture = await createComponent();
+
+    expect(fixture.componentInstance.loadError).toBe('network error');
+    expect(fixture.componentInstance.isLoading).toBeFalse();
+    expect(fixture.componentInstance.teamMemberCount).toBe(0);
+  });
+
+  it('clears loadError and loads real usage stats once retryLoad() succeeds', async () => {
+    const fixture = await createComponent();
+    const { componentInstance: component } = fixture;
+    expect(component.loadError).toBe('network error');
+
+    component.retryLoad();
+    // A real macrotask boundary rather than fixture.whenStable() — see
+    // ManageReportsComponent's own retryLoad() spec for why a couple of bare
+    // ticks doesn't reliably flush a Promise.all this many microtasks deep.
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(component.loadError).toBeNull();
+    expect(component.teamMemberCount).toBe(5);
   });
 });

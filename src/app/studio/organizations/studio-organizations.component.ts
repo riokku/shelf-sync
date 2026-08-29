@@ -1,6 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { SupabaseService } from '../../core/supabase.service';
@@ -25,7 +25,7 @@ interface OrganizationSummary extends OrganizationRow {
  *  map rather than a per-org query loop. */
 @Component({
   selector: 'app-studio-organizations',
-  imports: [DatePipe, MatButtonModule, MatIconModule, BreadcrumbsComponent, PageHeaderComponent, EmptyStateComponent],
+  imports: [DatePipe, RouterLink, MatButtonModule, MatIconModule, BreadcrumbsComponent, PageHeaderComponent, EmptyStateComponent],
   templateUrl: './studio-organizations.component.html',
   styleUrl: './studio-organizations.component.scss',
 })

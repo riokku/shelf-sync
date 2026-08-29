@@ -1,6 +1,6 @@
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -19,7 +19,7 @@ import { INVENTORY_FORM_FIELD_GROUPS, InventoryFormFieldKey } from '../../shared
 
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule, MatButtonModule, MatButtonToggleModule, MatCheckboxModule, MatIconModule, MatProgressSpinnerModule, MatSlideToggleModule, BreadcrumbsComponent, PageHeaderComponent, FieldOptionsEditorComponent],
+  imports: [FormsModule, RouterLink, MatButtonModule, MatButtonToggleModule, MatCheckboxModule, MatIconModule, MatProgressSpinnerModule, MatSlideToggleModule, BreadcrumbsComponent, PageHeaderComponent, FieldOptionsEditorComponent],
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.scss'
 })

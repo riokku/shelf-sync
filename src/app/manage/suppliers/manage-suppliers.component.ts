@@ -1,4 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -22,6 +23,7 @@ import { SupplierFormModalComponent, SupplierFormModalData } from '../../shared/
 @Component({
   selector: 'app-manage-suppliers',
   imports: [
+    RouterLink,
     MatButtonModule,
     MatIconModule,
     MatTooltipModule,

@@ -3,7 +3,13 @@
     <div class="page-toolbar">
       <app-breadcrumbs />
     </div>
-    <app-page-header icon="feedback" title="Feedback" subtitle="Every organization's submissions, most recent first." />
+    <div class="back-row">
+      <button mat-button type="button" routerLink="/studio">
+        <mat-icon>arrow_back</mat-icon>
+        Back
+      </button>
+    </div>
+    <app-page-header icon="feedback" title="Feedback" subtitle="Every organization's submissions, most recent first." zone="studio" />
 
     @if (loadError) {
       <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load feedback. ' + loadError">

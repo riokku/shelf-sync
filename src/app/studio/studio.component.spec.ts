@@ -140,3 +140,78 @@ describe('StudioComponent dashboard stats', () => {
     expect(component.recentErrorCount).toBe(2);
   });
 });
+
+/** Fails the organizations count query the first time it's called, then
+ *  succeeds on the next call — same "one fake covers both the failure and a
+ *  subsequent successful retry" shape HomeComponent's own
+ *  createFakeSupabaseServiceFailingTasksOnce() uses. loadPendingBadge()'s
+ *  own 'feedback' query is untouched by this — see StudioComponent's own
+ *  loadError doc comment for why that's deliberately out of scope. */
+function createFakeSupabaseServiceFailingOrgsOnce(): SupabaseService {
+  function builder(result: { data: unknown[]; count?: number; error: { message: string } | null }) {
+    const b: Record<string, unknown> = {
+      then: (resolve: (value: typeof result) => void) => resolve(result),
+    };
+    for (const method of ['select', 'eq', 'neq', 'is', 'gte', 'order']) {
+      b[method] = () => b;
+    }
+    return b;
+  }
+
+  let orgsCallCount = 0;
+
+  const fake = {
+    client: {
+      from: (table: string) => {
+        if (table === 'organizations') {
+          orgsCallCount++;
+          return orgsCallCount === 1
+            ? builder({ data: [], error: { message: 'network error' } })
+            : builder({ data: [], count: 12, error: null });
+        }
+        return builder({ data: [], count: 0, error: null });
+      }
+    }
+  };
+  return fake as unknown as SupabaseService;
+}
+
+describe('StudioComponent dashboard stats load errors', () => {
+  async function createComponent() {
+    await TestBed.resetTestingModule().configureTestingModule({
+      imports: [StudioComponent],
+      providers: [
+        provideRouter([]),
+        { provide: SupabaseService, useValue: createFakeSupabaseServiceFailingOrgsOnce() }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(StudioComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    return fixture;
+  }
+
+  it('sets loadError on a failed query rather than showing all-zero platform stats', async () => {
+    const fixture = await createComponent();
+
+    expect(fixture.componentInstance.loadError).toBe('network error');
+    expect(fixture.componentInstance.isLoadingStats).toBeFalse();
+    expect(fixture.componentInstance.totalOrgCount).toBe(0);
+  });
+
+  it('clears loadError and loads real stats once retryLoad() succeeds', async () => {
+    const fixture = await createComponent();
+    const { componentInstance: component } = fixture;
+    expect(component.loadError).toBe('network error');
+
+    component.retryLoad();
+    // A real macrotask boundary rather than fixture.whenStable() — see
+    // ManageReportsComponent's own retryLoad() spec for why a couple of bare
+    // ticks doesn't reliably flush a Promise.all this many microtasks deep.
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(component.loadError).toBeNull();
+    expect(component.totalOrgCount).toBe(12);
+  });
+});

@@ -1,8 +1,11 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
+import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatIconModule } from '@angular/material/icon';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { SupabaseService } from '../../core/supabase.service';
 import { Profile } from '../../core/auth.service';
@@ -27,8 +30,11 @@ type ClientErrorLogRow = Database['public']['Tables']['client_error_log']['Row']
   imports: [
     FormsModule,
     DatePipe,
+    RouterLink,
+    MatButtonModule,
     MatCheckboxModule,
     MatExpansionModule,
+    MatIconModule,
     MatPaginatorModule,
     BreadcrumbsComponent,
     PageHeaderComponent,

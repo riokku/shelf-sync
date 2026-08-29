@@ -1,6 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -29,6 +30,7 @@ type ClientErrorLogRow = Database['public']['Tables']['client_error_log']['Row']
   imports: [
     FormsModule,
     DatePipe,
+    RouterLink,
     MatButtonModule,
     MatCheckboxModule,
     MatExpansionModule,

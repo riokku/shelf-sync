@@ -72,8 +72,19 @@ export class PageHeaderComponent {
    *  full page, not a dialog. Danger Zone also leaves it unset even though
    *  it's an Admin-section page — it keeps its own distinct flat-red
    *  `variant="danger"` treatment instead, deliberately not folded into the
-   *  shared Admin wash (see that variant's own doc comment). */
-  @Input() zone?: 'inventory' | 'team' | 'insights' | 'admin';
+   *  shared Admin wash (see that variant's own doc comment).
+   *
+   *  'studio' is the same idea one level up — Studio's own hub has no
+   *  Manage-style sub-sections to tie into (its four cards are a flat set,
+   *  each with its own single-tone icon rather than the hub's own two-tone
+   *  per-section gradient), so every flat `studio/*` sub-page (Feedback,
+   *  Error Log, Organizations, Users) shares this one wash instead of a
+   *  section-specific one. `StudioOrgDetailComponent`/`StudioUserDetailComponent`
+   *  deliberately leave it unset even though they're real pages, not
+   *  dialogs — same reasoning ModalTableComponent/TaskDetailModalComponent
+   *  get above: an entity-detail view drilled into from one of these list
+   *  pages, not another top-level destination in its own right. */
+  @Input() zone?: 'inventory' | 'team' | 'insights' | 'admin' | 'studio';
   /** 'start' (the default) top-aligns the trailing action column with the
    *  title — right for a short single-line title next to one or two
    *  buttons, and what every current usage renders with (including

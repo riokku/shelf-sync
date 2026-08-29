@@ -646,6 +646,22 @@ mat-dialog-content.mat-mdc-dialog-content{
   color: var(--mat-sys-on-surface-variant);
 }
 
+// Deliberately its own class rather than the shared .semibold above — that
+// one is block-display with a margin-bottom, meant for a label sitting on
+// its own line above a value (see this file's own info-table usages); this
+// quantity is inline emphasis within the row's own running text ("50 for
+// Smith Wedding"), and inheriting that block/margin instead just pushed it
+// down with unwanted space below it. Full-contrast + mono instead lets it
+// read as the one figure in the row worth noticing at a glance, the same
+// "counted figure" treatment this app's other quantities already get (see
+// --font-mono's own styles.scss comment).
+.reservation-summary-quantity{
+  color: var(--mat-sys-on-surface);
+  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+}
+
 .reservation-summary-dates{
   margin-left: auto;
   color: var(--mat-sys-on-surface-variant);

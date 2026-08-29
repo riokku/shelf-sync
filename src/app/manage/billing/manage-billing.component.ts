@@ -9,6 +9,7 @@ import { SupabaseService } from '../../core/supabase.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { RingStatComponent } from '../../shared/components/ring-stat/ring-stat.component';
+import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { PricingTier, pricingTierByKey } from '../../shared/models/pricing-tier';
 
 /** Admin-only preview of what the Billing page will show once Stripe is
@@ -37,7 +38,8 @@ import { PricingTier, pricingTierByKey } from '../../shared/models/pricing-tier'
     RouterLink,
     BreadcrumbsComponent,
     PageHeaderComponent,
-    RingStatComponent
+    RingStatComponent,
+    EmptyStateComponent
   ],
   templateUrl: './manage-billing.component.html',
   styleUrl: './manage-billing.component.scss',
@@ -50,6 +52,11 @@ export class ManageBillingComponent implements OnInit {
   /** Fixed at 3 — the real .usage-grid below always renders exactly this
    *  many stats. */
   readonly skeletonUsageStats = [1, 2, 3];
+  /** Set when any of ngOnInit()'s own queries fails — see
+   *  ManageReportsComponent's identical loadError field for the full
+   *  reasoning (a failed load otherwise renders indistinguishably from a
+   *  genuinely-fresh, all-zero org). */
+  loadError: string | null = null;
 
   readonly currentTier: PricingTier = pricingTierByKey('free');
 
@@ -61,24 +68,45 @@ export class ManageBillingComponent implements OnInit {
   /** Placeholder — no real subscription exists to read a renewal date from. */
   readonly placeholderNextBillingDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
+  /** Re-runs ngOnInit()'s own loads after a failed one — the Retry button's
+   *  handler (see the template's own loadError branch). */
+  retryLoad() {
+    void this.loadBillingData();
+  }
+
   async ngOnInit() {
+    await this.loadBillingData();
+  }
+
+  private async loadBillingData() {
+    this.isLoading = true;
+
     const profile = await this.authService.getProfile();
     if (!profile) {
       this.isLoading = false;
       return;
     }
 
-    const [{ data: organization }, { count: memberCount }, { count: itemCount }, { data: storageBytes }] = await Promise.all([
+    const [orgResult, memberCountResult, itemCountResult, storageResult] = await Promise.all([
       this.supabase.from('organizations').select('created_at').eq('id', profile.organization_id).single(),
       this.supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('membership_status', 'approved'),
       this.supabase.from('inventory_items').select('id', { count: 'exact', head: true }),
       this.supabase.rpc('get_inventory_photo_storage_usage')
     ]);
 
-    this.organizationCreatedAt = organization?.created_at ?? null;
-    this.teamMemberCount = memberCount ?? 0;
-    this.inventoryItemCount = itemCount ?? 0;
-    this.storageUsedMb = Math.round(((storageBytes ?? 0) / (1024 * 1024)) * 10) / 10;
+    const error = orgResult.error?.message ?? memberCountResult.error?.message
+      ?? itemCountResult.error?.message ?? storageResult.error?.message ?? null;
+    if (error) {
+      this.loadError = error;
+      this.isLoading = false;
+      return;
+    }
+    this.loadError = null;
+
+    this.organizationCreatedAt = orgResult.data?.created_at ?? null;
+    this.teamMemberCount = memberCountResult.count ?? 0;
+    this.inventoryItemCount = itemCountResult.count ?? 0;
+    this.storageUsedMb = Math.round(((storageResult.data ?? 0) / (1024 * 1024)) * 10) / 10;
     this.isLoading = false;
   }
 
