@@ -316,7 +316,20 @@ dd.overdue{
 
   p{
     display: flex;
-    align-items: center;
+    // wrap + flex-start rather than nowrap + center: the sentence around
+    // {{ pendingTransferLabel() }}/assigneeLabel() splits into several flex
+    // items (the icon, each plain-text run, and the .semibold name span are
+    // all separate items here — only *consecutive* text nodes merge into one
+    // anonymous item, a real element like .semibold never does) — with the
+    // default nowrap, a long name wrapping onto its own line left the
+    // trailing " to accept."/"." text stranded as its own column off to the
+    // right instead of continuing the sentence underneath, rather than
+    // reading as one wrapped paragraph. overflow-wrap covers the rarer case
+    // of a single name with no space/hyphen to break at all, same
+    // convention ModalTableComponent's own .asset-id/.activity-message use.
+    flex-wrap: wrap;
+    align-items: flex-start;
+    overflow-wrap: anywhere;
     gap: 0.5rem;
     margin: 0 0 0.75rem;
     font-size: 0.875rem;

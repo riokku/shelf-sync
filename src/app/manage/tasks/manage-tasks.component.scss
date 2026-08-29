@@ -270,15 +270,25 @@
 
 .task-row-transfer{
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.25rem;
   color: var(--mat-sys-tertiary);
   font-size: 0.75rem;
+  // A long transfer-target name already wraps fine within .task-row-assignee's
+  // own min-width: 0 column — this is just the defensive fallback for a
+  // single name with no space/hyphen at all to break at, same convention
+  // ModalTableComponent's own .asset-id/.activity-message use.
+  overflow-wrap: anywhere;
+  min-width: 0;
 
   mat-icon{
     font-size: 0.9rem;
     width: 0.9rem;
     height: 0.9rem;
+    // Was align-items: center — fine for the common one-line case, but once
+    // a long name wraps this keeps the icon pinned to the first line
+    // instead of drifting to the vertical center of the whole wrapped block.
+    margin-top: 0.0625rem;
   }
 }
 
