@@ -1,4 +1,5 @@
 @use '../shared/styles/page-toolbar';
+@use '../shared/styles/skeleton';
 
 .pending-approval-wrapper{
   color: var(--mat-sys-on-surface);
@@ -11,10 +12,30 @@
   }
 }
 
-.loading-row{
-  display: flex;
-  justify-content: center;
-  padding: 3rem 0;
+// Loading-state placeholders only — sized to roughly match .status-card's
+// own real icon/heading/paragraph/button shapes below.
+.skeleton-status-icon{
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.skeleton-status-heading{
+  width: 10rem;
+  height: 1.25rem;
+}
+
+.skeleton-status-line{
+  width: 100%;
+}
+
+.skeleton-status-line-short{
+  width: 70%;
+}
+
+.skeleton-status-button{
+  width: 7rem;
+  height: 2.25rem;
+  margin-top: 0.25rem;
 }
 
 // Same card treatment as .home-card (home.component.scss), just one

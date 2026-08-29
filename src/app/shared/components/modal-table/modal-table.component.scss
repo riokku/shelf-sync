@@ -210,13 +210,6 @@ mat-dialog-content.mat-mdc-dialog-content{
   }
 }
 
-// No padding-top — .detail-subtab-toggle's own margin-bottom above already
-// provides that gap now (this used to also need its own on top of that, to
-// clear mat-tab-group's tab-strip header before this existed).
-.tab-panel{
-  padding-right: 1.25rem;
-}
-
 .info-section{
   margin-bottom: 1.25rem;
 

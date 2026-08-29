@@ -15,6 +15,21 @@ export interface ChangelogEntry {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: '2026-08-28',
+    title: 'Platform account locking',
+    description: 'Studio > Users now opens a full page for each person, with a toggle to lock their account across every organization — for abuse, not org-level issues.'
+  },
+  {
+    date: '2026-08-28',
+    title: 'No more bare loading spinners',
+    description: 'The last page still showing a plain spinner while it loads (the "awaiting approval" screen) now shows a shimmering placeholder instead, matching every other page in the app.'
+  },
+  {
+    date: '2026-08-28',
+    title: 'Broadcasts',
+    description: 'Admins and managers can now post org-wide announcements, optionally referencing team members or inventory items. Everyone gets notified and can catch up on the new Broadcasts page.'
+  },
+  {
+    date: '2026-08-28',
     title: 'Quicker way back to Home',
     description: 'Inventory, Tasks, Manage, Reservations, Help, Account, and Studio all show a Back button now, right above the page title.'
   },

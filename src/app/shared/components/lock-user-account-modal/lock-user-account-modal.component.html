@@ -1,0 +1,29 @@
+<h2 mat-dialog-title>
+  <mat-icon class="confirm-dialog-warning-icon">warning</mat-icon>
+  Lock this account?
+</h2>
+<form (ngSubmit)="confirm()">
+  <mat-dialog-content>
+    <p>
+      <span class="semibold">{{ data.userName }}</span> will immediately lose access to
+      ShelfSync — every page they load redirects to a locked-out screen, and their data queries
+      stop working right away, even in a session that's already open. This doesn't delete
+      anything, and can be undone at any time from here.
+    </p>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Reason for locking this account</mat-label>
+      <textarea matInput [formControl]="reasonControl" rows="3"></textarea>
+      @if (reasonControl.invalid && reasonControl.touched) {
+        <mat-error>A reason is required.</mat-error>
+      }
+    </mat-form-field>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancel()">Cancel</button>
+    <button mat-flat-button color="warn" type="submit">
+      <mat-icon>lock</mat-icon>
+      Lock account
+    </button>
+  </mat-dialog-actions>
+</form>

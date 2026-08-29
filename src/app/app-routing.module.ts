@@ -29,6 +29,14 @@ const STUDIO_BREADCRUMB_PARENT: BreadcrumbParent = { label: 'Studio', link: '/st
 // themselves already follow.
 const STUDIO_ORGANIZATIONS_BREADCRUMB_PARENT: BreadcrumbParent = { label: 'Organizations', link: '/studio/organizations' };
 
+// Same idea as STUDIO_ORGANIZATIONS_BREADCRUMB_PARENT above, one level under
+// Users instead — StudioUserDetailComponent is reachable from either
+// StudioUsersComponent's own search results or a member row on
+// StudioOrgDetailComponent, but Users is the more useful "list I came from"
+// crumb either way (mirrors StudioOrgDetailComponent's own reasoning for
+// picking Organizations over the Studio hub two hops back).
+const STUDIO_USERS_BREADCRUMB_PARENT: BreadcrumbParent = { label: 'Users', link: '/studio/users' };
+
 // Every route gets an explicit `title` — Angular's default TitleStrategy
 // only ever writes document.title when the *active* route defines one and
 // silently leaves the previous title in place otherwise, so leaving any
@@ -302,6 +310,17 @@ const routes: Routes = [
     canActivate: [approvedGuard, platformAdminGuard],
     data: { breadcrumb: 'Users', breadcrumbParent: STUDIO_BREADCRUMB_PARENT },
     title: 'ShelfSync | Studio Users'
+  },
+  {
+    path: 'studio/users/:id',
+    loadComponent: () =>
+      import('./studio/users/user-detail/studio-user-detail.component').then(m => m.StudioUserDetailComponent),
+    canActivate: [approvedGuard, platformAdminGuard],
+    // Placeholder — StudioUserDetailComponent's own BreadcrumbsComponent
+    // binding overrides this with the person's real name once it loads,
+    // same mechanism StudioOrgDetailComponent's own route already uses.
+    data: { breadcrumb: 'User', breadcrumbParent: STUDIO_USERS_BREADCRUMB_PARENT },
+    title: 'ShelfSync | Studio User'
   },
   // Catches any URL that doesn't match a route above — must stay last.
   // Unguarded (reachable by a signed-out visitor too, see

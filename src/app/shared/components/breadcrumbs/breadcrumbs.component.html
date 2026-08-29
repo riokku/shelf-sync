@@ -7,6 +7,15 @@
     <span class="breadcrumb-separator">/</span>
     <a [routerLink]="parent.link" class="breadcrumb-link" [title]="parent.label" (click)="parent.onClick?.()">{{ truncate(parent.label) }}</a>
   }
+  @if (secondaryParent) {
+    <span class="breadcrumb-separator">/</span>
+    <a
+        [routerLink]="secondaryParent.link"
+        class="breadcrumb-link"
+        [title]="secondaryParent.label"
+        (click)="secondaryParent.onClick?.()"
+      >{{ truncate(secondaryParent.label) }}</a>
+  }
   @if (secondaryLabel) {
     <span class="breadcrumb-separator">/</span>
     <button

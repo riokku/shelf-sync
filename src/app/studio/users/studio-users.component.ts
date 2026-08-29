@@ -23,11 +23,13 @@ type OrganizationRow = Database['public']['Tables']['organizations']['Row'];
  *  renders until a search term narrows it, both because "browse every
  *  user" is already Organizations' own job (via its member counts) and
  *  because a platform-wide profile list only grows as the product does.
- *  A matched row links to the exact same StudioOrgDetailComponent page a
- *  click on Organizations' own table opens, so finding someone and then
- *  seeing their org's full context (members/feedback/errors) is one click,
- *  not a second lookup. Everything here comes from the same cross-org
- *  profiles/organizations reads StudioOrganizationsComponent already
+ *  A matched row links to a dedicated StudioUserDetailComponent page for
+ *  that person — their own info plus the account lock toggle (see
+ *  add_platform_account_lock) — which itself links onward to their org's
+ *  own StudioOrgDetailComponent page, so finding someone and then seeing
+ *  their org's full context (members/feedback/errors) is still just one
+ *  further click, not a second lookup. Everything here comes from the same
+ *  cross-org profiles/organizations reads StudioOrganizationsComponent already
  *  relies on (see add_platform_admin) — no new policy needed. Matching is
  *  a plain client-side substring filter over a profiles list loaded once
  *  on init, the same "load once, filter in memory" shape ManageTeamComponent's
@@ -98,10 +100,11 @@ export class StudioUsersComponent implements OnInit {
     return this.organizationsById.get(profile.organization_id)?.name ?? 'Unknown organization';
   }
 
-  /** Navigates to the same StudioOrgDetailComponent page Organizations'
-   *  own table rows link to, for the org this profile belongs to. */
-  openOrganization(profile: Profile) {
-    this.router.navigate(['/studio/organizations', profile.organization_id]);
+  /** Navigates to this person's own StudioUserDetailComponent page — see
+   *  this component's own doc comment for why that's the destination now,
+   *  not their org's page directly. */
+  openUser(profile: Profile) {
+    this.router.navigate(['/studio/users', profile.id]);
   }
 
   private async loadDirectory() {

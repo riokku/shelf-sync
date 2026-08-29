@@ -54,17 +54,19 @@
                   class="user-row-clickable"
                   role="button"
                   tabindex="0"
-                  [attr.aria-label]="'View organization for ' + displayName(profile)"
-                  (click)="openOrganization(profile)"
-                  (keydown.enter)="openOrganization(profile)"
-                  (keydown.space)="openOrganization(profile)"
+                  [attr.aria-label]="'View details for ' + displayName(profile)"
+                  (click)="openUser(profile)"
+                  (keydown.enter)="openUser(profile)"
+                  (keydown.space)="openUser(profile)"
                 >
                   <td class="user-name">{{ displayName(profile) }}</td>
                   <td>{{ profile.email }}</td>
                   <td>{{ organizationName(profile) }}</td>
                   <td><span class="member-role-badge">{{ profile.role }}</span></td>
                   <td>
-                    @if (profile.membership_status === 'pending') {
+                    @if (profile.account_locked_at) {
+                      <span class="status-badge status-badge-locked">Locked</span>
+                    } @else if (profile.membership_status === 'pending') {
                       <span class="status-badge status-badge-pending">Pending</span>
                     } @else {
                       <span class="status-badge status-badge-active">Approved</span>

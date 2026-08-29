@@ -49,4 +49,14 @@ describe('approvedGuard', () => {
     expect(result).not.toBe(true);
     expect(serialize(result as UrlTree)).toContain('/pending-approval');
   });
+
+  it('redirects to /pending-approval for an otherwise-approved but platform-locked account', async () => {
+    configure(createFakeAuthService(
+      createFakeProfile({ membership_status: 'approved', account_locked_at: '2026-01-01T00:00:00.000Z' }),
+      { hasSession: true }
+    ));
+    const result = await runGuard();
+    expect(result).not.toBe(true);
+    expect(serialize(result as UrlTree)).toContain('/pending-approval');
+  });
 });

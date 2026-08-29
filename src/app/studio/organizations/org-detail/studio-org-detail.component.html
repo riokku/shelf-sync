@@ -119,13 +119,23 @@
           } @else {
             <ul class="member-list">
               @for (member of members; track member.id) {
-                <li>
+                <li
+                    class="member-row-clickable"
+                    role="button"
+                    tabindex="0"
+                    [attr.aria-label]="'View details for ' + displayName(member)"
+                    (click)="openUser(member)"
+                    (keydown.enter)="openUser(member)"
+                    (keydown.space)="openUser(member)"
+                  >
                   <span class="member-name">{{ displayName(member) }}</span>
                   <span class="member-role-cell">
                     <span class="member-role-badge" [class]="'role-' + member.role">{{ member.role }}</span>
                   </span>
                   <span class="member-status-cell">
-                    @if (member.membership_status === 'pending') {
+                    @if (member.account_locked_at) {
+                      <span class="status-badge status-badge-locked">Locked</span>
+                    } @else if (member.membership_status === 'pending') {
                       <span class="status-badge status-badge-pending">Pending</span>
                     }
                   </span>

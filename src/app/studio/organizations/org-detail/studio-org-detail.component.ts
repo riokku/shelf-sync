@@ -1,6 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -71,6 +71,7 @@ type ClientErrorLogRow = Database['public']['Tables']['client_error_log']['Row']
 })
 export class StudioOrgDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private supabase = inject(SupabaseService).client;
   private dialog = inject(MatDialog);
   private notification = inject(NotificationService);
@@ -139,6 +140,14 @@ export class StudioOrgDetailComponent implements OnInit {
 
   lastSeenLabel(profile: Profile): string {
     return formatLastSeen(profile.last_active_at);
+  }
+
+  /** Navigates to a member's own StudioUserDetailComponent page — same
+   *  drill-down destination StudioUsersComponent's own search results link
+   *  to, so browsing an org's member list and searching for a person by
+   *  name both land on the same place. */
+  openUser(member: Profile) {
+    this.router.navigate(['/studio/users', member.id]);
   }
 
   // row.type/row.status are plain `string` at the type level (the DB's own

@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -18,10 +18,25 @@ export interface SuspendOrganizationModalData {
  *  suspension is reversible (platform_unsuspend_organization undoes it
  *  completely), so it doesn't need that same deliberate-friction treatment,
  *  just a reason. Resolves with the entered reason string, or undefined on
- *  cancel. */
+ *  cancel.
+ *
+ *  FormsModule is imported alongside ReactiveFormsModule purely for NgForm —
+ *  see LockUserAccountModalComponent's own identical doc comment (a near-
+ *  exact copy of this component) for why a bare `<form (ngSubmit)>` with no
+ *  `[formGroup]` silently falls through to a native, page-reloading form
+ *  submission without it, caught only once that copy was actually clicked
+ *  through in a real browser rather than just unit-tested. */
 @Component({
   selector: 'app-suspend-organization-modal',
-  imports: [ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule],
+  imports: [
+    FormsModule,
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    MatIconModule
+  ],
   templateUrl: './suspend-organization-modal.component.html',
   styleUrl: './suspend-organization-modal.component.scss',
 })

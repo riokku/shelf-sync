@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { of } from 'rxjs';
 
@@ -47,6 +47,9 @@ function createTestProfile(overrides: Partial<Profile> = {}): Profile {
     last_active_at: null,
     quick_menu_enabled: false,
     quick_menu_items: [],
+    account_locked_at: null,
+    account_locked_by: null,
+    account_locked_reason: null,
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
     ...overrides,
@@ -222,6 +225,17 @@ describe('StudioOrgDetailComponent', () => {
 
     expect(component.notFound).toBeTrue();
     expect(component.isLoading).toBeFalse();
+  });
+
+  describe('openUser()', () => {
+    it('navigates to the member\'s own detail page', async () => {
+      await setup('org-1', { organization: createTestOrg(), members: [createTestProfile({ id: 'm-1' })] });
+      const navigateSpy = spyOn(TestBed.inject(Router), 'navigate');
+
+      component.openUser(component.members[0]);
+
+      expect(navigateSpy).toHaveBeenCalledWith(['/studio/users', 'm-1']);
+    });
   });
 
   describe('suspendOrganization()', () => {

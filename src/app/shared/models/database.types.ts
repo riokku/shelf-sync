@@ -886,6 +886,9 @@ export type Database = {
       }
       profiles: {
         Row: {
+          account_locked_at: string | null
+          account_locked_by: string | null
+          account_locked_reason: string | null
           avatar_key: string | null
           created_at: string
           email: string
@@ -902,6 +905,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_locked_at?: string | null
+          account_locked_by?: string | null
+          account_locked_reason?: string | null
           avatar_key?: string | null
           created_at?: string
           email: string
@@ -918,6 +924,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_locked_at?: string | null
+          account_locked_by?: string | null
+          account_locked_reason?: string | null
           avatar_key?: string | null
           created_at?: string
           email?: string
@@ -934,6 +943,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "profiles_account_locked_by_fkey"
+            columns: ["account_locked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "profiles_organization_id_fkey"
             columns: ["organization_id"]
@@ -1235,6 +1251,10 @@ export type Database = {
         Args: { reservation_id: string }
         Returns: undefined
       }
+      platform_lock_user_account: {
+        Args: { reason?: string; target_id: string }
+        Returns: undefined
+      }
       platform_restore_organization: {
         Args: { org_id: string }
         Returns: undefined
@@ -1245,6 +1265,10 @@ export type Database = {
       }
       platform_suspend_organization: {
         Args: { org_id: string; reason?: string }
+        Returns: undefined
+      }
+      platform_unlock_user_account: {
+        Args: { target_id: string }
         Returns: undefined
       }
       platform_unsuspend_organization: {
