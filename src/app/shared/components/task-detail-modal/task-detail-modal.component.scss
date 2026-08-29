@@ -304,40 +304,31 @@ dd.overdue{
   margin: -0.5rem 0 1rem;
 }
 
-// No margin-top — a direct child of .detail-column-left in both the states
-// it renders in (incoming transfer, or the pending/picking sender-side
-// panel), whose own flex gap already spaces it from whatever's above (see
-// .detail-column's own doc comment).
+// Was its own colored card (a single box wrapping the icon+text+buttons
+// together) — restyled to match the plain .info-section/.info-section-header
+// pattern "Task information"/"Task details" already establish above instead
+// of reading as a visually distinct third design on the same dialog: a
+// boxed icon+label header (from .info-section-header) followed by plain,
+// unboxed content, not its own enclosing card. No margin-top of its own —
+// a direct child of .detail-column-left in both the states it renders in
+// (incoming transfer, or the pending/picking sender-side panel), whose own
+// flex gap already spaces it from whatever's above (see .detail-column's
+// own doc comment).
 .transfer-panel{
   margin-top: 0;
-  padding: 0.75rem;
-  border-radius: 0.375rem;
-  background: var(--mat-sys-surface-container-high);
+}
 
-  p{
-    display: flex;
-    // wrap + flex-start rather than nowrap + center: the sentence around
-    // {{ pendingTransferLabel() }}/assigneeLabel() splits into several flex
-    // items (the icon, each plain-text run, and the .semibold name span are
-    // all separate items here — only *consecutive* text nodes merge into one
-    // anonymous item, a real element like .semibold never does) — with the
-    // default nowrap, a long name wrapping onto its own line left the
-    // trailing " to accept."/"." text stranded as its own column off to the
-    // right instead of continuing the sentence underneath, rather than
-    // reading as one wrapped paragraph. overflow-wrap covers the rarer case
-    // of a single name with no space/hyphen to break at all, same
-    // convention ModalTableComponent's own .asset-id/.activity-message use.
-    flex-wrap: wrap;
-    align-items: flex-start;
-    overflow-wrap: anywhere;
-    gap: 0.5rem;
-    margin: 0 0 0.75rem;
-    font-size: 0.875rem;
-
-    &:last-child{
-      margin-bottom: 0;
-    }
-  }
+// Plain block-level text now that the icon lives in .info-section-header
+// instead of inline before it — this is what used to need
+// `display: flex; flex-wrap: wrap` to keep the sentence from splitting
+// across the .semibold name span's own flex-item boundary (see git history
+// for that fix) — normal inline flow wraps a <span> inside a <p> correctly
+// with no flex involved at all. overflow-wrap still covers the rarer case
+// of a name with no space/hyphen at all to break at, same convention
+// ModalTableComponent's own .asset-id/.activity-message use.
+.transfer-status{
+  margin: 0 0 0.75rem;
+  overflow-wrap: anywhere;
 
   .semibold{
     font-weight: 600;
@@ -346,11 +337,14 @@ dd.overdue{
 
 // The recipient's Accept/Decline prompt is the primary thing to notice on
 // this dialog, unlike the sender-side panel which sits quietly below the
-// status field — so it gets the tertiary-container treatment used for
-// other "needs your attention" banners in the app (e.g. related-item-banner
-// above), rather than blending into the surface like the sender's view.
-.transfer-incoming{
-  background: var(--mat-sys-tertiary-container);
+// status field — so its header keeps the tertiary-container treatment used
+// for other "needs your attention" banners in the app (e.g.
+// related-item-banner above) rather than blending into the neutral
+// surface-container-high every other .info-section-header uses. Just the
+// header, now that the panel itself is no longer its own colored card —
+// the content below reads the same plain way any other section's does.
+.info-section-header-tertiary{
+  background-color: var(--mat-sys-tertiary-container);
   color: var(--mat-sys-on-tertiary-container);
 }
 

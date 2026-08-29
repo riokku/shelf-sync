@@ -88,10 +88,13 @@
       </section>
 
       @if (isPendingRecipient) {
-        <div class="transfer-panel transfer-incoming">
-          <p>
-            <mat-icon>swap_horiz</mat-icon>
-            This task was offered to you by <span class="semibold">{{ assigneeLabel() }}</span>.
+        <section class="info-section transfer-panel transfer-incoming">
+          <header class="info-section-header info-section-header-tertiary">
+            <mat-icon class="me-2">swap_horiz</mat-icon>
+            Transfer offered to you
+          </header>
+          <p class="transfer-status">
+            Offered by <span class="semibold">{{ assigneeLabel() }}</span>.
           </p>
           <div class="transfer-actions">
             <button mat-stroked-button type="button" (click)="declineTransfer()" [disabled]="isRespondingToTransfer">
@@ -105,13 +108,16 @@
               }
             </button>
           </div>
-        </div>
+        </section>
       } @else if (canShowTransferPanel) {
         @if (task.pending_transfer_to) {
-          <div class="transfer-panel">
-            <p>
-              <mat-icon>hourglass_top</mat-icon>
-              Transfer pending — waiting on <span class="semibold">{{ pendingTransferLabel() }}</span> to accept.
+          <section class="info-section transfer-panel">
+            <header class="info-section-header">
+              <mat-icon class="me-2">hourglass_top</mat-icon>
+              Transfer pending
+            </header>
+            <p class="transfer-status">
+              Waiting on <span class="semibold">{{ pendingTransferLabel() }}</span> to accept.
             </p>
             <button mat-button type="button" (click)="cancelTransfer()" [disabled]="isRequestingTransfer">
               @if (isRequestingTransfer) {
@@ -120,7 +126,7 @@
                 Cancel transfer
               }
             </button>
-          </div>
+          </section>
         }
       }
 
