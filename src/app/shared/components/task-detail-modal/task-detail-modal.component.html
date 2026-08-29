@@ -119,11 +119,14 @@
             <p class="transfer-status">
               Waiting on <span class="semibold">{{ pendingTransferLabel() }}</span> to accept.
             </p>
-            <button mat-button type="button" (click)="cancelTransfer()" [disabled]="isRequestingTransfer">
+            <button mat-flat-button class="cancel-transfer-button" type="button" (click)="cancelTransfer()" [disabled]="isRequestingTransfer">
               @if (isRequestingTransfer) {
                 <mat-spinner diameter="20"></mat-spinner>
               } @else {
-                Cancel transfer
+                <ng-container>
+                  <mat-icon>close</mat-icon>
+                  Cancel transfer
+                </ng-container>
               }
             </button>
           </section>

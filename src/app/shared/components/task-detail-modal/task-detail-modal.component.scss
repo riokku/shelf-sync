@@ -360,3 +360,15 @@ dd.overdue{
 // popup (TransferTaskModalComponent) rather than an inline panel here, so
 // this is the button's only visual state — no sibling "picking" state to
 // distinguish it from any more.
+
+// Same hardcoded-red-filled-button treatment StudioOrgDetailComponent's own
+// .retire-button uses — see that component's own doc comment for why a
+// deliberately hardcoded red rather than color="warn" (that role follows
+// the org's own chosen THEME_PRESETS color, not guaranteed to read as an
+// unambiguous red the way a one-way — or here, at least attention-getting —
+// action wants).
+.cancel-transfer-button{
+  --mat-button-filled-container-color: var(--app-danger-bg);
+  --mat-button-filled-label-text-color: var(--app-danger-on-bg);
+  --mat-button-filled-state-layer-color: var(--app-danger-on-bg);
+}
