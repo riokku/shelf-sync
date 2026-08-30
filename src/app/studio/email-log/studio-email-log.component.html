@@ -1,0 +1,91 @@
+<div class="studio-email-log-wrapper">
+  <div class="container">
+    <div class="page-toolbar">
+      <app-breadcrumbs />
+    </div>
+    <div class="back-row">
+      <button mat-button type="button" routerLink="/studio">
+        <mat-icon>arrow_back</mat-icon>
+        Back
+      </button>
+    </div>
+    <app-page-header
+        icon="forward_to_inbox"
+        title="Email Log"
+        subtitle="Every notification email send attempt across every organization, most recent first."
+        zone="studio"
+      />
+
+    @if (loadError) {
+      <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load the email log. ' + loadError">
+        <button mat-stroked-button type="button" (click)="retryLoad()">
+          <mat-icon>refresh</mat-icon>
+          Retry
+        </button>
+      </app-empty-state>
+    } @else if (isLoading) {
+      <!-- Same real-shell, disabled-panel skeleton treatment
+           StudioErrorLogComponent's own identical loading state uses. -->
+      <mat-accordion multi class="email-log-list" aria-hidden="true">
+        @for (i of skeletonRows; track i) {
+          <mat-expansion-panel disabled>
+            <mat-expansion-panel-header>
+              <mat-panel-title><div class="skeleton-line skeleton-panel-title"></div></mat-panel-title>
+              <mat-panel-description>
+                <div class="skeleton-block skeleton-cell-badge"></div>
+                <div class="skeleton-line skeleton-panel-timestamp"></div>
+              </mat-panel-description>
+            </mat-expansion-panel-header>
+          </mat-expansion-panel>
+        }
+      </mat-accordion>
+    } @else {
+      <div class="email-log-controls">
+        <mat-checkbox [(ngModel)]="showSuccessfulSends" (change)="onFilterChange()">
+          Show successful sends too
+        </mat-checkbox>
+      </div>
+
+      @if (filteredEmailLog.length === 0) {
+        <app-empty-state icon="check_circle" message="No failed sends — every notification email went through." />
+      } @else {
+        <mat-accordion multi class="email-log-list">
+          @for (row of pagedEmailLog; track row.id) {
+            <mat-expansion-panel>
+              <mat-expansion-panel-header>
+                <mat-panel-title>
+                  <span class="email-kind-preview">{{ kindLabel(row) }} &rarr; {{ row.recipient_email }}</span>
+                </mat-panel-title>
+                <mat-panel-description>
+                  <span class="status-badge" [class.status-badge-fail]="!row.success">
+                    {{ row.success ? 'Sent' : 'Failed' }}
+                  </span>
+                  {{ orgName(row) }} &middot; {{ row.created_at | date: 'M/d/yy, h:mm a' }}
+                </mat-panel-description>
+              </mat-expansion-panel-header>
+
+              <div class="email-detail">
+                <p><span class="semibold">Organization:</span> {{ orgName(row) }}</p>
+                <p><span class="semibold">Recipient:</span> {{ row.recipient_email }}</p>
+                <p><span class="semibold">Kind:</span> {{ kindLabel(row) }}</p>
+                @if (row.error_message) {
+                  <pre class="error-detail-message">{{ row.error_message }}</pre>
+                }
+              </div>
+            </mat-expansion-panel>
+          }
+        </mat-accordion>
+
+        <mat-paginator
+            class="email-log-paginator"
+            [length]="filteredEmailLog.length"
+            [pageSize]="pageSize"
+            [pageIndex]="pageIndex"
+            [hidePageSize]="true"
+            [showFirstLastButtons]="true"
+            (page)="onPageChange($event)"
+          ></mat-paginator>
+      }
+    }
+  </div>
+</div>

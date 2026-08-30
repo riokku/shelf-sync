@@ -6,6 +6,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { SupabaseService } from '../core/supabase.service';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 import { EmptyStateComponent } from '../shared/components/empty-state/empty-state.component';
+import { TrendChartComponent, TrendPoint } from '../shared/components/trend-chart/trend-chart.component';
+import { bucketByWeek } from '../shared/utils/trend-buckets';
 
 /** A card hub, same shape as ManageComponent, for a genuinely different
  *  audience: the app's own maintainer, not any org's own admin/manager.
@@ -18,7 +20,15 @@ import { EmptyStateComponent } from '../shared/components/empty-state/empty-stat
  *  gated the same way, so nobody else ever sees either exists. */
 @Component({
   selector: 'app-studio',
-  imports: [RouterModule, MatBadgeModule, MatButtonModule, MatIconModule, BreadcrumbsComponent, EmptyStateComponent],
+  imports: [
+    RouterModule,
+    MatBadgeModule,
+    MatButtonModule,
+    MatIconModule,
+    BreadcrumbsComponent,
+    EmptyStateComponent,
+    TrendChartComponent
+  ],
   templateUrl: './studio.component.html',
   styleUrl: './studio.component.scss',
 })
@@ -65,6 +75,24 @@ export class StudioComponent implements OnInit {
    *  "not development"). */
   recentErrorCount = 0;
 
+  /** 12-week signup trends — the counterpart to newOrgCount above, which
+   *  only ever shows the most recent week in isolation. Bucketed
+   *  client-side via bucketByWeek() from the same plain created_at
+   *  columns every org/profile row already carries — no new schema, no
+   *  RPC, since organizations' own SELECT policy is already `using (true)`
+   *  and profiles already has a cross-org read policy for a platform
+   *  admin (add_platform_admin). */
+  orgSignupTrend: TrendPoint[] = [];
+  userSignupTrend: TrendPoint[] = [];
+
+  get orgSignupTrendTotal(): number {
+    return this.orgSignupTrend.reduce((sum, point) => sum + point.value, 0);
+  }
+
+  get userSignupTrendTotal(): number {
+    return this.userSignupTrend.reduce((sum, point) => sum + point.value, 0);
+  }
+
   async ngOnInit() {
     await Promise.all([this.loadPendingBadge(), this.loadStats()]);
   }
@@ -90,15 +118,18 @@ export class StudioComponent implements OnInit {
     const weekAgoIso = new Date(now - 7 * 86400000).toISOString();
     const dayAgoIso = new Date(now - 86400000).toISOString();
 
-    const [orgCountResult, newOrgCountResult, userCountResult, errorsResult] = await Promise.all([
+    const [orgCountResult, newOrgCountResult, userCountResult, errorsResult, orgCreatedAtResult, profileCreatedAtResult] = await Promise.all([
       this.supabase.from('organizations').select('id', { count: 'exact', head: true }).is('deleted_at', null),
       this.supabase.from('organizations').select('id', { count: 'exact', head: true }).gte('created_at', weekAgoIso),
       this.supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('membership_status', 'approved'),
-      this.supabase.from('client_error_log').select('app_env').gte('created_at', dayAgoIso)
+      this.supabase.from('client_error_log').select('app_env').gte('created_at', dayAgoIso),
+      this.supabase.from('organizations').select('created_at'),
+      this.supabase.from('profiles').select('created_at')
     ]);
 
     const error = orgCountResult.error?.message ?? newOrgCountResult.error?.message
-      ?? userCountResult.error?.message ?? errorsResult.error?.message ?? null;
+      ?? userCountResult.error?.message ?? errorsResult.error?.message
+      ?? orgCreatedAtResult.error?.message ?? profileCreatedAtResult.error?.message ?? null;
     if (error) {
       this.loadError = error;
       this.isLoadingStats = false;
@@ -110,6 +141,8 @@ export class StudioComponent implements OnInit {
     this.newOrgCount = newOrgCountResult.count ?? 0;
     this.approvedUserCount = userCountResult.count ?? 0;
     this.recentErrorCount = (errorsResult.data ?? []).filter(row => row.app_env !== 'development').length;
+    this.orgSignupTrend = bucketByWeek((orgCreatedAtResult.data ?? []).map(row => row.created_at), 12);
+    this.userSignupTrend = bucketByWeek((profileCreatedAtResult.data ?? []).map(row => row.created_at), 12);
     this.isLoadingStats = false;
   }
 }

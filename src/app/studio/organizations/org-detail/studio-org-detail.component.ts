@@ -23,6 +23,20 @@ import { DeleteOrganizationModalComponent } from '../../../shared/components/del
 type OrganizationRow = Database['public']['Tables']['organizations']['Row'];
 type FeedbackRow = Database['public']['Tables']['feedback']['Row'];
 type ClientErrorLogRow = Database['public']['Tables']['client_error_log']['Row'];
+type PlatformActionLogRow = Database['public']['Tables']['platform_action_log']['Row'];
+
+// Mirrors StudioAuditLogComponent's own ACTION_LABELS — duplicated rather
+// than shared, same "not every small presentational pattern gets
+// centralized" convention this app's icon-chip gradients/donut-chart
+// palettes already follow.
+const ACTION_LABELS: Record<string, string> = {
+  suspend: 'Suspended',
+  unsuspend: 'Unsuspended',
+  retire: 'Retired',
+  restore: 'Restored',
+  lock: 'Locked',
+  unlock: 'Unlocked'
+};
 
 /** A dedicated page for one org, reached via a `studio/organizations/:id`
  *  route from either StudioOrganizationsComponent's own table rows or
@@ -92,6 +106,8 @@ export class StudioOrgDetailComponent implements OnInit {
   members: Profile[] = [];
   recentFeedback: FeedbackRow[] = [];
   recentErrors: ClientErrorLogRow[] = [];
+  recentActions: PlatformActionLogRow[] = [];
+  private actionActorNamesById = new Map<string, string>();
 
   /** The org's own uploaded logo (Settings > Style), if it has one — resolved
    *  via SiteSettingsService.loadLogoUrlForOrganization(), the same
@@ -162,6 +178,17 @@ export class StudioOrgDetailComponent implements OnInit {
     return this.feedbackStatusLabels[row.status as FeedbackStatus] ?? row.status;
   }
 
+  actionLabel(row: PlatformActionLogRow): string {
+    return ACTION_LABELS[row.action] ?? row.action;
+  }
+
+  actionActorName(row: PlatformActionLogRow): string {
+    if (!row.actor_id) {
+      return 'Former platform admin';
+    }
+    return this.actionActorNamesById.get(row.actor_id) ?? 'Former platform admin';
+  }
+
   async ngOnInit() {
     // Read once — every navigation into this page comes from a genuinely
     // different route (studio/organizations or studio/users), which always
@@ -202,17 +229,33 @@ export class StudioOrgDetailComponent implements OnInit {
     }
     this.organization = organization;
 
-    const [{ data: members }, { data: feedback }, { data: errors }, logoUrl] = await Promise.all([
+    const [{ data: members }, { data: feedback }, { data: errors }, { data: actions }, logoUrl] = await Promise.all([
       this.supabase.from('profiles').select('*').eq('organization_id', id).order('full_name'),
       this.supabase.from('feedback').select('*').eq('organization_id', id).order('created_at', { ascending: false }).limit(5),
       this.supabase.from('client_error_log').select('*').eq('organization_id', id).order('created_at', { ascending: false }).limit(5),
+      this.supabase.from('platform_action_log').select('*').eq('target_type', 'organization').eq('target_id', id)
+        .order('created_at', { ascending: false }).limit(5),
       this.siteSettings.loadLogoUrlForOrganization(id)
     ]);
 
     this.members = members ?? [];
     this.recentFeedback = feedback ?? [];
     this.recentErrors = errors ?? [];
+    this.recentActions = actions ?? [];
     this.orgLogoUrl = logoUrl;
+
+    // A platform admin almost certainly isn't a member of the org they just
+    // acted on, so their name can't be resolved from `members` above — a
+    // small follow-up query keyed on just the distinct actor ids this org's
+    // own action log actually has, mirroring suspendedByName's own
+    // one-off-lookup shape just below rather than a full cross-org profiles
+    // fetch StudioAuditLogComponent's own page already does for its
+    // whole-platform view.
+    const actorIds = [...new Set((actions ?? []).map(action => action.actor_id).filter((id): id is string => !!id))];
+    if (actorIds.length > 0) {
+      const { data: actors } = await this.supabase.from('profiles').select('*').in('id', actorIds);
+      this.actionActorNamesById = new Map((actors ?? []).map(actor => [actor.id, profileDisplayName(actor)]));
+    }
 
     if (organization.suspended_by) {
       const { data: suspender } = await this.supabase

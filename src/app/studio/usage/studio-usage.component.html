@@ -1,0 +1,124 @@
+<div class="studio-usage-wrapper">
+  <div class="container">
+    <div class="page-toolbar">
+      <app-breadcrumbs />
+    </div>
+    <div class="back-row">
+      <button mat-button type="button" routerLink="/studio">
+        <mat-icon>arrow_back</mat-icon>
+        Back
+      </button>
+    </div>
+    <app-page-header
+        icon="data_usage"
+        title="Usage"
+        subtitle="Per-organization resource usage, and who's already past the Free tier's limits."
+        zone="studio"
+      />
+
+    @if (loadError) {
+      <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load usage data. ' + loadError">
+        <button mat-stroked-button type="button" (click)="retryLoad()">
+          <mat-icon>refresh</mat-icon>
+          Retry
+        </button>
+      </app-empty-state>
+    } @else if (isLoading) {
+      <div class="usage-columns" aria-hidden="true">
+        @for (i of [1, 2, 3]; track i) {
+          <div class="usage-card">
+            <div class="skeleton-line skeleton-usage-heading"></div>
+            <ul class="breakdown-list">
+              @for (j of skeletonRows; track j) {
+                <li>
+                  <div class="skeleton-line skeleton-breakdown-label"></div>
+                  <span class="bar-track"></span>
+                  <div class="skeleton-line skeleton-breakdown-value"></div>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+      </div>
+    } @else if (!hasAnyUsage) {
+      <app-empty-state icon="data_usage" message="No organizations to measure yet." />
+    } @else {
+      <div class="usage-columns">
+        <div class="usage-card">
+          <h3>Top by storage</h3>
+          @if (topByStorage.length === 0) {
+            <p class="usage-empty-hint">No item photos uploaded anywhere yet.</p>
+          } @else {
+            <ul class="breakdown-list">
+              @for (row of topByStorage; track row.label) {
+                <li>
+                  <span class="breakdown-label">{{ row.label }}</span>
+                  <span class="bar-track"><span class="bar-fill" [style.width.%]="barWidth(topByStorage, row.value)"></span></span>
+                  <span class="breakdown-value">{{ row.value }}MB</span>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+
+        <div class="usage-card">
+          <h3>Top by inventory items</h3>
+          @if (topByItems.length === 0) {
+            <p class="usage-empty-hint">No inventory items anywhere yet.</p>
+          } @else {
+            <ul class="breakdown-list">
+              @for (row of topByItems; track row.label) {
+                <li>
+                  <span class="breakdown-label">{{ row.label }}</span>
+                  <span class="bar-track"><span class="bar-fill" [style.width.%]="barWidth(topByItems, row.value)"></span></span>
+                  <span class="breakdown-value">{{ row.value }}</span>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+
+        <div class="usage-card">
+          <h3>Top by team size</h3>
+          @if (topByMembers.length === 0) {
+            <p class="usage-empty-hint">No approved members anywhere yet.</p>
+          } @else {
+            <ul class="breakdown-list">
+              @for (row of topByMembers; track row.label) {
+                <li>
+                  <span class="breakdown-label">{{ row.label }}</span>
+                  <span class="bar-track"><span class="bar-fill" [style.width.%]="barWidth(topByMembers, row.value)"></span></span>
+                  <span class="breakdown-value">{{ row.value }}</span>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </div>
+
+      <div class="usage-card usage-over-limit-card">
+        <h3>Over the Free tier</h3>
+        <p class="usage-card-hint">
+          Every organization is on Free today — nothing here is enforced yet, but these are the ones
+          already past what that tier allows.
+        </p>
+        @if (overLimit.length === 0) {
+          <app-empty-state icon="check_circle" message="No organization exceeds the Free tier's limits." [compact]="true" />
+        } @else {
+          <ul class="over-limit-list">
+            @for (row of overLimit; track row.organizationId) {
+              <li>
+                <a class="over-limit-name" [routerLink]="['/studio/organizations', row.organizationId]">{{ row.name }}</a>
+                <span class="over-limit-chips">
+                  @for (reason of row.exceeded; track reason) {
+                    <span class="over-limit-chip">{{ reason }}</span>
+                  }
+                </span>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    }
+  </div>
+</div>

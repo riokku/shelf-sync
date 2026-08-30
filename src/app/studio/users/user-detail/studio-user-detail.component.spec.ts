@@ -17,6 +17,21 @@ import {
 } from '../../../testing/fakes';
 
 type OrganizationRow = Database['public']['Tables']['organizations']['Row'];
+type PlatformActionLogRow = Database['public']['Tables']['platform_action_log']['Row'];
+
+function createTestAction(overrides: Partial<PlatformActionLogRow> = {}): PlatformActionLogRow {
+  return {
+    id: 'action-1',
+    actor_id: 'admin-1',
+    action: 'lock',
+    target_type: 'user',
+    target_id: 'user-1',
+    target_label: 'Alex Rivera',
+    reason: 'Suspicious activity',
+    created_at: '2026-02-01T00:00:00.000Z',
+    ...overrides,
+  };
+}
 
 function createFakeDialogRef(result: unknown): MatDialogRef<unknown> {
   return { afterClosed: () => of(result) } as unknown as MatDialogRef<unknown>;
@@ -41,6 +56,8 @@ function createFakeSupabaseServiceForUserDetail(data: {
   profileError?: { message: string } | null;
   organization?: OrganizationRow | null;
   locker?: Profile | null;
+  platformActions?: PlatformActionLogRow[];
+  actionActors?: Profile[];
   rpc?: jasmine.Spy;
 }): SupabaseService {
   let profilesCallCount = 0;
@@ -50,9 +67,18 @@ function createFakeSupabaseServiceForUserDetail(data: {
         if (table === 'organizations') {
           return createFakeQueryBuilder({ data: data.organization ?? null, error: null });
         }
+        if (table === 'platform_action_log') {
+          return createFakeQueryBuilder({ data: data.platformActions ?? [], error: null });
+        }
         profilesCallCount += 1;
         if (profilesCallCount === 1) {
           return createFakeQueryBuilder({ data: data.profile ?? null, error: data.profileError ?? null });
+        }
+        // Second (and any later) profiles call is either the single locker
+        // lookup (.maybeSingle()) or the actor-name lookup (.in(), an
+        // array) — a given test scenario only ever exercises one of the two.
+        if (data.actionActors) {
+          return createFakeQueryBuilder({ data: data.actionActors, error: null });
         }
         return createFakeQueryBuilder({ data: data.locker ?? null, error: null });
       },
@@ -135,6 +161,29 @@ describe('StudioUserDetailComponent', () => {
 
     expect(component.lockedByName).toBe('Riley Platform');
     expect(component.isLocked).toBeTrue();
+  });
+
+  it('loads recent platform actions scoped to this person and resolves each actor\'s name', async () => {
+    await setup('user-1', {
+      profile: createFakeProfile({ id: 'user-1' }),
+      organization: createTestOrg(),
+      platformActions: [createTestAction({ actor_id: 'admin-1' })],
+      actionActors: [createFakeProfile({ id: 'admin-1', full_name: 'Riley Platform' })]
+    });
+
+    expect(component.recentActions.length).toBe(1);
+    expect(component.actionActorName(component.recentActions[0])).toBe('Riley Platform');
+    expect(component.actionLabel(component.recentActions[0])).toBe('Locked');
+  });
+
+  it('falls back to "Former platform admin" when an action has no actor at all', async () => {
+    await setup('user-1', {
+      profile: createFakeProfile({ id: 'user-1' }),
+      organization: createTestOrg(),
+      platformActions: [createTestAction({ actor_id: null })]
+    });
+
+    expect(component.actionActorName(component.recentActions[0])).toBe('Former platform admin');
   });
 
   it('surfaces a failed load rather than reading as not found', async () => {

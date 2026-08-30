@@ -124,6 +124,14 @@
   color: var(--app-danger-on-bg);
 }
 
+// Recent platform actions' own badge — a plain neutral pill, since this is
+// labeling a past event ("Suspended", "Restored") rather than the org's
+// current live state the way every other .status-badge-* variant above is.
+.status-badge-action{
+  background: var(--mat-sys-surface-container-highest);
+  color: var(--mat-sys-on-surface-variant);
+}
+
 .error-message{
   color: var(--app-error-text);
   margin: -0.5rem 0 1rem;

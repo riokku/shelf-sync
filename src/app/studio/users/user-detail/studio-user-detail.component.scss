@@ -111,6 +111,50 @@
   color: var(--app-danger-on-bg);
 }
 
+// Recent platform actions' own badge — a plain neutral pill, since this is
+// labeling a past event ("Locked", "Unlocked") rather than the account's
+// current live state the way every other .status-badge-* variant above is.
+.status-badge-action{
+  background: var(--mat-sys-surface-container-highest);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.recent-actions-section{
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+
+.action-list{
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li{
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+  }
+}
+
+.action-actor{
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.action-timestamp{
+  flex-shrink: 0;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8125rem;
+}
+
 .member-role-badge{
   display: inline-flex;
   padding: 0.125rem 0.5rem;

@@ -57,6 +57,24 @@
           </div>
         </div>
       </div>
+
+      <div class="studio-trends-row">
+        <div class="studio-trend-card">
+          <span class="trend-card-label">Organizations created</span>
+          <app-trend-chart
+              [points]="orgSignupTrend"
+              [totalLabel]="orgSignupTrendTotal + ' in the last 12 weeks'"
+            />
+        </div>
+        <div class="studio-trend-card">
+          <span class="trend-card-label">New signups</span>
+          <app-trend-chart
+              [points]="userSignupTrend"
+              [totalLabel]="userSignupTrendTotal + ' in the last 12 weeks'"
+              colorToken="--mat-sys-tertiary"
+            />
+        </div>
+      </div>
     }
 
     <div class="studio-grid">
@@ -85,6 +103,21 @@
         <span class="studio-card-icon studio-card-icon-primary"><mat-icon>person_search</mat-icon></span>
         <h3>Users</h3>
         <p>Look up a person by name or email to find their organization.</p>
+      </a>
+      <a class="studio-card" routerLink="/studio/usage">
+        <span class="studio-card-icon studio-card-icon-secondary"><mat-icon>data_usage</mat-icon></span>
+        <h3>Usage</h3>
+        <p>Per-organization resource usage, and who's already past the Free tier's limits.</p>
+      </a>
+      <a class="studio-card" routerLink="/studio/email-log">
+        <span class="studio-card-icon studio-card-icon-tertiary"><mat-icon>forward_to_inbox</mat-icon></span>
+        <h3>Email Log</h3>
+        <p>Every notification email send attempt, and whether it actually went through.</p>
+      </a>
+      <a class="studio-card" routerLink="/studio/audit-log">
+        <span class="studio-card-icon studio-card-icon-secondary"><mat-icon>history</mat-icon></span>
+        <h3>Audit Log</h3>
+        <p>Every organization suspend/retire and account lock a platform admin has made.</p>
       </a>
     </div>
   </div>

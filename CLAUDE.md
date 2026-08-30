@@ -1922,6 +1922,58 @@ Studio / Users / {org name} / {user name}" — a real link to that org's own `St
 page, not just inert text, so this page always reads as belonging to a specific org without a second
 lookup to find out which.
 
+Studio's own hub was, until now, a snapshot with no trend, no per-org resource breakdown, no record
+of whether its own outbound emails actually send, and no record of the platform admin's own past
+actions — four gaps closed in one pass, each its own new hub card (Usage, Email Log, Audit Log) or
+addition to the existing stat grid (growth trends), and each reusing this app's existing chart/table/
+skeleton conventions rather than inventing new ones. `StudioComponent.loadStats()` gained two more
+plain queries (`organizations.select('created_at')`, `profiles.select('created_at')` — both already
+permitted by existing policies, no migration needed) bucketed via a new `bucketByWeek()` utility
+(`shared/utils/trend-buckets.ts`) into 12-week `orgSignupTrend`/`userSignupTrend` arrays, rendered by
+a new shared `TrendChartComponent` (`shared/components/trend-chart`) — a hand-rolled CSS bar
+sparkline (plain `<div>`s scaled by `height.%`, no SVG arc math and no charting library, same "no new
+runtime dependency" convention `DonutChartComponent`/`RingStatComponent` already establish for their
+own hand-rolled charts), with every bar but the most recent de-emphasized via lower opacity so the eye
+lands on "right now," and a native `title` attribute per bar standing in for a hover tooltip. Two
+instances sit in a new `.studio-trends-row` under the existing stat grid — "Organizations created" and
+"New signups," the latter in `--mat-sys-tertiary` to read as a visually distinct second series.
+
+`studio/usage` (`StudioUsageComponent`) is a per-org resource-usage leaderboard plus a Free-tier
+pressure report, both fed by one new cross-org RPC, `platform_get_organization_usage()` (see its own
+migration entry above) — "top 5 by storage/items/members" as three `BreakdownRow`-shaped lists reusing
+`ManageReportsComponent`'s own `.bar-track`/`.bar-fill` breakdown convention verbatim, plus an "Over
+the Free tier" section listing every org already exceeding `PRICING_TIERS.free.limits`
+(`shared/models/pricing-tier.ts` — the same limits `ManageBillingComponent` measures a single org
+against), each flagged row naming which limit(s) it's over and linking to that org's own
+`StudioOrgDetailComponent` page. Nothing here is actually enforced — every org is still hardcoded onto
+Free (no `subscriptions` table yet, same gap `ManageBillingComponent`'s own doc comment already
+flags) — this is pure insight: who's actually driving cost, and who'd be a natural upsell candidate
+once real billing exists.
+
+`studio/email-log` (`StudioEmailLogComponent`) answers a question nothing in this app could answer
+before: did a given `send-notification-email` call actually reach Resend successfully? That Edge
+Function's own `sendEmail()` now logs every attempt — kind, recipient, org, success/failure, and the
+failure's own error text — to `notification_email_log` (see its own migration entry above)
+immediately after the `fetch()` call resolves or throws, via a new `logEmailAttempt()` helper. The
+page itself is a near-identical fork of `StudioErrorLogComponent` (skeleton rows, `MatPaginatorModule`,
+org-name resolution via a plain `Map`), with its own filter defaulting to failures-only rather than
+that page's "exclude development" default — a failed send is the actionable case, and a page full of
+confirmed-successful sends isn't what a maintainer opens this for.
+
+`studio/audit-log` (`StudioAuditLogComponent`) is the record `platform_suspend_organization`/
+`platform_unsuspend_organization`/`platform_retire_organization`/`platform_restore_organization`/
+`platform_lock_user_account`/`platform_unlock_user_account` never kept of themselves — who ran which
+of the six, on what target, when, and why (see `add_platform_action_log`'s own migration entry above
+for the schema and the diff-per-RPC approach). Rendered as a plain table (`StudioOrganizationsComponent`'s
+own shape, not an accordion — a row here is a short one-liner, unlike an error/email log entry's
+often-long message) with each target linking to its own `StudioOrgDetailComponent`/
+`StudioUserDetailComponent` page. Both of those detail pages also gained their own "Recent platform
+actions" section — the same "self-contained follow-up query keyed on just the few distinct actor ids
+this page's own action log actually has" shape `suspendedByName`/`lockedByName` already established
+for exactly this need (a platform admin acting on an org/person is almost never a member of it, so
+their name can't come from data the page already loaded) — sitting alongside "Recent feedback"/
+"Recent errors" as read-only context, above the "Platform actions" buttons themselves.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -2031,7 +2083,8 @@ The app mixes two Angular module styles, which is important to know before addin
   the same reason as every other admin/manager tool here — it's reachable only via the Manage hub's
   own Settings card, not a direct header nav link or Home card, matching Billing/Danger Zone's own
   precedent of being Manage-hub-only rather than duplicated elsewhere. `studio` and its flat
-  sibling routes (`studio/feedback`, `studio/error-log`, `studio/organizations`, `studio/users`)
+  sibling routes (`studio/feedback`, `studio/error-log`, `studio/organizations`, `studio/users`,
+  `studio/usage`, `studio/email-log`, `studio/audit-log`)
   follow the exact same card-hub/flat-sibling-routes shape as `manage` — but guarded by
   `platformAdminGuard`, a genuinely different, cross-org audience (`profiles.is_platform_admin`,
   not any `role`) than every guard above; see the Project Overview section above for the full
@@ -2083,7 +2136,7 @@ manage/                                                     # card hub (ManageCo
   settings/                                                # admin-only: theme picker + logo upload (site_settings) — see Project Overview above
 account/                                                    # profile info, avatar picker, light/dark mode toggle, quick-menu picker
 help/                                                        # static in-app "how do I..." reference (see Project Overview above)
-studio/                                                     # platform-admin only (is_platform_admin, not any org role): card hub (StudioComponent) linking to feedback/, error-log/, organizations/, users/ — see Project Overview above
+studio/                                                     # platform-admin only (is_platform_admin, not any org role): card hub (StudioComponent) linking to feedback/, error-log/, organizations/, users/, usage/, email-log/, audit-log/ — see Project Overview above
 shared/
   components/modal-table/    # standalone Material dialog showing InventoryItem details
   components/bulk-action-toolbar/ # shared "N selected / select all / clear" chrome for every page with bulk actions
@@ -2097,6 +2150,7 @@ shared/
   components/page-intro/ # one-time dismissible orientation banner for a page's first-time visitor (Inventory, Tasks, Manage hub)
   components/donut-chart/ # hand-rolled SVG donut chart (no charting library) — backs manage/reports' "Value by category"
   components/ring-stat/ # hand-rolled SVG percentage ring gauge — backs manage/reports' completion-rate stat
+  components/trend-chart/ # hand-rolled CSS bar sparkline (no charting library) — backs studio's own growth trend charts
   components/page-header/ # icon-chip + title/subtitle header, shared across most manage/* sub-pages
   components/feedback-modal/ # self-contained feedback-type + message dialog backing the Help page's "Send feedback" button
   components/broadcast-modal/ # self-contained title/message + member/item reference picker dialog backing /broadcasts, create and edit alike
@@ -2132,6 +2186,7 @@ shared/
   utils/realtime.ts          # subscribeToTableChanges() — Supabase Realtime postgres_changes wrapper, see Project Overview above
   utils/debounce.ts          # debounce() — plain setTimeout debounce with .cancel(), backs the task pages' realtime reload handlers
   utils/flash-tracker.ts     # FlashTracker — tracks which ids show the .realtime-flash "someone else just changed this" pulse
+  utils/trend-buckets.ts     # bucketByWeek() — plain client-side reduce backing studio's own growth trend charts
   styles/_realtime-flash.scss # shared .realtime-flash keyframes, backing FlashTracker above
   styles/_legal-page.scss   # shared top-bar + prose layout for privacy/ and terms/ (see Project Overview above);
                              # login/register no longer share a partial like this — each owns its own layout now
@@ -2584,6 +2639,57 @@ yet on a hard refresh of `/inventory`.
   choke point, so a locked user's data access is blocked schema-wide the instant they're locked, no
   per-policy changes needed. `platform_lock_user_account()` also refuses to let a platform admin
   lock their own account (`target_id = auth.uid()`) — there'd be no way back in to undo it.
+- `add_platform_organization_usage` — adds `platform_get_organization_usage()`, a `SECURITY DEFINER`
+  RPC (`is_platform_admin()`-gated, modeled directly on `get_inventory_photo_storage_usage()`) that
+  returns one row per active org — `member_count`/`item_count`/`storage_bytes`, each a `left join`
+  aggregate rather than a raw cross-org SELECT policy on `inventory_items` — backing
+  `studio/usage` (`StudioUsageComponent`, see its own Project Overview paragraph below). Deliberately
+  aggregate-only: a platform admin gets counts to spot which orgs are driving Supabase storage/egress
+  cost or already past a pricing tier's limits, not read access to any org's actual item contents.
+- `fix_platform_organization_usage_ambiguity` / `fix_platform_organization_usage_storage_type` —
+  two same-day follow-ups to `add_platform_organization_usage`, both caught live on `studio/usage`
+  rather than at migration-push time (`create or replace function` never validates a plpgsql body's
+  embedded SQL, only its execution does). First: `platform_get_organization_usage()`'s own
+  `returns table (organization_id uuid, ...)` makes `organization_id` an implicit plpgsql variable
+  for the whole function body, so the two subqueries that referenced a bare, unqualified
+  `organization_id` (from `profiles`/`inventory_items`) collided with it — fixed by aliasing every
+  table and qualifying every reference, the way the third (storage) subquery already had to.
+  Second, once that resolved: `sum(bigint)` returns `numeric` in Postgres (only `sum(smallint)`/
+  `sum(integer)` return `bigint`), so `coalesce(sc.storage_bytes, 0)` didn't match the function's
+  declared `bigint` column — `return query` checks a query's column types strictly against the
+  function signature, unlike a plain scalar `return expression` (see
+  `get_inventory_photo_storage_usage()`, unaffected by either bug), which tolerates this via an
+  implicit assignment cast. Fixed with one explicit `::bigint` cast. Worth remembering as a pattern:
+  a `returns table` function's own output column names shadow same-named table columns everywhere
+  in its body, and `return query`'s type-checking is stricter than a plain `return`'s — neither
+  surfaces until the function actually runs, so a migration push succeeding is not enough signal
+  that a new `RETURNS TABLE` function is correct; it has to be called for real (or at least
+  simulated — `set_config('request.jwt.claims', ...)` plus a direct `select *` against the function
+  via `supabase db query --linked` is enough to catch both of these without needing a browser).
+- `add_notification_email_log` — adds `notification_email_log` (`kind`, `recipient_email`,
+  `organization_id` nullable/`on delete set null`, `success`, `error_message`), backing
+  `studio/email-log` (`StudioEmailLogComponent`). Same "service-role-only insert, platform-admin-only
+  read" shape `notifications` already established — every row is written by
+  `send-notification-email` itself (see that Edge Function's own updated doc comment), which now logs
+  every Resend call's outcome (success or failure, with the response/exception text on failure)
+  immediately after attempting it, rather than a failed send disappearing with nothing but a
+  `console.error` only visible in the function's own logs.
+- `add_platform_action_log` — adds `platform_action_log` (`actor_id`, `action` — one of
+  `suspend`/`unsuspend`/`retire`/`restore`/`lock`/`unlock` —, `target_type` — `organization` or
+  `user` —, `target_id`, `target_label`, `reason`), backing `studio/audit-log`
+  (`StudioAuditLogComponent`) plus a "Recent platform actions" section on both
+  `StudioOrgDetailComponent` and `StudioUserDetailComponent`. None of the six platform RPCs this
+  logs (`platform_suspend_organization`/`platform_unsuspend_organization`/`platform_retire_organization`/
+  `platform_restore_organization`/`platform_lock_user_account`/`platform_unlock_user_account`) had
+  ever recorded who did what, when, or why — invisible with a single platform admin today, but a real
+  gap the moment there's ever a second one. `target_label` is a point-in-time name snapshot (org name
+  / `profile_display_name()`), same "outlive the thing it references" shape
+  `inventory_item_orders.supplier_name` already established. Each of the six RPCs got a
+  `create or replace function` here, diffed against its own current version (per this repo's own
+  "diff against the previous version" rule), adding exactly one log insert at the end of each — the
+  two "restore"-shaped functions (`platform_unsuspend_organization`/`platform_restore_organization`)
+  needed their existing `exists`-only not-found check swapped for a `select name into` so the org's
+  name was actually on hand to log, same not-found behavior either way.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

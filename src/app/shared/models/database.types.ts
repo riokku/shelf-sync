@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   graphql_public: {
     Tables: {
@@ -795,6 +795,44 @@ export type Database = {
           },
         ]
       }
+      notification_email_log: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          kind: string
+          organization_id: string | null
+          recipient_email: string
+          success: boolean
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          kind: string
+          organization_id?: string | null
+          recipient_email: string
+          success: boolean
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          kind?: string
+          organization_id?: string | null
+          recipient_email?: string
+          success?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_email_log_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -878,6 +916,47 @@ export type Database = {
           {
             foreignKeyName: "organizations_suspended_by_fkey"
             columns: ["suspended_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_action_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          id: string
+          reason: string | null
+          target_id: string
+          target_label: string
+          target_type: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          reason?: string | null
+          target_id: string
+          target_label: string
+          target_type: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          reason?: string | null
+          target_id?: string
+          target_label?: string
+          target_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_action_log_actor_id_fkey"
+            columns: ["actor_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1250,6 +1329,15 @@ export type Database = {
       mark_reservation_returned: {
         Args: { reservation_id: string }
         Returns: undefined
+      }
+      platform_get_organization_usage: {
+        Args: never
+        Returns: {
+          item_count: number
+          member_count: number
+          organization_id: string
+          storage_bytes: number
+        }[]
       }
       platform_lock_user_account: {
         Args: { reason?: string; target_id: string }

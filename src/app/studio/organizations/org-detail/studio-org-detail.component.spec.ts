@@ -14,6 +14,7 @@ import { createFakeActivatedRoute, createFakeQueryBuilder, createFakeSiteSetting
 type OrganizationRow = Database['public']['Tables']['organizations']['Row'];
 type FeedbackRow = Database['public']['Tables']['feedback']['Row'];
 type ClientErrorLogRow = Database['public']['Tables']['client_error_log']['Row'];
+type PlatformActionLogRow = Database['public']['Tables']['platform_action_log']['Row'];
 
 function createFakeDialogRef(result: unknown): MatDialogRef<unknown> {
   return { afterClosed: () => of(result) } as unknown as MatDialogRef<unknown>;
@@ -86,6 +87,20 @@ function createTestErrorLog(overrides: Partial<ClientErrorLogRow> = {}): ClientE
   };
 }
 
+function createTestAction(overrides: Partial<PlatformActionLogRow> = {}): PlatformActionLogRow {
+  return {
+    id: 'action-1',
+    actor_id: 'admin-1',
+    action: 'suspend',
+    target_type: 'organization',
+    target_id: 'org-1',
+    target_label: 'Acme Events',
+    reason: 'Non-payment',
+    created_at: '2026-02-01T00:00:00.000Z',
+    ...overrides,
+  };
+}
+
 function createFakeSupabaseServiceForOrgDetail(data: {
   organization?: OrganizationRow | null;
   organizationError?: { message: string } | null;
@@ -93,6 +108,8 @@ function createFakeSupabaseServiceForOrgDetail(data: {
   feedback?: FeedbackRow[];
   errors?: ClientErrorLogRow[];
   suspender?: Profile | null;
+  platformActions?: PlatformActionLogRow[];
+  actionActors?: Profile[];
   rpc?: jasmine.Spy;
 }): SupabaseService {
   let profilesCallCount = 0;
@@ -107,10 +124,21 @@ function createFakeSupabaseServiceForOrgDetail(data: {
           if (profilesCallCount === 1) {
             return createFakeQueryBuilder({ data: data.members ?? [], error: null });
           }
+          // Second (and any later) profiles call is either the single
+          // suspender lookup (.maybeSingle()) or the actor-name lookup
+          // (.in(), an array) — a given test scenario only ever exercises
+          // one of the two, so returning whichever was actually configured
+          // for this test is enough.
+          if (data.actionActors) {
+            return createFakeQueryBuilder({ data: data.actionActors, error: null });
+          }
           return createFakeQueryBuilder({ data: data.suspender ?? null, error: null });
         }
         if (table === 'feedback') {
           return createFakeQueryBuilder({ data: data.feedback ?? [], error: null });
+        }
+        if (table === 'platform_action_log') {
+          return createFakeQueryBuilder({ data: data.platformActions ?? [], error: null });
         }
         return createFakeQueryBuilder({ data: data.errors ?? [], error: null });
       },
@@ -204,6 +232,27 @@ describe('StudioOrgDetailComponent', () => {
 
     expect(component.suspendedByName).toBe('Riley Platform');
     expect(component.isSuspended).toBeTrue();
+  });
+
+  it('loads recent platform actions scoped to this organization and resolves each actor\'s name', async () => {
+    await setup('org-1', {
+      organization: createTestOrg(),
+      platformActions: [createTestAction({ actor_id: 'admin-1' })],
+      actionActors: [createTestProfile({ id: 'admin-1', full_name: 'Riley Platform' })]
+    });
+
+    expect(component.recentActions.length).toBe(1);
+    expect(component.actionActorName(component.recentActions[0])).toBe('Riley Platform');
+    expect(component.actionLabel(component.recentActions[0])).toBe('Suspended');
+  });
+
+  it('falls back to "Former platform admin" when an action has no actor at all', async () => {
+    await setup('org-1', {
+      organization: createTestOrg(),
+      platformActions: [createTestAction({ actor_id: null })]
+    });
+
+    expect(component.actionActorName(component.recentActions[0])).toBe('Former platform admin');
   });
 
   it('surfaces a failed load rather than reading as not found', async () => {

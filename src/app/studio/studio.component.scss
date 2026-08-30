@@ -73,6 +73,31 @@
   height: 1.375rem;
 }
 
+// The trend counterpart to .studio-stats-card above — two cards, same
+// background/border treatment, side by side on a wide viewport and
+// stacked on a narrow one (auto-fit, not a fixed 2-column grid).
+.studio-trends-row{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.studio-trend-card{
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.5rem 1.75rem;
+  border-radius: 0.9rem;
+  background: var(--mat-sys-surface-container-low);
+  border: 1px solid var(--mat-sys-outline-variant);
+}
+
+.trend-card-label{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8125rem;
+}
+
 // Flat grid, not grouped into sections — ManageComponent's own sectioning
 // earns its keep with a dozen-plus cards, but three cards reads better as
 // one row, same shape HomeComponent's own .home-grid already uses.
