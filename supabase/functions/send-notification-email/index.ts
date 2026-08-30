@@ -67,10 +67,19 @@ interface WebhookPayload {
   old_record: Record<string, unknown> | null;
 }
 
+// kind/organizationId aren't part of the email itself — they exist purely
+// so sendEmail() below can log this attempt to notification_email_log
+// (add_notification_email_log) without every call site having to pass them
+// through separately. organizationId is null only for the (currently
+// nonexistent) case of an event with no org context at all; every one of
+// today's five kinds always has one, feedback included (the submitter's
+// org, even though the recipient below isn't a member of it).
 interface EmailToSend {
   to: string;
   subject: string;
   html: string;
+  kind: 'task_assigned' | 'task_transfer' | 'retirement_request' | 'join_request' | 'feedback';
+  organizationId: string | null;
 }
 
 // Mirrors notifications.kind's check constraint (add_notifications) and
@@ -128,6 +137,9 @@ Deno.serve(async req => {
 });
 
 async function sendEmail(email: EmailToSend) {
+  let success = true;
+  let errorMessage: string | null = null;
+
   try {
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -143,10 +155,35 @@ async function sendEmail(email: EmailToSend) {
       })
     });
     if (!response.ok) {
-      console.error('Resend API error:', response.status, await response.text());
+      success = false;
+      errorMessage = `Resend API error ${response.status}: ${await response.text()}`;
+      console.error('Resend API error:', response.status, errorMessage);
     }
   } catch (error) {
+    success = false;
+    errorMessage = error instanceof Error ? error.message : String(error);
     console.error('Failed to send email via Resend:', error);
+  }
+
+  await logEmailAttempt(email, success, errorMessage);
+}
+
+/** Records every send attempt — success or failure — to
+ *  notification_email_log (add_notification_email_log), backing Studio's
+ *  studio/email-log page. Best-effort, same "never block/throw over a
+ *  logging write" reasoning insertNotifications() below already follows:
+ *  a failure to log shouldn't be treated any differently than the send
+ *  itself already is. */
+async function logEmailAttempt(email: EmailToSend, success: boolean, errorMessage: string | null) {
+  const { error } = await supabase.from('notification_email_log').insert({
+    kind: email.kind,
+    recipient_email: email.to,
+    organization_id: email.organizationId,
+    success,
+    error_message: errorMessage
+  });
+  if (error) {
+    console.error('Failed to log email attempt:', error);
   }
 }
 
@@ -268,7 +305,9 @@ async function resultForTaskChange(payload: WebhookPayload): Promise<EventResult
             `You've been assigned <strong>${escapeHtml(record.title)}</strong> in ShelfSync.`,
             'View task',
             `${APP_URL}/tasks`
-          )
+          ),
+          kind: 'task_assigned',
+          organizationId: record.organization_id
         });
       }
     }
@@ -297,7 +336,9 @@ async function resultForTaskChange(payload: WebhookPayload): Promise<EventResult
             `You've been offered <strong>${escapeHtml(record.title)}</strong> in ShelfSync. Accept it to add it to your queue.`,
             'View task',
             `${APP_URL}/tasks`
-          )
+          ),
+          kind: 'task_transfer',
+          organizationId: record.organization_id
         });
       }
     }
@@ -331,7 +372,9 @@ async function resultForRetirementRequest(payload: WebhookPayload): Promise<Even
         `<strong>${escapeHtml(record.name)}</strong> has a pending retirement request waiting for your review.`,
         'Review request',
         `${APP_URL}/manage/inventory`
-      )
+      ),
+      kind: 'retirement_request',
+      organizationId: record.organization_id
     }));
   }
 
@@ -365,7 +408,9 @@ async function resultForJoinRequest(payload: WebhookPayload): Promise<EventResul
         `<strong>${escapeHtml(requesterLabel)}</strong> (${escapeHtml(record.email)}) has requested to join your organization on ShelfSync.`,
         'Review request',
         `${APP_URL}/manage/team`
-      )
+      ),
+      kind: 'join_request',
+      organizationId: record.organization_id
     }));
   }
 
@@ -410,7 +455,9 @@ async function resultForFeedback(payload: WebhookPayload): Promise<EventResult> 
           `at <strong>${escapeHtml(orgName)}</strong>:<br><br>${escapeHtml(record.message).replaceAll('\n', '<br>')}`,
         'Open ShelfSync',
         APP_URL
-      )
+      ),
+      kind: 'feedback',
+      organizationId: record.organization_id
     }],
     notifications: []
   };

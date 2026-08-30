@@ -1,0 +1,34 @@
+:host{
+  display: block;
+}
+
+.trend-chart{
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.trend-total{
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+
+.trend-bars{
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 2.75rem;
+}
+
+.trend-bar{
+  flex: 1 1 0;
+  min-width: 2px;
+  border-radius: 3px 3px 0 0;
+  opacity: 0.4;
+  transition: opacity 0.15s ease;
+}
+
+.trend-bar-current,
+.trend-bar:hover{
+  opacity: 1;
+}

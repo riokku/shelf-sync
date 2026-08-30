@@ -34,6 +34,9 @@
           </dl>
         </div>
         <section class="user-section">
+          <div class="skeleton-line skeleton-user-meta-label"></div>
+        </section>
+        <section class="user-section">
           <div class="skeleton-block skeleton-user-toggle"></div>
         </section>
       </div>
@@ -88,6 +91,23 @@
             }
           </dl>
         </div>
+
+        <section class="user-section recent-actions-section">
+          <h3>Recent platform actions</h3>
+          @if (recentActions.length === 0) {
+            <p class="section-hint">No platform actions recorded for this person.</p>
+          } @else {
+            <ul class="action-list">
+              @for (row of recentActions; track row.id) {
+                <li>
+                  <span class="status-badge status-badge-action">{{ actionLabel(row) }}</span>
+                  <span class="action-actor">{{ actionActorName(row) }}</span>
+                  <span class="action-timestamp">{{ row.created_at | date: 'M/d/yy, h:mm a' }}</span>
+                </li>
+              }
+            </ul>
+          }
+        </section>
 
         <section class="user-section platform-actions">
           <h3>Platform actions</h3>

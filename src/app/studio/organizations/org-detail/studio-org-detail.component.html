@@ -80,6 +80,20 @@
             }
           </mat-accordion>
         </section>
+
+        <section class="org-section">
+          <h3>Recent platform actions</h3>
+          <ul class="member-list">
+            @for (i of skeletonRecentRows; track i) {
+              <li class="skeleton-member-row">
+                <div class="skeleton-line skeleton-member-name"></div>
+                <div class="skeleton-block skeleton-cell-badge"></div>
+                <div class="skeleton-member-status"></div>
+                <div class="skeleton-line skeleton-member-presence"></div>
+              </li>
+            }
+          </ul>
+        </section>
       </div>
     } @else if (notFound) {
       <app-empty-state icon="apartment" message="This organization doesn't exist, or you no longer have access to it." />
@@ -191,6 +205,26 @@
                 </mat-expansion-panel>
               }
             </mat-accordion>
+          }
+        </section>
+
+        <section class="org-section">
+          <h3>Recent platform actions</h3>
+          @if (recentActions.length === 0) {
+            <p class="empty-hint">No platform actions recorded for this organization.</p>
+          } @else {
+            <ul class="member-list">
+              @for (row of recentActions; track row.id) {
+                <li>
+                  <span class="member-name">{{ actionActorName(row) }}</span>
+                  <span class="member-role-cell">
+                    <span class="status-badge status-badge-action">{{ actionLabel(row) }}</span>
+                  </span>
+                  <span class="member-status-cell"></span>
+                  <span class="member-presence">{{ row.created_at | date: 'M/d/yy, h:mm a' }}</span>
+                </li>
+              }
+            </ul>
           }
         </section>
 

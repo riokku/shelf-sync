@@ -322,6 +322,27 @@ const routes: Routes = [
     data: { breadcrumb: 'User', breadcrumbParent: STUDIO_USERS_BREADCRUMB_PARENT },
     title: 'ShelfSync | Studio User'
   },
+  {
+    path: 'studio/usage',
+    loadComponent: () => import('./studio/usage/studio-usage.component').then(m => m.StudioUsageComponent),
+    canActivate: [approvedGuard, platformAdminGuard],
+    data: { breadcrumb: 'Usage', breadcrumbParent: STUDIO_BREADCRUMB_PARENT },
+    title: 'ShelfSync | Studio Usage'
+  },
+  {
+    path: 'studio/email-log',
+    loadComponent: () => import('./studio/email-log/studio-email-log.component').then(m => m.StudioEmailLogComponent),
+    canActivate: [approvedGuard, platformAdminGuard],
+    data: { breadcrumb: 'Email Log', breadcrumbParent: STUDIO_BREADCRUMB_PARENT },
+    title: 'ShelfSync | Studio Email Log'
+  },
+  {
+    path: 'studio/audit-log',
+    loadComponent: () => import('./studio/audit-log/studio-audit-log.component').then(m => m.StudioAuditLogComponent),
+    canActivate: [approvedGuard, platformAdminGuard],
+    data: { breadcrumb: 'Audit Log', breadcrumbParent: STUDIO_BREADCRUMB_PARENT },
+    title: 'ShelfSync | Studio Audit Log'
+  },
   // Catches any URL that doesn't match a route above — must stay last.
   // Unguarded (reachable by a signed-out visitor too, see
   // NotFoundComponent's own doc comment). Gets an explicit `title` like

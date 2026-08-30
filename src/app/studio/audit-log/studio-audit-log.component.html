@@ -1,0 +1,84 @@
+<div class="studio-audit-log-wrapper">
+  <div class="container">
+    <div class="page-toolbar">
+      <app-breadcrumbs />
+    </div>
+    <div class="back-row">
+      <button mat-button type="button" routerLink="/studio">
+        <mat-icon>arrow_back</mat-icon>
+        Back
+      </button>
+    </div>
+    <app-page-header
+        icon="history"
+        title="Audit Log"
+        subtitle="Every organization suspend/retire and account lock a platform admin has made, most recent first."
+        zone="studio"
+      />
+
+    @if (loadError) {
+      <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load the audit log. ' + loadError">
+        <button mat-stroked-button type="button" (click)="retryLoad()">
+          <mat-icon>refresh</mat-icon>
+          Retry
+        </button>
+      </app-empty-state>
+    } @else if (isLoading) {
+      <div class="audit-log-table-wrapper" aria-hidden="true">
+        <table class="audit-log-table">
+          <thead>
+            <tr>
+              <th>Actor</th>
+              <th>Action</th>
+              <th>Target</th>
+              <th>Reason</th>
+              <th>When</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (i of skeletonRows; track i) {
+              <tr>
+                <td><div class="skeleton-line skeleton-cell-narrow"></div></td>
+                <td><div class="skeleton-block skeleton-cell-badge"></div></td>
+                <td><div class="skeleton-line skeleton-cell-wide"></div></td>
+                <td><div class="skeleton-line skeleton-cell-wide"></div></td>
+                <td><div class="skeleton-line skeleton-cell-narrow"></div></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else if (actionLog.length === 0) {
+      <app-empty-state icon="history" message="No platform actions recorded yet." />
+    } @else {
+      <div class="audit-log-table-wrapper">
+        <table class="audit-log-table">
+          <thead>
+            <tr>
+              <th>Actor</th>
+              <th>Action</th>
+              <th>Target</th>
+              <th>Reason</th>
+              <th>When</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of actionLog; track row.id) {
+              <tr>
+                <td>{{ actorName(row) }}</td>
+                <td>
+                  <span class="action-badge" [class.action-badge-reversal]="row.action === 'unsuspend' || row.action === 'restore' || row.action === 'unlock'">
+                    {{ actionLabel(row) }}
+                  </span>
+                </td>
+                <td><a [routerLink]="targetLink(row)">{{ row.target_label }}</a></td>
+                <td class="reason-cell">{{ row.reason || '—' }}</td>
+                <td>{{ row.created_at | date: 'M/d/yy, h:mm a' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>

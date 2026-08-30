@@ -1,0 +1,16 @@
+<div class="trend-chart">
+  <span class="trend-total mono">{{ totalLabel }}</span>
+  @if (hasData()) {
+    <div class="trend-bars" role="img" [attr.aria-label]="totalLabel">
+      @for (bar of bars(); track bar.label) {
+        <div
+            class="trend-bar"
+            [class.trend-bar-current]="bar.isCurrent"
+            [title]="bar.label + ': ' + bar.value"
+            [style.height.%]="bar.heightPercent"
+            [style.background]="color()"
+          ></div>
+      }
+    </div>
+  }
+</div>

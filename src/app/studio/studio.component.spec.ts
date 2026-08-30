@@ -50,6 +50,8 @@ function createFakeSupabaseServiceForStats(counts: {
   organizations: number;
   approvedUsers: number;
   errorRows: { app_env: string | null }[];
+  orgCreatedAtRows?: { created_at: string }[];
+  profileCreatedAtRows?: { created_at: string }[];
 }): SupabaseService {
   function builderFor(count: number, data: unknown[] = []) {
     const builder: Record<string, unknown> = {
@@ -69,15 +71,17 @@ function createFakeSupabaseServiceForStats(counts: {
           return builderFor(counts.feedback);
         }
         if (table === 'organizations') {
-          // Both totalOrgCount (deleted_at is null) and newOrgCount
-          // (created_at within the last week) query this same table — the
-          // fake doesn't tell the two apart, they share one canned count,
-          // same "not testing the exact filter, just that both wire up"
-          // scope every other count-only stat in this app's specs uses.
-          return builderFor(counts.organizations);
+          // totalOrgCount (deleted_at is null), newOrgCount (created_at
+          // within the last week), and orgSignupTrend's own
+          // created_at-only query all hit this same table — the fake
+          // doesn't tell them apart by their own .select()/.eq() args, they
+          // share one canned count/data pair, same "not testing the exact
+          // filter, just that both wire up" scope every other count-only
+          // stat in this app's specs uses.
+          return builderFor(counts.organizations, counts.orgCreatedAtRows ?? []);
         }
         if (table === 'profiles') {
-          return builderFor(counts.approvedUsers);
+          return builderFor(counts.approvedUsers, counts.profileCreatedAtRows ?? []);
         }
         if (table === 'client_error_log') {
           return builderFor(counts.errorRows.length, counts.errorRows);
@@ -95,6 +99,8 @@ describe('StudioComponent dashboard stats', () => {
     organizations: number;
     approvedUsers: number;
     errorRows: { app_env: string | null }[];
+    orgCreatedAtRows?: { created_at: string }[];
+    profileCreatedAtRows?: { created_at: string }[];
   }) {
     await TestBed.resetTestingModule().configureTestingModule({
       imports: [StudioComponent],
@@ -138,6 +144,23 @@ describe('StudioComponent dashboard stats', () => {
     });
 
     expect(component.recentErrorCount).toBe(2);
+  });
+
+  it('buckets organization/profile created_at rows into a 12-week signup trend', async () => {
+    const now = new Date().toISOString();
+    const component = await createComponent({
+      feedback: 0,
+      organizations: 0,
+      approvedUsers: 0,
+      errorRows: [],
+      orgCreatedAtRows: [{ created_at: now }, { created_at: now }],
+      profileCreatedAtRows: [{ created_at: now }]
+    });
+
+    expect(component.orgSignupTrend.length).toBe(12);
+    expect(component.orgSignupTrendTotal).toBe(2);
+    expect(component.userSignupTrend.length).toBe(12);
+    expect(component.userSignupTrendTotal).toBe(1);
   });
 });
 

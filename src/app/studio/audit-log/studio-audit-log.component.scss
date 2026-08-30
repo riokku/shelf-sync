@@ -1,0 +1,79 @@
+@use '../../shared/styles/page-toolbar';
+@use '../../shared/styles/skeleton';
+
+.studio-audit-log-wrapper{
+  color: var(--mat-sys-on-surface);
+  padding: 3rem 1.5rem;
+  max-width: 100%;
+
+  .container{
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+// Same plain-table shape StudioOrganizationsComponent's own
+// .organizations-table already establishes.
+.audit-log-table-wrapper{
+  overflow-x: auto;
+}
+
+.audit-log-table{
+  width: 100%;
+  border-collapse: collapse;
+
+  th{
+    text-align: left;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--mat-sys-on-surface-variant);
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+    white-space: nowrap;
+  }
+
+  td{
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+    vertical-align: middle;
+  }
+
+  tr:last-child td{
+    border-bottom: none;
+  }
+
+  a{
+    color: var(--mat-sys-primary);
+    text-decoration: none;
+
+    &:hover{
+      text-decoration: underline;
+    }
+  }
+}
+
+.reason-cell{
+  max-width: 20rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+}
+
+// A consequential action (suspend/retire/lock) reads as a warning tone; its
+// reversal (unsuspend/restore/unlock) reads as the calmer, "back to normal"
+// tone — same green/amber pairing StudioOrganizationsComponent's own
+// .status-badge-active/-suspended already use.
+.action-badge{
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  background: var(--app-warning-bg);
+  color: var(--app-warning-on-bg);
+
+  &.action-badge-reversal{
+    background: var(--app-success-bg);
+    color: var(--app-success-on-bg);
+  }
+}

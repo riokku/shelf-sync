@@ -19,6 +19,20 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
 import { LockUserAccountModalComponent } from '../../../shared/components/lock-user-account-modal/lock-user-account-modal.component';
 
 type OrganizationRow = Database['public']['Tables']['organizations']['Row'];
+type PlatformActionLogRow = Database['public']['Tables']['platform_action_log']['Row'];
+
+// Mirrors StudioAuditLogComponent's own ACTION_LABELS — duplicated rather
+// than shared, same "not every small presentational pattern gets
+// centralized" convention this app's icon-chip gradients/donut-chart
+// palettes already follow.
+const ACTION_LABELS: Record<string, string> = {
+  suspend: 'Suspended',
+  unsuspend: 'Unsuspended',
+  retire: 'Retired',
+  restore: 'Restored',
+  lock: 'Locked',
+  unlock: 'Unlocked'
+};
 
 /** A dedicated page for one person, reached via a `studio/users/:id` route
  *  from either StudioUsersComponent's own search results or a clickable
@@ -92,6 +106,8 @@ export class StudioUserDetailComponent implements OnInit {
   /** Resolved separately from the profile above — the platform admin who
    *  locked this account is almost certainly a different person. */
   lockedByName: string | null = null;
+  recentActions: PlatformActionLogRow[] = [];
+  private actionActorNamesById = new Map<string, string>();
 
   isActionPending = false;
   actionError: string | null = null;
@@ -128,6 +144,17 @@ export class StudioUserDetailComponent implements OnInit {
    *  too so the toggle doesn't just bounce off an RPC error when clicked. */
   get isViewingOwnAccount(): boolean {
     return !!this.profile && this.profile.id === this.authService.profile()?.id;
+  }
+
+  actionLabel(row: PlatformActionLogRow): string {
+    return ACTION_LABELS[row.action] ?? row.action;
+  }
+
+  actionActorName(row: PlatformActionLogRow): string {
+    if (!row.actor_id) {
+      return 'Former platform admin';
+    }
+    return this.actionActorNamesById.get(row.actor_id) ?? 'Former platform admin';
   }
 
   async ngOnInit() {
@@ -187,6 +214,25 @@ export class StudioUserDetailComponent implements OnInit {
       this.lockedByName = locker ? profileDisplayName(locker) : null;
     } else {
       this.lockedByName = null;
+    }
+
+    const { data: actions } = await this.supabase
+      .from('platform_action_log')
+      .select('*')
+      .eq('target_type', 'user')
+      .eq('target_id', id)
+      .order('created_at', { ascending: false })
+      .limit(5);
+    this.recentActions = actions ?? [];
+
+    // Same "resolve just the distinct actor ids this page's own action log
+    // actually has" shape StudioOrgDetailComponent's own identical follow-up
+    // query uses — a platform admin acting on this person is almost
+    // certainly not this person themselves.
+    const actorIds = [...new Set((actions ?? []).map(action => action.actor_id).filter((actorId): actorId is string => !!actorId))];
+    if (actorIds.length > 0) {
+      const { data: actors } = await this.supabase.from('profiles').select('*').in('id', actorIds);
+      this.actionActorNamesById = new Map((actors ?? []).map(actor => [actor.id, profileDisplayName(actor)]));
     }
 
     this.isLoading = false;
