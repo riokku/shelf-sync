@@ -8,8 +8,8 @@ import { createFakeMatDialogRef, createFakeSupabaseService } from '../../../test
 import { InventoryItemReservationWithItem } from '../../utils/inventory-item-reservations';
 
 const ITEMS: ReservableItem[] = [
-  { id: 'item-1', name: 'Chiavari Chairs', quantityRemaining: 100, isLocked: false },
-  { id: 'item-2', name: 'Table Runners', quantityRemaining: 40, isLocked: false }
+  { id: 'item-1', name: 'Chiavari Chairs', quantityRemaining: 100, isLocked: false, isPendingRetirement: false },
+  { id: 'item-2', name: 'Table Runners', quantityRemaining: 40, isLocked: false, isPendingRetirement: false }
 ];
 
 function createTestReservation(overrides: Partial<InventoryItemReservationWithItem> = {}): InventoryItemReservationWithItem {
@@ -86,10 +86,19 @@ describe('PlaceReservationModalComponent', () => {
     // [disabled] binding (plus the lock icon next to it) is what actually
     // blocks the pick, so this list still needs to include it.
     it('still includes a locked item — the template disables it rather than this list hiding it', async () => {
-      const lockedItem: ReservableItem = { id: 'item-3', name: 'Vintage Arch', quantityRemaining: 1, isLocked: true };
+      const lockedItem: ReservableItem =
+        { id: 'item-3', name: 'Vintage Arch', quantityRemaining: 1, isLocked: true, isPendingRetirement: false };
       await setup({ data: { items: [...ITEMS, lockedItem] } });
 
       expect(component.filteredItems).toContain(lockedItem);
+    });
+
+    it('still includes a pending-retirement item — same "disabled, not hidden" treatment as a locked one', async () => {
+      const pendingItem: ReservableItem =
+        { id: 'item-4', name: 'Retiring Linens', quantityRemaining: 0, isLocked: false, isPendingRetirement: true };
+      await setup({ data: { items: [...ITEMS, pendingItem] } });
+
+      expect(component.filteredItems).toContain(pendingItem);
     });
   });
 
