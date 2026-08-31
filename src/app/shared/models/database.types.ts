@@ -1479,12 +1479,13 @@ export type Database = {
         Returns: undefined
       }
       platform_get_organization_usage: {
-        Args: never
+        Args: { p_organization_id?: string }
         Returns: {
           item_count: number
           member_count: number
           organization_id: string
           storage_bytes: number
+          task_count: number
         }[]
       }
       platform_lock_user_account: {

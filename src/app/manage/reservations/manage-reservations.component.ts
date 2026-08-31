@@ -124,7 +124,7 @@ export class ManageReservationsComponent implements OnInit {
   async ngOnInit() {
     const [{ data: items }, { data: profiles }] = await Promise.all([
       this.supabase.from('inventory_items').select('id, name, quantity_remaining, is_locked').order('name'),
-      this.supabase.from('profiles').select('*').order('full_name')
+      this.supabase.from('profiles').select('*').eq('organization_id', this.authService.organizationId()!).order('full_name')
     ]);
 
     this.allItems = items ?? [];

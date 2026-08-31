@@ -267,7 +267,10 @@ export class ManageTeamComponent implements OnInit, HasUnsavedChanges {
    *  anything else on the page (search term, expanded accordion panels,
    *  in-flight edits) the way a full reload would. */
   private async refreshPresence() {
-    const { data } = await this.supabase.from('profiles').select('id, last_active_at');
+    const { data } = await this.supabase
+      .from('profiles')
+      .select('id, last_active_at')
+      .eq('organization_id', this.authService.organizationId()!);
     if (!data) {
       return;
     }
@@ -326,7 +329,11 @@ export class ManageTeamComponent implements OnInit, HasUnsavedChanges {
   }
 
   private async loadProfiles() {
-    const { data, error } = await this.supabase.from('profiles').select('*').order('full_name');
+    const { data, error } = await this.supabase
+      .from('profiles')
+      .select('*')
+      .eq('organization_id', this.authService.organizationId()!)
+      .order('full_name');
     if (error) {
       this.loadError = error.message;
       return;

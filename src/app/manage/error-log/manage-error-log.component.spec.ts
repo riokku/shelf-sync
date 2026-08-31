@@ -3,7 +3,8 @@ import { provideRouter } from '@angular/router';
 
 import { ManageErrorLogComponent } from './manage-error-log.component';
 import { SupabaseService } from '../../core/supabase.service';
-import { createFakeSupabaseService } from '../../testing/fakes';
+import { AuthService } from '../../core/auth.service';
+import { createFakeAuthService, createFakeProfile, createFakeSupabaseService } from '../../testing/fakes';
 import { Database } from '../../shared/models/database.types';
 
 type ClientErrorLogRow = Database['public']['Tables']['client_error_log']['Row'];
@@ -34,7 +35,8 @@ describe('ManageErrorLogComponent', () => {
         provideRouter([]),
         // ngOnInit loads the log on construction — faked so this hits
         // nothing real, same reasoning as every other spec that does this.
-        { provide: SupabaseService, useValue: createFakeSupabaseService() }
+        { provide: SupabaseService, useValue: createFakeSupabaseService() },
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ organization_id: 'org-1' })) }
       ]
     })
     .compileComponents();
@@ -97,7 +99,8 @@ describe('ManageErrorLogComponent load errors', () => {
       imports: [ManageErrorLogComponent],
       providers: [
         provideRouter([]),
-        { provide: SupabaseService, useValue: supabaseService }
+        { provide: SupabaseService, useValue: supabaseService },
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ organization_id: 'org-1' })) }
       ]
     }).compileComponents();
 

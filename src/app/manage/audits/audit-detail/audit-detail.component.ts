@@ -66,7 +66,11 @@ export class AuditDetailComponent implements OnInit {
   private profiles: Profile[] = [];
 
   async ngOnInit() {
-    const { data } = await this.supabase.from('profiles').select('*').order('full_name');
+    const { data } = await this.supabase
+      .from('profiles')
+      .select('*')
+      .eq('organization_id', this.authService.organizationId()!)
+      .order('full_name');
     this.profiles = data ?? [];
     await this.loadDetail();
   }

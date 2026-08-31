@@ -61,7 +61,11 @@ export class CreateTaskModalComponent implements OnInit {
     const session = await this.authService.getSession();
     this.currentUserId = session?.user.id ?? null;
 
-    const { data } = await this.supabase.from('profiles').select('*').order('full_name');
+    const { data } = await this.supabase
+      .from('profiles')
+      .select('*')
+      .eq('organization_id', this.authService.organizationId()!)
+      .order('full_name');
     // Excludes pending join requests — the insert policy rejects an
     // unapproved assignee server-side (see require_approved_task_assignee
     // migration), so this just keeps the dropdown from offering someone

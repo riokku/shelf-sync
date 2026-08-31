@@ -196,6 +196,27 @@ describe('StudioOrgDetailComponent', () => {
     expect(component.recentErrors.length).toBe(1);
   });
 
+  it('resolves inventory/task/storage usage from platform_get_organization_usage, filtered to this org', async () => {
+    const rpc = jasmine.createSpy('rpc').and.resolveTo({
+      data: [{ organization_id: 'org-1', member_count: 3, item_count: 42, task_count: 7, storage_bytes: 5_242_880 }],
+      error: null
+    });
+    await setup('org-1', { organization: createTestOrg({ id: 'org-1' }), rpc });
+
+    expect(rpc).toHaveBeenCalledWith('platform_get_organization_usage', { p_organization_id: 'org-1' });
+    expect(component.itemCount).toBe(42);
+    expect(component.taskCount).toBe(7);
+    expect(component.storageMb).toBe(5);
+  });
+
+  it('leaves item/task/storage counts null when the usage RPC returns nothing', async () => {
+    await setup('org-1', { organization: createTestOrg({ id: 'org-1' }) });
+
+    expect(component.itemCount).toBeNull();
+    expect(component.taskCount).toBeNull();
+    expect(component.storageMb).toBeNull();
+  });
+
   it('resolves the org\'s own logo via SiteSettingsService, scoped by this org\'s id', async () => {
     await setup('org-1', { organization: createTestOrg({ id: 'org-1' }) }, 'https://example.com/logo.png');
 

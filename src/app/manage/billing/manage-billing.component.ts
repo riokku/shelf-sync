@@ -89,7 +89,11 @@ export class ManageBillingComponent implements OnInit {
 
     const [orgResult, memberCountResult, itemCountResult, storageResult] = await Promise.all([
       this.supabase.from('organizations').select('created_at').eq('id', profile.organization_id).single(),
-      this.supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('membership_status', 'approved'),
+      this.supabase
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', profile.organization_id)
+        .eq('membership_status', 'approved'),
       this.supabase.from('inventory_items').select('id', { count: 'exact', head: true }),
       this.supabase.rpc('get_inventory_photo_storage_usage')
     ]);

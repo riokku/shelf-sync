@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { SupabaseService } from '../../core/supabase.service';
-import { Profile } from '../../core/auth.service';
+import { AuthService, Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { UserAvatarComponent } from '../../shared/components/user-avatar/user-avatar.component';
@@ -28,6 +28,7 @@ const ENTITY_ICONS: Record<ActivityEntityType, string> = {
 })
 export class ManageActivityComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
+  private authService = inject(AuthService);
 
   private profiles: Profile[] = [];
   entries: OrgActivityLogEntry[] = [];
@@ -58,7 +59,11 @@ export class ManageActivityComponent implements OnInit {
   }
 
   async ngOnInit() {
-    const { data } = await this.supabase.from('profiles').select('*').order('full_name');
+    const { data } = await this.supabase
+      .from('profiles')
+      .select('*')
+      .eq('organization_id', this.authService.organizationId()!)
+      .order('full_name');
     this.profiles = data ?? [];
     await this.loadEntries();
   }

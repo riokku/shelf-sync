@@ -203,7 +203,11 @@ export class TaskDetailModalComponent implements OnInit {
     const session = await this.authService.getSession();
     this.currentUserId = session?.user.id ?? null;
 
-    const { data } = await this.supabase.from('profiles').select('*').order('full_name');
+    const { data } = await this.supabase
+      .from('profiles')
+      .select('*')
+      .eq('organization_id', this.authService.organizationId()!)
+      .order('full_name');
     this.orgProfiles = data ?? [];
   }
 
@@ -358,7 +362,7 @@ export class TaskDetailModalComponent implements OnInit {
 
     const [{ data: item }, { data: profiles }] = await Promise.all([
       this.supabase.from('inventory_items').select('*').eq('name', name).limit(1).maybeSingle(),
-      this.supabase.from('profiles').select('*')
+      this.supabase.from('profiles').select('*').eq('organization_id', this.authService.organizationId()!)
     ]);
 
     if (!item) {

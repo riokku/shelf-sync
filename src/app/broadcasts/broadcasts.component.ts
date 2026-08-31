@@ -82,7 +82,7 @@ export class BroadcastsComponent implements OnInit {
 
   async ngOnInit() {
     const [{ data: profiles }, { data: items }] = await Promise.all([
-      this.supabase.from('profiles').select('*').order('full_name'),
+      this.supabase.from('profiles').select('*').eq('organization_id', this.authService.organizationId()!).order('full_name'),
       this.supabase.from('inventory_items').select('id, name').order('name')
     ]);
 

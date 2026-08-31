@@ -71,7 +71,7 @@ export class ManageDangerZoneComponent implements OnInit {
       this.supabase.from('inventory_item_images').select('*'),
       this.supabase.from('inventory_item_activity').select('*'),
       this.supabase.from('tasks').select('*'),
-      this.supabase.from('profiles').select('*'),
+      this.supabase.from('profiles').select('*').eq('organization_id', this.authService.organizationId()!),
       this.supabase.from('site_settings').select('*'),
       this.supabase.from('inventory_field_options').select('*')
     ]);

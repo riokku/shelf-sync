@@ -395,7 +395,11 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
   }
 
   private async loadProfiles() {
-    const { data } = await this.supabase.from('profiles').select('*').order('full_name');
+    const { data } = await this.supabase
+      .from('profiles')
+      .select('*')
+      .eq('organization_id', this.authService.organizationId()!)
+      .order('full_name');
     this.assignableProfiles = data ?? [];
   }
 

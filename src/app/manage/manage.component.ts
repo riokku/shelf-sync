@@ -70,8 +70,15 @@ export class ManageComponent implements OnInit {
         .from('tasks')
         .select('id', { count: 'exact', head: true })
         .not('pending_transfer_to', 'is', null),
+      // isAdmin can only be true when profile is non-null (it's derived from
+      // profile?.role above), so profile!.organization_id is always a real
+      // value on this branch.
       isAdmin
-        ? this.supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('membership_status', 'pending')
+        ? this.supabase
+            .from('profiles')
+            .select('id', { count: 'exact', head: true })
+            .eq('organization_id', profile!.organization_id)
+            .eq('membership_status', 'pending')
         : Promise.resolve({ count: 0, error: null }),
       this.supabase
         .from('inventory_audits')

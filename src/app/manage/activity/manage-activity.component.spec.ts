@@ -3,7 +3,8 @@ import { provideRouter } from '@angular/router';
 
 import { ManageActivityComponent } from './manage-activity.component';
 import { SupabaseService } from '../../core/supabase.service';
-import { createFakeSupabaseService } from '../../testing/fakes';
+import { AuthService } from '../../core/auth.service';
+import { createFakeAuthService, createFakeProfile, createFakeSupabaseService } from '../../testing/fakes';
 
 describe('ManageActivityComponent', () => {
   let component: ManageActivityComponent;
@@ -16,7 +17,8 @@ describe('ManageActivityComponent', () => {
         provideRouter([]),
         // ngOnInit loads profiles then today's entries on construction —
         // faked so this hits nothing real, same reasoning as every other spec.
-        { provide: SupabaseService, useValue: createFakeSupabaseService({ data: [] }) }
+        { provide: SupabaseService, useValue: createFakeSupabaseService({ data: [] }) },
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ organization_id: 'org-1' })) }
       ]
     })
     .compileComponents();
@@ -74,7 +76,8 @@ describe('ManageActivityComponent load errors', () => {
       imports: [ManageActivityComponent],
       providers: [
         provideRouter([]),
-        { provide: SupabaseService, useValue: supabaseService }
+        { provide: SupabaseService, useValue: supabaseService },
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ organization_id: 'org-1' })) }
       ]
     }).compileComponents();
 

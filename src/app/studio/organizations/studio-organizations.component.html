@@ -26,6 +26,9 @@
               <th>Name</th>
               <th>Created</th>
               <th>Members</th>
+              <th>Items</th>
+              <th>Tasks</th>
+              <th>Storage</th>
               <th>Last active</th>
               <th>Status</th>
             </tr>
@@ -34,6 +37,9 @@
             @for (i of skeletonRows; track i) {
               <tr>
                 <td><div class="skeleton-line skeleton-cell-wide"></div></td>
+                <td><div class="skeleton-line skeleton-cell-narrow"></div></td>
+                <td><div class="skeleton-line skeleton-cell-narrow"></div></td>
+                <td><div class="skeleton-line skeleton-cell-narrow"></div></td>
                 <td><div class="skeleton-line skeleton-cell-narrow"></div></td>
                 <td><div class="skeleton-line skeleton-cell-narrow"></div></td>
                 <td><div class="skeleton-line skeleton-cell-narrow"></div></td>
@@ -53,6 +59,9 @@
               <th>Name</th>
               <th>Created</th>
               <th>Members</th>
+              <th>Items</th>
+              <th>Tasks</th>
+              <th>Storage</th>
               <th>Last active</th>
               <th>Status</th>
             </tr>
@@ -72,6 +81,9 @@
                 <td class="org-name">{{ org.name }}</td>
                 <td>{{ org.created_at | date: 'M/d/yy' }}</td>
                 <td class="mono">{{ org.memberCount }}</td>
+                <td class="mono">{{ org.itemCount ?? '—' }}</td>
+                <td class="mono">{{ org.taskCount ?? '—' }}</td>
+                <td class="mono">{{ org.storageMb !== null ? (org.storageMb + ' MB') : '—' }}</td>
                 <td>{{ org.lastActiveAt ? (org.lastActiveAt | date: 'M/d/yy') : '—' }}</td>
                 <td>
                   @if (org.deleted_at) {

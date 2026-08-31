@@ -221,7 +221,7 @@ export class ModalTableComponent implements OnInit {
   async ngOnInit(){
     const [existingContainers, { data: profiles }] = await Promise.all([
       loadInventoryItemContainers(this.supabase, this.data.id),
-      this.supabase.from('profiles').select('*').order('full_name')
+      this.supabase.from('profiles').select('*').eq('organization_id', this.authService.organizationId()!).order('full_name')
     ]);
     this.existingContainers = existingContainers;
     this.upcomingReservations = await loadUpcomingReservationsForItem(this.supabase, this.data.id, profiles ?? []);
@@ -661,7 +661,11 @@ export class ModalTableComponent implements OnInit {
   }
 
   private async refreshActivityLog(){
-    const { data: profiles } = await this.supabase.from('profiles').select('*').order('full_name');
+    const { data: profiles } = await this.supabase
+      .from('profiles')
+      .select('*')
+      .eq('organization_id', this.authService.organizationId()!)
+      .order('full_name');
     const activityByItemId = await loadInventoryActivityByItemId(this.supabase, [this.data.id], profiles ?? []);
     this.data.activityLog = activityByItemId.get(this.data.id) ?? [];
   }
@@ -794,7 +798,7 @@ export class ModalTableComponent implements OnInit {
     this.removedContainerIds.clear();
     const [existingImages, { data: profiles }] = await Promise.all([
       loadInventoryItemImageRecords(this.supabase, this.data.id),
-      this.supabase.from('profiles').select('*').order('full_name'),
+      this.supabase.from('profiles').select('*').eq('organization_id', this.authService.organizationId()!).order('full_name'),
       this.inventoryFieldOptions.load(),
       this.supplierService.load()
     ]);

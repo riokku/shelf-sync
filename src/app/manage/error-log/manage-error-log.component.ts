@@ -8,7 +8,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { SupabaseService } from '../../core/supabase.service';
-import { Profile } from '../../core/auth.service';
+import { AuthService, Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
@@ -24,7 +24,14 @@ type ClientErrorLogRow = Database['public']['Tables']['client_error_log']['Row']
  *  needed for reads: the table's own SELECT policy (from
  *  add_client_error_log) already restricts rows to an approved admin/
  *  manager viewing their own organization's errors, the same audience
- *  manageGuard enforces on this route. */
+ *  manageGuard enforces on this route — for everyone except a caller who's
+ *  *also* a platform admin, where add_platform_admin's own additional
+ *  "view everything" SELECT policy on this table (meant for
+ *  StudioErrorLogComponent) is OR'd onto that same policy and would
+ *  otherwise leak every org's errors here too; both queries below carry an
+ *  explicit `.eq('organization_id', ...)` for exactly that reason, rather
+ *  than trusting RLS alone the way this app's other org-scoped queries
+ *  normally do. */
 @Component({
   selector: 'app-manage-error-log',
   imports: [
@@ -45,6 +52,7 @@ type ClientErrorLogRow = Database['public']['Tables']['client_error_log']['Row']
 })
 export class ManageErrorLogComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
+  private authService = inject(AuthService);
 
   isLoading = true;
   errorLog: ClientErrorLogRow[] = [];
@@ -107,8 +115,13 @@ export class ManageErrorLogComponent implements OnInit {
       // exhaustive audit history; the table's own index (organization_id,
       // created_at desc) makes this cheap regardless of how large the log
       // grows over time.
-      this.supabase.from('client_error_log').select('*').order('created_at', { ascending: false }).limit(200),
-      this.supabase.from('profiles').select('*')
+      this.supabase
+        .from('client_error_log')
+        .select('*')
+        .eq('organization_id', this.authService.organizationId()!)
+        .order('created_at', { ascending: false })
+        .limit(200),
+      this.supabase.from('profiles').select('*').eq('organization_id', this.authService.organizationId()!)
     ]);
 
     if (error) {

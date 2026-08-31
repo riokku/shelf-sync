@@ -126,7 +126,11 @@ export class ManageAuditsComponent implements OnInit {
   }
 
   private async loadProfiles() {
-    const { data } = await this.supabase.from('profiles').select('*').order('full_name');
+    const { data } = await this.supabase
+      .from('profiles')
+      .select('*')
+      .eq('organization_id', this.authService.organizationId()!)
+      .order('full_name');
     this.profiles = data ?? [];
   }
 

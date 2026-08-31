@@ -28,10 +28,18 @@
   max-width: 48rem;
 }
 
+// Two label/value pairs per row (`auto 1fr` repeated) rather than one —
+// stacking every pair in a single column read as an increasingly long list
+// once Inventory/Tasks/Storage joined Created/Status/Reason below; a plain
+// `dt`/`dd` grid still handles it, no per-row wrapper needed, since the
+// browser auto-places each dt/dd pair into the next open cell in source
+// order. Reason is the one exception (`.org-meta-full-value` below) — its
+// value is free-text and can run long, so it keeps the full row's width
+// rather than being squeezed into just one pair's own value column.
 .org-meta{
   display: grid;
-  grid-template-columns: auto 1fr;
-  column-gap: 0.75rem;
+  grid-template-columns: auto 1fr auto 1fr;
+  column-gap: 1.5rem;
   row-gap: 0.375rem;
   margin: 0 0 1.5rem;
   font-size: 0.875rem;
@@ -42,6 +50,24 @@
 
   dd{
     margin: 0;
+  }
+}
+
+// Spans from this pair's own value column through the row's last column
+// (whatever that is — `-1` stays correct whether the grid is currently 4
+// columns wide or, per the media query below, collapsed to 2), so a long
+// Reason value gets the same single-column width it always had rather than
+// being squeezed into just one pair's worth of space.
+.org-meta-full-value{
+  grid-column: 2 / -1;
+}
+
+// Narrow viewports collapse back to one pair per row — two side-by-side
+// label/value pairs plus their gap is more width than a small screen has to
+// give without wrapping awkwardly.
+@media (max-width: 30rem){
+  .org-meta{
+    grid-template-columns: auto 1fr;
   }
 }
 
@@ -235,7 +261,20 @@
     display: contents;
 
     > *{
-      padding: 0.5rem 0;
+      // Taller than the original 0.5rem — rows read cramped once the header
+      // row above and the section below it both already breathe more. The
+      // trailing right padding (was 0) is deliberately *padding*, not a grid
+      // `column-gap` — a `column-gap` opens a real empty track between
+      // columns that no single cell's own border-top crosses, breaking the
+      // divider into one disconnected segment per column instead of one
+      // continuous line; padding stays part of each cell's own box, so its
+      // border-top still spans the full row-to-row width including it. Only
+      // the trailing edge gets padding (not a symmetric left+right pair) so
+      // the leading (name) column still sits flush with the section heading
+      // above it, matching this app's other list/table layouts. Backs both
+      // this section (Members) and Recent platform actions, which reuses
+      // this exact class rather than its own copy.
+      padding: 0.75rem 1rem 0.75rem 0;
       border-top: 1px solid var(--mat-sys-outline-variant);
     }
 
@@ -310,7 +349,6 @@
 .member-role-badge{
   display: inline-flex;
   align-items: center;
-  margin-right: 0.75rem;
   padding: 0.25rem 0.75rem;
   border-radius: 999px;
   font-size: 0.75rem;

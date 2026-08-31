@@ -1389,7 +1389,8 @@ toggle, client-side pagination, and profile-name resolution — with the one rea
 from, so the same bug hitting several customers shows up as several rows here instead of needing to
 check each org's own error log separately. **Organizations** (`StudioOrganizationsComponent`) is a
 plain table (same shape `ManageSuppliersComponent`'s own `<table>` already establishes, not a
-`mat-table`) of every org — name, created date, member count, last-active date, active/deleted
+`mat-table`) of every org — name, created date, member count, item/task/storage usage (see the later
+`add_platform_organization_task_count` paragraph below for how), last-active date, active/deleted
 status — needing no new policy on `organizations` itself (its own SELECT policy was already
 `using (true)` for any authenticated user from `create_organizations.sql`), just a new cross-org
 SELECT policy on `profiles` to compute member count/last-active from, reduced client-side into one
@@ -1425,11 +1426,11 @@ example of this).
 member list (name, role badge, a "Pending" badge for an unapproved join request, and the same
 online-dot/"last seen" presence treatment `ManageTeamComponent`'s own per-member indicator uses),
 the org's 5 most recent feedback submissions (reusing `StudioFeedbackComponent`'s own new/reviewed/
-resolved status-badge colors), and its 5 most recent client errors. Deliberately scoped to only the
-three tables a platform admin already has cross-org SELECT on (`profiles`/`feedback`/
-`client_error_log`, see `add_platform_admin` above) — no inventory/task counts, which would need a
-new cross-org RLS policy on `inventory_items`/`tasks` this pass doesn't add; a natural follow-up
-once that's worth doing. Self-loaded in `ngOnInit()` from just the `:id` route param (an
+resolved status-badge colors), its 5 most recent client errors, and (see the later
+`add_platform_organization_task_count` paragraph below for how) its inventory item and task counts.
+The first three come from tables a platform admin already has cross-org SELECT on (`profiles`/
+`feedback`/`client_error_log`, see `add_platform_admin` above). Self-loaded in `ngOnInit()` from
+just the `:id` route param (an
 `organizations.select('*').eq('id', id).maybeSingle()` lookup, then the member/feedback/error
 queries filtered by that same id, the feedback/error ones capped at 5 each via
 `order(created_at desc).limit(5)`) — a missing/inaccessible id renders a "doesn't exist, or you no
@@ -2081,6 +2082,87 @@ calling `update_task_status()`, so the only real change is the button no longer 
 was always going to be a no-op. That existing early-return stays in `saveStatus()` itself as
 defense-in-depth (it's what re-disables the button if the dropdown is set back to the original value,
 and protects any future direct caller of the method) rather than being the only gate.
+
+`StudioOrgDetailComponent`'s meta list now also shows an org's inventory item and task counts,
+closing the gap that page's own doc comment had explicitly flagged as deferred (see
+`add_platform_admin`'s cross-org SELECT policies — none of them covered `inventory_items`/`tasks`,
+and adding a fourth policy pair felt like more than this page needed). Rather than that new policy
+pair, this reuses and extends `platform_get_organization_usage()` — the `SECURITY DEFINER` RPC
+`manage/studio`'s usage leaderboard (`StudioUsageComponent`) already calls, which was already
+bypassing RLS to compute a cross-org inventory `item_count` for its own leaderboard rows. A
+`task_count` column joins `item_count`/`member_count`/`storage_bytes` in its return shape, and a new
+`p_organization_id` parameter (default `null`, so the leaderboard's own existing zero-arg call is
+unaffected) lets `StudioOrgDetailComponent` ask for just the one org's row instead of computing every
+org's usage only to discard the rest — when an id is passed, the org's own deleted/suspended status
+is ignored too, unlike the leaderboard's default (all-orgs) call, which still excludes deleted orgs,
+since a platform admin looking at one specific org's detail page wants its real counts regardless of
+that org's current status. A table function's return columns can't change via `create or replace`
+(Postgres rejects it outright), so `add_platform_organization_task_count` drops the old signature
+before recreating it — the same constraint `20260919120100`'s own migration comment already noted
+for this exact function.
+
+`StudioOrganizationsComponent`'s own table picked up the same three usage columns (Items/Tasks/
+Storage) right alongside — this list already loads every org at once, so it calls
+`platform_get_organization_usage()` with no `p_organization_id` (the same zero-arg,
+excludes-deleted-orgs call `StudioUsageComponent`'s leaderboard already makes) rather than looping a
+per-org call the way `StudioOrgDetailComponent` does. Because that zero-arg call excludes any org
+with `deleted_at` set, a retired org simply has no row in the result — `itemCount`/`taskCount`/
+`storageMb` stay `null` for it (rendered as "—", not a misleading "0"), unlike its own
+`StudioOrgDetailComponent` page, whose id-scoped call to the very same function still shows its real
+historical usage regardless of retirement status. `storageMb` is rounded to one decimal place from
+the RPC's raw `storage_bytes`, same conversion `StudioUsageComponent`'s own `topByStorage` already
+does (duplicated, not shared — this app's usual small-presentational-pattern convention).
+
+`StudioOrgDetailComponent`'s own meta list picked up the matching `storageMb` (its `itemCount`/
+`taskCount` siblings shipped in the pass just above) so all three usage figures now match
+`StudioOrganizationsComponent`'s own list-view columns exactly, viewable from either the list or any
+one org's own page. Growing the meta `dl` to five/six rows (Created, Status, an optional Reason,
+Inventory, Tasks, Storage) read as an increasingly long single-column list, so `.org-meta` moved from
+one `auto 1fr` pair per row to two (`auto 1fr auto 1fr`) — a plain CSS grid still handles the
+pairing via source order, no per-row wrapper markup needed. Reason is the one row kept full-width
+(`.org-meta-full-value`, `grid-column: 2 / -1`) rather than joining the two-per-row flow, since its
+value is free-text (a suspension reason, possibly with a "— by {name}" suffix) that reads poorly
+squeezed into half a row the way a short label/number pair doesn't. A narrow-viewport media query
+(`max-width: 30rem`) collapses back to one pair per row, the same "two columns is a wide-viewport-only
+optimization" reasoning `AccountComponent`'s own multi-column card layout already documents elsewhere
+in this file.
+
+Creating a second real organization (`Studio Rio`, this app's own maintainer's org — see the git
+history around this pass for the full backstory) surfaced a real, previously-latent cross-org data
+leak: `add_platform_admin`'s "Platform admins can view all X" SELECT policies on `profiles` and
+`client_error_log` are additional *permissive* policies OR'd onto those tables' existing org-scoped
+ones — Postgres RLS has no way to know "this query came from Studio" versus "this query came from an
+ordinary page," so the moment a caller is both `is_platform_admin` *and* an actual member of a regular
+org (previously true of nobody, since this hosted project only ever had one organization until this
+pass), literally any plain, unfiltered `profiles`/`client_error_log` query anywhere in the app —
+Manage > Team's member list, Manage > Error Log, the header's online-count/pending-badge, Home's
+Getting Started team-size count, Billing's member-count usage stat, task assignee/transfer pickers,
+Danger Zone's org data export, etc. — returns *every* organization's rows, not just the caller's own.
+Every one of those pages had always trusted RLS alone to scope a bare `.from('profiles').select(...)`
+the way this app's own "no client-side `organization_id` filter, RLS does the scoping" convention
+(see the Realtime section elsewhere in this file) generally endorses; that convention specifically
+breaks down for this one pair of tables because of the platform-admin bypass. Confirmed via the live
+RLS policies that this is a *read-only* leak, not a write one — `profiles`' `INSERT`/`UPDATE`/`DELETE`
+policies have no platform-admin bypass, only `SELECT` does, so e.g. clicking "Remove" on a
+cross-org member row (visible only because of this leak) silently affects zero rows rather than
+actually deleting anyone.
+
+Fixed by adding an explicit `.eq('organization_id', this.authService.organizationId())` (or, where a
+fresher `profile`/`getSession()` result was already on hand in that method, reusing that instead of
+re-reading the signal) to every regular-page query against `profiles`/`client_error_log` that didn't
+already have one — roughly twenty call sites across `AppComponent`'s header, Home, Inventory, Tasks,
+Broadcasts, and most of `manage/*`/`shared/components/*`. A handful of components
+(`ManageOrdersComponent`/`ManageActivityComponent`/`ManageErrorLogComponent`/`ManageReportsComponent`)
+didn't inject `AuthService` at all before this and needed it added. Deliberately *not* fixed at the
+RLS layer (e.g. dropping the blanket policies in favor of routing Studio's own cross-org reads through
+dedicated `SECURITY DEFINER` RPCs the way `platform_get_organization_usage()` already does) — that's
+the more architecturally correct long-term fix, but a materially bigger, more security-sensitive
+change touching several already-working Studio pages, considered and deliberately deferred in favor of
+the narrower, lower-risk fix at each affected call site. A few `.from('profiles')` call sites were
+deliberately left alone: single-row lookups already scoped by `.eq('id', ...)` (a person editing their
+own profile, `AuthService`'s own session-derived profile fetch), profile `DELETE`s already scoped by
+id (safe regardless, per the write-side finding above), and every Studio page's own intentionally
+cross-org reads.
 
 ## Tech Stack
 
@@ -2828,6 +2910,16 @@ yet on a hard refresh of `/inventory`.
   remembering alongside this repo's other "diff against the previous version" lessons: a
   double-application guard is easy to forget on any RPC that flips a row from "pending" to
   "done" as a side effect of a broader write, not just the ones that look like a state machine.
+- `add_platform_organization_task_count` — extends `platform_get_organization_usage()` (from
+  `add_platform_organization_usage`, fixed up by the two `2026091912...` migrations right after it)
+  with a `task_count` column and an optional `p_organization_id` parameter (default `null`,
+  preserving `StudioUsageComponent`'s own existing zero-arg leaderboard call unchanged), backing
+  `StudioOrgDetailComponent`'s inventory/task counts — see the Project Overview paragraph above for
+  the full reasoning on why extending this already-`SECURITY DEFINER` function was simpler than
+  adding a new cross-org RLS policy pair on `inventory_items`/`tasks` the way `add_platform_admin`
+  did for `feedback`/`client_error_log`/`profiles`. A table function's return columns can't change
+  via `create or replace` (same constraint `20260919120100`'s own comment already documented for
+  this exact function), so this drops the old signature before recreating it.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

@@ -14,6 +14,11 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    date: '2026-08-31',
+    title: 'Org detail shows inventory & task counts',
+    description: 'Studio > Organizations now shows each org\'s item/task/storage usage right in the list, and its per-org detail page shows the same numbers alongside members and recent activity.'
+  },
+  {
     date: '2026-08-30',
     title: 'Physical inventory audits',
     description: 'A new Manage > Audits page lets you reconcile physical stock counts against the system — start an audit, anyone can submit counts, and admins/managers apply the discrepancies.'

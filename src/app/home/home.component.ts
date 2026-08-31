@@ -335,7 +335,11 @@ export class HomeComponent implements OnInit {
       this.supabase.from('inventory_items').select('id', { count: 'exact', head: true }),
       this.supabase.from('tasks').select('id', { count: 'exact', head: true }),
       session
-        ? this.supabase.from('profiles').select('id', { count: 'exact', head: true }).neq('id', session.user.id)
+        ? this.supabase
+            .from('profiles')
+            .select('id', { count: 'exact', head: true })
+            .eq('organization_id', this.authService.organizationId()!)
+            .neq('id', session.user.id)
         : Promise.resolve({ count: 0 })
     ]);
 

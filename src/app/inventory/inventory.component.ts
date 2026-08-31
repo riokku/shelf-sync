@@ -592,7 +592,7 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
     // with no guarantee suppliers finish loading first.
     const [{ data: items, error: itemsError }, { data: profiles }] = await Promise.all([
       this.supabase.from('inventory_items').select('*').order('name'),
-      this.supabase.from('profiles').select('*').order('full_name'),
+      this.supabase.from('profiles').select('*').eq('organization_id', this.authService.organizationId()!).order('full_name'),
       this.supplierService.load()
     ]);
 

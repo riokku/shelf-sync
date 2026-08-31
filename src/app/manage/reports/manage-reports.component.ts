@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { SupabaseService } from '../../core/supabase.service';
-import { Profile } from '../../core/auth.service';
+import { AuthService, Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
@@ -76,6 +76,7 @@ interface AssigneeWorkloadRow {
 })
 export class ManageReportsComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
+  private authService = inject(AuthService);
 
   isLoading = true;
   /** Fixed counts for the loading-state skeleton — a stat-grid is always 4
@@ -169,7 +170,7 @@ export class ManageReportsComponent implements OnInit {
         .select('id, category, physical_location, quantity_remaining, low_quantity_threshold, price_per_unit, price_per_container, quantity_per_container, status'),
       loadAllInventoryItemDiscards(this.supabase),
       this.supabase.from('tasks').select('status, due_date, created_at, updated_at, assigned_to'),
-      this.supabase.from('profiles').select('*')
+      this.supabase.from('profiles').select('*').eq('organization_id', this.authService.organizationId()!)
     ]);
 
     const error = itemsResult.error?.message ?? discardsResult.error ?? tasksResult.error?.message ?? null;

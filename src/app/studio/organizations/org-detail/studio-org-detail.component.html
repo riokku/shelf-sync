@@ -30,6 +30,12 @@
           <dd><div class="skeleton-line skeleton-org-meta-value"></div></dd>
           <dt><div class="skeleton-line skeleton-org-meta-label"></div></dt>
           <dd><div class="skeleton-block skeleton-cell-badge"></div></dd>
+          <dt><div class="skeleton-line skeleton-org-meta-label"></div></dt>
+          <dd><div class="skeleton-line skeleton-org-meta-value"></div></dd>
+          <dt><div class="skeleton-line skeleton-org-meta-label"></div></dt>
+          <dd><div class="skeleton-line skeleton-org-meta-value"></div></dd>
+          <dt><div class="skeleton-line skeleton-org-meta-label"></div></dt>
+          <dd><div class="skeleton-line skeleton-org-meta-value"></div></dd>
         </dl>
 
         <section class="org-section">
@@ -114,13 +120,19 @@
           </dd>
           @if (isSuspended && !isRetired) {
             <dt>Reason</dt>
-            <dd>
+            <dd class="org-meta-full-value">
               {{ organization.suspension_reason }}
               @if (suspendedByName) {
                 <span class="section-hint"> — by {{ suspendedByName }}</span>
               }
             </dd>
           }
+          <dt>Inventory</dt>
+          <dd class="mono">{{ itemCount !== null ? itemCount + ' items' : '—' }}</dd>
+          <dt>Tasks</dt>
+          <dd class="mono">{{ taskCount !== null ? taskCount + ' tasks' : '—' }}</dd>
+          <dt>Storage</dt>
+          <dd class="mono">{{ storageMb !== null ? storageMb + ' MB' : '—' }}</dd>
         </dl>
 
         <section class="org-section">

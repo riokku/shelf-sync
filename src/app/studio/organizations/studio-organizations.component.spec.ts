@@ -26,9 +26,18 @@ function createTestOrgRow(overrides: Partial<FakeOrgRow> = {}): FakeOrgRow {
   };
 }
 
+interface FakeUsageRow {
+  organization_id: string;
+  member_count: number;
+  item_count: number;
+  task_count: number;
+  storage_bytes: number;
+}
+
 function createFakeSupabaseServiceForOrganizations(data: {
   organizations?: FakeOrgRow[];
   profiles?: { organization_id: string; last_active_at: string | null }[];
+  usage?: FakeUsageRow[];
   loadError?: { message: string } | null;
 }): SupabaseService {
   const fake = {
@@ -38,7 +47,8 @@ function createFakeSupabaseServiceForOrganizations(data: {
           return createFakeQueryBuilder({ data: data.profiles ?? [], error: null });
         }
         return createFakeQueryBuilder({ data: data.organizations ?? [], error: data.loadError ?? null });
-      }
+      },
+      rpc: jasmine.createSpy('rpc').and.resolveTo({ data: data.usage ?? [], error: null })
     }
   };
   return fake as unknown as SupabaseService;
@@ -92,6 +102,27 @@ describe('StudioOrganizationsComponent', () => {
 
     expect(component.organizations[0].memberCount).toBe(0);
     expect(component.organizations[0].lastActiveAt).toBeNull();
+  });
+
+  it('merges item/task/storage usage from platform_get_organization_usage, converting bytes to rounded MB', async () => {
+    await createComponent({
+      organizations: [createTestOrgRow({ id: 'org-1' })],
+      usage: [{ organization_id: 'org-1', member_count: 2, item_count: 42, task_count: 7, storage_bytes: 5_242_880 }]
+    });
+
+    const org = component.organizations[0];
+    expect(org.itemCount).toBe(42);
+    expect(org.taskCount).toBe(7);
+    expect(org.storageMb).toBe(5);
+  });
+
+  it('leaves item/task/storage null for an org the usage RPC has no row for', async () => {
+    await createComponent({ organizations: [createTestOrgRow({ id: 'org-retired' })], usage: [] });
+
+    const org = component.organizations[0];
+    expect(org.itemCount).toBeNull();
+    expect(org.taskCount).toBeNull();
+    expect(org.storageMb).toBeNull();
   });
 
   it('surfaces a failed load rather than reading as an empty list', async () => {

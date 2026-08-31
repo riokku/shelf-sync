@@ -199,6 +199,7 @@ export class HeaderComponent {
       this.supabase
         .from('profiles')
         .select('id', { count: 'exact', head: true })
+        .eq('organization_id', this.authService.organizationId()!)
         .eq('membership_status', 'pending')
     ]);
 
@@ -226,13 +227,20 @@ export class HeaderComponent {
   }
 
   private async loadOnlineTeamCount() {
-    // Narrow select, approved members only — RLS already scopes this to the
-    // caller's own organization. Pending join requests aren't "team
-    // members" yet, same reasoning ManageTeamComponent's assignableProfiles
-    // excludes them from anywhere a role/task-standing matters.
+    // Narrow select, approved members only, explicitly org-scoped rather
+    // than trusting RLS alone the way every other unfiltered .from(...)
+    // .select() in this app can — profiles is the one table where that
+    // trust breaks down for a caller who's also a platform admin (see
+    // add_platform_admin's own "view everything" SELECT policy, OR'd onto
+    // the org-scoped one), so this and the pending-count query above both
+    // carry an explicit .eq('organization_id', ...) as a result. Pending
+    // join requests aren't "team members" yet, same reasoning
+    // ManageTeamComponent's assignableProfiles excludes them from anywhere
+    // a role/task-standing matters.
     const { data } = await this.supabase
       .from('profiles')
       .select('last_active_at')
+      .eq('organization_id', this.authService.organizationId()!)
       .eq('membership_status', 'approved');
 
     this._onlineTeamCount.set((data ?? []).filter(row => isProfileOnline(row.last_active_at)).length);

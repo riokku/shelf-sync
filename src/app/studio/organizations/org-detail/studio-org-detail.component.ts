@@ -29,6 +29,8 @@ type PlatformActionLogRow = Database['public']['Tables']['platform_action_log'][
 // than shared, same "not every small presentational pattern gets
 // centralized" convention this app's icon-chip gradients/donut-chart
 // palettes already follow.
+const BYTES_PER_MB = 1024 * 1024;
+
 const ACTION_LABELS: Record<string, string> = {
   suspend: 'Suspended',
   unsuspend: 'Unsuspended',
@@ -45,9 +47,13 @@ const ACTION_LABELS: Record<string, string> = {
  *  OrgDetailModalComponent popup entirely, per the first "convert Studio's
  *  info drill-downs from popups to real pages" pass. Everything here comes
  *  from tables a platform admin already has cross-org read on (profiles/
- *  feedback/client_error_log/organizations, see add_platform_admin) —
- *  deliberately not inventory/task counts, which would need a new RLS
- *  policy this pass doesn't add.
+ *  feedback/client_error_log/organizations, see add_platform_admin), plus
+ *  inventory/task/storage counts resolved via platform_get_organization_usage() —
+ *  originally deferred as needing a new cross-org RLS policy, until that
+ *  SECURITY DEFINER function turned out to already bypass RLS for its own
+ *  leaderboard use on StudioUsageComponent; extending it with a task_count
+ *  column and an optional p_organization_id filter was simpler than adding
+ *  a second policy pair from scratch.
  *
  *  Also where a platform admin actually acts on an org — suspend/unsuspend
  *  (an immediate, reversible access block for abuse/non-payment, see
@@ -108,6 +114,17 @@ export class StudioOrgDetailComponent implements OnInit {
   recentErrors: ClientErrorLogRow[] = [];
   recentActions: PlatformActionLogRow[] = [];
   private actionActorNamesById = new Map<string, string>();
+
+  /** From platform_get_organization_usage(), filtered to just this org's
+   *  row — null while that call is still in flight/hasn't resolved (kept
+   *  distinct from 0, a real zero-items/zero-tasks/zero-storage org, so the
+   *  meta list below can render nothing rather than a misleading "0" during
+   *  load). storageMb is rounded from the RPC's raw storage_bytes, same
+   *  conversion StudioUsageComponent's/StudioOrganizationsComponent's own
+   *  identical (duplicated, not shared) rounding already uses. */
+  itemCount: number | null = null;
+  taskCount: number | null = null;
+  storageMb: number | null = null;
 
   /** The org's own uploaded logo (Settings > Style), if it has one — resolved
    *  via SiteSettingsService.loadLogoUrlForOrganization(), the same
@@ -229,12 +246,13 @@ export class StudioOrgDetailComponent implements OnInit {
     }
     this.organization = organization;
 
-    const [{ data: members }, { data: feedback }, { data: errors }, { data: actions }, logoUrl] = await Promise.all([
+    const [{ data: members }, { data: feedback }, { data: errors }, { data: actions }, { data: usage }, logoUrl] = await Promise.all([
       this.supabase.from('profiles').select('*').eq('organization_id', id).order('full_name'),
       this.supabase.from('feedback').select('*').eq('organization_id', id).order('created_at', { ascending: false }).limit(5),
       this.supabase.from('client_error_log').select('*').eq('organization_id', id).order('created_at', { ascending: false }).limit(5),
       this.supabase.from('platform_action_log').select('*').eq('target_type', 'organization').eq('target_id', id)
         .order('created_at', { ascending: false }).limit(5),
+      this.supabase.rpc('platform_get_organization_usage', { p_organization_id: id }),
       this.siteSettings.loadLogoUrlForOrganization(id)
     ]);
 
@@ -242,6 +260,14 @@ export class StudioOrgDetailComponent implements OnInit {
     this.recentFeedback = feedback ?? [];
     this.recentErrors = errors ?? [];
     this.recentActions = actions ?? [];
+    // Filtered server-side to just this one org, so at most one row comes
+    // back — a failed/empty result (a stale cached session mid-permission-
+    // change, say) just leaves these null rather than failing the whole
+    // page load over what's supplementary info here, not this page's core
+    // reason for existing the way organization/members are.
+    this.itemCount = usage?.[0]?.item_count ?? null;
+    this.taskCount = usage?.[0]?.task_count ?? null;
+    this.storageMb = usage?.[0] ? Math.round((usage[0].storage_bytes / BYTES_PER_MB) * 10) / 10 : null;
     this.orgLogoUrl = logoUrl;
 
     // A platform admin almost certainly isn't a member of the org they just

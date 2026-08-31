@@ -347,7 +347,18 @@ describe('HeaderComponent online team count', () => {
             return emptyBuilder;
           }
           profilesQueryCount++;
-          return { select: () => ({ eq: () => Promise.resolve({ data: [{ last_active_at: agoIso(0) }], error: null }) }) };
+          // Chainable the same way emptyBuilder above is (organizationId()
+          // adds a second .eq() onto this query — see loadOnlineTeamCount's
+          // own doc comment for why), rather than a one-shot
+          // .select().eq() shape that only tolerates exactly one filter
+          // call before resolving.
+          const profilesBuilder: Record<string, unknown> = {
+            then: (resolve: (value: unknown) => void) => resolve({ data: [{ last_active_at: agoIso(0) }], error: null }),
+          };
+          for (const method of ['select', 'eq', 'neq', 'not', 'in', 'gte', 'lt', 'order', 'limit', 'single', 'maybeSingle']) {
+            profilesBuilder[method] = () => profilesBuilder;
+          }
+          return profilesBuilder;
         },
         // NotificationCenterService also subscribes to realtime changes
         // while authenticated (see its own doc comment) — inert stand-ins

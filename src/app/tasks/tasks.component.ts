@@ -173,7 +173,11 @@ export class TasksComponent implements OnInit, HasUnsavedChanges {
     }
     this.currentUserId = session.user.id;
 
-    const { data: profiles } = await this.supabase.from('profiles').select('*').order('full_name');
+    const { data: profiles } = await this.supabase
+      .from('profiles')
+      .select('*')
+      .eq('organization_id', this.authService.organizationId()!)
+      .order('full_name');
     this.orgProfiles = profiles ?? [];
 
     await this.loadTasks();

@@ -14,7 +14,21 @@ type OrganizationRow = Database['public']['Tables']['organizations']['Row'];
 interface OrganizationSummary extends OrganizationRow {
   memberCount: number;
   lastActiveAt: string | null;
+  /** From platform_get_organization_usage() (see StudioUsageComponent's own
+   *  leaderboard, the first consumer of this RPC) — null for a row the RPC
+   *  didn't return usage for, kept distinct from a real zero so this table
+   *  can show "—" rather than a misleading "0". In practice that's only
+   *  ever a retired org: the RPC's own zero-arg call (same one the
+   *  leaderboard uses) excludes `deleted_at`-set orgs, since a purged-in-
+   *  30-days org's usage isn't worth surfacing there — StudioOrgDetailComponent's
+   *  own per-id call is the one place that still shows a retired org's real
+   *  usage, by passing its id explicitly. */
+  itemCount: number | null;
+  taskCount: number | null;
+  storageMb: number | null;
 }
+
+const BYTES_PER_MB = 1024 * 1024;
 
 /** Every organization using ShelfSync, at a glance — organizations' own
  *  SELECT policy is already `using (true)` for authenticated (see
@@ -22,7 +36,14 @@ interface OrganizationSummary extends OrganizationRow {
  *  memberCount/lastActiveAt come from a single cross-org profiles query
  *  (readable here only because of the new "Platform admins can view all
  *  profiles" policy from add_platform_admin), reduced client-side into one
- *  map rather than a per-org query loop. */
+ *  map rather than a per-org query loop. itemCount/taskCount/storageMb come
+ *  from a second cross-org aggregate, platform_get_organization_usage() —
+ *  the same SECURITY DEFINER RPC StudioUsageComponent's own leaderboard
+ *  already calls (see add_platform_organization_task_count for the
+ *  organization_id param that page doesn't use but this one doesn't need
+ *  either, since this list wants every org's row at once) — so the same
+ *  data StudioOrgDetailComponent shows one org at a time is visible here
+ *  across the whole list without opening each org individually. */
 @Component({
   selector: 'app-studio-organizations',
   imports: [DatePipe, RouterLink, MatButtonModule, MatIconModule, BreadcrumbsComponent, PageHeaderComponent, EmptyStateComponent],
@@ -61,9 +82,10 @@ export class StudioOrganizationsComponent implements OnInit {
     this.isLoading = true;
     this.loadError = null;
 
-    const [{ data: orgs, error }, { data: profiles }] = await Promise.all([
+    const [{ data: orgs, error }, { data: profiles }, { data: usage }] = await Promise.all([
       this.supabase.from('organizations').select('*').order('created_at', { ascending: false }),
-      this.supabase.from('profiles').select('organization_id, last_active_at')
+      this.supabase.from('profiles').select('organization_id, last_active_at'),
+      this.supabase.rpc('platform_get_organization_usage')
     ]);
 
     if (error) {
@@ -84,9 +106,23 @@ export class StudioOrganizationsComponent implements OnInit {
       statsByOrgId.set(profile.organization_id, existing);
     }
 
+    // Usage is supplementary (a failed/partial RPC result just leaves every
+    // org's item/task/storage columns showing "—") rather than failing the
+    // whole page load over it, same reasoning StudioOrgDetailComponent's own
+    // usage lookup already follows.
+    const usageByOrgId = new Map((usage ?? []).map(row => [row.organization_id, row]));
+
     this.organizations = (orgs ?? []).map(org => {
       const stats = statsByOrgId.get(org.id) ?? { count: 0, lastActive: null };
-      return { ...org, memberCount: stats.count, lastActiveAt: stats.lastActive };
+      const orgUsage = usageByOrgId.get(org.id);
+      return {
+        ...org,
+        memberCount: stats.count,
+        lastActiveAt: stats.lastActive,
+        itemCount: orgUsage?.item_count ?? null,
+        taskCount: orgUsage?.task_count ?? null,
+        storageMb: orgUsage ? Math.round((orgUsage.storage_bytes / BYTES_PER_MB) * 10) / 10 : null
+      };
     });
     this.isLoading = false;
   }

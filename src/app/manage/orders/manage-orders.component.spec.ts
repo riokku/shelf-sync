@@ -6,9 +6,10 @@ import { of } from 'rxjs';
 import { ManageOrdersComponent } from './manage-orders.component';
 import { SupabaseService } from '../../core/supabase.service';
 import { SupplierService } from '../../core/supplier.service';
+import { AuthService } from '../../core/auth.service';
 import { NotificationService } from '../../core/notification.service';
 import { PlaceOrderModalComponent } from '../../shared/components/place-order-modal/place-order-modal.component';
-import { createFakeSupabaseService, createFakeSupplierService } from '../../testing/fakes';
+import { createFakeAuthService, createFakeProfile, createFakeSupabaseService, createFakeSupplierService } from '../../testing/fakes';
 import { InventoryItemOrderWithItem } from '../../shared/utils/inventory-item-orders';
 
 function createTestOrder(overrides: Partial<InventoryItemOrderWithItem> = {}): InventoryItemOrderWithItem {
@@ -42,7 +43,8 @@ describe('ManageOrdersComponent', () => {
       providers: [
         provideRouter([]),
         { provide: SupabaseService, useValue: createFakeSupabaseService({ data: [], error: options.error ?? null }) },
-        { provide: SupplierService, useValue: createFakeSupplierService() }
+        { provide: SupplierService, useValue: createFakeSupplierService() },
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ organization_id: 'org-1' })) }
       ]
     }).compileComponents();
 
@@ -241,7 +243,8 @@ describe('ManageOrdersComponent realtime updates', () => {
       providers: [
         provideRouter([]),
         { provide: SupabaseService, useValue: service },
-        { provide: SupplierService, useValue: createFakeSupplierService() }
+        { provide: SupplierService, useValue: createFakeSupplierService() },
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ organization_id: 'org-1' })) }
       ]
     });
     return TestBed.createComponent(ManageOrdersComponent);

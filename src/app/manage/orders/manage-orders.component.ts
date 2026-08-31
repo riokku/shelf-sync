@@ -9,7 +9,7 @@ import { RouterLink } from '@angular/router';
 import { SupabaseService } from '../../core/supabase.service';
 import { SupplierService } from '../../core/supplier.service';
 import { NotificationService } from '../../core/notification.service';
-import { Profile } from '../../core/auth.service';
+import { AuthService, Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
@@ -54,6 +54,7 @@ type OrderStatusFilter = 'all' | 'ordered' | 'received' | 'cancelled';
 export class ManageOrdersComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
   private supplierService = inject(SupplierService);
+  private authService = inject(AuthService);
   private notification = inject(NotificationService);
   private dialog = inject(MatDialog);
   private destroyRef = inject(DestroyRef);
@@ -114,7 +115,7 @@ export class ManageOrdersComponent implements OnInit {
   async ngOnInit() {
     const [{ data: items }, { data: profiles }] = await Promise.all([
       this.supabase.from('inventory_items').select('id, name, supplier_id').order('name'),
-      this.supabase.from('profiles').select('*').order('full_name'),
+      this.supabase.from('profiles').select('*').eq('organization_id', this.authService.organizationId()!).order('full_name'),
       this.supplierService.load()
     ]);
 

@@ -3,7 +3,8 @@ import { provideRouter } from '@angular/router';
 
 import { ManageReportsComponent } from './manage-reports.component';
 import { SupabaseService } from '../../core/supabase.service';
-import { createFakeProfile } from '../../testing/fakes';
+import { AuthService } from '../../core/auth.service';
+import { createFakeAuthService, createFakeProfile } from '../../testing/fakes';
 
 /** Table-aware fake — each of the four queries this component makes needs
  *  its own canned rows, unlike the shared createFakeSupabaseService() (one
@@ -82,7 +83,8 @@ async function createComponent(data: {
     imports: [ManageReportsComponent],
     providers: [
       provideRouter([]),
-      { provide: SupabaseService, useValue: createFakeSupabaseServiceForReports(data) }
+      { provide: SupabaseService, useValue: createFakeSupabaseServiceForReports(data) },
+      { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ organization_id: 'org-1' })) }
     ]
   }).compileComponents();
 
