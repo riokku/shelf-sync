@@ -18,11 +18,11 @@ type OrganizationRow = Database['public']['Tables']['organizations']['Row'];
 /** Cross-org "who is this person and what org are they in" lookup — the
  *  counterpart to StudioOrganizationsComponent's own org-first browse, for
  *  the opposite direction a support conversation usually starts from (a
- *  name or an email, not an org). Search-first rather than browse-first
- *  (unlike Organizations, which lists everything by default): nothing
- *  renders until a search term narrows it, both because "browse every
- *  user" is already Organizations' own job (via its member counts) and
- *  because a platform-wide profile list only grows as the product does.
+ *  name or an email, not an org). With no search term typed yet, the table
+ *  isn't empty — it shows the RECENT_LIMIT most recently signed-up users
+ *  (created_at descending), so landing here has something to look at
+ *  immediately rather than a blank page waiting for input; typing a search
+ *  term replaces that with matching results instead (see displayedProfiles).
  *  A matched row links to a dedicated StudioUserDetailComponent page for
  *  that person — their own info plus the account lock toggle (see
  *  add_platform_account_lock) — which itself links onward to their org's
@@ -59,10 +59,16 @@ export class StudioUsersComponent implements OnInit {
   isLoading = true;
   loadError: string | null = null;
   searchTerm = '';
+  /** Repeat-count for the loading-state skeleton table rows — see
+   *  StudioOrganizationsComponent.skeletonRows' own identical doc comment. */
+  readonly skeletonRows = [1, 2, 3, 4, 5];
 
   /** Capped at RESULT_LIMIT for display — matchedProfiles below is the
    *  uncapped count, shown in a hint when it exceeds this. */
   private static readonly RESULT_LIMIT = 25;
+  /** How many recent signups show by default, before any search term is
+   *  typed — see recentProfiles below. */
+  private static readonly RECENT_LIMIT = 20;
 
   private profiles: Profile[] = [];
   private organizationsById = new Map<string, OrganizationRow>();
@@ -91,6 +97,25 @@ export class StudioUsersComponent implements OnInit {
 
   get totalMatchCount(): number {
     return this.matchedProfiles.length;
+  }
+
+  /** The RECENT_LIMIT most recently signed-up profiles across every org,
+   *  newest first — what the table shows before any search term narrows it.
+   *  Recomputed from the same already-loaded `profiles` array on every read
+   *  rather than sorted once in loadDirectory(), matching this page's own
+   *  "plain getter over an in-memory array" shape (see matchedProfiles
+   *  above) rather than introducing a second cached/sorted field to keep in
+   *  sync. */
+  get recentProfiles(): Profile[] {
+    return [...this.profiles]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, StudioUsersComponent.RECENT_LIMIT);
+  }
+
+  /** What the table actually renders — recent signups by default, or
+   *  search matches once a term is typed. */
+  get displayedProfiles(): Profile[] {
+    return this.searchTerm.trim() ? this.filteredResults : this.recentProfiles;
   }
 
   displayName(profile: Profile): string {

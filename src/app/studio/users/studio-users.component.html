@@ -9,7 +9,7 @@
         Back
       </button>
     </div>
-    <app-page-header icon="person_search" title="Users" subtitle="Look up a person by name or email to find which organization they belong to." zone="studio" />
+    <app-page-header icon="person_search" title="Users" subtitle="Browse the most recent signups, or search by name or email to find someone specific." zone="studio" />
 
     @if (loadError) {
       <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load the user directory. ' + loadError">
@@ -20,29 +20,12 @@
       </app-empty-state>
     } @else if (isLoading) {
       <!-- Mirrors the search field + hint text this page always shows once
-           loaded (the results table itself never renders until a search
-           term is typed, so there's no table shape to placeholder here). -->
+           loaded, plus a real table skeleton underneath — the table itself
+           renders by default now (recent signups), not just once a search
+           term is typed, so there's a real shape to placeholder here too. -->
       <div aria-hidden="true">
         <div class="skeleton-block skeleton-user-search-field"></div>
         <div class="skeleton-line skeleton-user-search-hint"></div>
-      </div>
-    } @else {
-      <mat-form-field appearance="outline" class="user-search-field">
-        <mat-label>Search by name or email</mat-label>
-        <input matInput [(ngModel)]="searchTerm" placeholder="e.g. Alex Rivera or alex@example.com" />
-        <mat-icon matPrefix>search</mat-icon>
-      </mat-form-field>
-
-      @if (!searchTerm.trim()) {
-        <p class="search-hint">Start typing to search across every organization.</p>
-      } @else if (filteredResults.length === 0) {
-        <app-empty-state icon="person_search" [message]="'No users found matching “' + searchTerm.trim() + '”.'" />
-      } @else {
-        @if (totalMatchCount > filteredResults.length) {
-          <p class="search-hint">
-            Showing the first {{ filteredResults.length }} of {{ totalMatchCount }} matches — refine your search to narrow it down.
-          </p>
-        }
         <div class="users-table-wrapper">
           <table class="users-table">
             <thead>
@@ -55,7 +38,52 @@
               </tr>
             </thead>
             <tbody>
-              @for (profile of filteredResults; track profile.id) {
+              @for (i of skeletonRows; track i) {
+                <tr>
+                  <td><div class="skeleton-line skeleton-cell-wide"></div></td>
+                  <td><div class="skeleton-line skeleton-cell-medium"></div></td>
+                  <td><div class="skeleton-line skeleton-cell-medium"></div></td>
+                  <td><div class="skeleton-line skeleton-cell-narrow"></div></td>
+                  <td><div class="skeleton-block skeleton-cell-badge"></div></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    } @else {
+      <mat-form-field appearance="outline" class="user-search-field">
+        <mat-label>Search by name or email</mat-label>
+        <input matInput [(ngModel)]="searchTerm" placeholder="e.g. Alex Rivera or alex@example.com" />
+        <mat-icon matPrefix>search</mat-icon>
+      </mat-form-field>
+
+      @if (!searchTerm.trim()) {
+        <p class="search-hint">
+          Showing the {{ recentProfiles.length }} most recently signed up users — search to look up someone specific.
+        </p>
+      } @else if (filteredResults.length === 0) {
+        <app-empty-state icon="person_search" [message]="'No users found matching “' + searchTerm.trim() + '”.'" />
+      } @else if (totalMatchCount > filteredResults.length) {
+        <p class="search-hint">
+          Showing the first {{ filteredResults.length }} of {{ totalMatchCount }} matches — refine your search to narrow it down.
+        </p>
+      }
+
+      @if (searchTerm.trim() === '' || filteredResults.length > 0) {
+        <div class="users-table-wrapper">
+          <table class="users-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Organization</th>
+                <th>Role</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (profile of displayedProfiles; track profile.id) {
                 <tr
                   class="user-row-clickable"
                   role="button"

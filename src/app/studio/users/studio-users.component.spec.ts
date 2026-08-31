@@ -88,10 +88,40 @@ describe('StudioUsersComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('shows no results until a search term is entered', async () => {
+  it('has no search matches until a search term is entered, but displayedProfiles still shows recent signups', async () => {
     await createComponent({ profiles: [createTestProfile()], organizations: [createTestOrg()] });
 
     expect(component.filteredResults).toEqual([]);
+    expect(component.displayedProfiles.length).toBe(1);
+  });
+
+  describe('recentProfiles / displayedProfiles', () => {
+    it('sorts by created_at descending and caps at 20', async () => {
+      const profiles = Array.from({ length: 25 }, (_, i) =>
+        createTestProfile({ id: `p${i}`, created_at: `2026-01-${String(i + 1).padStart(2, '0')}T00:00:00.000Z` })
+      );
+      await createComponent({ profiles, organizations: [createTestOrg()] });
+
+      expect(component.recentProfiles.length).toBe(20);
+      // p24 (Jan 25) is the most recently created — should lead the list.
+      expect(component.recentProfiles[0].id).toBe('p24');
+      expect(component.recentProfiles[19].id).toBe('p5');
+    });
+
+    it('displayedProfiles is recentProfiles with no search term, and filteredResults once one is typed', async () => {
+      await createComponent({
+        profiles: [
+          createTestProfile({ id: 'p1', full_name: 'Alex Rivera', email: 'alex@example.com', created_at: '2026-01-01T00:00:00.000Z' }),
+          createTestProfile({ id: 'p2', full_name: 'Jordan Lee', email: 'jordan@example.com', created_at: '2026-01-02T00:00:00.000Z' })
+        ],
+        organizations: [createTestOrg()]
+      });
+
+      expect(component.displayedProfiles.map(p => p.id)).toEqual(['p2', 'p1']);
+
+      component.searchTerm = 'alex';
+      expect(component.displayedProfiles.map(p => p.id)).toEqual(['p1']);
+    });
   });
 
   it('matches on name or email, case-insensitively', async () => {
@@ -156,6 +186,22 @@ describe('StudioUsersComponent', () => {
 
     expect(fixture.nativeElement.textContent).toContain('Locked');
     expect(fixture.nativeElement.textContent).not.toContain('Approved');
+  });
+
+  it('renders a row per recent signup by default, with no search term typed', async () => {
+    await createComponent({
+      profiles: [
+        createTestProfile({ id: 'p1', full_name: 'Alex Rivera', created_at: '2026-01-01T00:00:00.000Z' }),
+        createTestProfile({ id: 'p2', full_name: 'Jordan Lee', created_at: '2026-01-02T00:00:00.000Z' })
+      ],
+      organizations: [createTestOrg()]
+    });
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Alex Rivera');
+    expect(text).toContain('Jordan Lee');
+    expect(text).toContain('Showing the 2 most recently signed up users');
   });
 
   it('surfaces a failed load rather than reading as an empty directory', async () => {
