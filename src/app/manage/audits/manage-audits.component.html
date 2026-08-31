@@ -1,0 +1,106 @@
+<div class="manage-audits-wrapper">
+  <div class="container">
+    <div class="page-toolbar">
+      <app-breadcrumbs />
+    </div>
+
+    <div class="back-row">
+      @if (selectedAuditId) {
+        <button mat-button type="button" (click)="closeAuditDetail()">
+          <mat-icon>arrow_back</mat-icon>
+          Back
+        </button>
+      } @else {
+        <button mat-button type="button" routerLink="/manage">
+          <mat-icon>arrow_back</mat-icon>
+          Back
+        </button>
+      }
+    </div>
+
+    @if (!selectedAuditId) {
+      <app-page-header
+          icon="fact_check"
+          title="Inventory Audits"
+          subtitle="Reconcile what the system thinks is in stock against what's actually on the shelf."
+          zone="inventory"
+        >
+        @if (authService.canManage()) {
+          <button mat-flat-button color="primary" type="button" (click)="openStartAudit()">
+            <mat-icon>fact_check</mat-icon>
+            Start audit
+          </button>
+        }
+      </app-page-header>
+    }
+
+    @if (selectedAuditId) {
+      <app-audit-detail [auditId]="selectedAuditId" (back)="closeAuditDetail()" />
+    } @else {
+      @if (isLoading) {
+        <ul class="audit-list" aria-hidden="true">
+          @for (i of skeletonRows; track i) {
+            <li class="audit-card">
+              <div class="audit-info skeleton-audit-info">
+                <div class="audit-row">
+                  <div class="skeleton-block skeleton-cell-badge"></div>
+                  <div class="skeleton-line skeleton-audit-location"></div>
+                </div>
+                <div class="skeleton-line skeleton-audit-meta"></div>
+              </div>
+            </li>
+          }
+        </ul>
+      } @else if (loadError) {
+        <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load audits. ' + loadError">
+          <button mat-stroked-button type="button" (click)="retryLoad()">
+            <mat-icon>refresh</mat-icon>
+            Retry
+          </button>
+        </app-empty-state>
+      } @else if (audits.length === 0) {
+        <app-empty-state icon="fact_check" message="No inventory audits yet." />
+      } @else {
+        <ul class="audit-list">
+          @for (audit of audits; track audit.id) {
+            <li
+                class="audit-card"
+                role="button"
+                tabindex="0"
+                [class.realtime-flash]="isFlashing(audit.id)"
+                (click)="openAuditDetail(audit.id)"
+                (keydown.enter)="openAuditDetail(audit.id)"
+                (keydown.space)="openAuditDetail(audit.id)"
+              >
+              <div class="audit-info">
+                <div class="audit-row">
+                  <span class="status-pill" [class]="'audit-' + audit.status">
+                    <mat-icon>
+                      {{ audit.status === 'completed' ? 'check_circle' : audit.status === 'cancelled' ? 'cancel' : 'hourglass_top' }}
+                    </mat-icon>
+                    {{ audit.status === 'in_progress' ? 'In progress' : audit.status === 'completed' ? 'Completed' : 'Cancelled' }}
+                  </span>
+                  <span class="audit-location">{{ audit.physicalLocation || 'Whole organization' }}</span>
+                  <span class="audit-progress mono">{{ audit.countedItems }} of {{ audit.totalItems }} counted</span>
+                  @if (audit.discrepancyCount > 0) {
+                    <span class="audit-discrepancies">
+                      {{ audit.discrepancyCount }} discrepanc{{ audit.discrepancyCount === 1 ? 'y' : 'ies' }}
+                    </span>
+                  }
+                </div>
+                <div class="audit-meta">
+                  Started by {{ audit.startedByLabel }} &middot; {{ audit.startedAt | date: 'M/d/yy, h:mm a' }}
+                  @if (audit.note) {
+                    <br />
+                    <span class="semibold">Note:</span> {{ audit.note }}
+                  }
+                </div>
+              </div>
+              <mat-icon class="audit-chevron" aria-hidden="true">chevron_right</mat-icon>
+            </li>
+          }
+        </ul>
+      }
+    }
+  </div>
+</div>
