@@ -409,6 +409,13 @@ export class TaskDetailModalComponent implements OnInit {
     this.relatedItemViewChange.emit(false);
   }
 
+  /** The Save button itself is disabled whenever selectedStatus hasn't
+   *  actually diverged from task.status (see the template's own
+   *  [disabled] binding) — there's nothing to save yet, so the button
+   *  shouldn't invite a click. The guard below is defense-in-depth for
+   *  this method itself rather than the primary gate: it's what makes
+   *  reverting the dropdown back to the original value re-disable the
+   *  button too, and protects any future caller of this method directly. */
   async saveStatus() {
     if (this.selectedStatus === this.task.status) {
       this.back.emit(false);

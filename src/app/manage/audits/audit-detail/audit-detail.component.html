@@ -1,0 +1,191 @@
+@if (isLoading) {
+  <div class="skeleton-block skeleton-audit-header" aria-hidden="true"></div>
+  <div class="skeleton-block skeleton-audit-section" aria-hidden="true"></div>
+  <div class="skeleton-block skeleton-audit-section" aria-hidden="true"></div>
+} @else if (loadError) {
+  <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load this audit. ' + loadError">
+    <button mat-stroked-button type="button" (click)="retryLoad()">
+      <mat-icon>refresh</mat-icon>
+      Retry
+    </button>
+  </app-empty-state>
+} @else if (!audit) {
+  <app-empty-state icon="search_off" message="This audit doesn't exist, or you no longer have access to it." />
+} @else {
+  <div class="audit-header">
+    <app-ring-stat [percent]="percentCounted" label="Counted" colorToken="--mat-sys-primary" />
+    <div class="audit-header-info">
+      <h2 class="audit-header-location">{{ audit.physicalLocation || 'Whole organization' }}</h2>
+      <p class="audit-header-meta">
+        Started by {{ audit.startedByLabel }} &middot; {{ audit.startedAt | date: 'M/d/yy, h:mm a' }}
+        @if (audit.note) {
+          <br />
+          <span class="semibold">Note:</span> {{ audit.note }}
+        }
+        @if (audit.status === 'completed') {
+          <br />
+          Completed by {{ audit.completedByLabel }} &middot; {{ audit.completedAt | date: 'M/d/yy, h:mm a' }}
+        }
+        @if (audit.status === 'cancelled') {
+          <br />
+          Cancelled by {{ audit.cancelledByLabel }} &middot; {{ audit.cancelledAt | date: 'M/d/yy, h:mm a' }}
+        }
+      </p>
+      <p class="audit-header-stats mono">
+        {{ audit.countedItems }} of {{ audit.totalItems }} counted
+        @if (audit.discrepancyCount > 0) {
+          &middot; {{ audit.discrepancyCount }} discrepanc{{ audit.discrepancyCount === 1 ? 'y' : 'ies' }}
+        }
+      </p>
+    </div>
+    @if (isInProgress && authService.canManage()) {
+      <div class="audit-header-actions">
+        <button mat-button type="button" [disabled]="isFinishing" (click)="cancelAudit()">
+          Cancel audit
+        </button>
+        <button mat-flat-button color="primary" type="button" [disabled]="isFinishing" (click)="completeAudit()">
+          @if (isFinishing) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            Complete audit
+          }
+        </button>
+      </div>
+    }
+  </div>
+
+  @if (finishError) {
+    <p class="error-message">{{ finishError }}</p>
+  }
+
+  @if (isInProgress && notYetCounted.length > 0) {
+    <section class="audit-section">
+      <h3 class="audit-section-title">
+        <mat-icon>checklist</mat-icon>
+        Count an item
+      </h3>
+      <form (ngSubmit)="submitCount()" class="count-entry-form">
+        <mat-form-field appearance="outline" class="count-entry-search">
+          <mat-label>Item</mat-label>
+          <mat-icon matPrefix>inventory_2</mat-icon>
+          <input
+              matInput
+              placeholder="Search items not yet counted…"
+              [formControl]="countSearchControl"
+              [matAutocomplete]="countAuto"
+            />
+          <mat-autocomplete #countAuto="matAutocomplete" (optionSelected)="onCountItemSelected($event)">
+            @for (count of filteredNotYetCounted; track count.id) {
+              <mat-option [value]="count.id">{{ count.itemName }}</mat-option>
+            } @empty {
+              <mat-option disabled>No matching items left to count</mat-option>
+            }
+          </mat-autocomplete>
+        </mat-form-field>
+
+        @if (selectedCount) {
+          <mat-form-field appearance="outline" class="count-entry-quantity">
+            <mat-label>Counted quantity</mat-label>
+            <mat-icon matPrefix>numbers</mat-icon>
+            <input matInput type="number" min="0" [formControl]="countForm.controls.quantity" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="count-entry-note">
+            <mat-label>Note (optional)</mat-label>
+            <input matInput [formControl]="countForm.controls.note" />
+          </mat-form-field>
+          <button mat-flat-button color="primary" type="submit" [disabled]="isSubmittingCount">
+            @if (isSubmittingCount) {
+              <mat-spinner diameter="20"></mat-spinner>
+            } @else {
+              Submit count
+            }
+          </button>
+        }
+      </form>
+      @if (countError) {
+        <p class="error-message">{{ countError }}</p>
+      }
+    </section>
+  }
+
+  @if (discrepancies.length > 0) {
+    <section class="audit-section">
+      <div class="audit-section-header-row">
+        <h3 class="audit-section-title">
+          <mat-icon>warning</mat-icon>
+          Discrepancies ({{ discrepancies.length }})
+        </h3>
+        @if (isInProgress && authService.canManage() && applicableDiscrepancies.length > 0) {
+          <button mat-stroked-button type="button" [disabled]="isApplying" (click)="applyAllDiscrepancies()">
+            @if (isApplying) {
+              <mat-spinner diameter="18"></mat-spinner>
+            } @else {
+              Apply all ({{ applicableDiscrepancies.length }})
+            }
+          </button>
+        }
+      </div>
+
+      @if (applyError) {
+        <p class="error-message">{{ applyError }}</p>
+      }
+
+      <ul class="count-list">
+        @for (count of discrepancies; track count.id) {
+          <li class="count-row">
+            <div class="count-row-info">
+              <a class="count-item-link" routerLink="/inventory" [queryParams]="{ item: count.itemId }">
+                {{ count.itemName }}
+              </a>
+              <span class="count-delta mono">
+                expected {{ count.expectedQuantity }}, counted {{ count.countedQuantity }}
+              </span>
+              <span class="count-meta">
+                Counted by {{ count.countedByLabel || 'Unknown user' }} &middot; {{ count.countedAt | date: 'M/d/yy, h:mm a' }}
+                @if (count.note) {
+                  &middot; {{ count.note }}
+                }
+              </span>
+            </div>
+            @if (count.appliedAt) {
+              <span class="count-applied-tag">
+                <mat-icon>check_circle</mat-icon>
+                Applied
+              </span>
+            } @else if (count.isContainerTracked) {
+              <span class="count-container-tag" matTooltip="This item is tracked by container — adjust its boxes directly instead.">
+                <mat-icon>inventory_2</mat-icon>
+                Container-tracked
+              </span>
+            } @else if (isInProgress && authService.canManage()) {
+              <button mat-stroked-button type="button" [disabled]="isApplying" (click)="applyCount(count)">
+                Apply
+              </button>
+            }
+          </li>
+        }
+      </ul>
+    </section>
+  }
+
+  @if (matches.length > 0) {
+    <p class="audit-matches-summary">
+      <mat-icon>check_circle</mat-icon>
+      {{ matches.length }} item{{ matches.length === 1 ? '' : 's' }} matched exactly.
+    </p>
+  }
+
+  @if (notYetCounted.length > 0) {
+    <section class="audit-section">
+      <h3 class="audit-section-title">
+        <mat-icon>hourglass_top</mat-icon>
+        Not yet counted ({{ notYetCounted.length }})
+      </h3>
+      <ul class="not-counted-list">
+        @for (count of notYetCounted; track count.id) {
+          <li>{{ count.itemName }}</li>
+        }
+      </ul>
+    </section>
+  }
+}

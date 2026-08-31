@@ -751,6 +751,49 @@ complete history into one newline-joined cell, rather than a second file to corr
 plus its images/activity maps, mapped through the same `toInventoryItem()` every other consumer of
 this page's data uses) rather than issuing a fresh query.
 
+Export's counterpart, an "Import" button right beside it, bulk-creates items from a re-uploaded CSV
+built off a downloadable template (`shared/utils/inventory-import.ts`'s `buildInventoryImportTemplateCsv()`
+— 15 columns, every insertable "Create item" field except barcode, which this feature skips entirely
+rather than gating on `BARCODE_FEATURE_ENABLED`, and every server-derived column a fresh item can't
+have yet). Parsing uses `papaparse` (real staff editing this in Excel/Sheets makes BOM/quoting/line-
+ending robustness matter more than avoiding a small dependency, unlike this app's usual hand-rolled-
+over-a-library preference for its charts) — `parseAndValidateImportRows()` reads cells by header name
+rather than position, so reordering columns in the spreadsheet doesn't break anything, and validates
+each row client-side before anything is ever sent to the DB: a blank Name or Quantity total, a
+malformed numeric field, or an invalid `Expiration date` (strict `YYYY-MM-DD`, checked against a real
+calendar date) all block that one row (shown in a preview table, skipped on import) rather than the
+whole file; a `Supplier name` that doesn't case-insensitively match the org's already-loaded
+`SupplierService.suppliers()` directory is only a warning — the row still imports with `supplier_id`
+left `null`, same "fix it after import" spirit as photos and container/box breakdowns, both
+deliberately left out of this feature entirely (every imported item is flat-quantity; both can be
+added to an item afterward same as always). A row whose `Name` case-insensitively matches an item
+already in the org (`existingItemNames`, every name in `allInventoryItems` — active/pending/retired
+alike, passed to the modal via `MAT_DIALOG_DATA` since it's page state, not a shared service the way
+`SupplierService` is) or another row in the same file is also blocked, as a likely accidental
+duplicate rather than silently creating a second entry — matched every row sharing that name when
+it's an in-file collision, not just the second-or-later occurrence, since there's no reliable way to
+guess which one was meant to be the real item. This is a client-side safeguard only; unlike `barcode`,
+`inventory_items.name` has no DB-level unique index, so a genuine race between two simultaneous
+imports still isn't caught server-side. The matching itself (`isDuplicateItemName()`, case-insensitive
+and whitespace-trimmed) lives in `shared/utils/inventory-item-name.ts` rather than inline in the
+importer, since `ManageInventoryComponent.submitInventoryItem()` — the plain "Create item" form —
+reuses it too: typing a name that already exists there is rejected with the exact same
+`DUPLICATE_ITEM_NAME_ERROR` wording, so the two creation paths agree on what counts as a duplicate
+rather than the importer being stricter than manual entry. No RPC accepts an array of rows, so
+`ImportInventoryModalComponent` (self-contained like `PlaceOrderModalComponent` — it does its own
+`inventory_items` inserts, own error handling, own toast) inserts one row at a time, batched in small
+concurrent chunks (`Promise.all` per chunk of ~15, chunks sequential) rather than one request per row
+firing all at once, and tallies success/failure per row exactly like every other bulk action in this
+app — except, unlike those, it stays open on a "done" step afterward (rather than immediately closing
+the way `PlaceOrderModalComponent` does) so skipped/failed rows are actually reviewable, real
+partial-outcome detail a single order never has. One best-effort `activity_log` summary entry
+(`entity_id: null`, schema-legal — that column has no FK) covers the whole import rather than one
+entry per item. That "done" step's own primary action is a "View inventory" CTA (only shown once
+`succeededCount > 0` — nothing to view otherwise) navigating to `/inventory`, the full browsing page,
+rather than just trusting the "Imported N items" text — explicit `dialogRef.close()` + `router.navigate()`
+rather than a plain `[routerLink]` relying on `MatDialogConfig`'s default `closeOnNavigation`, so the
+close is directly unit-testable rather than depending on an inferred library default.
+
 Admins and managers get a `manage/orders` route (`ManageOrdersComponent`, `manageGuard`) — one
 org-wide place to place, review, and action restock orders against any item's linked supplier,
 rather than the item-detail popup this started as (an earlier "Orders" tab on `ModalTableComponent`
@@ -848,6 +891,61 @@ manager viewer's breadcrumb to `/manage` would just bounce them back out via tha
 page subtitle is the one thing in the component itself that's role-conditional, purely to explain
 to a staff viewer why their list is shorter than an admin/manager's — every actual access check
 still lives in the database, not this `@if`.
+
+Every approved org member gets a `manage/audits` route (`ManageAuditsComponent`, `approvedGuard`
+only — same tier `manage/reservations`/`/broadcasts` already established for a `manage/*` page
+reachable without admin/manager) for physical inventory audits ("cycle counts"): reconciling what
+the system thinks is in stock against what's actually on the shelf. An admin/manager starts an
+audit (org-wide, or scoped to one `physical_location`) via `StartAuditModalComponent`, which calls
+`start_inventory_audit()` — a `SECURITY DEFINER` RPC that snapshots every item with `status !=
+'retired'` in scope (active *and* `retirement_pending` — finding stock on a pending-retirement item
+during a count is itself a meaningful discrepancy, not noise to exclude) into a new
+`inventory_audit_counts` row per item, `expected_quantity` set to that item's `quantity_remaining` at
+that exact moment. Any approved member can then open the audit (`AuditDetailComponent`, embedded
+inline via `ManageAuditsComponent.selectedAuditId`/`?audit=<id>`, same `selectedItemDetail`/`?item=`
+shape `ManageInventoryComponent` already established, rather than a routed `manage/audits/:id` —
+audits have only one entry point, their own list, unlike Studio's routed detail pages which exist
+specifically for cross-linking from multiple entry points) and submit what they actually counted for
+any not-yet-counted item via `submit_audit_count()` — no role check beyond org membership, same
+staff-level trust `widen_reservation_access_to_staff.sql` already established for physical warehouse
+work; re-submitting overwrites, so a miscount is fixable until the audit is finalized. A counted
+item lands in one of three buckets purely computed client-side from its `expected_quantity` vs
+`counted_quantity` (`isAuditDiscrepancy()`, `shared/models/inventory-audit.model.ts`): matches
+(collapsed to a summary count only), discrepancies, or (uncounted) not-yet-counted.
+
+Reconciling a discrepancy is admin/manager-only — the same trust split `approve_item_retirement`
+draws against discarding stock elsewhere in this schema — via `apply_audit_count()` (per-row) or a
+bulk "Apply all" (the same `Promise.all` + per-row tally convention every other bulk action in this
+app already follows, no RPC accepting an array of ids). It shifts the item's *live*
+`quantity_remaining`/`quantity_total` by the counted-vs-expected **delta**, not an absolute
+overwrite (`new_remaining = live_remaining_now + (counted − expected_snapshot)`) — real activity on
+the item during the audit window (a checkout, a discard, another edit) would otherwise be silently
+erased by overwriting to the counted figure outright; if nothing else changed, the delta reduces to
+exactly `new_remaining = counted`, so this is invisible in the common case. A container-tracked item
+(`exists (select 1 from inventory_item_containers where item_id = ...)`, checked server-side)
+refuses to apply at all — there's no reliable way to know which specific box was miscounted, so that
+discrepancy is informational only and has to be corrected by hand via the item's own container
+editor. Applying and completing are independent actions: "Complete audit"
+(`complete_inventory_audit()`) just finalizes the audit's own record and deliberately does **not**
+auto-apply whatever's left unapplied, since a manager might deliberately choose not to trust a
+particular count — an unapplied discrepancy stays visible in the completed audit's own history
+rather than being forced through. "Cancel audit" (`cancel_inventory_audit()`) is the only other way
+out of `in_progress`, no reconciliation attempted.
+
+`inventory_audits` is an org-level table (its own `organization_id`), not a per-item child — modeled
+on `broadcasts` rather than the containers/discards/orders/reservations shape, since an audit spans
+many items rather than belonging to one. `inventory_audit_counts` is a child of the audit (not of
+the item), one row per item snapshotted at start time (`unique (audit_id, item_id)`) — pre-populating
+every in-scope item up front, rather than only recording rows for items someone actually counts, is
+what makes "38 of 50 counted" and "this item was never found" possible at all. Neither table grants
+`authenticated` any direct INSERT/UPDATE/DELETE — every write goes through the five RPCs above, all
+`SECURITY DEFINER`, dual-logging to `inventory_item_activity`+`activity_log` (a new
+`'inventory_audit'` `activity_log.entity_type`, same drop-and-recreate-check-constraint widen
+`add_broadcasts` already did for `'broadcast'`) the same way every other lifecycle RPC in this schema
+already does. `apply_audit_count()` shipped with a real bug caught and fixed same-day, before any
+client code depended on it: no guard against being called twice on an already-applied row, which
+would have silently double-shifted the item's quantity on a retry/double-click/stale-render — see
+`20260920120100_fix_apply_audit_count_double_apply.sql`'s own comment.
 
 `DiscardModalComponent`'s quantity field also has a "Discard all (N)" / "Discard a specific
 quantity" mode toggle (`mode: 'all' | 'partial'`, defaulting to `'all'`) — a restoration of the
@@ -1974,6 +2072,16 @@ for exactly this need (a platform admin acting on an org/person is almost never 
 their name can't come from data the page already loaded) — sitting alongside "Recent feedback"/
 "Recent errors" as read-only context, above the "Platform actions" buttons themselves.
 
+`TaskDetailModalComponent`'s Save button (the only thing it ever writes — see
+`close_task_assignee_column_gap`'s own migration entry above for why this dialog can only change
+`status`, nothing else about a task) is now disabled whenever the Status dropdown's current selection
+matches the task's own `status` — previously it stayed clickable the whole time, and `saveStatus()`
+itself already silently treated a same-status click as "nothing to save, just leave" rather than
+calling `update_task_status()`, so the only real change is the button no longer inviting a click that
+was always going to be a no-op. That existing early-return stays in `saveStatus()` itself as
+defense-in-depth (it's what re-disables the button if the dropdown is set back to the original value,
+and protects any future direct caller of the method) rather than being the only gate.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -2064,15 +2172,15 @@ The app mixes two Angular module styles, which is important to know before addin
 - Routing (`app-routing.module.ts`) is flat — `''` → `LandingComponent`, `'login'` →
   `LoginComponent`, `'register'` → `RegisterComponent`, `'inventory'` → `InventoryComponent`
   guarded by `approvedGuard` (plus `home`, `tasks`, `account`, `help` — all similarly guarded).
-  `manage` is a card hub (`ManageComponent`) linking to twelve flat sibling routes —
+  `manage` is a card hub (`ManageComponent`) linking to thirteen flat sibling routes —
   `manage/inventory`, `manage/tasks`, `manage/team`, `manage/activity`, `manage/error-log`,
   `manage/suppliers`, `manage/orders`, `manage/release-notes`, `manage/reports` (all `manageGuard`:
-  admin OR manager), `manage/reservations` (`approvedGuard` only — every approved org member, not
-  just admin/manager; see the Project Overview section above) and
+  admin OR manager), `manage/reservations`/`manage/audits` (`approvedGuard` only — every approved org
+  member, not just admin/manager; see the Project Overview section above) and
   `manage/billing`/`manage/danger-zone`/`manage/settings` (`adminGuard`, stricter — financial info,
   org export/delete, and site-wide branding respectively) — rather than nested child routes,
   matching the rest of the app's flat routing. The hub itself (`ManageComponent`) groups these
-  into four labeled sections — Inventory (Inventory/Suppliers/Orders/Reservations), Team & tasks
+  into four labeled sections — Inventory (Inventory/Suppliers/Orders/Reservations/Audits), Team & tasks
   (Tasks/Team), Insights (Activity Log/Release Notes/Reports/Error Log), and Admin
   (Billing/Settings/Danger Zone, Danger Zone deliberately last) — rather than one flat grid; with a
   dozen-plus cards, grouping by what they're actually for keeps the page scannable. The three Admin
@@ -2128,6 +2236,7 @@ broadcasts/                                                  # every approved me
 manage/                                                     # card hub (ManageComponent) linking to the pages below
   inventory/, tasks/, team/, activity/, suppliers/, orders/ # admin/manager only: inventory (+ CSV export), tasks, team administration, the cross-entity activity feed, the supplier directory, and restock orders
   reservations/                                             # admin/manager only: date-ranged reservations of an item's stock
+  audits/, audits/audit-detail/                              # every approved member: physical inventory audits ("cycle counts"), see Project Overview above
   release-notes/                                            # admin/manager only: "What's new" list, see Project Overview above
   error-log/                                                # admin/manager only: client_error_log viewer, see Supabase Schema section
   reports/                                                  # admin/manager only: inventory value/stock health, stock movement/loss, task throughput
@@ -2143,7 +2252,9 @@ shared/
   components/bulk-reassign-modal/ # Inventory's bulk category/physical-location reassignment dialog
   components/supplier-form-modal/ # add/edit dialog backing manage/suppliers' directory CRUD
   components/place-order-modal/ # self-contained item picker + quantity/note dialog backing manage/orders' "Place order"
+  components/import-inventory-modal/ # self-contained template-download + upload/preview/validate + bulk-create dialog backing manage/inventory's "Import" button
   components/place-reservation-modal/ # self-contained item picker + date-range/quantity dialog backing manage/reservations' "New reservation"
+  components/start-audit-modal/ # self-contained scope (physical_location)/note dialog calling start_inventory_audit(), backing manage/audits' "Start audit"
   components/discard-modal/ # quantity ("Discard all" or a specific amount) + mandatory-reason dialog backing ModalTableComponent's "Discard" button
   components/turnstile-widget/ # Cloudflare Turnstile CAPTCHA, embedded on Login/Register/Forgot Password
   components/help-tooltip/ # small "?" matTooltip icon button explaining a non-obvious control inline
@@ -2159,6 +2270,7 @@ shared/
   models/supplier.model.ts   # Supplier — a directory entry inventory_items.supplier_id can point at
   models/inventory-item-order.model.ts # InventoryItemOrder — one restock order against an item's linked supplier
   models/inventory-item-reservation.model.ts # InventoryItemReservation — a date-ranged booking of some quantity of an item's stock
+  models/inventory-audit.model.ts # InventoryAudit / InventoryAuditCount / isAuditDiscrepancy() — a physical inventory audit ("cycle count") and its per-item snapshot rows
   models/theme-preset.ts     # THEME_PRESETS — key must match a [data-theme] block in styles.scss
   models/inventory-table-column.ts # optional Inventory table-view columns admin can show/hide (Settings > Data)
   models/pricing-tier.ts     # PRICING_TIERS — shared by PricingComponent (/pricing) and ManageBillingComponent
@@ -2170,13 +2282,16 @@ shared/
   models/broadcast.model.ts  # Broadcast / BroadcastReferencedMember / BroadcastReferencedItem — backs /broadcasts
   models/database.types.ts   # generated via `npm run supabase:gen:types` — regenerate, don't hand-edit
   utils/inventory-item.mapper.ts   # toInventoryItem(row, images, checkedOutToLabel, activityLog?, ..., supplierLabel?) — DB row -> InventoryItem
+  utils/inventory-item-name.ts     # isDuplicateItemName() — shared by the CSV importer and the manual "Create item" form's own duplicate-name check
   utils/inventory-item-images.ts   # loadInventoryImagesByItemId() / uploadInventoryItemImages() / deleteInventoryItemImage()
   utils/inventory-item-activity.ts # loadInventoryActivityByItemId() / logInventoryItemActivity() — inventory_item_activity
   utils/inventory-item-discards.ts # logInventoryItemDiscard() / loadAllInventoryItemDiscards() — structured counterpart to the free-text discard activity line, backs manage/reports
   utils/inventory-item-orders.ts # loadAllInventoryItemOrders() — every org order, backs manage/orders
   utils/inventory-item-reservations.ts # loadAllInventoryItemReservations() / loadUpcomingReservationsForItem() — backs manage/reservations and ModalTableComponent's read-only summary
+  utils/inventory-audits.ts # loadAuditSummaries() / loadAuditDetail() — backs manage/audits' list and its embedded AuditDetailComponent
   utils/broadcasts.ts        # loadBroadcasts() / createBroadcast() / updateBroadcast() / deleteBroadcast() — backs /broadcasts and BroadcastModalComponent
   utils/inventory-export.ts  # buildInventoryExportCsv() / downloadCsv() — backs manage/inventory's "Export" button
+  utils/inventory-import.ts  # buildInventoryImportTemplateCsv() / parseAndValidateImportRows() / buildImportInsertPayload() — backs manage/inventory's "Import" button
   utils/activity-log.ts      # loadActivityLog() / logActivity() — org-wide activity_log, backs Manage > Activity Log
   utils/profile-label.ts     # profileDisplayName()/resolveProfileName() — shared profiles-array lookup
   utils/supplier-label.ts    # resolveSupplierName() — mirrors profile-label.ts for inventory_items.supplier_id
@@ -2690,6 +2805,29 @@ yet on a hard refresh of `/inventory`.
   two "restore"-shaped functions (`platform_unsuspend_organization`/`platform_restore_organization`)
   needed their existing `exists`-only not-found check swapped for a `select name into` so the org's
   name was actually on hand to log, same not-found behavior either way.
+- `add_inventory_audits` — adds `inventory_audits` (org-level — its own `organization_id`, unlike
+  every child table this schema otherwise adds — `status` `'in_progress'|'completed'|'cancelled'`,
+  `physical_location`, `note`, `started/completed/cancelled_by/at` triples) and `inventory_audit_counts`
+  (a child of the audit — `audit_id`, `item_id`, `expected_quantity`, `counted_quantity`, `counted_by/at`,
+  `note`, `applied_by/at`; `unique (audit_id, item_id)`), backing `manage/audits` (see Project Overview
+  above for the full feature). Both join-scoped from day one (`inventory_audit_counts` through
+  `audit_id -> inventory_audits.organization_id`), no direct INSERT/UPDATE/DELETE grant for
+  `authenticated` at all — five new `SECURITY DEFINER` RPCs
+  (`start_inventory_audit`/`submit_audit_count`/`apply_audit_count`/`complete_inventory_audit`/
+  `cancel_inventory_audit`) are the only way either table is ever written. Widens
+  `activity_log.entity_type`'s check constraint to add `'inventory_audit'` (drop + recreate, same as
+  `add_broadcasts` did for `'broadcast'`), and adds both tables to the realtime publication +
+  `replica identity full`, same two-part mechanism `widen_realtime_to_child_tables` established.
+- `fix_apply_audit_count_double_apply` — a same-day follow-up, caught before any client code
+  depended on the RPC it fixes: `apply_audit_count()` (from the migration directly above) had no
+  guard against being called twice on the same already-applied row, which would have silently shifted
+  `quantity_remaining`/`quantity_total` by the same delta a second time (a double-click, a stale
+  render after a realtime reload, retrying a slow request). `create or replace function` here is
+  diffed against that same migration's version (the only one that's ever existed) — adds exactly one
+  `if v_count.applied_at is not null then raise exception ...` check, nothing else changed. Worth
+  remembering alongside this repo's other "diff against the previous version" lessons: a
+  double-application guard is easy to forget on any RPC that flips a row from "pending" to
+  "done" as a side effect of a broader write, not just the ones that look like a state machine.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

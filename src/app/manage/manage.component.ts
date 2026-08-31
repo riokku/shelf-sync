@@ -45,6 +45,12 @@ export class ManageComponent implements OnInit {
    *  Supabase query), so it's set directly rather than through the
    *  Promise.all below. */
   unseenReleaseNotesCount = 0;
+  /** Audits still being counted/reconciled — badged on this hub's own
+   *  Audits card. Visible to any approved member (same reach the Audits
+   *  card/route itself has), not just Manager+ the way the three approval-
+   *  queue counts above are, since any approved member can act on an
+   *  in-progress audit by submitting a count. */
+  inProgressAuditCount = 0;
 
   async ngOnInit() {
     // getProfile() rather than authService.role() — the profile signal
@@ -55,7 +61,7 @@ export class ManageComponent implements OnInit {
     const profile = await this.authService.getProfile();
     const isAdmin = profile?.role === 'admin';
 
-    const [{ count: retirementCount }, { count: transferCount }, { count: joinCount }] = await Promise.all([
+    const [{ count: retirementCount }, { count: transferCount }, { count: joinCount }, { count: auditCount }] = await Promise.all([
       this.supabase
         .from('inventory_items')
         .select('id', { count: 'exact', head: true })
@@ -66,12 +72,17 @@ export class ManageComponent implements OnInit {
         .not('pending_transfer_to', 'is', null),
       isAdmin
         ? this.supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('membership_status', 'pending')
-        : Promise.resolve({ count: 0, error: null })
+        : Promise.resolve({ count: 0, error: null }),
+      this.supabase
+        .from('inventory_audits')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'in_progress')
     ]);
 
     this.pendingRetirementCount = retirementCount ?? 0;
     this.pendingTaskTransferCount = transferCount ?? 0;
     this.pendingJoinRequestCount = joinCount ?? 0;
+    this.inProgressAuditCount = auditCount ?? 0;
 
     if (profile) {
       this.unseenReleaseNotesCount = getUnseenChangelogCount(profile.id);

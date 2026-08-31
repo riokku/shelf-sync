@@ -27,6 +27,7 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/c
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { BulkActionToolbarComponent } from '../../shared/components/bulk-action-toolbar/bulk-action-toolbar.component';
 import { HelpTooltipComponent } from '../../shared/components/help-tooltip/help-tooltip.component';
+import { ImportInventoryModalComponent } from '../../shared/components/import-inventory-modal/import-inventory-modal.component';
 import { Database } from '../../shared/models/database.types';
 import { ActivityLogEntry, InventoryItem, MAX_INVENTORY_ITEM_IMAGES } from '../../shared/models/inventory-item.model';
 import { toIsoDateString } from '../../shared/utils/date';
@@ -37,6 +38,7 @@ import { resolveSupplierName } from '../../shared/utils/supplier-label';
 import { loadInventoryImagesByItemId, uploadInventoryItemImages } from '../../shared/utils/inventory-item-images';
 import { loadInventoryActivityByItemId } from '../../shared/utils/inventory-item-activity';
 import { sumContainerQuantity } from '../../shared/utils/inventory-item-containers';
+import { DUPLICATE_ITEM_NAME_ERROR, isDuplicateItemName } from '../../shared/utils/inventory-item-name';
 import { logActivity } from '../../shared/utils/activity-log';
 import { BARCODE_FEATURE_ENABLED, parseItemQrValue } from '../../shared/utils/barcode';
 import { HasUnsavedChanges } from '../../core/guards/unsaved-changes.guard';
@@ -457,6 +459,32 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
     downloadCsv(`shelfsync-inventory-export-${date}.csv`, csv);
   }
 
+  /** Export's counterpart — bulk-creates items from a re-uploaded CSV built
+   *  off the template ImportInventoryModalComponent itself offers. That
+   *  modal does its own writes (same self-contained shape
+   *  PlaceOrderModalComponent uses) and closes with `true` only if at least
+   *  one item was actually created, in which case this reloads the list the
+   *  same way every other write on this page already does.
+   *
+   *  existingItemNames — every name already in allInventoryItems (not
+   *  filtered to any particular status) — lets the modal reject a row that
+   *  would just create a duplicate before it ever reaches the DB, same
+   *  "whole org list, not a fresh query" reasoning exportInventoryCsv()
+   *  above already reuses this same field for. */
+  openImportModal() {
+    const dialogRef = this.dialog.open(ImportInventoryModalComponent, {
+      width: 'clamp(75%, 40rem, 90vw)',
+      maxWidth: '90vw',
+      data: { existingItemNames: this.allInventoryItems.map(item => item.name) }
+    });
+
+    dialogRef.afterClosed().subscribe(async imported => {
+      if (imported) {
+        await this.loadInventoryItems();
+      }
+    });
+  }
+
   retirementRequesterLabel(item: InventoryItemRow): string {
     return resolveProfileName(item.retirement_requested_by, this.assignableProfiles) || 'Unknown user';
   }
@@ -830,6 +858,16 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
     }
     if (this.trackingMode === 'containers' && this.newContainers.length === 0) {
       this.itemError = 'Add at least one container, or switch to a single quantity.';
+      return;
+    }
+    // Same case-insensitive check + wording the CSV importer's own
+    // duplicate-row rejection uses (shared/utils/inventory-item-name.ts) —
+    // typing a name that already exists here shouldn't sail through just
+    // because this path isn't a spreadsheet upload. allInventoryItems is
+    // the full org list regardless of status, same "a retired item's name
+    // is still a real, already-used name" reasoning that check already has.
+    if (isDuplicateItemName(this.inventoryForm.controls.name.value, this.allInventoryItems.map(item => item.name))) {
+      this.itemError = DUPLICATE_ITEM_NAME_ERROR;
       return;
     }
 

@@ -228,3 +228,77 @@ describe('TaskDetailModalComponent isOverdue', () => {
     expect(component.isOverdue).toBeFalse();
   });
 });
+
+/** The Save button only ever writes selectedStatus (see saveStatus()'s own
+ *  doc comment — this dialog can't edit anything else) — it should be
+ *  disabled whenever there's genuinely nothing to save, rather than
+ *  inviting a click that just closes the view without writing anything. */
+describe('TaskDetailModalComponent Save button', () => {
+  async function createComponentWithTask(overrides: Parameters<typeof createTestTask>[0] = {}) {
+    await TestBed.configureTestingModule({
+      imports: [TaskDetailModalComponent],
+      providers: [
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: SupabaseService, useValue: createFakeSupabaseService() },
+        { provide: MatDialogRef, useValue: createFakeMatDialogRef() },
+        { provide: MAT_DIALOG_DATA, useValue: createTestTask(overrides) }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(TaskDetailModalComponent);
+    fixture.detectChanges();
+    return { component: fixture.componentInstance, fixture };
+  }
+
+  function saveButton(fixture: ComponentFixture<TaskDetailModalComponent>): HTMLButtonElement {
+    return fixture.nativeElement.querySelector('.save-status-button');
+  }
+
+  it('is disabled as soon as the dialog opens, before any status change', async () => {
+    const { fixture } = await createComponentWithTask({ status: 'todo' });
+
+    expect(saveButton(fixture).disabled).toBeTrue();
+  });
+
+  it('becomes enabled once the selected status actually differs from the task\'s own', async () => {
+    const { component, fixture } = await createComponentWithTask({ status: 'todo' });
+
+    component.selectedStatus = 'in_progress';
+    fixture.detectChanges();
+
+    expect(saveButton(fixture).disabled).toBeFalse();
+  });
+
+  it('re-disables if the dropdown is set back to the task\'s original status', async () => {
+    const { component, fixture } = await createComponentWithTask({ status: 'todo' });
+    component.selectedStatus = 'in_progress';
+    fixture.detectChanges();
+    expect(saveButton(fixture).disabled).toBeFalse();
+
+    component.selectedStatus = 'todo';
+    fixture.detectChanges();
+
+    expect(saveButton(fixture).disabled).toBeTrue();
+  });
+
+  it('disables again while a save is already in flight', async () => {
+    const { component, fixture } = await createComponentWithTask({ status: 'todo' });
+    component.selectedStatus = 'in_progress';
+    component.isSaving = true;
+    fixture.detectChanges();
+
+    expect(saveButton(fixture).disabled).toBeTrue();
+  });
+
+  it('saveStatus() stays a no-op (just leaves, no RPC) if ever called with nothing actually changed', async () => {
+    const { component } = await createComponentWithTask({ status: 'todo' });
+    const backSpy = spyOn(component.back, 'emit');
+    const supabase = TestBed.inject(SupabaseService);
+    const rpcSpy = spyOn(supabase.client, 'rpc');
+
+    await component.saveStatus();
+
+    expect(rpcSpy).not.toHaveBeenCalled();
+    expect(backSpy).toHaveBeenCalledWith(false);
+  });
+});

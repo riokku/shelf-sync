@@ -80,6 +80,17 @@
           <h3>Reservations</h3>
           <p>Book inventory out for a date range and track pickup and return.</p>
         </a>
+        <a
+            class="manage-card"
+            routerLink="/manage/audits"
+            [matBadge]="inProgressAuditCount"
+            [matBadgeHidden]="inProgressAuditCount === 0"
+            matBadgeColor="warn"
+          >
+          <span class="manage-card-icon manage-card-icon-a"><mat-icon>fact_check</mat-icon></span>
+          <h3>Audits</h3>
+          <p>Reconcile physical stock counts against what the system expects.</p>
+        </a>
       </div>
     </div>
 

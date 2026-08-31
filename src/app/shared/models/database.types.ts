@@ -284,6 +284,145 @@ export type Database = {
           },
         ]
       }
+      inventory_audit_counts: {
+        Row: {
+          applied_at: string | null
+          applied_by: string | null
+          audit_id: string
+          counted_at: string | null
+          counted_by: string | null
+          counted_quantity: number | null
+          expected_quantity: number
+          id: string
+          item_id: string
+          note: string | null
+        }
+        Insert: {
+          applied_at?: string | null
+          applied_by?: string | null
+          audit_id: string
+          counted_at?: string | null
+          counted_by?: string | null
+          counted_quantity?: number | null
+          expected_quantity: number
+          id?: string
+          item_id: string
+          note?: string | null
+        }
+        Update: {
+          applied_at?: string | null
+          applied_by?: string | null
+          audit_id?: string
+          counted_at?: string | null
+          counted_by?: string | null
+          counted_quantity?: number | null
+          expected_quantity?: number
+          id?: string
+          item_id?: string
+          note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_audit_counts_applied_by_fkey"
+            columns: ["applied_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_audit_counts_audit_id_fkey"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_audits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_audit_counts_counted_by_fkey"
+            columns: ["counted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_audit_counts_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_audits: {
+        Row: {
+          cancelled_at: string | null
+          cancelled_by: string | null
+          completed_at: string | null
+          completed_by: string | null
+          id: string
+          note: string | null
+          organization_id: string
+          physical_location: string | null
+          started_at: string
+          started_by: string | null
+          status: string
+        }
+        Insert: {
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          id?: string
+          note?: string | null
+          organization_id?: string
+          physical_location?: string | null
+          started_at?: string
+          started_by?: string | null
+          status?: string
+        }
+        Update: {
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          id?: string
+          note?: string | null
+          organization_id?: string
+          physical_location?: string | null
+          started_at?: string
+          started_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_audits_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_audits_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_audits_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_audits_started_by_fkey"
+            columns: ["started_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_field_options: {
         Row: {
           created_at: string
@@ -1242,7 +1381,12 @@ export type Database = {
         }
         Returns: undefined
       }
+      apply_audit_count: {
+        Args: { audit_count_id: string }
+        Returns: undefined
+      }
       approve_item_retirement: { Args: { item_id: string }; Returns: undefined }
+      cancel_inventory_audit: { Args: { audit_id: string }; Returns: undefined }
       cancel_inventory_item_order: {
         Args: { order_id: string }
         Returns: undefined
@@ -1256,6 +1400,10 @@ export type Database = {
         Returns: undefined
       }
       cancel_task_transfer: { Args: { task_id: string }; Returns: undefined }
+      complete_inventory_audit: {
+        Args: { audit_id: string }
+        Returns: undefined
+      }
       create_broadcast: {
         Args: {
           p_item_ids?: string[]
@@ -1379,6 +1527,18 @@ export type Database = {
       }
       set_inventory_item_lock: {
         Args: { item_id: string; locked: boolean }
+        Returns: undefined
+      }
+      start_inventory_audit: {
+        Args: { p_note?: string; p_physical_location?: string }
+        Returns: string
+      }
+      submit_audit_count: {
+        Args: {
+          audit_count_id: string
+          p_counted_quantity: number
+          p_note?: string
+        }
         Returns: undefined
       }
       update_task_status: {

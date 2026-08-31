@@ -14,6 +14,21 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    date: '2026-08-30',
+    title: 'Physical inventory audits',
+    description: 'A new Manage > Audits page lets you reconcile physical stock counts against the system — start an audit, anyone can submit counts, and admins/managers apply the discrepancies.'
+  },
+  {
+    date: '2026-08-30',
+    title: 'Smarter Save button on tasks',
+    description: 'Opening a task\'s Status dropdown no longer leaves Save clickable until you actually change something.'
+  },
+  {
+    date: '2026-08-30',
+    title: 'Bulk inventory import',
+    description: 'Manage > Inventory now has an Import button next to Export — download a CSV template, fill in a row per item in Excel or Sheets, and re-upload to create them all at once.'
+  },
+  {
     date: '2026-08-28',
     title: 'Fewer silent failures',
     description: 'Home, Billing, and Studio now show a "couldn\'t load, try again" message with a Retry button if a page fails to load, instead of just looking empty.'

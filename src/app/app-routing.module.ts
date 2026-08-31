@@ -222,6 +222,20 @@ const routes: Routes = [
     title: 'ShelfSync | Reservations'
   },
   {
+    path: 'manage/audits',
+    loadComponent: () => import('./manage/audits/manage-audits.component').then(m => m.ManageAuditsComponent),
+    // approvedGuard only, same reasoning manage/reservations' own route
+    // comment gives right above — every approved org member can open an
+    // audit and submit a count (RLS/RPC-scoped: submit_audit_count() has no
+    // role check beyond org membership); starting/applying/completing/
+    // cancelling stays admin/manager-gated inside the page and, for real,
+    // by their own RPCs server-side. No breadcrumbParent for the same
+    // reason reservations has none.
+    canActivate: [approvedGuard],
+    data: { breadcrumb: 'Audits' },
+    title: 'ShelfSync | Inventory Audits'
+  },
+  {
     path: 'broadcasts',
     loadComponent: () => import('./broadcasts/broadcasts.component').then(m => m.BroadcastsComponent),
     // approvedGuard only, not manageGuard — every approved org member reads
