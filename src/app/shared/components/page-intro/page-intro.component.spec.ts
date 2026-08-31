@@ -12,6 +12,7 @@ describe('PageIntroComponent', () => {
 
     const fixture = TestBed.createComponent(PageIntroComponent);
     fixture.componentInstance.pageKey = 'inventory';
+    fixture.componentInstance.title = 'Welcome to Inventory';
     fixture.componentInstance.text = 'This is your inventory.';
     fixture.detectChanges();
     return fixture;
@@ -57,6 +58,7 @@ describe('PageIntroComponent', () => {
     }).compileComponents();
     const tasksHint = TestBed.createComponent(PageIntroComponent);
     tasksHint.componentInstance.pageKey = 'tasks';
+    tasksHint.componentInstance.title = 'Welcome to Tasks';
     tasksHint.componentInstance.text = 'This is your task queue.';
     tasksHint.detectChanges();
 

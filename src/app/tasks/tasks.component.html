@@ -23,6 +23,12 @@
         Back
       </button>
     </div>
+    <app-page-intro
+        pageKey="tasks"
+        icon="checklist"
+        title="Welcome to Tasks"
+        text="This is your personal task queue — anything assigned to you, plus any transfer offers waiting on your response. Open a task to update its status as you work on it."
+      />
     <div class="page-hero">
       <span class="page-hero-backdrop" aria-hidden="true"></span>
       <span class="page-hero-glow page-hero-glow-1" aria-hidden="true"></span>
@@ -58,11 +64,6 @@
       </div>
     </div>
   }
-  <app-page-intro
-      pageKey="tasks"
-      icon="checklist"
-      text="This is your personal task queue — anything assigned to you, plus any transfer offers waiting on your response. Open a task to update its status as you work on it."
-    />
 
   @if (selectedTask) {
     <app-task-detail-modal [task]="selectedTask" (back)="closeTaskDetail($event)" (relatedItemViewChange)="viewingRelatedItem = $event" />
