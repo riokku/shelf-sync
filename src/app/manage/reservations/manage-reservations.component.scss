@@ -28,6 +28,11 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 1rem;
+  // Owned here (not left solely to ReservationCalendarComponent's own
+  // margin-top) so the gap below this row is guaranteed regardless of
+  // which view renders next — margins collapse between the two rather
+  // than stacking, so this is never doubled up with the calendar's own.
+  margin-bottom: 1.5rem;
 
   .status-toggle{
     margin-bottom: 0;
