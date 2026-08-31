@@ -1,27 +1,74 @@
-// Same neutral banner treatment ModalTableComponent's own .retired-notice
-// uses — a status/hint to state, not a warning to flag.
+// A much bigger, more deliberate "welcome" card than the flat single-line
+// `surface-variant` bar this replaced — built from treatments this app
+// already uses elsewhere rather than a new visual language (see this
+// component's own doc comment): EmptyStateComponent's circular gradient
+// icon badge, and a diluted two-tone gradient wash + border mirroring
+// PageHeaderComponent's own `.page-header-zone`.
 .page-intro{
+  position: relative;
   display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+  padding: 1.75rem 3rem 1.75rem 1.75rem;
+  border-radius: 1rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  background: linear-gradient(120deg, color-mix(in srgb, var(--mat-sys-primary) 12%, var(--mat-sys-surface)), color-mix(in srgb, var(--mat-sys-tertiary) 10%, var(--mat-sys-surface)));
+  animation: page-intro-in 0.45s ease-out;
+}
+
+.page-intro-icon-badge{
+  flex-shrink: 0;
+  display: inline-flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  background: var(--mat-sys-surface-variant);
-  color: var(--mat-sys-on-surface-variant);
+  justify-content: center;
+  width: 3.75rem;
+  height: 3.75rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--mat-sys-primary-container), var(--mat-sys-tertiary-container));
 }
 
 .page-intro-icon{
-  flex-shrink: 0;
+  font-size: 1.875rem;
+  width: 1.875rem;
+  height: 1.875rem;
+  color: var(--mat-sys-on-primary-container);
+}
+
+.page-intro-body{
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.page-intro-title{
+  margin: 0 0 0.4rem;
 }
 
 .page-intro-text{
-  flex: 1 1 auto;
-  margin: 0;
-  font-size: 0.875rem;
-  line-height: 1.4;
+  margin: 0 0 1.1rem;
+  max-width: 42rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.9375rem;
+  line-height: 1.5;
 }
 
+// Absolutely positioned in the card's corner (rather than a flex sibling of
+// .page-intro-body) so it reads as a quiet, secondary "not now" escape
+// hatch — the labeled button below the body text is the primary,
+// deliberate dismissal action.
 .page-intro-close{
-  flex-shrink: 0;
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+}
+
+@keyframes page-intro-in{
+  from{ opacity: 0; transform: translateY(-0.5rem) scale(0.98); }
+  to{ opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .page-intro{
+    animation: none;
+  }
 }

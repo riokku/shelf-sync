@@ -1592,6 +1592,29 @@ this is about whether *this specific person* has already seen this page's orient
 teammate dismissing their own hint shouldn't hide it from someone else's first visit the way sharing
 the getting-started card's own org-wide progress legitimately should.
 
+A follow-up pass gave `PageIntroComponent` a bigger, more deliberate splash — the original shipped
+as a flat, single-line `surface-variant` bar (small icon, one line of text, a plain icon-button `X`)
+that read as a system notice rather than a first impression, easy to miss entirely. The redesign
+borrows this app's existing bold treatments rather than inventing a new one: `EmptyStateComponent`'s
+circular gradient icon badge (scaled up further, since this is the one focal point of a first visit
+to a page rather than an already-empty list) and a diluted two-tone gradient wash + border mirroring
+`PageHeaderComponent`'s own `zone` treatment, in place of the old flat fill. A new required `title`
+input (a short "Welcome to X" heading, picking up this app's global `h1`-`h4` display-font rule) sits
+above the existing `text` body copy, and a labeled "Got it, thanks" `mat-flat-button` sits alongside
+(not instead of) the small corner-`X` — a real, deliberate dismissal action rather than only a small
+icon easy to misclick past. All three consumers (Inventory/Tasks/the Manage hub) picked up a matching
+`title` and slightly tightened `text` alongside the component change.
+
+Its placement also moved, same pass — originally the last thing rendered before a page's own content
+(below the `.page-hero` band, sharing that section's own `@if`), it settled between `.back-row` and
+`.page-hero`: breadcrumbs, then Back, then the welcome card, then the hero, then the page's own
+content — below the navigation row rather than interrupting it, and still ahead of the hero it's
+introducing rather than trailing below it. On Inventory/Tasks specifically this puts it back inside
+the page's `@if (!selectedItem)`/`@if (!selectedTask)` block the hero/back-row already share (it had
+briefly rendered unconditionally, a leftover of being a late addition tacked on after both `@if`s
+rather than a deliberate choice) — which also means it no longer shows at all while viewing a
+specific item/task's own detail view, matching the hero's own scoping.
+
 Admins and managers get a `manage/release-notes` route (`ManageReleaseNotesComponent`, `manageGuard`)
 — a "What's new" list of shipped features (`CHANGELOG_ENTRIES` in `shared/models/changelog.ts`), a
 hand-maintained, newest-first array kept alongside CLAUDE.md's own running log, each entry's `date`
@@ -1862,9 +1885,14 @@ Error Log get `zone="insights"`, Billing/Settings get `zone="admin"` — while D
 own distinct flat-red `variant="danger"` treatment instead of joining the Admin wash (same
 "deliberately reads as riskier than its siblings" reasoning its icon chip already had), and every
 dialog-content usage (`ModalTableComponent`, `TaskDetailModalComponent`) leaves `zone` unset
-entirely, since a colored wash/watermark suits a full page, not a dialog. Studio's own five
-`PageHeaderComponent` usages were left out of this pass too — Studio has no equivalent four-section
-grouping to key a zone off of, a natural extension once/if it does.
+entirely, since a colored wash/watermark suits a full page, not a dialog. Studio's own
+`PageHeaderComponent` usages were left out of this particular pass — Studio has no equivalent
+four-section grouping to key a zone off of — but picked up a matching `zone="studio"` (see this
+input's own doc comment) in a later follow-up, once Studio had enough flat sub-pages
+(`Feedback`/`Error Log`/`Organizations`/`Users`, since joined by `Usage`/`Email Log`/`Audit Log`) to
+make one shared wash worth adding; `StudioOrgDetailComponent`/`StudioUserDetailComponent` still
+leave it unset, same "entity-detail drill-down, not a top-level destination" reasoning every other
+detail page's exemption above already has.
 
 A second new `[headerFigure]` content-projection slot lets a caller swap the header's plain icon
 chip for a live figure instead — wired up on the three pages that already had one obvious headline

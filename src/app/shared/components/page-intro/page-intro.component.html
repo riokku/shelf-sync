@@ -1,7 +1,15 @@
 @if (!dismissed) {
   <div class="page-intro">
-    <mat-icon class="page-intro-icon">{{ icon }}</mat-icon>
-    <p class="page-intro-text">{{ text }}</p>
+    <div class="page-intro-icon-badge">
+      <mat-icon class="page-intro-icon">{{ icon }}</mat-icon>
+    </div>
+    <div class="page-intro-body">
+      <h3 class="page-intro-title">{{ title }}</h3>
+      <p class="page-intro-text">{{ text }}</p>
+      <button mat-flat-button type="button" color="primary" class="page-intro-dismiss" (click)="dismiss()">
+        Got it, thanks
+      </button>
+    </div>
     <button mat-icon-button type="button" class="page-intro-close" (click)="dismiss()" aria-label="Dismiss">
       <mat-icon>close</mat-icon>
     </button>
