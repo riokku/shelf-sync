@@ -28,7 +28,14 @@
             Transfer
           </button>
         }
-        <button mat-flat-button color="primary" type="button" (click)="saveStatus()" [disabled]="isSaving">
+        <button
+            mat-flat-button
+            color="primary"
+            type="button"
+            class="save-status-button"
+            (click)="saveStatus()"
+            [disabled]="isSaving || selectedStatus === task.status"
+          >
           @if (isSaving) {
             <mat-spinner diameter="20"></mat-spinner>
           } @else {
