@@ -18,7 +18,7 @@ import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { InventoryItem, isLowStock, isOutOfStock } from '../shared/models/inventory-item.model';
+import { InventoryItem, isCheckoutOverdue, isLowStock, isOutOfStock } from '../shared/models/inventory-item.model';
 import { ModalTableComponent } from '../shared/components/modal-table/modal-table.component';
 import { BreadcrumbParent, BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 import { EmptyStateComponent } from '../shared/components/empty-state/empty-state.component';
@@ -169,6 +169,7 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
   searchTerm = '';
   readonly isLowStock = isLowStock;
   readonly isOutOfStock = isOutOfStock;
+  readonly isCheckoutOverdue = isCheckoutOverdue;
 
   readonly stockLevelOptions: { value: StockLevel; label: string }[] = [
     { value: 'out_of_stock', label: 'Out of stock' },

@@ -28,6 +28,13 @@ export interface ReservableItem {
   name: string;
   quantityRemaining: number;
   isLocked: boolean;
+  /** A pending-retirement item already sits at quantityRemaining 0 (that's
+   *  the precondition for requesting retirement in the first place — see
+   *  request_item_retirement()'s own check), so create_reservation()'s
+   *  capacity check already refuses it server-side regardless; this is the
+   *  same client-side-only, "visible but unselectable" nicety isLocked
+   *  already gets, not a second enforcement layer. */
+  isPendingRetirement: boolean;
 }
 
 export interface PlaceReservationModalData {
@@ -106,7 +113,7 @@ export class PlaceReservationModalComponent {
     }
     const { start, end } = this.reservationForm.controls.dateRange.value;
     if (!start || !end) {
-      return this.selectedItem.quantityRemaining;
+      return null;
     }
     const startIso = toIsoDateString(start)!;
     const endIso = toIsoDateString(end)!;

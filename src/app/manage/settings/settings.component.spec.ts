@@ -447,11 +447,12 @@ describe('SettingsComponent', () => {
   });
 
   describe('workflow (email notifications)', () => {
-    it('initializes all four selections from the persisted settings', () => {
+    it('initializes all five selections from the persisted settings', () => {
       expect(component.selectedNotifyTaskAssigned).toBe(true);
       expect(component.selectedNotifyTaskTransfer).toBe(true);
       expect(component.selectedNotifyRetirementRequest).toBe(true);
       expect(component.selectedNotifyJoinRequest).toBe(true);
+      expect(component.selectedNotifyCheckoutOverdue).toBe(true);
     });
 
     it('each toggleNotifyX() updates just its own local selection', () => {
@@ -462,12 +463,21 @@ describe('SettingsComponent', () => {
       expect(component.selectedNotifyTaskTransfer).toBe(true);
       expect(component.selectedNotifyRetirementRequest).toBe(true);
       expect(component.selectedNotifyJoinRequest).toBe(false);
+      expect(component.selectedNotifyCheckoutOverdue).toBe(true);
+    });
+
+    it('toggleNotifyCheckoutOverdue() updates just its own local selection', () => {
+      component.toggleNotifyCheckoutOverdue(false);
+
+      expect(component.selectedNotifyCheckoutOverdue).toBe(false);
+      expect(component.selectedNotifyTaskAssigned).toBe(true);
     });
 
     describe('enableAllEmailNotifications() / disableAllEmailNotifications()', () => {
-      it('enableAllEmailNotifications() sets all four selections to true', () => {
+      it('enableAllEmailNotifications() sets all five selections to true', () => {
         component.toggleNotifyTaskAssigned(false);
         component.toggleNotifyJoinRequest(false);
+        component.toggleNotifyCheckoutOverdue(false);
 
         component.enableAllEmailNotifications();
 
@@ -475,15 +485,17 @@ describe('SettingsComponent', () => {
         expect(component.selectedNotifyTaskTransfer).toBe(true);
         expect(component.selectedNotifyRetirementRequest).toBe(true);
         expect(component.selectedNotifyJoinRequest).toBe(true);
+        expect(component.selectedNotifyCheckoutOverdue).toBe(true);
       });
 
-      it('disableAllEmailNotifications() sets all four selections to false', () => {
+      it('disableAllEmailNotifications() sets all five selections to false', () => {
         component.disableAllEmailNotifications();
 
         expect(component.selectedNotifyTaskAssigned).toBe(false);
         expect(component.selectedNotifyTaskTransfer).toBe(false);
         expect(component.selectedNotifyRetirementRequest).toBe(false);
         expect(component.selectedNotifyJoinRequest).toBe(false);
+        expect(component.selectedNotifyCheckoutOverdue).toBe(false);
       });
 
       it('allEmailNotificationsEnabled/allEmailNotificationsDisabled reflect a uniform selection', () => {
@@ -515,7 +527,7 @@ describe('SettingsComponent', () => {
       });
     });
 
-    it('saveEmailNotifications() persists all four selections together and shows a success toast', async () => {
+    it('saveEmailNotifications() persists all five selections together and shows a success toast', async () => {
       const updateSpy = spyOn(siteSettings, 'updateEmailNotifications').and.returnValue(Promise.resolve(null));
       component.selectedNotifyTaskAssigned = false;
       component.selectedNotifyRetirementRequest = false;
@@ -526,7 +538,8 @@ describe('SettingsComponent', () => {
         taskAssigned: false,
         taskTransfer: true,
         retirementRequest: false,
-        joinRequest: true
+        joinRequest: true,
+        checkoutOverdue: true
       });
       expect(notificationSuccessSpy).toHaveBeenCalledWith('Saved for everyone');
       expect(component.emailNotificationsError).toBeNull();

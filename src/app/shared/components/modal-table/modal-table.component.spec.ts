@@ -179,6 +179,62 @@ describe('ModalTableComponent', () => {
     });
   });
 
+  describe('checkout due date (checkoutDueAt)', () => {
+    async function setup(item: Partial<Parameters<typeof createTestInventoryItem>[0]> = {}) {
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [ModalTableComponent],
+        providers: [
+          provideNativeDateAdapter(),
+          // saveEdit() refuses to write without a real session (see its own
+          // early-return) — a signed-out fake, this describe block's actual
+          // point, would make every save below silently no-op.
+          { provide: AuthService, useValue: createFakeAuthService(createFakeProfile()) },
+          { provide: SupabaseService, useValue: createFakeSupabaseService() },
+          { provide: MatDialogRef, useValue: createFakeMatDialogRef() },
+          { provide: MAT_DIALOG_DATA, useValue: createTestInventoryItem(item) }
+        ]
+      }).compileComponents();
+
+      const localFixture = TestBed.createComponent(ModalTableComponent);
+      localFixture.detectChanges();
+      return localFixture.componentInstance;
+    }
+
+    it('persists a due date entered alongside checking an item out', async () => {
+      const localComponent = await setup({ isCheckedOut: false });
+      await localComponent.startEdit();
+
+      localComponent.editForm.controls.checkedOutTo.setValue('user-1');
+      localComponent.editForm.controls.checkoutDueAt.setValue(new Date(2026, 0, 10));
+
+      await localComponent.saveEdit();
+
+      expect(localComponent.data.checkedOutDueAt).toBe('2026-01-10');
+      expect(localComponent.data.isCheckedOut).toBeTrue();
+    });
+
+    it('clears the due date once checked-out-to is cleared, even if the date field was left populated', async () => {
+      const localComponent = await setup({
+        isCheckedOut: true,
+        checkedOutToId: 'user-1',
+        checkedOutDueAt: '2026-01-10'
+      });
+      await localComponent.startEdit();
+
+      // The date field still carries the old due date (startEdit() seeds it
+      // from the item) — only "Checked out to" itself is cleared, same as a
+      // user unchecking-out an item without separately remembering to blank
+      // the date field too.
+      localComponent.editForm.controls.checkedOutTo.setValue(null);
+
+      await localComponent.saveEdit();
+
+      expect(localComponent.data.checkedOutDueAt).toBe('');
+      expect(localComponent.data.isCheckedOut).toBeFalse();
+    });
+  });
+
   /** Replaces the old full-width "Locked by X" banner: the lock toggle
    *  button itself turns red when locked, and the Edit button stays visible
    *  but disabled for anyone who can't override the lock, rather than

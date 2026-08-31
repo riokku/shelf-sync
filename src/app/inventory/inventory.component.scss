@@ -326,6 +326,23 @@ table[mat-table]{
   color: var(--mat-sys-on-surface-variant);
 }
 
+// Table view's own single-status-pill priority order (above) is left
+// untouched by "overdue" — this just tints the already-shown "Checked out
+// to" cell's own text/icon, independent of whatever the row's status pill
+// says (which stays "Checked out" either way).
+.overdue-cell{
+  color: var(--app-error-text);
+  font-weight: 600;
+}
+
+.overdue-cell-icon{
+  font-size: 1rem;
+  width: 1rem;
+  height: 1rem;
+  vertical-align: text-bottom;
+  margin-left: 0.25rem;
+}
+
 .inventory-gallery-wrapper{
   row-gap: 1.5rem;
   .inventory-card{
@@ -549,6 +566,18 @@ table[mat-table]{
   left: 0.5rem;
   background: var(--mat-sys-tertiary-container);
   color: var(--mat-sys-on-tertiary-container);
+
+  // Swapped in (same badge, same corner — see isCheckoutOverdue() in the
+  // template) once a checkout passes its own due date, rather than a
+  // second stacked badge — every image corner is already claimed by
+  // another badge, and "Overdue" is a more specific state of "Checked
+  // out," not an independent fact worth its own separate pill. Same
+  // hardcoded danger red every other "this needs attention now" badge in
+  // this app already uses (out-of-stock-badge, lock-badge).
+  &.overdue{
+    background: var(--app-danger-bg);
+    color: var(--app-danger-on-bg);
+  }
 }
 
 .low-stock-badge{

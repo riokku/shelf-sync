@@ -1,5 +1,5 @@
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,6 +11,7 @@ import { AuthService, Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
+import { ReservationCalendarComponent } from '../../shared/components/reservation-calendar/reservation-calendar.component';
 import { NotificationService } from '../../core/notification.service';
 import {
   PlaceReservationModalComponent,
@@ -21,8 +22,10 @@ import { subscribeToTableChanges } from '../../shared/utils/realtime';
 import { FlashTracker } from '../../shared/utils/flash-tracker';
 import { flashAndScrollToHighlighted } from '../../shared/utils/highlight-row';
 import { debounce } from '../../shared/utils/debounce';
+import { getTodayIsoDate } from '../../shared/utils/date';
 
 type ReservationStatusFilter = 'all' | 'reserved' | 'picked_up' | 'returned' | 'cancelled';
+type ReservationViewMode = 'list' | 'calendar';
 
 /** manage/reservations — view of every date-ranged booking placed against
  *  any item, plus the "New reservation" entry point that picks an item from
@@ -48,6 +51,7 @@ type ReservationStatusFilter = 'all' | 'reserved' | 'picked_up' | 'returned' | '
   selector: 'app-manage-reservations',
   imports: [
     DatePipe,
+    NgTemplateOutlet,
     FormsModule,
     MatButtonModule,
     MatIconModule,
@@ -55,7 +59,8 @@ type ReservationStatusFilter = 'all' | 'reserved' | 'picked_up' | 'returned' | '
     RouterLink,
     BreadcrumbsComponent,
     PageHeaderComponent,
-    EmptyStateComponent
+    EmptyStateComponent,
+    ReservationCalendarComponent
   ],
   templateUrl: './manage-reservations.component.html',
   styleUrl: './manage-reservations.component.scss',
@@ -94,8 +99,17 @@ export class ManageReservationsComponent implements OnInit {
   }
 
   statusFilter: ReservationStatusFilter = 'all';
+  /** List vs. calendar — how the same filtered data renders, not which page
+   *  section is showing, so this stays local/session state rather than a
+   *  URL query param (same reasoning InventoryComponent's own card/table
+   *  toggle already documents). */
+  viewMode: ReservationViewMode = 'list';
+  /** Which day the calendar's own agenda panel below it is showing — starts
+   *  on today, then follows whatever day ReservationCalendarComponent's
+   *  (daySelected) output last emitted. */
+  selectedCalendarDate = getTodayIsoDate();
 
-  private allItems: { id: string; name: string; quantity_remaining: number; is_locked: boolean }[] = [];
+  private allItems: { id: string; name: string; quantity_remaining: number; is_locked: boolean; status: string }[] = [];
   private profiles: Profile[] = [];
   reservations: InventoryItemReservationWithItem[] = [];
 
@@ -114,18 +128,28 @@ export class ManageReservationsComponent implements OnInit {
     return this.reservations.filter(reservation => reservation.status === this.statusFilter);
   }
 
+  /** The calendar view's own agenda panel — every filtered reservation whose
+   *  date range includes selectedCalendarDate, same lexicographic ISO-string
+   *  comparison ReservationCalendarComponent's own grid-building uses. */
+  get selectedDateReservations(): InventoryItemReservationWithItem[] {
+    return this.filteredReservations.filter(
+      reservation => this.selectedCalendarDate >= reservation.startDate && this.selectedCalendarDate <= reservation.endDate
+    );
+  }
+
   get reservableItems(): ReservableItem[] {
     return this.allItems.map(item => ({
       id: item.id,
       name: item.name,
       quantityRemaining: item.quantity_remaining,
-      isLocked: item.is_locked
+      isLocked: item.is_locked,
+      isPendingRetirement: item.status === 'retirement_pending'
     }));
   }
 
   async ngOnInit() {
     const [{ data: items }, { data: profiles }] = await Promise.all([
-      this.supabase.from('inventory_items').select('id, name, quantity_remaining, is_locked').order('name'),
+      this.supabase.from('inventory_items').select('id, name, quantity_remaining, is_locked, status').order('name'),
       this.supabase.from('profiles').select('*').eq('organization_id', this.authService.organizationId()!).order('full_name')
     ]);
 

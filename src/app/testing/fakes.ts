@@ -100,6 +100,7 @@ export function createFakeSiteSettingsService(overrides: Partial<{
   notifyTaskTransfer: boolean;
   notifyRetirementRequest: boolean;
   notifyJoinRequest: boolean;
+  notifyCheckoutOverdue: boolean;
 }> = {}): SiteSettingsService {
   const fake = {
     theme: signal(overrides.theme ?? 'default').asReadonly(),
@@ -113,6 +114,7 @@ export function createFakeSiteSettingsService(overrides: Partial<{
     notifyTaskTransfer: signal(overrides.notifyTaskTransfer ?? true).asReadonly(),
     notifyRetirementRequest: signal(overrides.notifyRetirementRequest ?? true).asReadonly(),
     notifyJoinRequest: signal(overrides.notifyJoinRequest ?? true).asReadonly(),
+    notifyCheckoutOverdue: signal(overrides.notifyCheckoutOverdue ?? true).asReadonly(),
     load: async () => {},
     applyTheme: () => {},
     updateTheme: async () => null,
@@ -260,6 +262,7 @@ export function createTestInventoryItem(overrides: Partial<{
   checkedOutTo: string;
   checkedOutToId: string | null;
   checkedOutToAvatarKey: string | null;
+  checkedOutDueAt: string;
   status: InventoryItemStatus;
   retirementRequestedById: string | null;
   isLocked: boolean;
@@ -292,6 +295,7 @@ export function createTestInventoryItem(overrides: Partial<{
     overrides.checkedOutTo ?? '',
     overrides.checkedOutToId ?? null,
     overrides.checkedOutToAvatarKey ?? null,
+    overrides.checkedOutDueAt ?? '',
     [],
     overrides.status ?? 'active',
     overrides.retirementRequestedById ?? null,
@@ -332,6 +336,8 @@ export function createTestInventoryItemRow(overrides: Partial<InventoryItemRow> 
     price_per_container: null,
     is_checked_out: false,
     checked_out_to: null,
+    checkout_due_at: null,
+    checkout_overdue_notified_at: null,
     activity_log: null,
     organization_id: 'org-1',
     status: 'active',

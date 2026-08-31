@@ -22,6 +22,28 @@
   margin-bottom: 1.5rem;
 }
 
+.reservation-controls-row{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  // Owned here (not left solely to ReservationCalendarComponent's own
+  // margin-top) so the gap below this row is guaranteed regardless of
+  // which view renders next — margins collapse between the two rather
+  // than stacking, so this is never doubled up with the calendar's own.
+  margin-bottom: 1.5rem;
+
+  .status-toggle{
+    margin-bottom: 0;
+  }
+}
+
+.agenda-heading{
+  margin: 1.5rem 0 1rem;
+  font-size: 1rem;
+}
+
 // Loading-state placeholders only — sized to roughly match this page's own
 // real content shapes above (.status-toggle, .reservation-row/-dates/-meta).
 .skeleton-status-toggle{

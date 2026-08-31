@@ -28,6 +28,14 @@ describe('toInventoryItem', () => {
     expect(item.checkedOutToId).toBe('user-2');
   });
 
+  it('maps checkout_due_at straight across, defaulting to an empty string when unset', () => {
+    const dueRow = createTestInventoryItemRow({ checkout_due_at: '2026-02-15' });
+    expect(toInventoryItem(dueRow, [], '').checkedOutDueAt).toBe('2026-02-15');
+
+    const noDueRow = createTestInventoryItemRow({ checkout_due_at: null });
+    expect(toInventoryItem(noDueRow, [], '').checkedOutDueAt).toBe('');
+  });
+
   it('turns nullable text columns into empty strings, not null, so templates can bind them directly', () => {
     const row = createTestInventoryItemRow({
       description: null,

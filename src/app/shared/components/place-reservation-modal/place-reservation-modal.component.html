@@ -16,10 +16,12 @@
         />
       <mat-autocomplete #itemAuto="matAutocomplete" (optionSelected)="onItemSelected($event)">
         @for (item of filteredItems; track item.id) {
-          <mat-option [value]="item.id" [disabled]="item.isLocked">
+          <mat-option [value]="item.id" [disabled]="item.isLocked || item.isPendingRetirement">
             {{ item.name }}
             @if (item.isLocked) {
-              <mat-icon class="locked-item-icon" matTooltip="Locked — this item can't be reserved">lock</mat-icon>
+              <mat-icon class="unavailable-item-icon" matTooltip="Locked — this item can't be reserved">lock</mat-icon>
+            } @else if (item.isPendingRetirement) {
+              <mat-icon class="unavailable-item-icon" matTooltip="Pending retirement — this item can't be reserved">hourglass_top</mat-icon>
             }
           </mat-option>
         } @empty {

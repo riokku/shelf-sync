@@ -7,7 +7,10 @@
 // (feedback's own trigger has none — every insert there is worth emailing
 // about) scoping it to exactly that transition, so this function can mostly
 // trust that if it's been called, the payload is relevant — it still
-// re-checks defensively before sending anything.
+// re-checks defensively before sending anything. A sixth kind, an overdue
+// checkout, isn't triggered by a row change at all — see
+// notify_overdue_checkouts() (add_inventory_item_checkout_due_date), a daily
+// pg_cron sweep that calls this same function the identical way.
 //
 // Two independent outputs per event: an email (gated by the org's own
 // Settings > Workflow "Email notifications" toggle, see
@@ -60,7 +63,12 @@ const FEEDBACK_TYPE_LABELS: Record<string, string> = {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 interface WebhookPayload {
-  type: 'INSERT' | 'UPDATE' | 'DELETE';
+  // 'OVERDUE_CHECKOUT' isn't a real trigger op — it's what
+  // notify_overdue_checkouts() (add_inventory_item_checkout_due_date) sends
+  // from a scheduled pg_cron sweep rather than a row-change trigger, since
+  // "overdue" is a time-based condition, not an insert/update. Distinguishes
+  // it from an ordinary inventory_items UPDATE (retirement) payload below.
+  type: 'INSERT' | 'UPDATE' | 'DELETE' | 'OVERDUE_CHECKOUT';
   table: string;
   schema: string;
   record: Record<string, unknown> | null;
@@ -72,23 +80,26 @@ interface WebhookPayload {
 // (add_notification_email_log) without every call site having to pass them
 // through separately. organizationId is null only for the (currently
 // nonexistent) case of an event with no org context at all; every one of
-// today's five kinds always has one, feedback included (the submitter's
+// today's six kinds always has one, feedback included (the submitter's
 // org, even though the recipient below isn't a member of it).
 interface EmailToSend {
   to: string;
   subject: string;
   html: string;
-  kind: 'task_assigned' | 'task_transfer' | 'retirement_request' | 'join_request' | 'feedback';
+  kind: 'task_assigned' | 'task_transfer' | 'retirement_request' | 'join_request' | 'feedback' | 'checkout_overdue';
   organizationId: string | null;
 }
 
-// Mirrors notifications.kind's check constraint (add_notifications) and
+// Mirrors notifications.kind's check constraint (add_notifications, widened
+// by add_broadcasts and add_inventory_item_checkout_due_date) and
 // notifications.organization_id/user_id/message/link's own columns —
-// read_at/created_at/id are left for Postgres to default.
+// read_at/created_at/id are left for Postgres to default. 'broadcast' isn't
+// listed here — those rows are inserted directly by create_broadcast()
+// itself, never through this function (see add_broadcasts' own doc comment).
 interface NotificationToInsert {
   organization_id: string;
   user_id: string;
-  kind: 'task_assigned' | 'task_transfer' | 'retirement_request' | 'join_request';
+  kind: 'task_assigned' | 'task_transfer' | 'retirement_request' | 'join_request' | 'checkout_overdue';
   message: string;
   link: string;
 }
@@ -111,6 +122,8 @@ Deno.serve(async req => {
   try {
     if (payload.table === 'tasks') {
       result = await resultForTaskChange(payload);
+    } else if (payload.table === 'inventory_items' && payload.type === 'OVERDUE_CHECKOUT') {
+      result = await resultForOverdueCheckout(payload);
     } else if (payload.table === 'inventory_items') {
       result = await resultForRetirementRequest(payload);
     } else if (payload.table === 'profiles') {
@@ -342,6 +355,58 @@ async function resultForTaskChange(payload: WebhookPayload): Promise<EventResult
         });
       }
     }
+  }
+
+  return { emails, notifications };
+}
+
+/** Sent by notify_overdue_checkouts()'s daily pg_cron sweep, not a row
+ *  trigger — every call here means "this item is checked out and past its
+ *  checkout_due_at" (the SQL side already filtered for that, and re-checks
+ *  isn't needed the way the trigger-driven handlers above defensively
+ *  re-check their own `when` condition, since there's no untrusted client
+ *  in the loop here). Notifies both the person holding the item and every
+ *  admin/manager — the holder needs to actually return it, management
+ *  needs visibility that it's overdue. */
+async function resultForOverdueCheckout(payload: WebhookPayload): Promise<EventResult> {
+  const record = payload.record as
+    { id: string; name: string; checkout_due_at: string; checked_out_to: string | null; organization_id: string } | null;
+  if (!record) {
+    return EMPTY_RESULT;
+  }
+
+  const [holder, managers] = await Promise.all([
+    profileEmail(record.checked_out_to),
+    orgProfilesByRole(record.organization_id, ['admin', 'manager'])
+  ]);
+  const recipients = holder ? [holder, ...managers.filter(m => m.id !== holder.id)] : managers;
+  if (recipients.length === 0) {
+    return EMPTY_RESULT;
+  }
+
+  const message = `"${record.name}" was due back ${record.checkout_due_at} and is overdue`;
+  const notifications: NotificationToInsert[] = recipients.map(recipient => ({
+    organization_id: record.organization_id,
+    user_id: recipient.id,
+    kind: 'checkout_overdue',
+    message,
+    link: `/inventory?item=${record.id}`
+  }));
+
+  let emails: EmailToSend[] = [];
+  if (await isEmailNotificationEnabled(record.organization_id, 'notify_checkout_overdue')) {
+    emails = recipients.map(recipient => ({
+      to: recipient.email,
+      subject: `Overdue: ${record.name}`,
+      html: emailShell(
+        'Checked-out item is overdue',
+        `<strong>${escapeHtml(record.name)}</strong> was due back on ${escapeHtml(record.checkout_due_at)} and hasn't been returned yet.`,
+        'View item',
+        `${APP_URL}/inventory?item=${record.id}`
+      ),
+      kind: 'checkout_overdue',
+      organizationId: record.organization_id
+    }));
   }
 
   return { emails, notifications };

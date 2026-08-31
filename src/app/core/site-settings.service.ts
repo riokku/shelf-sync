@@ -49,7 +49,7 @@ export class SiteSettingsService {
   private readonly _restrictPriceSupplierEdits = signal(false);
   readonly restrictPriceSupplierEdits = this._restrictPriceSupplierEdits.asReadonly();
 
-  // Per-org kill switches for each of the four email notification kinds
+  // Per-org kill switches for each of the five email notification kinds
   // (see Settings > Workflow's "Email notifications" section) — checked
   // by the send-notification-email Edge Function itself, not read
   // anywhere else client-side, but loaded here alongside every other
@@ -62,6 +62,8 @@ export class SiteSettingsService {
   readonly notifyRetirementRequest = this._notifyRetirementRequest.asReadonly();
   private readonly _notifyJoinRequest = signal(true);
   readonly notifyJoinRequest = this._notifyJoinRequest.asReadonly();
+  private readonly _notifyCheckoutOverdue = signal(true);
+  readonly notifyCheckoutOverdue = this._notifyCheckoutOverdue.asReadonly();
 
   /** Loads the caller's own organization's settings row and applies the theme
    *  attribute. `site_settings` is per-organization and no longer readable by
@@ -107,6 +109,7 @@ export class SiteSettingsService {
     this._notifyTaskTransfer.set(data?.notify_task_transfer ?? true);
     this._notifyRetirementRequest.set(data?.notify_retirement_request ?? true);
     this._notifyJoinRequest.set(data?.notify_join_request ?? true);
+    this._notifyCheckoutOverdue.set(data?.notify_checkout_overdue ?? true);
     this.applyTheme(this._theme());
   }
 
@@ -270,18 +273,19 @@ export class SiteSettingsService {
     return null;
   }
 
-  /** Bundles all four toggles into one upsert (the "Email notifications"
+  /** Bundles all five toggles into one upsert (the "Email notifications"
    *  section has a single Save button covering the group, same pattern
    *  updateInventoryTableColumns()/updateInventoryFormFields() already use
-   *  for their own multi-item selections) rather than four separate
+   *  for their own multi-item selections) rather than five separate
    *  single-field calls the way requireRetirementApproval/bulkEditFeatureEnabled
-   *  each get their own — those are independent settings; these four are
+   *  each get their own — those are independent settings; these five are
    *  one conceptual group. */
   async updateEmailNotifications(settings: {
     taskAssigned: boolean;
     taskTransfer: boolean;
     retirementRequest: boolean;
     joinRequest: boolean;
+    checkoutOverdue: boolean;
   }): Promise<string | null> {
     const session = await this.authService.getSession();
     const organizationId = this.authService.organizationId();
@@ -298,6 +302,7 @@ export class SiteSettingsService {
           notify_task_transfer: settings.taskTransfer,
           notify_retirement_request: settings.retirementRequest,
           notify_join_request: settings.joinRequest,
+          notify_checkout_overdue: settings.checkoutOverdue,
           updated_by: session.user.id
         },
         { onConflict: 'organization_id' }
@@ -311,6 +316,7 @@ export class SiteSettingsService {
     this._notifyTaskTransfer.set(settings.taskTransfer);
     this._notifyRetirementRequest.set(settings.retirementRequest);
     this._notifyJoinRequest.set(settings.joinRequest);
+    this._notifyCheckoutOverdue.set(settings.checkoutOverdue);
     return null;
   }
 
