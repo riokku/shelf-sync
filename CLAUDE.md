@@ -2164,6 +2164,73 @@ own profile, `AuthService`'s own session-derived profile fetch), profile `DELETE
 id (safe regardless, per the write-side finding above), and every Studio page's own intentionally
 cross-org reads.
 
+A global command palette — Ctrl+K on Windows/Linux, Cmd+K on Mac — lets any authenticated user jump
+straight to a page or search across inventory items, tasks, reservations, audits, and broadcasts (every
+approved member), suppliers/orders/team members (admin/manager), or organizations/platform-wide users
+(platform admin only), all by name or raw id, from anywhere in the app. Reached via a new search icon
+in `HeaderComponent`'s `.header-actions` (before the notification bell) or the global shortcut
+(`@HostListener('window:keydown', ...)` — no other global keydown listener existed anywhere in this app
+before this), opening a third fixed-position panel following the same "own panel, not MatMenu"
+convention the nav drawer and notifications dropdown already established — centered in the viewport
+with a dimmed `rgba(0,0,0,0.45)` backdrop (`.command-palette`/`.command-palette-backdrop`, lighter than
+`.nav-drawer-backdrop`'s own 0.6 — this is a quick in-and-out lookup, not a full page takeover) rather
+than right-anchored, the conventional command-palette placement. A new `CommandPaletteService`
+(root-provided, same `NotificationCenterService`/`HeaderComponent` data-vs-UI split: this service owns
+data, `HeaderComponent` owns the panel's own open/close/keyboard-navigation state) lazily loads and
+session-caches (5-minute TTL, no realtime subscription — this is a quick-jump tool, not a live view)
+a bounded set of each searchable entity, filtering client-side with the same
+`term.trim().toLowerCase().includes()` idiom `ManageTeamComponent`'s own search already uses rather
+than a per-keystroke `.ilike()`/`.or()` query (see `StudioUsersComponent`'s own doc comment for why this
+codebase avoids building filter strings out of unsanitized search input). Every group also matches
+against its own raw id, not just its display name — the same "name or id" reach `InventoryComponent`'s
+own search already had, extended to every entity here so a uuid pasted from a ticket or another tab's
+URL resolves regardless of what it points at. `shared/models/command-palette.ts`'s
+`COMMAND_PALETTE_DESTINATIONS` mirrors every route in `app-routing.module.ts` (a broader list than
+`QUICK_MENU_OPTIONS`, which stays deliberately curated to 8 for the Account page's own picker), each
+gated by the same manage/admin/platform-admin guard its own route already requires.
+
+Selecting a result reuses each page's existing deep link where one already existed (Inventory's
+`?item=`, Tasks' `?task=` — including its own fallback to `/manage/tasks` for a manager+ viewer —,
+Manage Audits' `?audit=`), or a real per-id route with no query param at all (Studio Organizations/
+Users' own `:id` routes). Four pages had no per-row deep link of any kind before this — Suppliers,
+Orders, Reservations, Broadcasts — so they gained a shared `?highlight=<id>` convention instead
+(`shared/utils/highlight-row.ts`'s `flashAndScrollToHighlighted()`): the matching row gets the same
+`.realtime-flash` pulse a live update from another user already uses (via the page's own `FlashTracker`
+— Orders/Reservations/Broadcasts already had one for their existing realtime subscriptions;
+`ManageSuppliersComponent` picked one up purely to back this, having had no realtime subscription of
+its own before), plus a `scrollIntoView()`, rather than inventing a second highlight style. A person
+result deep-links to `manage/team`'s own search field via a new `?search=` param that component reads
+once in `ngOnInit()`, the same read-once-on-init shape every other `?xxx=` deep link in this app
+already uses.
+
+`manage/reports`'s "Stock movement & loss" and "Task throughput" sections can now be scoped to a date
+range — a `mat-button-toggle-group` (Last 7/30/90 days, All time, Custom) sitting below the page
+header, with a `mat-date-range-input` revealed only for Custom (copying `PlaceReservationModalComponent`'s
+own reactive-forms shape, the only other genuine date-range picker in the app, rather than introducing
+a second one). "Inventory value & stock health" stays an unranged live snapshot regardless — current
+stock levels aren't a retroactively-filterable event without periodic value snapshots, which don't
+exist — and within the two ranged sections, a few more point-in-time facts
+(`retirementRateByCategory`, `overdueTaskCount`, `workloadByAssignee` — current status/queue, not
+something that happened in a window) stay unranged too, each captioned "(current, not date-range
+limited)" so the split reads as intentional rather than a bug. Every genuinely event-based stat
+(discard events; tasks created/closed in the window, via `created_at`/`updated_at` respectively — two
+separate cohorts, not the same tasks) filters against already-loaded data purely client-side —
+`loadReportData()` still fetches everything once, keeps the raw arrays on the component, and a range
+change just re-runs the two ranged `build*()` methods locally with no network round-trip and no
+loading state of its own. The selected range is reflected in the URL (`?range=7d|30d|90d|all|custom`,
+plus `?from=`/`?to=` for Custom) via the same `queryParamsHandling: 'merge'`/`replaceUrl: true` shape
+`SettingsComponent.setViewMode()`'s own `?tab=` already established, so a scoped report view is
+bookmarkable.
+
+`studio/users` no longer requires typing a search term before showing anyone — it now lists the 20
+most recently signed-up users (across every org, newest `created_at` first) by default, replacing what
+used to be a blank page waiting for input; typing a search term still replaces that list with matches
+exactly as before. `StudioUsersComponent.displayedProfiles` is the one getter the template now reads,
+resolving to the new `recentProfiles` or the existing `filteredResults` depending on whether
+`searchTerm` is set — the loading-state skeleton picked up a matching real table shape (mirroring
+`StudioOrganizationsComponent`'s own) in place of its own previous two-bar placeholder, since the table
+itself no longer only ever appears post-search.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -2301,6 +2368,7 @@ core/
   site-settings.service.ts # theme/logo signals; load() on app start, updateTheme()/uploadLogo()/removeLogo()
   supplier.service.ts     # SupplierService — org's supplier directory; load()/create()/update()/remove()
   notification-center.service.ts # NotificationCenterService — HeaderComponent's bell dropdown; notifications signal + unreadCount, markAsRead()/markAllAsRead()
+  command-palette.service.ts # CommandPaletteService — HeaderComponent's Ctrl/Cmd+K global search; lazily loads/caches searchable data, results(query) is a pure local filter
   guards/auth.guard.ts    # CanActivateFn — awaits authService.getSession() directly
   guards/manage.guard.ts  # admin OR manager
   guards/admin.guard.ts   # admin only (manage/settings, manage/billing, manage/danger-zone)
@@ -2362,6 +2430,7 @@ shared/
   models/quick-menu.ts       # QUICK_MENU_OPTIONS / MAX_QUICK_MENU_ITEMS — backs AccountComponent's picker and HeaderComponent's own icon row
   models/feedback.ts         # FeedbackType / FEEDBACK_TYPE_LABELS — backs FeedbackModalComponent, mirrored by hand in the send-notification-email Edge Function
   models/broadcast.model.ts  # Broadcast / BroadcastReferencedMember / BroadcastReferencedItem — backs /broadcasts
+  models/command-palette.ts  # CommandPaletteResult / COMMAND_PALETTE_DESTINATIONS — backs HeaderComponent's Ctrl/Cmd+K search
   models/database.types.ts   # generated via `npm run supabase:gen:types` — regenerate, don't hand-edit
   utils/inventory-item.mapper.ts   # toInventoryItem(row, images, checkedOutToLabel, activityLog?, ..., supplierLabel?) — DB row -> InventoryItem
   utils/inventory-item-name.ts     # isDuplicateItemName() — shared by the CSV importer and the manual "Create item" form's own duplicate-name check
@@ -2383,6 +2452,7 @@ shared/
   utils/realtime.ts          # subscribeToTableChanges() — Supabase Realtime postgres_changes wrapper, see Project Overview above
   utils/debounce.ts          # debounce() — plain setTimeout debounce with .cancel(), backs the task pages' realtime reload handlers
   utils/flash-tracker.ts     # FlashTracker — tracks which ids show the .realtime-flash "someone else just changed this" pulse
+  utils/highlight-row.ts     # flashAndScrollToHighlighted() — ?highlight= landing treatment for pages with no per-row deep link of their own (Suppliers/Orders/Reservations/Broadcasts), reusing FlashTracker/.realtime-flash
   utils/trend-buckets.ts     # bucketByWeek() — plain client-side reduce backing studio's own growth trend charts
   styles/_realtime-flash.scss # shared .realtime-flash keyframes, backing FlashTracker above
   styles/_legal-page.scss   # shared top-bar + prose layout for privacy/ and terms/ (see Project Overview above);

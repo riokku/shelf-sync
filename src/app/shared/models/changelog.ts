@@ -15,6 +15,21 @@ export interface ChangelogEntry {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: '2026-08-31',
+    title: 'Studio > Users shows recent signups',
+    description: 'No more starting from a blank page — Studio > Users now lists the 20 most recent signups by default, with search still narrowing it down to someone specific.'
+  },
+  {
+    date: '2026-08-31',
+    title: 'Date-range filtering on Reports',
+    description: 'Manage > Reports\' stock movement and task throughput sections can now be scoped to the last 7/30/90 days, all time, or a custom range.'
+  },
+  {
+    date: '2026-08-31',
+    title: 'Command palette (Ctrl/Cmd+K)',
+    description: 'Jump to any page or search inventory, tasks, reservations, audits, broadcasts, suppliers, orders, team members, and (for platform admins) organizations and users — all from one search box, by name or id.'
+  },
+  {
+    date: '2026-08-31',
     title: 'Org detail shows inventory & task counts',
     description: 'Studio > Organizations now shows each org\'s item/task/storage usage right in the list, and its per-org detail page shows the same numbers alongside members and recent activity.'
   },
