@@ -2,10 +2,42 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>ShelfSync</title>
+  <title>ShelfSync — Inventory management, simplified</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+
+  <!-- Social preview metadata — read by link-unfurling crawlers (Slack,
+       iMessage, LinkedIn, Discord, etc.), not rendered in-browser, so
+       there's no light/dark or SPA-routing concern here: every one of
+       these tags describes this one fixed URL (the public landing page)
+       regardless of where the crawler's own request actually lands.
+       og:image/twitter:image need an absolute URL — a crawler fetches
+       that image directly rather than resolving it against the page it
+       just scraped, so a relative path wouldn't resolve for it the way
+       it does for the browser reading <base href> above. Pinned to the
+       same Cloudflare Workers default domain send-notification-email's
+       own APP_URL already hardcodes, for the same reason: no custom
+       domain configured yet (see wrangler.jsonc / CLAUDE.md's own CI/CD
+       section). og-image.png (src/assets/og-image.png) is a static
+       screenshot of this page's own real hero section — not a
+       hand-drawn graphic — captured at the standard 1200x630 og:image
+       size so it can be reused verbatim without any crawler-side
+       cropping. -->
+  <meta name="description" content="ShelfSync gives your team real-time inventory tracking, task management, and a full activity history — in one place, with role-based access so everyone sees exactly what they should.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="ShelfSync">
+  <meta property="og:url" content="https://shelf-sync.chrisistinson.workers.dev/">
+  <meta property="og:title" content="ShelfSync — Inventory management, simplified">
+  <meta property="og:description" content="Know what you have. Know where it went. Real-time inventory tracking, task management, and a full activity history for your whole team — free to get started, no credit card required.">
+  <meta property="og:image" content="https://shelf-sync.chrisistinson.workers.dev/assets/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="The ShelfSync inventory dashboard, showing tracked items, stock levels, and checkout status.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="ShelfSync — Inventory management, simplified">
+  <meta name="twitter:description" content="Real-time inventory tracking, task management, and a full activity history for your whole team — free to get started, no credit card required.">
+  <meta name="twitter:image" content="https://shelf-sync.chrisistinson.workers.dev/assets/og-image.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- Roboto: Material's own body/UI typeface, unchanged. Bricolage Grotesque

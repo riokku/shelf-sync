@@ -298,6 +298,22 @@ tone) hard up against both gradients' tinted tone while the video loaded. `.feat
 (the video's parent) now carries that same bridging tone as its own `background-color`, so the
 loading window shows a continuation of the surrounding gradients instead.
 
+`index.html` carries social preview metadata (`description`, `og:*`, `twitter:*`) — found missing
+during a design-review pass: pasting the landing page link into Slack/email/LinkedIn previously
+showed a bare title with no description or image, since only `<title>` and the viewport tag existed
+before this. `assets/og-image.png` (the shared `og:image`/`twitter:image`) is a real screenshot of
+this page's own live hero section — captured via headless Chrome at exactly the standard 1200×630
+`og:image` size (`--window-size=1200,630 --screenshot=...` against a local `ng serve`, with
+`--force-prefers-reduced-motion` so the hero's own `fade-up` entrance animation — see
+`LandingComponent`'s own reduced-motion block above — renders fully opaque immediately rather than
+needing a timed wait for it to finish) — not a hand-drawn graphic, so it stays visually identical to
+what a visitor actually sees. `og:url`/`og:image` both need absolute URLs (a crawler fetches
+`og:image` directly rather than resolving it against the page it just scraped, unlike a browser
+reading `<base href>`), pinned to the same Cloudflare Workers default domain
+`send-notification-email`'s own `APP_URL` already hardcodes, for the identical "no custom domain
+configured yet" reason — regenerate the screenshot and update both URLs together if that ever
+changes.
+
 `/pricing` (`PricingComponent`) is a public three-tier pricing page (Free/Basic/Pro, Basic marked
 "Most popular"), same unguarded/chrome-hidden/own-nav-and-footer treatment as landing — linked from
 both the landing page's nav and `FooterComponent`. **No billing is wired up yet** — every tier's
