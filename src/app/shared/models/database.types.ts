@@ -784,6 +784,8 @@ export type Database = {
           barcode: string | null
           category: string | null
           checked_out_to: string | null
+          checkout_due_at: string | null
+          checkout_overdue_notified_at: string | null
           created_at: string
           description: string | null
           digital_location: string | null
@@ -821,6 +823,8 @@ export type Database = {
           barcode?: string | null
           category?: string | null
           checked_out_to?: string | null
+          checkout_due_at?: string | null
+          checkout_overdue_notified_at?: string | null
           created_at?: string
           description?: string | null
           digital_location?: string | null
@@ -858,6 +862,8 @@ export type Database = {
           barcode?: string | null
           category?: string | null
           checked_out_to?: string | null
+          checkout_due_at?: string | null
+          checkout_overdue_notified_at?: string | null
           created_at?: string
           description?: string | null
           digital_location?: string | null
@@ -1184,6 +1190,7 @@ export type Database = {
           inventory_form_fields: string[]
           inventory_table_columns: string[]
           logo_storage_path: string | null
+          notify_checkout_overdue: boolean
           notify_join_request: boolean
           notify_retirement_request: boolean
           notify_task_assigned: boolean
@@ -1201,6 +1208,7 @@ export type Database = {
           inventory_form_fields?: string[]
           inventory_table_columns?: string[]
           logo_storage_path?: string | null
+          notify_checkout_overdue?: boolean
           notify_join_request?: boolean
           notify_retirement_request?: boolean
           notify_task_assigned?: boolean
@@ -1218,6 +1226,7 @@ export type Database = {
           inventory_form_fields?: string[]
           inventory_table_columns?: string[]
           logo_storage_path?: string | null
+          notify_checkout_overdue?: boolean
           notify_join_request?: boolean
           notify_retirement_request?: boolean
           notify_task_assigned?: boolean
@@ -1478,6 +1487,7 @@ export type Database = {
         Args: { reservation_id: string }
         Returns: undefined
       }
+      notify_overdue_checkouts: { Args: never; Returns: undefined }
       platform_get_organization_usage: {
         Args: { p_organization_id?: string }
         Returns: {

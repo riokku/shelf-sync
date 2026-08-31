@@ -441,6 +441,15 @@ mat-dialog-content.mat-mdc-dialog-content{
     color: var(--mat-sys-on-surface-variant);
   }
 
+  // Checked-out-and-past-its-due-date — a hardcoded solid red like
+  // ManageComponent's own Danger Zone/StudioOrgDetailComponent's "Retire"
+  // button, not a theme-following warn token, since this needs to read
+  // unambiguously as overdue regardless of the org's own color theme.
+  &.overdue{
+    background: var(--app-danger-bg);
+    color: var(--app-danger-on-bg);
+  }
+
   // Same warning color pair .pending-retirement above already uses — kept
   // as its own named variant rather than reused directly for clarity, same
   // as every other variant here declaring its own colors even where two

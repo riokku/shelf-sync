@@ -7,11 +7,12 @@ import { Database } from './database.types';
  *  `string` rather than a narrower literal union — the check constraint
  *  itself (see the add_notifications migration, widened by add_broadcasts)
  *  is what actually constrains it to one of 'task_assigned' |
- *  'task_transfer' | 'retirement_request' | 'join_request' | 'broadcast': a
- *  task directly assigned to you, a task transfer offered to you, an
- *  inventory item's retirement request needing admin/manager approval, a
- *  new member's join request needing admin approval, or a new broadcast
- *  posted to the org. The first four are also emailed by
+ *  'task_transfer' | 'retirement_request' | 'join_request' | 'broadcast' |
+ *  'checkout_overdue': a task directly assigned to you, a task transfer
+ *  offered to you, an inventory item's retirement request needing
+ *  admin/manager approval, a new member's join request needing admin
+ *  approval, a new broadcast posted to the org, or a checked-out item that's
+ *  now overdue. Every kind but broadcast is also emailed by
  *  send-notification-email (see that function's own doc comment for why
  *  both channels share one recipient resolution rather than duplicating
  *  it) — broadcast is in-app only, inserted directly by create_broadcast()
@@ -53,9 +54,11 @@ export function notificationIcon(kind: NotificationKind): string {
       return 'person_add';
     case 'broadcast':
       return 'campaign';
+    case 'checkout_overdue':
+      return 'schedule';
     // kind is plain `string` (see NotificationKind's own doc comment) —
     // this default only guards against a value outside the DB check
-    // constraint's five kinds ever reaching the client, not a real case.
+    // constraint's six kinds ever reaching the client, not a real case.
     default:
       return 'notifications';
   }

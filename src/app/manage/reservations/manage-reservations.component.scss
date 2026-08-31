@@ -22,6 +22,23 @@
   margin-bottom: 1.5rem;
 }
 
+.reservation-controls-row{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+
+  .status-toggle{
+    margin-bottom: 0;
+  }
+}
+
+.agenda-heading{
+  margin: 1.5rem 0 1rem;
+  font-size: 1rem;
+}
+
 // Loading-state placeholders only — sized to roughly match this page's own
 // real content shapes above (.status-toggle, .reservation-row/-dates/-meta).
 .skeleton-status-toggle{

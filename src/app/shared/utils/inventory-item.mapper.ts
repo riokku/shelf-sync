@@ -50,6 +50,7 @@ export function toInventoryItem(
     checkedOutToLabel,
     row.checked_out_to,
     checkedOutToAvatarKey,
+    row.checkout_due_at ?? '',
     activityLog,
     row.status as InventoryItemStatus,
     row.retirement_requested_by,

@@ -330,9 +330,9 @@
                           </span>
                         } @else {
                           @if (item.isCheckedOut) {
-                            <span class="checked-out-badge">
-                              <mat-icon>person</mat-icon>
-                              Checked out
+                            <span class="checked-out-badge" [class.overdue]="isCheckoutOverdue(item)">
+                              <mat-icon>{{ isCheckoutOverdue(item) ? 'error' : 'person' }}</mat-icon>
+                              {{ isCheckoutOverdue(item) ? 'Overdue' : 'Checked out' }}
                             </span>
                           }
                           @if (isOutOfStock(item)) {
@@ -501,7 +501,12 @@
 
                   <ng-container matColumnDef="checkedOutTo">
                     <th mat-header-cell *matHeaderCellDef mat-sort-header>Checked out to</th>
-                    <td mat-cell *matCellDef="let item">{{ item.checkedOutTo || '—' }}</td>
+                    <td mat-cell *matCellDef="let item" [class.overdue-cell]="isCheckoutOverdue(item)">
+                      {{ item.checkedOutTo || '—' }}
+                      @if (isCheckoutOverdue(item)) {
+                        <mat-icon class="overdue-cell-icon" matTooltip="Overdue">error</mat-icon>
+                      }
+                    </td>
                   </ng-container>
 
                   <ng-container matColumnDef="status">

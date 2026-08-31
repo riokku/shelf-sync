@@ -1,0 +1,44 @@
+<div class="calendar-nav">
+  <button mat-icon-button type="button" (click)="previousMonth()" aria-label="Previous month">
+    <mat-icon>chevron_left</mat-icon>
+  </button>
+  <h3 class="calendar-month-label">{{ monthLabel }}</h3>
+  <button mat-icon-button type="button" (click)="nextMonth()" aria-label="Next month">
+    <mat-icon>chevron_right</mat-icon>
+  </button>
+  <button mat-stroked-button type="button" class="today-button" (click)="goToToday()">Today</button>
+</div>
+
+<div class="calendar-grid" role="grid">
+  <div class="calendar-weekday-row" role="row">
+    @for (label of weekdayLabels; track label) {
+      <div class="calendar-weekday" role="columnheader">{{ label }}</div>
+    }
+  </div>
+
+  @for (week of weeks; track $index) {
+    <div class="calendar-week-row" role="row">
+      @for (day of week; track day.iso) {
+        <button
+            type="button"
+            role="gridcell"
+            class="calendar-day"
+            [class.outside-month]="!day.inCurrentMonth"
+            [class.is-today]="day.isToday"
+            [class.is-selected]="day.iso === selectedIso"
+            (click)="selectDay(day.iso)"
+          >
+          <span class="calendar-day-number">{{ day.dayOfMonth }}</span>
+          <span class="calendar-day-chips">
+            @for (reservation of visibleReservations(day); track reservation.id) {
+              <span class="calendar-chip" [class]="'reservation-' + reservation.status">{{ reservation.itemName }}</span>
+            }
+            @if (overflowCount(day) > 0) {
+              <span class="calendar-chip-overflow">+{{ overflowCount(day) }} more</span>
+            }
+          </span>
+        </button>
+      }
+    </div>
+  }
+</div>

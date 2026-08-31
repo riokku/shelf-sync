@@ -53,100 +53,137 @@
         </button>
       </app-empty-state>
     } @else {
-      <mat-button-toggle-group [(ngModel)]="statusFilter" class="status-toggle">
-        <mat-button-toggle value="all">All</mat-button-toggle>
-        <mat-button-toggle value="reserved">Reserved</mat-button-toggle>
-        <mat-button-toggle value="picked_up">Picked up</mat-button-toggle>
-        <mat-button-toggle value="returned">Returned</mat-button-toggle>
-        <mat-button-toggle value="cancelled">Cancelled</mat-button-toggle>
-      </mat-button-toggle-group>
+      <div class="reservation-controls-row">
+        <mat-button-toggle-group [(ngModel)]="statusFilter" class="status-toggle">
+          <mat-button-toggle value="all">All</mat-button-toggle>
+          <mat-button-toggle value="reserved">Reserved</mat-button-toggle>
+          <mat-button-toggle value="picked_up">Picked up</mat-button-toggle>
+          <mat-button-toggle value="returned">Returned</mat-button-toggle>
+          <mat-button-toggle value="cancelled">Cancelled</mat-button-toggle>
+        </mat-button-toggle-group>
 
-      @if (filteredReservations.length === 0) {
-        <app-empty-state
-            icon="event"
-            [message]="reservations.length === 0 ? 'No reservations yet.' : 'No reservations match this filter.'"
-          />
-      } @else {
-        <ul class="reservation-list">
-          @for (reservation of filteredReservations; track reservation.id) {
-            <li [id]="'reservation-' + reservation.id" class="reservation-card" [class.realtime-flash]="isFlashing(reservation.id)">
-              <div class="reservation-info">
-                <div class="reservation-row">
-                  <span class="status-pill" [class]="'reservation-' + reservation.status">
-                    <mat-icon>
-                      {{
-                        reservation.status === 'reserved' ? 'event'
-                        : reservation.status === 'picked_up' ? 'local_shipping'
-                        : reservation.status === 'returned' ? 'check_circle'
-                        : 'cancel'
-                      }}
-                    </mat-icon>
-                    {{
-                      reservation.status === 'reserved' ? 'Reserved'
-                      : reservation.status === 'picked_up' ? 'Picked up'
-                      : reservation.status === 'returned' ? 'Returned'
-                      : 'Cancelled'
-                    }}
-                  </span>
-                  <a class="reservation-item-link" routerLink="/inventory" [queryParams]="{ item: reservation.itemId }">
-                    {{ reservation.itemName }}
-                  </a>
-                  <span class="reservation-quantity">{{ reservation.quantity }} units for {{ reservation.reservedFor }}</span>
-                </div>
-                <div class="reservation-dates">
-                  {{ reservation.startDate | date: 'M/d/yy' }} – {{ reservation.endDate | date: 'M/d/yy' }}
-                </div>
-                <div class="reservation-meta">
-                  Reserved by {{ reservation.reservedByLabel }} &middot; {{ reservation.reservedAt | date: 'M/d/yy, h:mm a' }}
-                  @if (reservation.status === 'picked_up' || reservation.status === 'returned') {
-                    <br />
-                    Picked up by {{ reservation.pickedUpByLabel || '—' }} &middot; {{ reservation.pickedUpAt | date: 'M/d/yy, h:mm a' }}
-                  }
-                  @if (reservation.status === 'returned') {
-                    <br />
-                    Returned by {{ reservation.returnedByLabel || '—' }} &middot; {{ reservation.returnedAt | date: 'M/d/yy, h:mm a' }}
-                  }
-                  @if (reservation.status === 'cancelled') {
-                    <br />
-                    Cancelled by {{ reservation.cancelledByLabel || '—' }} &middot; {{ reservation.cancelledAt | date: 'M/d/yy, h:mm a' }}
-                  }
-                  @if (reservation.note) {
-                    <br />
-                    <span class="semibold">Note:</span> {{ reservation.note }}
-                  }
-                </div>
-              </div>
-              @if (reservation.status === 'reserved' || reservation.status === 'picked_up') {
-                <div class="reservation-actions">
-                  @if (reservation.status === 'reserved') {
-                    <button mat-button type="button" [disabled]="isProcessingReservation" (click)="cancelReservation(reservation)">
-                      Cancel
-                    </button>
-                    <button
-                        mat-flat-button
-                        color="primary"
-                        type="button"
-                        [disabled]="isProcessingReservation"
-                        (click)="markPickedUp(reservation)"
-                      >
-                      Mark picked up
-                    </button>
-                  } @else {
-                    <button
-                        mat-flat-button
-                        color="primary"
-                        type="button"
-                        [disabled]="isProcessingReservation"
-                        (click)="markReturned(reservation)"
-                      >
-                      Mark returned
-                    </button>
-                  }
-                </div>
+        <!-- Purely how the same filtered data renders, not which page
+             section is showing — same reasoning InventoryComponent's own
+             card/table toggle stays out of the URL (see CLAUDE.md). -->
+        <mat-button-toggle-group [(ngModel)]="viewMode" class="view-toggle">
+          <mat-button-toggle value="list" aria-label="List view">
+            <mat-icon>view_list</mat-icon>
+          </mat-button-toggle>
+          <mat-button-toggle value="calendar" aria-label="Calendar view">
+            <mat-icon>calendar_month</mat-icon>
+          </mat-button-toggle>
+        </mat-button-toggle-group>
+      </div>
+
+      <!-- Shared by both view modes below — the list renders one per
+           filtered reservation, the calendar's own agenda panel renders one
+           per reservation on whatever day is selected — so the status-pill/
+           actions markup only exists once. -->
+      <ng-template #reservationCard let-reservation>
+        <li [id]="'reservation-' + reservation.id" class="reservation-card" [class.realtime-flash]="isFlashing(reservation.id)">
+          <div class="reservation-info">
+            <div class="reservation-row">
+              <span class="status-pill" [class]="'reservation-' + reservation.status">
+                <mat-icon>
+                  {{
+                    reservation.status === 'reserved' ? 'event'
+                    : reservation.status === 'picked_up' ? 'local_shipping'
+                    : reservation.status === 'returned' ? 'check_circle'
+                    : 'cancel'
+                  }}
+                </mat-icon>
+                {{
+                  reservation.status === 'reserved' ? 'Reserved'
+                  : reservation.status === 'picked_up' ? 'Picked up'
+                  : reservation.status === 'returned' ? 'Returned'
+                  : 'Cancelled'
+                }}
+              </span>
+              <a class="reservation-item-link" routerLink="/inventory" [queryParams]="{ item: reservation.itemId }">
+                {{ reservation.itemName }}
+              </a>
+              <span class="reservation-quantity">{{ reservation.quantity }} units for {{ reservation.reservedFor }}</span>
+            </div>
+            <div class="reservation-dates">
+              {{ reservation.startDate | date: 'M/d/yy' }} – {{ reservation.endDate | date: 'M/d/yy' }}
+            </div>
+            <div class="reservation-meta">
+              Reserved by {{ reservation.reservedByLabel }} &middot; {{ reservation.reservedAt | date: 'M/d/yy, h:mm a' }}
+              @if (reservation.status === 'picked_up' || reservation.status === 'returned') {
+                <br />
+                Picked up by {{ reservation.pickedUpByLabel || '—' }} &middot; {{ reservation.pickedUpAt | date: 'M/d/yy, h:mm a' }}
               }
-            </li>
+              @if (reservation.status === 'returned') {
+                <br />
+                Returned by {{ reservation.returnedByLabel || '—' }} &middot; {{ reservation.returnedAt | date: 'M/d/yy, h:mm a' }}
+              }
+              @if (reservation.status === 'cancelled') {
+                <br />
+                Cancelled by {{ reservation.cancelledByLabel || '—' }} &middot; {{ reservation.cancelledAt | date: 'M/d/yy, h:mm a' }}
+              }
+              @if (reservation.note) {
+                <br />
+                <span class="semibold">Note:</span> {{ reservation.note }}
+              }
+            </div>
+          </div>
+          @if (reservation.status === 'reserved' || reservation.status === 'picked_up') {
+            <div class="reservation-actions">
+              @if (reservation.status === 'reserved') {
+                <button mat-button type="button" [disabled]="isProcessingReservation" (click)="cancelReservation(reservation)">
+                  Cancel
+                </button>
+                <button
+                    mat-flat-button
+                    color="primary"
+                    type="button"
+                    [disabled]="isProcessingReservation"
+                    (click)="markPickedUp(reservation)"
+                  >
+                  Mark picked up
+                </button>
+              } @else {
+                <button
+                    mat-flat-button
+                    color="primary"
+                    type="button"
+                    [disabled]="isProcessingReservation"
+                    (click)="markReturned(reservation)"
+                  >
+                  Mark returned
+                </button>
+              }
+            </div>
           }
-        </ul>
+        </li>
+      </ng-template>
+
+      @if (viewMode === 'list') {
+        @if (filteredReservations.length === 0) {
+          <app-empty-state
+              icon="event"
+              [message]="reservations.length === 0 ? 'No reservations yet.' : 'No reservations match this filter.'"
+            />
+        } @else {
+          <ul class="reservation-list">
+            @for (reservation of filteredReservations; track reservation.id) {
+              <ng-container [ngTemplateOutlet]="reservationCard" [ngTemplateOutletContext]="{ $implicit: reservation }" />
+            }
+          </ul>
+        }
+      } @else {
+        <app-reservation-calendar [reservations]="filteredReservations" (daySelected)="selectedCalendarDate = $event" />
+
+        <h3 class="agenda-heading">{{ selectedCalendarDate | date: 'EEEE, MMMM d, yyyy' }}</h3>
+        @if (selectedDateReservations.length === 0) {
+          <app-empty-state icon="event" message="No reservations on this day." />
+        } @else {
+          <ul class="reservation-list">
+            @for (reservation of selectedDateReservations; track reservation.id) {
+              <ng-container [ngTemplateOutlet]="reservationCard" [ngTemplateOutletContext]="{ $implicit: reservation }" />
+            }
+          </ul>
+        }
       }
     }
   </div>

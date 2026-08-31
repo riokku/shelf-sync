@@ -93,6 +93,7 @@ describe('SiteSettingsService', () => {
       expect(service.notifyTaskTransfer()).toBe(true);
       expect(service.notifyRetirementRequest()).toBe(true);
       expect(service.notifyJoinRequest()).toBe(true);
+      expect(service.notifyCheckoutOverdue()).toBe(true);
       expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
     });
 
@@ -123,7 +124,8 @@ describe('SiteSettingsService', () => {
           notify_task_assigned: false,
           notify_task_transfer: false,
           notify_retirement_request: false,
-          notify_join_request: false
+          notify_join_request: false,
+          notify_checkout_overdue: false
         }
       }, { profile });
 
@@ -139,6 +141,7 @@ describe('SiteSettingsService', () => {
       expect(service.notifyTaskTransfer()).toBe(false);
       expect(service.notifyRetirementRequest()).toBe(false);
       expect(service.notifyJoinRequest()).toBe(false);
+      expect(service.notifyCheckoutOverdue()).toBe(false);
       expect(document.documentElement.getAttribute('data-theme')).toBe('ocean');
     });
   });
@@ -339,7 +342,13 @@ describe('SiteSettingsService', () => {
   });
 
   describe('updateEmailNotifications()', () => {
-    const settings = { taskAssigned: false, taskTransfer: true, retirementRequest: false, joinRequest: true };
+    const settings = {
+      taskAssigned: false,
+      taskTransfer: true,
+      retirementRequest: false,
+      joinRequest: true,
+      checkoutOverdue: false
+    };
 
     it('refuses when signed out', async () => {
       const { service, upsertSpy } = setup({}, { profile: null });
@@ -350,7 +359,7 @@ describe('SiteSettingsService', () => {
       expect(upsertSpy).not.toHaveBeenCalled();
     });
 
-    it('upserts all four columns in one call and updates all four signals', async () => {
+    it('upserts all five columns in one call and updates all five signals', async () => {
       const profile = createFakeProfile({ organization_id: 'org-1' });
       const { service, upsertSpy } = setup({}, { profile });
 
@@ -361,13 +370,15 @@ describe('SiteSettingsService', () => {
       expect(service.notifyTaskTransfer()).toBe(true);
       expect(service.notifyRetirementRequest()).toBe(false);
       expect(service.notifyJoinRequest()).toBe(true);
+      expect(service.notifyCheckoutOverdue()).toBe(false);
       expect(upsertSpy).toHaveBeenCalledWith(
         jasmine.objectContaining({
           organization_id: 'org-1',
           notify_task_assigned: false,
           notify_task_transfer: true,
           notify_retirement_request: false,
-          notify_join_request: true
+          notify_join_request: true,
+          notify_checkout_overdue: false
         }),
         { onConflict: 'organization_id' }
       );
@@ -384,6 +395,7 @@ describe('SiteSettingsService', () => {
       expect(service.notifyTaskTransfer()).toBe(true);
       expect(service.notifyRetirementRequest()).toBe(true);
       expect(service.notifyJoinRequest()).toBe(true);
+      expect(service.notifyCheckoutOverdue()).toBe(true);
     });
   });
 

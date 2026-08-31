@@ -1,3 +1,5 @@
+import { getTodayIsoDate } from '../utils/date';
+
 export const MAX_INVENTORY_ITEM_IMAGES = 10;
 
 export interface ActivityLogEntry {
@@ -18,6 +20,20 @@ export function isLowStock(item: InventoryItem): boolean {
  *  popup's warning banner text, which is still accurate at zero. */
 export function isOutOfStock(item: InventoryItem): boolean {
   return item.quantityRemaining <= 0;
+}
+
+/** True once a checked-out item's own due-back date has passed — drives the
+ *  "Overdue" badge/text treatment in ModalTableComponent and InventoryComponent
+ *  (see their own doc comments), and is exactly what notify_overdue_checkouts()
+ *  (see the add_inventory_item_checkout_due_date migration) checks server-side
+ *  to decide who to email/notify. A plain ISO-date string comparison — both
+ *  sides are 'YYYY-MM-DD', which sorts identically to a real date comparison
+ *  — same shape checkedOutDueAt itself is stored/passed around in. Uses
+ *  getTodayIsoDate() (shared/utils/date.ts) rather than
+ *  new Date().toISOString(), which converts to UTC first and can report the
+ *  wrong local day depending on the caller's timezone offset. */
+export function isCheckoutOverdue(item: InventoryItem): boolean {
+  return item.isCheckedOut && item.checkedOutDueAt !== '' && item.checkedOutDueAt < getTodayIsoDate();
 }
 
 export type InventoryItemStatus = 'active' | 'retirement_pending' | 'retired';
@@ -49,6 +65,7 @@ export class InventoryItem {
   checkedOutTo: string;
   checkedOutToId: string | null;
   checkedOutToAvatarKey: string | null;
+  checkedOutDueAt: string;
   activityLog: ActivityLogEntry[];
   status: InventoryItemStatus;
   retirementRequestedById: string | null;
@@ -88,6 +105,7 @@ export class InventoryItem {
     checkedOutTo: string,
     checkedOutToId: string | null,
     checkedOutToAvatarKey: string | null,
+    checkedOutDueAt: string,
     activityLog: ActivityLogEntry[],
     status: InventoryItemStatus,
     retirementRequestedById: string | null,
@@ -137,6 +155,7 @@ export class InventoryItem {
     this.checkedOutTo = checkedOutTo;
     this.checkedOutToId = checkedOutToId;
     this.checkedOutToAvatarKey = checkedOutToAvatarKey;
+    this.checkedOutDueAt = checkedOutDueAt;
     this.activityLog = activityLog;
 
     //Retirement information

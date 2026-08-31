@@ -11,7 +11,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import { InventoryItem, MAX_INVENTORY_ITEM_IMAGES, isLowStock, isOutOfStock } from '../../models/inventory-item.model';
+import { InventoryItem, MAX_INVENTORY_ITEM_IMAGES, isCheckoutOverdue, isLowStock, isOutOfStock } from '../../models/inventory-item.model';
 import { InventoryItemContainer } from '../../models/inventory-item-container.model';
 import { ImageGalleryComponent } from '../image-gallery/image-gallery.component';
 import { UserAvatarComponent } from '../user-avatar/user-avatar.component';
@@ -64,6 +64,7 @@ const FIELD_LABELS: Record<string, string> = {
   supplierLeadTime: 'Supplier lead time',
   orderLink: 'Order link',
   checkedOutTo: 'Checked out to',
+  checkoutDueAt: 'Due back',
   quantityTotal: 'Quantity total',
   quantityPerContainer: 'Quantity per container',
   quantityAllocated: 'Quantity allocated',
@@ -186,6 +187,14 @@ export class ModalTableComponent implements OnInit {
    *  "Low stock" once quantityRemaining actually hits zero. */
   get isOutOfStock(): boolean {
     return isOutOfStock(this.data);
+  }
+
+  /** Whether the *view-mode* item (this.data), not any in-progress edit, is
+   *  a checked-out item past its own due date — see isCheckoutOverdue()'s
+   *  own doc comment. Template-facing wrapper matching isLowStock/
+   *  isOutOfStock's own shape above. */
+  isCheckoutOverdue(item: InventoryItem): boolean {
+    return isCheckoutOverdue(item);
   }
 
   isEditing = false;
@@ -342,6 +351,7 @@ export class ModalTableComponent implements OnInit {
     supplierLeadTime: new FormControl('', { nonNullable: true }),
     orderLink: new FormControl('', { nonNullable: true }),
     checkedOutTo: new FormControl<string | null>(null),
+    checkoutDueAt: new FormControl<Date | null>(null),
     quantityTotal: new FormControl(0, { nonNullable: true, validators: [Validators.required, Validators.min(0)] }),
     quantityPerContainer: new FormControl<number | null>(null),
     quantityAllocated: new FormControl(0, { nonNullable: true, validators: [Validators.min(0)] }),
@@ -772,6 +782,7 @@ export class ModalTableComponent implements OnInit {
       supplierLeadTime: this.data.supplierLeadTime,
       orderLink: this.data.orderLink,
       checkedOutTo: this.data.checkedOutToId,
+      checkoutDueAt: parseIsoDate(this.data.checkedOutDueAt),
       quantityTotal: this.data.quantityTotal,
       quantityPerContainer: this.data.quantityPerContainer,
       quantityAllocated: this.data.quantityAllocated,
@@ -926,7 +937,14 @@ export class ModalTableComponent implements OnInit {
           quantityTotal: rawValue.quantityAllocated + this.containerQuantitySum
         }
       : rawValue;
-    const changes = this.describeChanges(value);
+    // A due date is meaningless once nothing's checked out — force it back
+    // to null here (rather than a form validator) so clearing "Checked out
+    // to" always clears "Due back" too, instead of leaving a stale date
+    // sitting on the row that'd make the next checkout look overdue on day
+    // one. Computed once and used by both the write below and describeChanges()
+    // so the diff log reflects what's actually persisted.
+    const checkoutDueAt = value.checkedOutTo === null ? null : value.checkoutDueAt;
+    const changes = this.describeChanges({ ...value, checkoutDueAt });
 
     const { error } = await this.supabase.from('inventory_items').update({
       name: value.name,
@@ -942,6 +960,7 @@ export class ModalTableComponent implements OnInit {
       order_link: value.orderLink || null,
       checked_out_to: value.checkedOutTo,
       is_checked_out: value.checkedOutTo !== null,
+      checkout_due_at: toIsoDateString(checkoutDueAt),
       quantity_total: value.quantityTotal,
       quantity_per_container: value.quantityPerContainer,
       quantity_allocated: value.quantityAllocated,
@@ -974,6 +993,7 @@ export class ModalTableComponent implements OnInit {
       checkedOutTo: resolveProfileName(value.checkedOutTo, this.orgProfiles),
       checkedOutToId: value.checkedOutTo,
       checkedOutToAvatarKey: resolveProfileAvatarKey(value.checkedOutTo, this.orgProfiles),
+      checkedOutDueAt: toIsoDateString(checkoutDueAt) ?? '',
       quantityTotal: value.quantityTotal,
       quantityPerContainer: value.quantityPerContainer ?? 0,
       quantityAllocated: value.quantityAllocated,
@@ -1146,6 +1166,7 @@ export class ModalTableComponent implements OnInit {
       supplierLeadTime: this.data.supplierLeadTime,
       orderLink: this.data.orderLink,
       checkedOutTo: this.data.checkedOutTo,
+      checkoutDueAt: this.data.checkedOutDueAt,
       quantityTotal: this.data.quantityTotal,
       quantityPerContainer: this.data.quantityPerContainer,
       quantityAllocated: this.data.quantityAllocated,
@@ -1158,6 +1179,7 @@ export class ModalTableComponent implements OnInit {
       ...value,
       expirationDate: toIsoDateString(value.expirationDate) ?? '',
       checkedOutTo: resolveProfileName(value.checkedOutTo, this.orgProfiles),
+      checkoutDueAt: toIsoDateString(value.checkoutDueAt) ?? '',
       // Diffed by name, not the raw id `value` otherwise spreads in under
       // this same key — "Supplier name (Old Co. → New Co.)" reads far
       // better than a pair of uuids.

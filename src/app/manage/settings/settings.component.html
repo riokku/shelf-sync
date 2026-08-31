@@ -385,6 +385,12 @@
                 >
                 New join request needs approval
               </mat-slide-toggle>
+              <mat-slide-toggle
+                  [checked]="selectedNotifyCheckoutOverdue"
+                  (change)="toggleNotifyCheckoutOverdue($event.checked)"
+                >
+                Checked-out item is overdue
+              </mat-slide-toggle>
               @if (emailNotificationsError) {
                 <p class="error-message">{{ emailNotificationsError }}</p>
               }

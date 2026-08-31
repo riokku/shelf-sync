@@ -2275,6 +2275,63 @@ resolving to the new `recentProfiles` or the existing `filteredResults` dependin
 `StudioOrganizationsComponent`'s own) in place of its own previous two-bar placeholder, since the table
 itself no longer only ever appears post-search.
 
+`manage/reservations` gets a List/Calendar view toggle (`ManageReservationsComponent.viewMode`, a
+`mat-button-toggle-group` next to the existing status filter) — a month-grid calendar is the more
+natural way to see "what's booked when" for this app's own event-rental use case than a flat list
+alone. The calendar itself is a new shared `ReservationCalendarComponent`
+(`shared/components/reservation-calendar`) — a hand-rolled CSS-grid month view (no calendar
+library, same "no new runtime dependency" convention `DonutChartComponent`/`RingStatComponent`/
+`TrendChartComponent` already established for their own hand-rolled charts), always a fixed 6-week
+(42-day) grid so switching months never changes the grid's own height. Each day cell shows small
+status-colored chips (mirroring `.status-pill`'s own reservation-status palette) for every
+reservation whose date range includes that day, capped at 3 visible with a "+N more" overflow;
+clicking a day emits its ISO date via `(daySelected)` rather than owning any agenda UI itself.
+`ManageReservationsComponent` renders an agenda list below the calendar for whichever day is
+selected (defaulting to today) — both the plain list view and this agenda share one
+`<ng-template #reservationCard>` for the actual card markup (status pill, dates, actions) via
+`ngTemplateOutlet`, rather than maintaining two copies of it. Like `InventoryComponent`'s own
+card/table toggle, `viewMode` stays local/session state rather than a URL query param — this is
+how the same filtered data renders, not which page section is showing. The calendar is purely
+presentational (no realtime subscription of its own); it re-derives its grid from whatever
+`reservations` the host page already passes it, so the existing `inventory_item_reservations`
+subscription on `ManageReservationsComponent` keeps both views current without any change.
+
+Checked-out items (`is_checked_out`/`checked_out_to`) can now carry a `checkout_due_at` date —
+`ModalTableComponent`'s edit flow gets a "Due back" field right under the "Checked out to"
+selector, and once that date passes, the item is "overdue": a red variant of the existing
+`checked-out-badge` on Inventory's card view, a tinted/icon-marked "Checked out to" cell in table
+view (both left the single-status-pill priority order untouched — see `isCheckoutOverdue()` in
+`shared/models/inventory-item.model.ts`), and a matching red pill in `ModalTableComponent`'s own
+view mode. Clearing "Checked out to" during an edit also clears the due date, even if the date
+field itself was left populated — a due date is meaningless with nothing checked out (mirrors
+`quantity_remaining`/`quantity_total`'s own "derive/clear the dependent field" treatment
+elsewhere in this schema).
+
+A daily `pg_cron` sweep, `notify_overdue_checkouts()` (`add_inventory_item_checkout_due_date`
+migration), finds every checked-out item whose due date has passed and re-notifies every 3 days
+until it's resolved (returned, reassigned, or given a new due date — any of the three reset
+`checkout_overdue_notified_at` back to null via a `BEFORE UPDATE` trigger, so a fresh overdue
+period on the same item notifies again rather than staying silently marked from a previous one).
+Unlike every other notification kind in this schema, this one isn't triggered by a row change at
+all — it's time passing — so the cron function calls `send-notification-email` directly via
+`net.http_post`, the same shared-secret-authenticated call every trigger-driven webhook already
+makes, with a synthetic `type: 'OVERDUE_CHECKOUT'` the Edge Function branches on (see that
+function's own `resultForOverdueCheckout()`). Notifies both the person holding the item and every
+admin/manager, deduplicated when they're the same person; gated by a sixth per-org toggle,
+`site_settings.notify_checkout_overdue`, in Settings > Workflow's existing "Email notifications"
+section (same bundled-into-one-upsert shape the other five already use) — the in-app
+`notifications` row is unconditional, matching every other kind. A same-day follow-up caught (via
+a manual `notify_overdue_checkouts()` test run against the hosted project, before any real usage
+depended on it) that `notification_email_log.kind`'s own check constraint had been widened for
+`notifications.kind` but not for this table's separate, identically-shaped one — every overdue
+email was sending successfully but silently failing to log itself, the exact
+"never block/throw over a logging write" swallow that function's own doc comment describes, so it
+went unnoticed until checked directly; fixed by a follow-up migration widening the second
+constraint the same way. Worth remembering alongside this schema's other "diff against the
+previous version"/double-apply lessons: a new notification *kind* touches two separate check
+constraints (`notifications.kind` and `notification_email_log.kind`), not just one, and only the
+second one's gap is silent rather than a visible error.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -2460,6 +2517,7 @@ shared/
   components/feedback-modal/ # self-contained feedback-type + message dialog backing the Help page's "Send feedback" button
   components/broadcast-modal/ # self-contained title/message + member/item reference picker dialog backing /broadcasts, create and edit alike
   components/lock-user-account-modal/ # mandatory-reason dialog backing StudioUserDetailComponent's account-lock toggle
+  components/reservation-calendar/ # hand-rolled CSS-grid month calendar (no calendar library) — backs manage/reservations' calendar view
   models/inventory-item.model.ts   # InventoryItem class (constructor-based, no defaults)
   models/supplier.model.ts   # Supplier — a directory entry inventory_items.supplier_id can point at
   models/inventory-item-order.model.ts # InventoryItemOrder — one restock order against an item's linked supplier
@@ -3034,6 +3092,35 @@ yet on a hard refresh of `/inventory`.
   did for `feedback`/`client_error_log`/`profiles`. A table function's return columns can't change
   via `create or replace` (same constraint `20260919120100`'s own comment already documented for
   this exact function), so this drops the old signature before recreating it.
+- `add_inventory_item_checkout_due_date` — adds `inventory_items.checkout_due_at` (plain `date`,
+  same type `expiration_date` already uses) and `checkout_overdue_notified_at` (RPC/trigger-only,
+  excluded from any column grant), backing the checkout due-date/overdue-reminder feature (see
+  Project Overview above). `checkout_due_at` gets the same additive
+  `grant update (checkout_due_at)` every new writable `inventory_items` column needs (same pattern
+  `add_inventory_item_barcode` established). A new `BEFORE UPDATE` trigger,
+  `clear_checkout_overdue_notification()`, resets `checkout_overdue_notified_at` to null whenever
+  `checked_out_to`/`checkout_due_at` changes, so a resolved-then-newly-overdue item notifies again.
+  `notify_overdue_checkouts()` — `SECURITY DEFINER` + `pg_cron`, directly modeled on
+  `purge_expired_organizations()` — sweeps daily for anything overdue (re-checking every 3 days
+  rather than notifying once and going silent) and calls `send-notification-email` via
+  `net.http_post` the same way every trigger-driven webhook in this schema already does, just from
+  a scheduled function instead of a row-change trigger. Also widens `notifications.kind`'s check
+  constraint to add `'checkout_overdue'` (drop + recreate, same as `add_broadcasts` did for
+  `'broadcast'`).
+- `add_site_settings_notify_checkout_overdue` — adds `site_settings.notify_checkout_overdue`
+  (`boolean not null default true`), the sixth per-org email-notification toggle in Settings >
+  Workflow's "Email notifications" section, same shape/no-RLS-change reasoning every other toggle
+  added this way already has.
+- `add_notification_email_log_checkout_overdue_kind` — a same-day follow-up, caught via a manual
+  `notify_overdue_checkouts()` test run against the hosted project before any real usage depended
+  on it: `add_inventory_item_checkout_due_date` widened `notifications.kind`'s check constraint for
+  the new kind but missed `notification_email_log.kind`'s own separate, identically-shaped one —
+  every overdue email was sending successfully but silently failing to log itself (swallowed by
+  `logEmailAttempt()`'s own best-effort `console.error`, the exact "never block/throw over a
+  logging write" behavior its doc comment describes). Fixed by drop-and-recreating the second
+  constraint the same way. Worth remembering alongside this repo's other "diff against the previous
+  version"/double-apply lessons: a new notification *kind* touches two separate check constraints,
+  not one, and only the second one's gap fails silently rather than as a visible error.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

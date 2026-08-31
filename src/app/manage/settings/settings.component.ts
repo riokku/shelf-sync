@@ -110,12 +110,13 @@ export class SettingsComponent implements OnInit, OnDestroy {
   restrictPriceSupplierEditsError: string | null = null;
 
   // One group, one Save button — same reasoning SiteSettingsService's own
-  // updateEmailNotifications() doc comment gives for bundling these four
+  // updateEmailNotifications() doc comment gives for bundling these five
   // into a single upsert.
   selectedNotifyTaskAssigned = this.siteSettings.notifyTaskAssigned();
   selectedNotifyTaskTransfer = this.siteSettings.notifyTaskTransfer();
   selectedNotifyRetirementRequest = this.siteSettings.notifyRetirementRequest();
   selectedNotifyJoinRequest = this.siteSettings.notifyJoinRequest();
+  selectedNotifyCheckoutOverdue = this.siteSettings.notifyCheckoutOverdue();
   isSavingEmailNotifications = false;
   emailNotificationsError: string | null = null;
 
@@ -165,7 +166,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
     return this.selectedNotifyTaskAssigned !== this.siteSettings.notifyTaskAssigned()
       || this.selectedNotifyTaskTransfer !== this.siteSettings.notifyTaskTransfer()
       || this.selectedNotifyRetirementRequest !== this.siteSettings.notifyRetirementRequest()
-      || this.selectedNotifyJoinRequest !== this.siteSettings.notifyJoinRequest();
+      || this.selectedNotifyJoinRequest !== this.siteSettings.notifyJoinRequest()
+      || this.selectedNotifyCheckoutOverdue !== this.siteSettings.notifyCheckoutOverdue();
   }
 
   ngOnDestroy() {
@@ -330,14 +332,19 @@ export class SettingsComponent implements OnInit, OnDestroy {
     this.selectedNotifyJoinRequest = enabled;
   }
 
-  /** Backs the "Enable all"/"Disable all" quick actions above the four
-   *  individual toggles — sets all four at once rather than making an admin
+  toggleNotifyCheckoutOverdue(enabled: boolean) {
+    this.selectedNotifyCheckoutOverdue = enabled;
+  }
+
+  /** Backs the "Enable all"/"Disable all" quick actions above the five
+   *  individual toggles — sets all five at once rather than making an admin
    *  click each one when they just want every notification kind on or off. */
   private setAllEmailNotifications(enabled: boolean) {
     this.selectedNotifyTaskAssigned = enabled;
     this.selectedNotifyTaskTransfer = enabled;
     this.selectedNotifyRetirementRequest = enabled;
     this.selectedNotifyJoinRequest = enabled;
+    this.selectedNotifyCheckoutOverdue = enabled;
   }
 
   enableAllEmailNotifications() {
@@ -352,14 +359,16 @@ export class SettingsComponent implements OnInit, OnDestroy {
     return this.selectedNotifyTaskAssigned
       && this.selectedNotifyTaskTransfer
       && this.selectedNotifyRetirementRequest
-      && this.selectedNotifyJoinRequest;
+      && this.selectedNotifyJoinRequest
+      && this.selectedNotifyCheckoutOverdue;
   }
 
   get allEmailNotificationsDisabled(): boolean {
     return !this.selectedNotifyTaskAssigned
       && !this.selectedNotifyTaskTransfer
       && !this.selectedNotifyRetirementRequest
-      && !this.selectedNotifyJoinRequest;
+      && !this.selectedNotifyJoinRequest
+      && !this.selectedNotifyCheckoutOverdue;
   }
 
   async saveEmailNotifications() {
@@ -374,7 +383,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
       taskAssigned: this.selectedNotifyTaskAssigned,
       taskTransfer: this.selectedNotifyTaskTransfer,
       retirementRequest: this.selectedNotifyRetirementRequest,
-      joinRequest: this.selectedNotifyJoinRequest
+      joinRequest: this.selectedNotifyJoinRequest,
+      checkoutOverdue: this.selectedNotifyCheckoutOverdue
     });
     this.isSavingEmailNotifications = false;
 

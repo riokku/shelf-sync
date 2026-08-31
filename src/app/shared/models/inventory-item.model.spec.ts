@@ -1,5 +1,16 @@
-import { isLowStock, isOutOfStock } from './inventory-item.model';
+import { isCheckoutOverdue, isLowStock, isOutOfStock } from './inventory-item.model';
 import { createTestInventoryItem } from '../../testing/fakes';
+import { toIsoDateString } from '../utils/date';
+
+/** Builds a 'YYYY-MM-DD' string offset from today by the given number of
+ *  days (negative for the past) — avoids hardcoding a date that would
+ *  eventually become stale relative to isCheckoutOverdue()'s own
+ *  getTodayIsoDate() comparison. */
+function isoDateDaysFromToday(days: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return toIsoDateString(date)!;
+}
 
 describe('InventoryItem', () => {
   it('creates an instance with the given values', () => {
@@ -50,5 +61,32 @@ describe('isOutOfStock', () => {
   it('is true for a negative remaining quantity too (defensive — should not normally happen)', () => {
     const item = createTestInventoryItem({ quantityRemaining: -1 });
     expect(isOutOfStock(item)).toBe(true);
+  });
+});
+
+describe('isCheckoutOverdue', () => {
+  it('is true for a checked-out item whose due date has passed', () => {
+    const item = createTestInventoryItem({ isCheckedOut: true, checkedOutDueAt: isoDateDaysFromToday(-1) });
+    expect(isCheckoutOverdue(item)).toBe(true);
+  });
+
+  it('is false for a checked-out item whose due date is today', () => {
+    const item = createTestInventoryItem({ isCheckedOut: true, checkedOutDueAt: isoDateDaysFromToday(0) });
+    expect(isCheckoutOverdue(item)).toBe(false);
+  });
+
+  it('is false for a checked-out item whose due date is in the future', () => {
+    const item = createTestInventoryItem({ isCheckedOut: true, checkedOutDueAt: isoDateDaysFromToday(1) });
+    expect(isCheckoutOverdue(item)).toBe(false);
+  });
+
+  it('is false for a checked-out item with no due date set', () => {
+    const item = createTestInventoryItem({ isCheckedOut: true, checkedOutDueAt: '' });
+    expect(isCheckoutOverdue(item)).toBe(false);
+  });
+
+  it('is false once the item is no longer checked out, even with a past due date still on the row', () => {
+    const item = createTestInventoryItem({ isCheckedOut: false, checkedOutDueAt: isoDateDaysFromToday(-5) });
+    expect(isCheckoutOverdue(item)).toBe(false);
   });
 });

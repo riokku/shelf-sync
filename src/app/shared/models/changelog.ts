@@ -14,6 +14,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    date: '2026-09-22',
+    title: 'Overdue checkout reminders',
+    description: 'A checked-out item can now carry a due-back date. Once it passes, the person holding it and your admins/managers get emailed and notified — repeating every few days until it\'s resolved.'
+  },
+  {
+    date: '2026-09-22',
+    title: 'Reservation calendar view',
+    description: 'Manage > Reservations has a Calendar view alongside the list — see what\'s booked on any given day at a glance, with a click-through agenda for the day you pick.'
+  },
+  {
     date: '2026-08-31',
     title: 'Studio > Users shows recent signups',
     description: 'No more starting from a blank page — Studio > Users now lists the 20 most recent signups by default, with search still narrowing it down to someone specific.'

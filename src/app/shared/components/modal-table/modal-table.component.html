@@ -604,6 +604,14 @@
                     }
                   </mat-select>
                 </mat-form-field>
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Due back</mat-label>
+                  <mat-icon matPrefix>event</mat-icon>
+                  <input matInput [matDatepicker]="checkoutDueAtPicker" formControlName="checkoutDueAt" />
+                  <mat-datepicker-toggle matSuffix [for]="checkoutDueAtPicker"></mat-datepicker-toggle>
+                  <mat-datepicker #checkoutDueAtPicker></mat-datepicker>
+                  <mat-hint>Only matters while this item is checked out</mat-hint>
+                </mat-form-field>
               </div>
             } @else {
               <table class="info-table">
@@ -656,6 +664,15 @@
                           &middot; {{ data.retiredAt | date: 'M/d/yy' }}
                         }
                       </span>
+                    } @else if (data.isCheckedOut && data.checkedOutDueAt) {
+                      <span class="semibold">Due back:</span>
+                      <span class="status-pill" [class.overdue]="isCheckoutOverdue(data)">
+                        <mat-icon>{{ isCheckoutOverdue(data) ? 'error' : 'event' }}</mat-icon>
+                        {{ data.checkedOutDueAt | date: 'M/d/yy' }}
+                      </span>
+                      @if (isCheckoutOverdue(data)) {
+                        <span class="retirement-meta">Overdue</span>
+                      }
                     } @else {
                       &nbsp;
                     }
