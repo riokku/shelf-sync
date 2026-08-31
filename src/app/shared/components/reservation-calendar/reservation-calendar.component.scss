@@ -1,3 +1,11 @@
+:host{
+  display: block;
+  // Breathing room above the calendar itself — ManageReservationsComponent
+  // renders this directly under .reservation-controls-row (the status/view
+  // toggles), which otherwise sits flush against the calendar's own nav row.
+  margin-top: 1.5rem;
+}
+
 .calendar-nav{
   display: flex;
   align-items: center;

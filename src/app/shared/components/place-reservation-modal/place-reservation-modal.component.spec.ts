@@ -110,10 +110,13 @@ describe('PlaceReservationModalComponent', () => {
       expect(component.availableForSelectedRange).toBeNull();
     });
 
-    it('is the item\'s full quantityRemaining before a date range is picked', async () => {
+    it('stays null once an item is picked but before a full date range is picked, so the hint stays hidden', async () => {
       await setup();
       component.onItemSelected({ option: { value: 'item-1' } } as never);
-      expect(component.availableForSelectedRange).toBe(100);
+      expect(component.availableForSelectedRange).toBeNull();
+
+      component.reservationForm.controls.dateRange.controls.start.setValue(new Date(2026, 5, 1));
+      expect(component.availableForSelectedRange).toBeNull();
     });
 
     it('subtracts quantity from other reserved/picked_up bookings that overlap the picked range', async () => {

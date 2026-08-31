@@ -106,7 +106,7 @@ export class PlaceReservationModalComponent {
     }
     const { start, end } = this.reservationForm.controls.dateRange.value;
     if (!start || !end) {
-      return this.selectedItem.quantityRemaining;
+      return null;
     }
     const startIso = toIsoDateString(start)!;
     const endIso = toIsoDateString(end)!;
