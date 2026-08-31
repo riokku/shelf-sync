@@ -62,15 +62,16 @@ const CSV_COLUMNS: { header: string; value: (item: InventoryItem) => string }[] 
 /** A field containing a comma, double quote, or line break must be quoted
  *  per the CSV spec (RFC 4180), with internal quotes doubled — everything
  *  else is left bare. Activity log cells (the only multi-line field here)
- *  always hit the quoting path. */
-function escapeCsvCell(value: string): string {
+ *  always hit the quoting path. Exported so inventory-import.ts's own
+ *  template-generation can reuse it rather than duplicating this logic. */
+export function escapeCsvCell(value: string): string {
   if (/[",\r\n]/.test(value)) {
     return `"${value.replace(/"/g, '""')}"`;
   }
   return value;
 }
 
-function toCsv(rows: string[][]): string {
+export function toCsv(rows: string[][]): string {
   return rows.map(row => row.map(escapeCsvCell).join(',')).join('\r\n');
 }
 

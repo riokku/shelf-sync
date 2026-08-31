@@ -131,6 +131,48 @@ describe('ManageInventoryComponent', () => {
     });
   });
 
+  describe('openImportModal()', () => {
+    it('passes every current item name so the modal can reject a re-imported duplicate', () => {
+      component.allInventoryItems = [
+        createTestInventoryItemRow({ id: 'item-1', name: 'Folding Chair' }),
+        createTestInventoryItemRow({ id: 'item-2', name: 'Round Table' })
+      ];
+      const dialog = (component as unknown as { dialog: { open: jasmine.Spy } }).dialog;
+      const openSpy = spyOn(dialog, 'open').and.returnValue({ afterClosed: () => ({ subscribe: () => {} }) });
+
+      component.openImportModal();
+
+      expect(openSpy).toHaveBeenCalledWith(jasmine.any(Function), jasmine.objectContaining({
+        data: { existingItemNames: ['Folding Chair', 'Round Table'] }
+      }));
+    });
+  });
+
+  describe('submitInventoryItem() duplicate-name check', () => {
+    it('rejects a name that already exists in the org, case-insensitively, without attempting an insert', async () => {
+      component.allInventoryItems = [createTestInventoryItemRow({ id: 'item-1', name: 'Folding Chair' })];
+      const notificationSuccessSpy = spyOn((component as unknown as { notification: NotificationService }).notification, 'success');
+      component.inventoryForm.controls.name.setValue('folding chair');
+      component.inventoryForm.controls.quantityTotal.setValue(10);
+
+      await component.submitInventoryItem();
+
+      expect(component.itemError).toBe('An item with this name already exists');
+      expect(component.isSavingItem).toBeFalse();
+      expect(notificationSuccessSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not block a name that is not already in the org', async () => {
+      component.allInventoryItems = [createTestInventoryItemRow({ id: 'item-1', name: 'Folding Chair' })];
+      component.inventoryForm.controls.name.setValue('Round Table');
+      component.inventoryForm.controls.quantityTotal.setValue(10);
+
+      await component.submitInventoryItem();
+
+      expect(component.itemError).not.toBe('An item with this name already exists');
+    });
+  });
+
   describe('confirmBeforeUnload()', () => {
     function fakeBeforeUnloadEvent() {
       return { preventDefault: jasmine.createSpy('preventDefault'), returnValue: '' } as unknown as BeforeUnloadEvent;

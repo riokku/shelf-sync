@@ -1,0 +1,132 @@
+<h2 mat-dialog-title class="import-title">
+  <mat-icon class="import-title-icon">upload_file</mat-icon>
+  Import inventory
+</h2>
+
+<mat-dialog-content>
+  @if (step === 'upload') {
+    <p class="import-instructions">
+      Download the template, fill in one row per item in Excel or Google Sheets, then upload it back here as a
+      CSV. Only <span class="semibold">Name</span> and <span class="semibold">Quantity total</span> are required
+      — leave any other column blank to skip it. Photos and container/box breakdowns aren't part of this import;
+      add those to an item afterward.
+    </p>
+
+    <div class="import-upload-actions">
+      <button mat-stroked-button type="button" (click)="downloadTemplate()">
+        <mat-icon>download</mat-icon>
+        Download template
+      </button>
+      <button mat-flat-button color="primary" type="button" (click)="fileInput.click()">
+        <mat-icon>upload_file</mat-icon>
+        Choose CSV file…
+      </button>
+      <input #fileInput type="file" accept=".csv,text/csv" hidden (change)="onFileSelected($event)" />
+    </div>
+
+    @if (fileError) {
+      <p class="error-message">{{ fileError }}</p>
+    }
+  }
+
+  @if (step === 'preview') {
+    <p class="import-summary">
+      {{ validRows.length }} row{{ validRows.length === 1 ? '' : 's' }} ready to import
+      @if (invalidRowCount > 0) {
+        — {{ invalidRowCount }} row{{ invalidRowCount === 1 ? '' : 's' }} have errors and will be skipped
+      }
+    </p>
+
+    <div class="import-preview-wrapper">
+      <table class="import-preview-table">
+        <thead>
+          <tr>
+            <th>Row</th>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Quantity total</th>
+            <th>Price/unit</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of rows; track row.rowNumber) {
+            <tr [class.import-row-error]="row.errors.length > 0">
+              <td class="mono">{{ row.rowNumber }}</td>
+              <td>{{ row.name || '—' }}</td>
+              <td>{{ row.category || '—' }}</td>
+              <td class="mono">{{ row.quantityTotal ?? '—' }}</td>
+              <td class="mono">{{ row.pricePerUnit ?? '—' }}</td>
+              <td>
+                @if (row.errors.length > 0) {
+                  <span class="import-status import-status-error" [matTooltip]="row.errors.join('; ')">
+                    <mat-icon>error</mat-icon>
+                    {{ row.errors[0] }}
+                  </span>
+                } @else if (row.warnings.length > 0) {
+                  <span class="import-status import-status-warning" [matTooltip]="row.warnings.join('; ')">
+                    <mat-icon>warning</mat-icon>
+                    Warning
+                  </span>
+                } @else {
+                  <span class="import-status import-status-ok">
+                    <mat-icon>check_circle</mat-icon>
+                    Ready
+                  </span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (step === 'done') {
+    <p class="import-summary">
+      Imported {{ succeededCount }} item{{ succeededCount === 1 ? '' : 's' }}.
+    </p>
+    @if (failedRows.length > 0) {
+      <p class="error-message">
+        {{ failedRows.length }} row{{ failedRows.length === 1 ? '' : 's' }} couldn't be saved:
+        @for (failed of failedRows; track failed.rowNumber) {
+          <br />Row {{ failed.rowNumber }} ({{ failed.name || 'unnamed' }}): {{ failed.reason }}
+        }
+      </p>
+    }
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  @if (step === 'upload') {
+    <button mat-button type="button" (click)="cancel()">Cancel</button>
+  }
+  @if (step === 'preview') {
+    <button mat-button type="button" (click)="backToUpload()">Back</button>
+    <button
+        mat-flat-button
+        color="primary"
+        type="button"
+        [disabled]="validRows.length === 0 || isImporting"
+        (click)="startImport()"
+      >
+      @if (isImporting) {
+        <mat-spinner diameter="20"></mat-spinner>
+      } @else {
+        <ng-container>
+          <mat-icon>upload_file</mat-icon>
+          Import {{ validRows.length }} item{{ validRows.length === 1 ? '' : 's' }}
+        </ng-container>
+      }
+    </button>
+  }
+  @if (step === 'done') {
+    <button mat-button type="button" (click)="close()">Close</button>
+    @if (succeededCount > 0) {
+      <button mat-flat-button color="primary" type="button" (click)="viewInventory()">
+        <mat-icon>inventory_2</mat-icon>
+        View inventory
+      </button>
+    }
+  }
+</mat-dialog-actions>

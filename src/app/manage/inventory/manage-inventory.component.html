@@ -18,6 +18,15 @@
         <button
             mat-stroked-button
             type="button"
+            matTooltip="Bulk-create items from a CSV spreadsheet"
+            (click)="openImportModal()"
+          >
+          <mat-icon>upload_file</mat-icon>
+          Import
+        </button>
+        <button
+            mat-stroked-button
+            type="button"
             [disabled]="isLoadingInventoryList"
             matTooltip="Export every item's current data and activity log as a CSV"
             (click)="exportInventoryCsv()"
