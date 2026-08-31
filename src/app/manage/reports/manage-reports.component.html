@@ -11,11 +11,41 @@
     </div>
     <app-page-header
         title="Reports"
-        subtitle="A snapshot of where things stand right now — not a trend over time yet."
+        subtitle="Stock health is always current. Movement, loss, and task throughput below can be scoped to a date range."
         zone="insights"
       >
       <app-ring-stat headerFigure [percent]="completionRatePercent" label="Task completion" />
     </app-page-header>
+
+    <!-- Sits below the heading, like every other page's own tab/action row
+         (see PageHeaderComponent's own migration note) rather than squeezed
+         into one of its slots. Applies to Stock movement & loss/Task
+         throughput's own event-based stats only — Inventory value & stock
+         health is always a live snapshot, see the section's own caption
+         below. Purely a local recompute on change (see
+         ManageReportsComponent's own class doc comment), so this row stays
+         interactive even while the initial load/error state below is
+         showing. -->
+    <div class="reports-filter-row">
+      <mat-button-toggle-group [value]="rangePreset" (change)="setRangePreset($event)" aria-label="Date range">
+        <mat-button-toggle value="7d">Last 7 days</mat-button-toggle>
+        <mat-button-toggle value="30d">Last 30 days</mat-button-toggle>
+        <mat-button-toggle value="90d">Last 90 days</mat-button-toggle>
+        <mat-button-toggle value="all">All time</mat-button-toggle>
+        <mat-button-toggle value="custom">Custom</mat-button-toggle>
+      </mat-button-toggle-group>
+      @if (rangePreset === 'custom') {
+        <mat-form-field appearance="outline" class="reports-range-field" subscriptSizing="dynamic">
+          <mat-label>Dates</mat-label>
+          <mat-date-range-input [formGroup]="customRangeForm" [rangePicker]="reportsRangePicker">
+            <input matStartDate formControlName="start" placeholder="Start date" (dateChange)="onCustomRangeChange()" />
+            <input matEndDate formControlName="end" placeholder="End date" (dateChange)="onCustomRangeChange()" />
+          </mat-date-range-input>
+          <mat-datepicker-toggle matSuffix [for]="reportsRangePicker"></mat-datepicker-toggle>
+          <mat-date-range-picker #reportsRangePicker></mat-date-range-picker>
+        </mat-form-field>
+      }
+    </div>
 
     @if (isLoading) {
       <!-- Real headings (static text, unaffected by data) with shimmering
@@ -113,6 +143,10 @@
         <div class="report-card">
           <section class="report-section">
             <h3>Inventory value &amp; stock health</h3>
+            <p class="section-hint">
+              Always current, not affected by the date range above — this is where things stand
+              right now, not a trend over time.
+            </p>
             <div class="stat-grid">
               <div class="stat-tile">
                 <span class="stat-label">Total value</span>
@@ -168,8 +202,9 @@
             <section class="report-section">
               <h3>Stock movement &amp; loss</h3>
               <p class="section-hint">
-                All-time, since discard events started being tracked structurally — a discard logged
-                before this existed still shows up in an item's own activity history, just not here.
+                Scoped to the date range selected above, since discard events started being tracked
+                structurally — a discard logged before this existed still shows up in an item's own
+                activity history, just not here.
               </p>
               <div class="stat-grid">
                 <div class="stat-tile">
@@ -209,7 +244,7 @@
               }
 
               @if (retirementRateByCategory.length > 0) {
-                <h4>Retirement rate by category</h4>
+                <h4>Retirement rate by category <span class="stat-note">(current, not date-range limited)</span></h4>
                 <ul class="breakdown-list">
                   @for (row of retirementRateByCategory; track row.category) {
                     <li>
@@ -234,7 +269,7 @@
                     <span class="stat-detail">{{ completedTaskCount }} of {{ totalTasks }} done</span>
                   </div>
                   <div class="stat-tile">
-                    <span class="stat-label">Overdue</span>
+                    <span class="stat-label">Overdue <span class="stat-note">(current)</span></span>
                     <span class="stat-value">{{ overdueTaskCount | number }}</span>
                   </div>
                   <div class="stat-tile">
@@ -247,7 +282,7 @@
               </div>
 
               @if (workloadByAssignee.length > 0) {
-                <h4>Workload by assignee</h4>
+                <h4>Workload by assignee <span class="stat-note">(current, not date-range limited)</span></h4>
                 <div class="workload-legend">
                   @for (status of taskStatuses; track status) {
                     <span class="workload-legend-item">

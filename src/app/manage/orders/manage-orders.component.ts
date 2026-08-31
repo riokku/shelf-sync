@@ -5,7 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog } from '@angular/material/dialog';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { SupabaseService } from '../../core/supabase.service';
 import { SupplierService } from '../../core/supplier.service';
 import { NotificationService } from '../../core/notification.service';
@@ -19,6 +19,7 @@ import { InventoryItemOrderWithItem, loadAllInventoryItemOrders } from '../../sh
 import { resolveSupplierName } from '../../shared/utils/supplier-label';
 import { subscribeToTableChanges } from '../../shared/utils/realtime';
 import { FlashTracker } from '../../shared/utils/flash-tracker';
+import { flashAndScrollToHighlighted } from '../../shared/utils/highlight-row';
 import { debounce } from '../../shared/utils/debounce';
 
 type OrderStatusFilter = 'all' | 'ordered' | 'received' | 'cancelled';
@@ -58,6 +59,7 @@ export class ManageOrdersComponent implements OnInit {
   private notification = inject(NotificationService);
   private dialog = inject(MatDialog);
   private destroyRef = inject(DestroyRef);
+  private route = inject(ActivatedRoute);
 
   isLoading = true;
   isProcessingOrder = false;
@@ -123,6 +125,17 @@ export class ManageOrdersComponent implements OnInit {
     this.profiles = profiles ?? [];
     await this.loadOrders();
     this.isLoading = false;
+
+    // Landed here from the command palette's own "Orders" result (see
+    // CommandPaletteService) — this page has no per-order deep link of its
+    // own the way Inventory/Tasks/Audits do, so ?highlight= plus the
+    // existing flashTracker/.realtime-flash pulse stands in for one.
+    flashAndScrollToHighlighted(
+      this.route.snapshot.queryParamMap.get('highlight'),
+      this.orders.map(order => order.id),
+      id => `order-${id}`,
+      this.flashTracker
+    );
 
     // Live updates from other users/tabs — marking an order received or
     // cancelled elsewhere shows up here without a manual reload. Reuses

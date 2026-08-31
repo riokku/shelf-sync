@@ -5,7 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog } from '@angular/material/dialog';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { SupabaseService } from '../../core/supabase.service';
 import { AuthService, Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
@@ -19,6 +19,7 @@ import {
 import { InventoryItemReservationWithItem, loadAllInventoryItemReservations } from '../../shared/utils/inventory-item-reservations';
 import { subscribeToTableChanges } from '../../shared/utils/realtime';
 import { FlashTracker } from '../../shared/utils/flash-tracker';
+import { flashAndScrollToHighlighted } from '../../shared/utils/highlight-row';
 import { debounce } from '../../shared/utils/debounce';
 
 type ReservationStatusFilter = 'all' | 'reserved' | 'picked_up' | 'returned' | 'cancelled';
@@ -65,6 +66,7 @@ export class ManageReservationsComponent implements OnInit {
   private notification = inject(NotificationService);
   private dialog = inject(MatDialog);
   private destroyRef = inject(DestroyRef);
+  private route = inject(ActivatedRoute);
 
   isLoading = true;
   isProcessingReservation = false;
@@ -131,6 +133,17 @@ export class ManageReservationsComponent implements OnInit {
     this.profiles = profiles ?? [];
     await this.loadReservations();
     this.isLoading = false;
+
+    // Landed here from the command palette's own "Reservations" result (see
+    // CommandPaletteService) — same ?highlight= + flashTracker/
+    // .realtime-flash stand-in ManageOrdersComponent's own identical call
+    // already uses, since this page has no per-reservation deep link either.
+    flashAndScrollToHighlighted(
+      this.route.snapshot.queryParamMap.get('highlight'),
+      this.reservations.map(reservation => reservation.id),
+      id => `reservation-${id}`,
+      this.flashTracker
+    );
 
     // Live updates from other users/tabs — someone else placing, cancelling,
     // or actioning a reservation shows up here without a manual reload. RLS

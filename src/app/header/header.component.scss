@@ -126,6 +126,7 @@
   gap: 0.25rem;
 }
 
+.palette-trigger,
 .notifications-trigger,
 .nav-menu-trigger,
 .quick-menu-link{
@@ -441,5 +442,129 @@
   height: 0.5rem;
   border-radius: 50%;
   background: var(--mat-sys-primary);
+}
+
+// Same click-to-dismiss backdrop technique as .nav-drawer-backdrop, and
+// (unlike .notifications-backdrop, which stays fully transparent) visibly
+// dims the page — a centered overlay needs that contrast against whatever's
+// behind it in a way an edge-anchored panel doesn't. Lighter than
+// .nav-drawer-backdrop's own 0.6 (a full-height edge-to-edge drawer reads as
+// "you've left the page"; this is a quicker, in-and-out lookup that doesn't
+// need to dim quite as heavily).
+.command-palette-backdrop{
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+
+  &.open{
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+// Own fixed-position panel (see HeaderComponent.isPaletteOpen's own doc
+// comment for why, not MatMenu) — centered in the viewport (both axes)
+// rather than .notifications-panel's right-anchored placement, the
+// conventional command-palette spot.
+.command-palette{
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  width: min(90vw, 36rem);
+  max-height: 60vh;
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.98);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  overflow: hidden;
+
+  &.open{
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    pointer-events: auto;
+  }
+}
+
+.command-palette-input-row{
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.command-palette-input{
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--mat-sys-on-surface);
+  font: inherit;
+  font-size: 1rem;
+
+  &::placeholder{
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.command-palette-results{
+  overflow-y: auto;
+}
+
+.command-palette-result{
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 1rem;
+  text-decoration: none;
+  color: var(--mat-sys-on-surface);
+
+  &:hover,
+  &.active{
+    background: var(--mat-sys-surface-container);
+  }
+
+  mat-icon{
+    flex-shrink: 0;
+    color: var(--mat-sys-primary);
+  }
+}
+
+.command-palette-result-body{
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.command-palette-result-label{
+  font-size: 0.875rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-palette-result-sublabel{
+  font-size: 0.75rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.command-palette-result-group{
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: var(--mat-sys-on-surface-variant);
 }
 

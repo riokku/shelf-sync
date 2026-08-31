@@ -1,5 +1,6 @@
-import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, HostListener, computed, effect, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { A11yModule } from '@angular/cdk/a11y';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatButtonModule } from '@angular/material/button';
@@ -12,17 +13,19 @@ import { SiteSettingsService } from '../core/site-settings.service';
 import { SupabaseService } from '../core/supabase.service';
 import { ThemeModeService } from '../core/theme-mode.service';
 import { NotificationCenterService } from '../core/notification-center.service';
+import { CommandPaletteService } from '../core/command-palette.service';
 import { EmptyStateComponent } from '../shared/components/empty-state/empty-state.component';
 import { UserAvatarComponent } from '../shared/components/user-avatar/user-avatar.component';
 import { notificationIcon, UserNotification } from '../shared/models/notification.model';
 import { QUICK_MENU_OPTIONS } from '../shared/models/quick-menu';
+import { CommandPaletteResult } from '../shared/models/command-palette';
 import { needsRestockAttention } from '../shared/utils/inventory-stock';
 import { isProfileOnline } from '../shared/utils/presence';
 
 @Component({
     selector: 'app-header',
     imports: [
-      A11yModule, DatePipe, MatBadgeModule, MatButtonModule, MatDividerModule, MatIconModule, MatTooltipModule,
+      A11yModule, DatePipe, FormsModule, MatBadgeModule, MatButtonModule, MatDividerModule, MatIconModule, MatTooltipModule,
       RouterModule, EmptyStateComponent, UserAvatarComponent
     ],
     templateUrl: './header.component.html',
@@ -33,6 +36,7 @@ export class HeaderComponent {
   protected siteSettings = inject(SiteSettingsService);
   protected themeMode = inject(ThemeModeService);
   protected notificationCenter = inject(NotificationCenterService);
+  protected commandPalette = inject(CommandPaletteService);
   protected readonly notificationIcon = notificationIcon;
   private supabase = inject(SupabaseService).client;
   private router = inject(Router);
@@ -83,6 +87,93 @@ export class HeaderComponent {
   onNotificationRowClick(notification: UserNotification) {
     void this.notificationCenter.markAsRead(notification.id);
     this.closeNotifications();
+  }
+
+  /** Same "own fixed-position panel rather than MatMenu" shape as the two
+   *  panels above, but centered near the top of the viewport rather than
+   *  right-anchored — the conventional command-palette placement. Opens via
+   *  its own trigger button or the global Ctrl/Cmd+K shortcut below, from
+   *  any authenticated page (HeaderComponent is the one component always
+   *  mounted for all of them — see AppComponent.showChrome()). */
+  private readonly _isPaletteOpen = signal(false);
+  readonly isPaletteOpen = this._isPaletteOpen.asReadonly();
+  paletteQuery = '';
+  paletteActiveIndex = 0;
+
+  /** No existing global keydown listener anywhere in this app before this —
+   *  matches either modifier key regardless of platform (the tooltip label
+   *  below is what actually differs by platform). preventDefault() stops
+   *  the browser's own Ctrl/Cmd+K address-bar-search binding from firing
+   *  alongside it. */
+  @HostListener('window:keydown', ['$event'])
+  handlePaletteShortcut(event: KeyboardEvent) {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+      event.preventDefault();
+      this.togglePalette();
+    }
+  }
+
+  togglePalette() {
+    if (this._isPaletteOpen()) {
+      this.closePalette();
+    } else {
+      this.openPalette();
+    }
+  }
+
+  openPalette() {
+    this._isPaletteOpen.set(true);
+    this.paletteQuery = '';
+    this.paletteActiveIndex = 0;
+    void this.commandPalette.ensureDataLoaded();
+  }
+
+  closePalette() {
+    this._isPaletteOpen.set(false);
+  }
+
+  /** A plain getter, not a computed() — paletteQuery is a plain two-way-
+   *  bound field (ngModel), not a signal. CommandPaletteService.results()
+   *  is itself a pure, instant, local filter (see its own doc comment for
+   *  why no network call happens per keystroke), so recomputing on every
+   *  template read here is cheap. */
+  get paletteResults(): CommandPaletteResult[] {
+    return this.commandPalette.results(this.paletteQuery);
+  }
+
+  onPaletteQueryChange() {
+    this.paletteActiveIndex = 0;
+  }
+
+  movePaletteSelection(delta: number) {
+    const results = this.paletteResults;
+    if (results.length === 0) {
+      return;
+    }
+    this.paletteActiveIndex = (this.paletteActiveIndex + delta + results.length) % results.length;
+  }
+
+  /** Enter-key activation of whichever result is currently highlighted —
+   *  mouse/tap selection instead goes through each result's own
+   *  [routerLink] directly (see the template), which already handles
+   *  ctrl/cmd-click to open in a new tab the same way a notification row
+   *  does. */
+  activatePaletteSelection() {
+    const result = this.paletteResults[this.paletteActiveIndex];
+    if (result) {
+      this.selectPaletteResult(result);
+    }
+  }
+
+  selectPaletteResult(result: CommandPaletteResult) {
+    this.router.navigate(result.routerLink, { queryParams: result.queryParams });
+    this.closePalette();
+  }
+
+  /** Purely the trigger button's own tooltip text — the shortcut handler
+   *  above matches either modifier key regardless of platform. */
+  get paletteShortcutLabel(): string {
+    return navigator.platform.toLowerCase().includes('mac') ? '⌘K' : 'Ctrl+K';
   }
 
   /** Resolves the signed-in user's own Account-page selection
@@ -168,6 +259,7 @@ export class HeaderComponent {
       if (event instanceof NavigationEnd) {
         this.closeNavMenu();
         this.closeNotifications();
+        this.closePalette();
         if (this.authService.canManage()) {
           void this.loadPendingManageCount();
         }

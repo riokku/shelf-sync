@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed, discardPeriodicTasks, fakeAsync, tick } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 
 import { HeaderComponent } from './header.component';
 import { AuthService } from '../core/auth.service';
@@ -388,4 +388,103 @@ describe('HeaderComponent online team count', () => {
 
     discardPeriodicTasks();
   }));
+});
+
+describe('HeaderComponent command palette', () => {
+  function setup() {
+    TestBed.configureTestingModule({
+      imports: [HeaderComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: SupabaseService, useValue: createFakeSupabaseService() }
+      ]
+    });
+    const fixture = TestBed.createComponent(HeaderComponent);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  it('togglePalette() opens and closes the panel', () => {
+    const component = setup().componentInstance;
+
+    expect(component.isPaletteOpen()).toBeFalse();
+    component.togglePalette();
+    expect(component.isPaletteOpen()).toBeTrue();
+    component.togglePalette();
+    expect(component.isPaletteOpen()).toBeFalse();
+  });
+
+  it('opens on the global Ctrl+K shortcut and prevents the browser default', () => {
+    const component = setup().componentInstance;
+    const event = new KeyboardEvent('keydown', { key: 'k', ctrlKey: true });
+    const preventDefaultSpy = spyOn(event, 'preventDefault');
+
+    window.dispatchEvent(event);
+
+    expect(component.isPaletteOpen()).toBeTrue();
+    expect(preventDefaultSpy).toHaveBeenCalled();
+  });
+
+  it('also opens on Cmd+K (metaKey), for a Mac keyboard', () => {
+    const component = setup().componentInstance;
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
+
+    expect(component.isPaletteOpen()).toBeTrue();
+  });
+
+  it('closePalette() closes it, and resets the query/selection on the next open', () => {
+    const component = setup().componentInstance;
+    component.openPalette();
+    component.paletteQuery = 'chair';
+    component.paletteActiveIndex = 2;
+
+    component.closePalette();
+    expect(component.isPaletteOpen()).toBeFalse();
+
+    component.openPalette();
+    expect(component.paletteQuery).toBe('');
+    expect(component.paletteActiveIndex).toBe(0);
+  });
+
+  it('movePaletteSelection() wraps around in both directions', () => {
+    const component = setup().componentInstance;
+    component.openPalette();
+    const resultCount = component.paletteResults.length;
+    expect(resultCount).toBeGreaterThan(1);
+
+    component.movePaletteSelection(-1);
+    expect(component.paletteActiveIndex).toBe(resultCount - 1);
+
+    component.paletteActiveIndex = resultCount - 1;
+    component.movePaletteSelection(1);
+    expect(component.paletteActiveIndex).toBe(0);
+  });
+
+  it('selectPaletteResult() navigates to the result\'s route and closes the panel', () => {
+    const fixture = setup();
+    const component = fixture.componentInstance;
+    const router = TestBed.inject(Router);
+    const navigateSpy = spyOn(router, 'navigate').and.returnValue(Promise.resolve(true));
+    component.openPalette();
+
+    component.selectPaletteResult({ id: 'page:/inventory', group: 'Pages', icon: 'inventory_2', label: 'Inventory', routerLink: ['/inventory'] });
+
+    expect(navigateSpy).toHaveBeenCalledWith(['/inventory'], { queryParams: undefined });
+    expect(component.isPaletteOpen()).toBeFalse();
+  });
+
+  it('activatePaletteSelection() activates whichever result is currently highlighted', () => {
+    const fixture = setup();
+    const component = fixture.componentInstance;
+    const router = TestBed.inject(Router);
+    const navigateSpy = spyOn(router, 'navigate').and.returnValue(Promise.resolve(true));
+    component.openPalette();
+    component.movePaletteSelection(1);
+    const expected = component.paletteResults[1];
+
+    component.activatePaletteSelection();
+
+    expect(navigateSpy).toHaveBeenCalledWith(expected.routerLink, { queryParams: expected.queryParams });
+  });
 });

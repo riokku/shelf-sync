@@ -1,5 +1,6 @@
 import { Component, DestroyRef, HostListener, OnInit, ViewChild, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -72,6 +73,7 @@ export class ManageTeamComponent implements OnInit, HasUnsavedChanges {
   private dialog = inject(MatDialog);
   private notification = inject(NotificationService);
   private destroyRef = inject(DestroyRef);
+  private route = inject(ActivatedRoute);
 
   protected currentUserId: string | null = null;
   /** Approved members only — pendingMembers (below) holds the rest, kept
@@ -209,6 +211,16 @@ export class ManageTeamComponent implements OnInit, HasUnsavedChanges {
   private readonly debouncedReloadTeamTasks = debounce(() => void this.reloadAndFlashChangedTeamTasks(), 300);
 
   async ngOnInit() {
+    // Read once from the snapshot, same shape every other ?xxx= deep link in
+    // this app already uses (e.g. SettingsComponent's own ?tab= read) —
+    // this only ever matters on initial load, and nothing else in this
+    // component drives this query param afterward. Landed on from the
+    // command palette's own "People" results (see CommandPaletteService).
+    const searchParam = this.route.snapshot.queryParamMap.get('search');
+    if (searchParam) {
+      this.teamSearchTerm = searchParam;
+    }
+
     const session = await this.authService.getSession();
     this.currentUserId = session?.user.id ?? null;
 

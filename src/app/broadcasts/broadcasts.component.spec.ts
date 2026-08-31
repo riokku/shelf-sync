@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, provideRouter } from '@angular/router';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { of } from 'rxjs';
 
@@ -8,7 +8,7 @@ import { SupabaseService } from '../core/supabase.service';
 import { AuthService } from '../core/auth.service';
 import { NotificationService } from '../core/notification.service';
 import { BroadcastModalComponent } from '../shared/components/broadcast-modal/broadcast-modal.component';
-import { createFakeAuthService, createFakeProfile, createFakeSupabaseService } from '../testing/fakes';
+import { createFakeActivatedRoute, createFakeAuthService, createFakeProfile, createFakeSupabaseService } from '../testing/fakes';
 import { Broadcast } from '../shared/models/broadcast.model';
 
 function createTestBroadcast(overrides: Partial<Broadcast> = {}): Broadcast {
@@ -323,5 +323,59 @@ describe('BroadcastsComponent realtime updates', () => {
     tick(300);
 
     expect(component.isFlashing('broadcast-1')).toBeFalse();
+  }));
+});
+
+describe('BroadcastsComponent ?highlight= deep link (landed on from the command palette\'s "Broadcasts" result)', () => {
+  function tableAwareFake(broadcastRow: Record<string, unknown> | null) {
+    function builder(table: string) {
+      const rows = table === 'broadcasts' && broadcastRow ? [broadcastRow] : [];
+      const b: Record<string, unknown> = {
+        then: (resolve: (value: unknown) => void) => resolve({ data: rows, error: null }),
+      };
+      for (const method of ['select', 'eq', 'order', 'in']) {
+        b[method] = () => b;
+      }
+      return b;
+    }
+    return {
+      client: {
+        from: (table: string) => builder(table),
+        channel: () => ({ on: function (this: unknown) { return this; }, subscribe: function (this: unknown) { return this; } }),
+        removeChannel: async () => ({ status: 'ok' })
+      }
+    } as unknown as SupabaseService;
+  }
+
+  function configure(highlight: string, broadcastRow: Record<string, unknown> | null) {
+    TestBed.configureTestingModule({
+      imports: [BroadcastsComponent],
+      providers: [
+        provideRouter([]),
+        { provide: ActivatedRoute, useValue: createFakeActivatedRoute({ highlight }) },
+        { provide: SupabaseService, useValue: tableAwareFake(broadcastRow) },
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ organization_id: 'org-1' })) }
+      ]
+    });
+    return TestBed.createComponent(BroadcastsComponent);
+  }
+
+  it('flashes the matching broadcast once it has loaded', fakeAsync(() => {
+    const fixture = configure('broadcast-1', {
+      id: 'broadcast-1', title: 'Office closed Monday', message: 'The warehouse is closed.',
+      created_by: 'user-1', organization_id: 'org-1', created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z'
+    });
+    fixture.detectChanges();
+    tick();
+
+    expect(fixture.componentInstance.isFlashing('broadcast-1')).toBeTrue();
+  }));
+
+  it('is a no-op when ?highlight= doesn\'t match any loaded broadcast', fakeAsync(() => {
+    const fixture = configure('missing', null);
+    fixture.detectChanges();
+    tick();
+
+    expect(fixture.componentInstance.isFlashing('missing')).toBeFalse();
   }));
 });

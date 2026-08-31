@@ -13,6 +13,37 @@
 }
 
 
+// Sits below the page header, like every other page's own tab/action row
+// (see PageHeaderComponent's own migration note) rather than squeezed into
+// one of its slots — the date-range control for Stock movement & loss/Task
+// throughput below (see ManageReportsComponent's own class doc comment for
+// which stats this actually scopes).
+.reports-filter-row{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+// mat-form-field's own default bottom padding (reserved for a hint/error
+// line this field never shows, via subscriptSizing="dynamic" on the
+// template side) would otherwise misalign this field's own height against
+// the button-toggle group sitting right beside it in the same row.
+.reports-range-field{
+  width: 16rem;
+}
+
+// A small "this figure doesn't change with the date range above" marker,
+// sitting inline with whichever heading/label it qualifies — same
+// on-surface-variant/smaller-size treatment .stat-label/.section-hint
+// already use for secondary text, just inline rather than its own block.
+.stat-note{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+
 // Inventory value & stock health (the org's overall stock position) sits on
 // its own on the left; Stock movement/loss and Task throughput — both more
 // "what's been happening" than "where things stand" — stack together on

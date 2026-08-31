@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, provideRouter } from '@angular/router';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { of } from 'rxjs';
 
@@ -8,7 +8,7 @@ import { SupabaseService } from '../../core/supabase.service';
 import { AuthService } from '../../core/auth.service';
 import { NotificationService } from '../../core/notification.service';
 import { PlaceReservationModalComponent } from '../../shared/components/place-reservation-modal/place-reservation-modal.component';
-import { createFakeAuthService, createFakeProfile, createFakeSupabaseService } from '../../testing/fakes';
+import { createFakeActivatedRoute, createFakeAuthService, createFakeProfile, createFakeSupabaseService } from '../../testing/fakes';
 import { InventoryItemReservationWithItem } from '../../shared/utils/inventory-item-reservations';
 
 function createTestReservation(overrides: Partial<InventoryItemReservationWithItem> = {}): InventoryItemReservationWithItem {
@@ -353,5 +353,61 @@ describe('ManageReservationsComponent realtime updates', () => {
     tick(300);
 
     expect(component.isFlashing('reservation-1')).toBeFalse();
+  }));
+});
+
+describe('ManageReservationsComponent ?highlight= deep link (landed on from the command palette\'s "Reservations" result)', () => {
+  function tableAwareFake(reservationRow: Record<string, unknown> | null) {
+    function builder(table: string) {
+      const rows = table === 'inventory_item_reservations' && reservationRow ? [reservationRow] : [];
+      const b: Record<string, unknown> = {
+        then: (resolve: (value: unknown) => void) => resolve({ data: rows, error: null }),
+      };
+      for (const method of ['select', 'eq', 'order']) {
+        b[method] = () => b;
+      }
+      return b;
+    }
+    return {
+      client: {
+        from: (table: string) => builder(table),
+        channel: () => ({ on: function (this: unknown) { return this; }, subscribe: function (this: unknown) { return this; } }),
+        removeChannel: async () => ({ status: 'ok' })
+      }
+    } as unknown as SupabaseService;
+  }
+
+  function configure(highlight: string, reservationRow: Record<string, unknown> | null) {
+    TestBed.configureTestingModule({
+      imports: [ManageReservationsComponent],
+      providers: [
+        provideRouter([]),
+        { provide: ActivatedRoute, useValue: createFakeActivatedRoute({ highlight }) },
+        { provide: SupabaseService, useValue: tableAwareFake(reservationRow) },
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ organization_id: 'org-1' })) }
+      ]
+    });
+    return TestBed.createComponent(ManageReservationsComponent);
+  }
+
+  it('flashes the matching reservation once it has loaded', fakeAsync(() => {
+    const fixture = configure('reservation-1', {
+      id: 'reservation-1', item_id: 'item-1', start_date: '2026-06-01', end_date: '2026-06-03',
+      quantity: 30, reserved_for: 'Smith wedding', note: null, status: 'reserved', reserved_by: null,
+      reserved_at: '2026-01-15T00:00:00.000Z', picked_up_by: null, picked_up_at: null,
+      returned_by: null, returned_at: null, cancelled_by: null, cancelled_at: null
+    });
+    fixture.detectChanges();
+    tick();
+
+    expect(fixture.componentInstance.isFlashing('reservation-1')).toBeTrue();
+  }));
+
+  it('is a no-op when ?highlight= doesn\'t match any loaded reservation', fakeAsync(() => {
+    const fixture = configure('missing', null);
+    fixture.detectChanges();
+    tick();
+
+    expect(fixture.componentInstance.isFlashing('missing')).toBeFalse();
   }));
 });

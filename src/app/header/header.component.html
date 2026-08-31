@@ -54,6 +54,18 @@
     <button
         mat-icon-button
         type="button"
+        class="palette-trigger"
+        (click)="togglePalette()"
+        [attr.aria-expanded]="isPaletteOpen()"
+        aria-haspopup="true"
+        [matTooltip]="'Search (' + paletteShortcutLabel + ')'"
+        aria-label="Search"
+      >
+      <mat-icon>search</mat-icon>
+    </button>
+    <button
+        mat-icon-button
+        type="button"
         class="notifications-trigger"
         (click)="toggleNotifications()"
         [attr.aria-expanded]="isNotificationsOpen()"
@@ -273,6 +285,70 @@
           @if (!notification.readAt) {
             <span class="notification-row-dot" aria-hidden="true"></span>
           }
+        </a>
+      }
+    </div>
+  }
+</div>
+
+<!-- Same "own fixed-position panel" shape as the two panels above (see
+     HeaderComponent.isPaletteOpen's own doc comment) — but centered in the
+     viewport rather than right-anchored, the conventional command-palette
+     placement. Unlike the other two panels' transparent backdrops, this
+     one dims the page (same technique .nav-drawer-backdrop already uses,
+     just lighter) — a centered overlay reads far less like "part of the
+     page" without something behind it for contrast, where the other two
+     panels' own edge-anchored placement already made that distinction
+     obvious. Click-to-dismiss only, same reasoning as the other two —
+     Escape and the panel's own controls are the accessible way to close it. -->
+<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
+<div class="command-palette-backdrop" [class.open]="isPaletteOpen()" (click)="closePalette()"></div>
+<div
+    class="command-palette"
+    [class.open]="isPaletteOpen()"
+    [attr.inert]="isPaletteOpen() ? null : ''"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Search"
+    cdkTrapFocus
+    [cdkTrapFocusAutoCapture]="isPaletteOpen()"
+    (keydown.escape)="closePalette()"
+  >
+  <div class="command-palette-input-row">
+    <mat-icon>search</mat-icon>
+    <input
+        type="text"
+        class="command-palette-input"
+        placeholder="Search pages, inventory, tasks… by name or ID"
+        autocomplete="off"
+        [(ngModel)]="paletteQuery"
+        (ngModelChange)="onPaletteQueryChange()"
+        (keydown.arrowDown)="movePaletteSelection(1); $event.preventDefault()"
+        (keydown.arrowUp)="movePaletteSelection(-1); $event.preventDefault()"
+        (keydown.enter)="activatePaletteSelection(); $event.preventDefault()"
+      />
+  </div>
+  @if (paletteResults.length === 0) {
+    <app-empty-state icon="search_off" message="No matches." />
+  } @else {
+    <div class="command-palette-results">
+      @for (result of paletteResults; track result.id; let i = $index) {
+        <a
+            class="command-palette-result"
+            [class.active]="i === paletteActiveIndex"
+            [routerLink]="result.routerLink"
+            [queryParams]="result.queryParams"
+            (click)="closePalette()"
+            (mouseenter)="paletteActiveIndex = i"
+          >
+          <mat-icon>{{ result.icon }}</mat-icon>
+          <span class="command-palette-result-body">
+            <span class="command-palette-result-label">{{ result.label }}</span>
+            @if (result.sublabel) {
+              <span class="command-palette-result-sublabel">{{ result.sublabel }}</span>
+            }
+          </span>
+          <span class="command-palette-result-group">{{ result.group }}</span>
         </a>
       }
     </div>

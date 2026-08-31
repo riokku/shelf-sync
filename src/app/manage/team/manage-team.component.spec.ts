@@ -1,10 +1,10 @@
 import { ComponentFixture, TestBed, discardPeriodicTasks, fakeAsync, tick } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, provideRouter } from '@angular/router';
 
 import { ManageTeamComponent } from './manage-team.component';
 import { AuthService, Profile } from '../../core/auth.service';
 import { SupabaseService } from '../../core/supabase.service';
-import { createFakeAuthService, createFakeProfile, createFakeSupabaseService } from '../../testing/fakes';
+import { createFakeActivatedRoute, createFakeAuthService, createFakeProfile, createFakeSupabaseService } from '../../testing/fakes';
 
 describe('ManageTeamComponent', () => {
   let component: ManageTeamComponent;
@@ -30,6 +30,30 @@ describe('ManageTeamComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  describe('?search= deep link (landed on from the command palette\'s "People" results)', () => {
+    it('prefills teamSearchTerm from the URL on init', async () => {
+      await TestBed.resetTestingModule().configureTestingModule({
+        imports: [ManageTeamComponent],
+        providers: [
+          provideRouter([]),
+          { provide: ActivatedRoute, useValue: createFakeActivatedRoute({ search: 'Alice Admin' }) },
+          { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: 'admin' })) },
+          { provide: SupabaseService, useValue: createFakeSupabaseService() }
+        ]
+      }).compileComponents();
+
+      const searchFixture = TestBed.createComponent(ManageTeamComponent);
+      searchFixture.detectChanges();
+
+      expect(searchFixture.componentInstance.teamSearchTerm).toBe('Alice Admin');
+    });
+
+    it('leaves teamSearchTerm empty when there is no ?search= param', () => {
+      // The default beforeEach fixture above already has no ?search= param.
+      expect(component.teamSearchTerm).toBe('');
+    });
   });
 
   describe('filteredTeamMembers', () => {

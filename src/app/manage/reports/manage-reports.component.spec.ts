@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { MatButtonToggleChange } from '@angular/material/button-toggle';
 
 import { ManageReportsComponent } from './manage-reports.component';
 import { SupabaseService } from '../../core/supabase.service';
@@ -410,6 +411,74 @@ describe('ManageReportsComponent', () => {
 
       expect(component.valueByCategoryChartData.length).toBe(5);
       expect(component.valueByCategoryChartData.some(slice => slice.label === 'Other')).toBeFalse();
+    });
+  });
+
+  describe('date range filtering', () => {
+    it('defaults to "all" and includes every discard/task regardless of age', async () => {
+      const component = await createComponent({
+        discards: [{ item_id: 'item-1', quantity: 3, reason: ['Damaged'], discarded_at: '2020-01-01T00:00:00.000Z' }],
+        tasks: [{ status: 'done', due_date: null, created_at: '2020-01-01T00:00:00.000Z', updated_at: '2020-01-02T00:00:00.000Z', assigned_to: null }]
+      });
+
+      expect(component.rangePreset).toBe('all');
+      expect(component.totalDiscardedUnits).toBe(3);
+      expect(component.totalTasks).toBe(1);
+    });
+
+    it('"Last 7 days" excludes a discard/task from outside the window and includes one inside it', async () => {
+      const now = Date.now();
+      const daysAgoIso = (days: number) => new Date(now - days * 24 * 60 * 60 * 1000).toISOString();
+
+      const component = await createComponent({
+        discards: [
+          { item_id: 'item-1', quantity: 3, reason: ['Damaged'], discarded_at: daysAgoIso(1) }, // in range
+          { item_id: 'item-1', quantity: 5, reason: ['Damaged'], discarded_at: daysAgoIso(30) } // out of range
+        ],
+        tasks: [
+          { status: 'todo', due_date: null, created_at: daysAgoIso(1), updated_at: daysAgoIso(1), assigned_to: null }, // in range
+          { status: 'todo', due_date: null, created_at: daysAgoIso(30), updated_at: daysAgoIso(30), assigned_to: null } // out of range
+        ]
+      });
+
+      component.setRangePreset({ value: '7d' } as MatButtonToggleChange);
+
+      expect(component.totalDiscardedUnits).toBe(3);
+      expect(component.discardEventCount).toBe(1);
+      expect(component.totalTasks).toBe(1);
+    });
+
+    it('leaves the point-in-time stats (stock health, overdue, workload) unaffected by the range', async () => {
+      const component = await createComponent({
+        items: [item({ id: '1', quantity_remaining: 10, price_per_unit: 5 })],
+        tasks: [
+          { status: 'todo', due_date: '2020-01-01', created_at: '2020-01-01T00:00:00.000Z', updated_at: '2020-01-01T00:00:00.000Z', assigned_to: null }
+        ]
+      });
+
+      const totalValueBefore = component.totalValue;
+      const overdueBefore = component.overdueTaskCount;
+
+      component.setRangePreset({ value: '7d' } as MatButtonToggleChange);
+
+      expect(component.totalValue).toBe(totalValueBefore);
+      expect(component.overdueTaskCount).toBe(overdueBefore);
+      expect(component.overdueTaskCount).toBe(1);
+    });
+
+    it('a custom range filters to exactly the picked start/end dates', async () => {
+      const component = await createComponent({
+        discards: [
+          { item_id: 'item-1', quantity: 4, reason: ['Damaged'], discarded_at: '2026-06-15T12:00:00.000Z' }, // inside
+          { item_id: 'item-1', quantity: 9, reason: ['Damaged'], discarded_at: '2026-07-01T00:00:00.000Z' } // outside
+        ]
+      });
+
+      component.rangePreset = 'custom';
+      component.customRangeForm.setValue({ start: new Date('2026-06-01'), end: new Date('2026-06-30') });
+      component.onCustomRangeChange();
+
+      expect(component.totalDiscardedUnits).toBe(4);
     });
   });
 

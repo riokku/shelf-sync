@@ -79,7 +79,7 @@
           </thead>
           <tbody>
             @for (supplier of supplierService.suppliers(); track supplier.id) {
-              <tr>
+              <tr [id]="'supplier-' + supplier.id" [class.realtime-flash]="isFlashing(supplier.id)">
                 <td class="supplier-name">{{ supplier.name }}</td>
                 <td>{{ supplier.contactName || '—' }}</td>
                 <td>{{ supplier.email || '—' }}</td>

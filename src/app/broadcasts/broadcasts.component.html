@@ -53,7 +53,7 @@
     } @else {
       <ul class="broadcast-list">
         @for (broadcast of broadcasts; track broadcast.id) {
-          <li class="broadcast-card" [class.realtime-flash]="isFlashing(broadcast.id)">
+          <li [id]="'broadcast-' + broadcast.id" class="broadcast-card" [class.realtime-flash]="isFlashing(broadcast.id)">
             <div class="broadcast-header">
               <div class="broadcast-header-text">
                 <h3 class="broadcast-title">

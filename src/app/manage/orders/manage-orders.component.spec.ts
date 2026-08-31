@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, provideRouter } from '@angular/router';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { of } from 'rxjs';
 
@@ -9,7 +9,7 @@ import { SupplierService } from '../../core/supplier.service';
 import { AuthService } from '../../core/auth.service';
 import { NotificationService } from '../../core/notification.service';
 import { PlaceOrderModalComponent } from '../../shared/components/place-order-modal/place-order-modal.component';
-import { createFakeAuthService, createFakeProfile, createFakeSupabaseService, createFakeSupplierService } from '../../testing/fakes';
+import { createFakeActivatedRoute, createFakeAuthService, createFakeProfile, createFakeSupabaseService, createFakeSupplierService } from '../../testing/fakes';
 import { InventoryItemOrderWithItem } from '../../shared/utils/inventory-item-orders';
 
 function createTestOrder(overrides: Partial<InventoryItemOrderWithItem> = {}): InventoryItemOrderWithItem {
@@ -316,5 +316,61 @@ describe('ManageOrdersComponent realtime updates', () => {
     tick(300);
 
     expect(component.isFlashing('order-1')).toBeFalse();
+  }));
+});
+
+describe('ManageOrdersComponent ?highlight= deep link (landed on from the command palette\'s "Orders" result)', () => {
+  function tableAwareFake(orderRow: Record<string, unknown> | null) {
+    function builder(table: string) {
+      const rows = table === 'inventory_item_orders' && orderRow ? [orderRow] : [];
+      const b: Record<string, unknown> = {
+        then: (resolve: (value: unknown) => void) => resolve({ data: rows, error: null }),
+      };
+      for (const method of ['select', 'eq', 'order']) {
+        b[method] = () => b;
+      }
+      return b;
+    }
+    return {
+      client: {
+        from: (table: string) => builder(table),
+        channel: () => ({ on: function (this: unknown) { return this; }, subscribe: function (this: unknown) { return this; } }),
+        removeChannel: async () => ({ status: 'ok' })
+      }
+    } as unknown as SupabaseService;
+  }
+
+  function configure(highlight: string, orderRow: Record<string, unknown> | null) {
+    TestBed.configureTestingModule({
+      imports: [ManageOrdersComponent],
+      providers: [
+        provideRouter([]),
+        { provide: ActivatedRoute, useValue: createFakeActivatedRoute({ highlight }) },
+        { provide: SupabaseService, useValue: tableAwareFake(orderRow) },
+        { provide: SupplierService, useValue: createFakeSupplierService() },
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ organization_id: 'org-1' })) }
+      ]
+    });
+    return TestBed.createComponent(ManageOrdersComponent);
+  }
+
+  it('flashes the matching order once it has loaded', fakeAsync(() => {
+    const fixture = configure('order-1', {
+      id: 'order-1', item_id: 'item-1', supplier_id: null, supplier_name: 'Acme',
+      quantity: 5, status: 'ordered', note: null, ordered_by: null, ordered_at: '2026-01-01T00:00:00.000Z',
+      received_by: null, received_at: null
+    });
+    fixture.detectChanges();
+    tick();
+
+    expect(fixture.componentInstance.isFlashing('order-1')).toBeTrue();
+  }));
+
+  it('is a no-op when ?highlight= doesn\'t match any loaded order', fakeAsync(() => {
+    const fixture = configure('missing', null);
+    fixture.detectChanges();
+    tick();
+
+    expect(fixture.componentInstance.isFlashing('missing')).toBeFalse();
   }));
 });

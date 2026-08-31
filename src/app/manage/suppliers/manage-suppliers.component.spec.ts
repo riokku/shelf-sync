@@ -1,5 +1,5 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { ActivatedRoute, provideRouter } from '@angular/router';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { of } from 'rxjs';
 
@@ -8,7 +8,7 @@ import { SupplierService } from '../../core/supplier.service';
 import { NotificationService } from '../../core/notification.service';
 import { SupplierFormModalComponent } from '../../shared/components/supplier-form-modal/supplier-form-modal.component';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
-import { createFakeSupplierService } from '../../testing/fakes';
+import { createFakeActivatedRoute, createFakeSupplierService } from '../../testing/fakes';
 import { Supplier } from '../../shared/models/supplier.model';
 
 function createTestSupplier(overrides: Partial<Supplier> = {}): Supplier {
@@ -168,4 +168,34 @@ describe('ManageSuppliersComponent', () => {
 
     expect(component.removeError).toBe('Something went wrong');
   });
+});
+
+describe('ManageSuppliersComponent ?highlight= deep link (landed on from the command palette\'s "Suppliers" result)', () => {
+  function configure(highlight: string, suppliers: Supplier[]) {
+    TestBed.configureTestingModule({
+      imports: [ManageSuppliersComponent],
+      providers: [
+        provideRouter([]),
+        { provide: ActivatedRoute, useValue: createFakeActivatedRoute({ highlight }) },
+        { provide: SupplierService, useValue: createFakeSupplierService(suppliers) }
+      ]
+    });
+    return TestBed.createComponent(ManageSuppliersComponent);
+  }
+
+  it('flashes the matching supplier once the directory has loaded', fakeAsync(() => {
+    const fixture = configure('supplier-1', [createTestSupplier({ id: 'supplier-1' })]);
+    fixture.detectChanges();
+    tick();
+
+    expect(fixture.componentInstance.isFlashing('supplier-1')).toBeTrue();
+  }));
+
+  it('is a no-op when ?highlight= doesn\'t match any supplier in the directory', fakeAsync(() => {
+    const fixture = configure('missing', []);
+    fixture.detectChanges();
+    tick();
+
+    expect(fixture.componentInstance.isFlashing('missing')).toBeFalse();
+  }));
 });

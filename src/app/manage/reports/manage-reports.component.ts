@@ -1,8 +1,13 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule, MatButtonToggleChange } from '@angular/material/button-toggle';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { SupabaseService } from '../../core/supabase.service';
 import { AuthService, Profile } from '../../core/auth.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
@@ -14,13 +19,17 @@ import { Database } from '../../shared/models/database.types';
 import { isRowLowStock, isRowOutOfStock } from '../../shared/utils/inventory-stock';
 import { loadAllInventoryItemDiscards } from '../../shared/utils/inventory-item-discards';
 import { resolveProfileName } from '../../shared/utils/profile-label';
-import { getTodayIsoDate } from '../../shared/utils/date';
+import { getTodayIsoDate, parseIsoDate, toIsoDateString } from '../../shared/utils/date';
 import { TASK_STATUSES, TASK_STATUS_LABELS, TaskStatus } from '../../shared/models/task-status';
 
 type InventoryItemReportRow = Pick<
   Database['public']['Tables']['inventory_items']['Row'],
   'id' | 'category' | 'physical_location' | 'quantity_remaining' | 'low_quantity_threshold'
     | 'price_per_unit' | 'price_per_container' | 'quantity_per_container' | 'status'
+>;
+type DiscardReportRow = Pick<
+  Database['public']['Tables']['inventory_item_discards']['Row'],
+  'item_id' | 'quantity' | 'reason' | 'discarded_at'
 >;
 type TaskReportRow = Pick<
   Database['public']['Tables']['tasks']['Row'],
@@ -30,6 +39,20 @@ type TaskReportRow = Pick<
 const UNCATEGORIZED = 'Uncategorized';
 const UNSPECIFIED_LOCATION = 'Unspecified';
 const UNASSIGNED = 'Unassigned';
+
+/** The five choices behind the "Stock movement & loss"/"Task throughput"
+ *  date-range filter — see ManageReportsComponent's own class doc comment
+ *  for which stats this actually applies to. */
+type ReportRangePreset = '7d' | '30d' | '90d' | 'all' | 'custom';
+
+function isReportRangePreset(value: string | null): value is ReportRangePreset {
+  return value === '7d' || value === '30d' || value === '90d' || value === 'all' || value === 'custom';
+}
+
+interface DateRange {
+  from: Date | null;
+  to: Date | null;
+}
 
 interface BreakdownRow {
   label: string;
@@ -57,26 +80,160 @@ interface AssigneeWorkloadRow {
  *  throughput), each its own full-width card rather than tabs, since these
  *  are meant to be scanned together rather than switched between (unlike
  *  Settings, which has genuinely separate per-section save flows that
- *  justify its own tab split). All-time snapshots, no date-range picker —
- *  a reasonable v1 scope; a trailing-window filter would need either
- *  periodic value snapshots or a real date-range UI, neither of which
- *  exists yet.
+ *  justify its own tab split).
+ *
+ *  "Inventory value & stock health" is always a live snapshot (current
+ *  quantity/value, current low/out-of-stock counts) — a trailing-window
+ *  filter would need periodic value snapshots, which don't exist, so this
+ *  section never reads the date range below at all. "Stock movement &
+ *  loss"/"Task throughput" mix genuinely event-based stats (discards,
+ *  tasks created/closed — these respect the range) with a few more
+ *  point-in-time facts of their own (retirementRateByCategory,
+ *  overdueTaskCount, workloadByAssignee — current status/queue, not an
+ *  event, so these stay unranged too, each with its own "current" caption
+ *  in the template so the split reads as intentional). See
+ *  buildMovementAndLoss()/buildTaskThroughput()'s own comments for exactly
+ *  which fields each ranged stat filters on.
  *
  *  Every count/value here is derived client-side from three plain queries
  *  (inventory_items, inventory_item_discards, tasks) rather than a bespoke
  *  RPC per stat — this app has no existing precedent for
  *  server-side-aggregated reporting, and the org sizes this schema
  *  realistically holds today make a client-side reduce cheap enough not to
- *  need one. */
+ *  need one. The date range itself never triggers a second network
+ *  round-trip either — loadReportData() fetches everything once, keeps the
+ *  raw arrays on the component, and a range change just re-runs the ranged
+ *  build methods locally (recomputeRangedSections()), so switching ranges
+ *  is instant with no loading state of its own. */
 @Component({
   selector: 'app-manage-reports',
-  imports: [CurrencyPipe, DecimalPipe, RouterLink, MatButtonModule, MatIconModule, BreadcrumbsComponent, PageHeaderComponent, EmptyStateComponent, DonutChartComponent, RingStatComponent],
+  imports: [
+    CurrencyPipe, DecimalPipe, ReactiveFormsModule, RouterLink, MatButtonModule, MatButtonToggleModule,
+    MatDatepickerModule, MatFormFieldModule, MatIconModule, MatInputModule, BreadcrumbsComponent,
+    PageHeaderComponent, EmptyStateComponent, DonutChartComponent, RingStatComponent
+  ],
   templateUrl: './manage-reports.component.html',
   styleUrl: './manage-reports.component.scss',
 })
 export class ManageReportsComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
   private authService = inject(AuthService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+
+  // --- Date range (Stock movement & loss / Task throughput only — see the
+  // class doc comment above) ---
+  rangePreset: ReportRangePreset = 'all';
+  readonly customRangeForm = new FormGroup({
+    start: new FormControl<Date | null>(null),
+    end: new FormControl<Date | null>(null)
+  });
+
+  /** The actual bounds the two ranged build methods filter against —
+   *  computed fresh from rangePreset/customRangeForm on every read rather
+   *  than stored, so there's exactly one source of truth for "what range is
+   *  selected right now." `{ from: null, to: null }` (the 'all' preset, and
+   *  this component's default) is a deliberate no-op for isWithinRange()
+   *  below, so "All time" reproduces today's original unranged behavior
+   *  exactly. */
+  get currentRange(): DateRange {
+    if (this.rangePreset === 'all') {
+      return { from: null, to: null };
+    }
+    if (this.rangePreset === 'custom') {
+      const { start, end } = this.customRangeForm.getRawValue();
+      return { from: start ? this.startOfDay(start) : null, to: end ? this.endOfDay(end) : null };
+    }
+    const days = this.rangePreset === '7d' ? 7 : this.rangePreset === '30d' ? 30 : 90;
+    const from = this.startOfDay(new Date());
+    from.setDate(from.getDate() - (days - 1));
+    return { from, to: this.endOfDay(new Date()) };
+  }
+
+  private startOfDay(date: Date): Date {
+    const result = new Date(date);
+    result.setHours(0, 0, 0, 0);
+    return result;
+  }
+
+  private endOfDay(date: Date): Date {
+    const result = new Date(date);
+    result.setHours(23, 59, 59, 999);
+    return result;
+  }
+
+  /** Read once on init (see SettingsComponent's own ?tab= read for the
+   *  identical shape) — ?range=7d|30d|90d|all|custom, plus ?from=/?to= only
+   *  meaningful (and only read) when range=custom, so a scoped report view
+   *  is bookmarkable/shareable. */
+  private readRangeFromUrl() {
+    const rangeParam = this.route.snapshot.queryParamMap.get('range');
+    if (isReportRangePreset(rangeParam)) {
+      this.rangePreset = rangeParam;
+    }
+    if (this.rangePreset === 'custom') {
+      this.customRangeForm.setValue({
+        start: parseIsoDate(this.route.snapshot.queryParamMap.get('from')),
+        end: parseIsoDate(this.route.snapshot.queryParamMap.get('to'))
+      }, { emitEvent: false });
+    }
+  }
+
+  /** Mirrors SettingsComponent.setViewMode()'s own queryParamsHandling:
+   *  'merge' + replaceUrl: true shape — switching ranges updates the URL
+   *  without spamming browser history with an entry per click. */
+  private updateRangeQueryParams() {
+    const isCustom = this.rangePreset === 'custom';
+    const { start, end } = this.customRangeForm.getRawValue();
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        range: this.rangePreset === 'all' ? null : this.rangePreset,
+        from: isCustom ? toIsoDateString(start) : null,
+        to: isCustom ? toIsoDateString(end) : null
+      },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    });
+  }
+
+  setRangePreset(event: MatButtonToggleChange) {
+    this.rangePreset = event.value as ReportRangePreset;
+    this.updateRangeQueryParams();
+    // 'custom' has no picked dates yet the moment it's selected — nothing
+    // to recompute until onCustomRangeChange() below actually fires.
+    if (this.rangePreset !== 'custom') {
+      this.recomputeRangedSections();
+    }
+  }
+
+  onCustomRangeChange() {
+    this.updateRangeQueryParams();
+    this.recomputeRangedSections();
+  }
+
+  /** Re-runs the two range-aware build methods against the already-loaded
+   *  raw arrays — no network call, see the class doc comment above. Called
+   *  once from loadReportData() itself and again on every range change. */
+  private recomputeRangedSections() {
+    this.buildMovementAndLoss(this.rawItems, this.rawDiscards, this.currentRange);
+    this.buildTaskThroughput(this.rawTasks, this.profiles, this.currentRange);
+  }
+
+  private isWithinRange(isoTimestamp: string, range: DateRange): boolean {
+    if (!range.from && !range.to) {
+      return true;
+    }
+    const date = new Date(isoTimestamp);
+    return (!range.from || date >= range.from) && (!range.to || date <= range.to);
+  }
+
+  // Raw query results, kept around so a range change can recompute the
+  // ranged sections locally instead of re-querying.
+  private rawItems: InventoryItemReportRow[] = [];
+  private rawDiscards: DiscardReportRow[] = [];
+  private rawTasks: TaskReportRow[] = [];
+  private profiles: Profile[] = [];
 
   isLoading = true;
   /** Fixed counts for the loading-state skeleton — a stat-grid is always 4
@@ -158,6 +315,7 @@ export class ManageReportsComponent implements OnInit {
   }
 
   async ngOnInit() {
+    this.readRangeFromUrl();
     await this.loadReportData();
   }
 
@@ -181,10 +339,13 @@ export class ManageReportsComponent implements OnInit {
     }
     this.loadError = null;
 
-    const items = itemsResult.data ?? [];
-    this.buildStockHealth(items);
-    this.buildMovementAndLoss(items, discardsResult.discards);
-    this.buildTaskThroughput(tasksResult.data ?? [], profiles ?? []);
+    this.rawItems = itemsResult.data ?? [];
+    this.rawDiscards = discardsResult.discards;
+    this.rawTasks = tasksResult.data ?? [];
+    this.profiles = profiles ?? [];
+
+    this.buildStockHealth(this.rawItems);
+    this.recomputeRangedSections();
 
     this.isLoading = false;
   }
@@ -231,18 +392,28 @@ export class ManageReportsComponent implements OnInit {
     return [...rows.values()].sort((a, b) => b.primary - a.primary);
   }
 
+  /** discardEventCount/totalDiscardedUnits/topDiscardReasons/discardsByCategory
+   *  are filtered to discard.discarded_at within `range` — these are the
+   *  "what happened" stats a date range genuinely applies to.
+   *  retirementRateByCategory stays unranged (see below) — a category's
+   *  current retired-vs-total ratio isn't an event with a timestamp to
+   *  filter on, it's a live snapshot of `status`, the same "current, not
+   *  affected by the date range" reasoning stockHealth's whole section
+   *  already has. */
   private buildMovementAndLoss(
     items: InventoryItemReportRow[],
-    discards: { item_id: string; quantity: number; reason: string[] }[]
+    discards: DiscardReportRow[],
+    range: DateRange
   ) {
     const categoryByItemId = new Map(items.map(item => [item.id, item.category || UNCATEGORIZED]));
+    const discardsInRange = discards.filter(discard => this.isWithinRange(discard.discarded_at, range));
 
-    this.discardEventCount = discards.length;
-    this.totalDiscardedUnits = discards.reduce((sum, discard) => sum + discard.quantity, 0);
+    this.discardEventCount = discardsInRange.length;
+    this.totalDiscardedUnits = discardsInRange.reduce((sum, discard) => sum + discard.quantity, 0);
 
     const reasonRows = new Map<string, BreakdownRow>();
     const categoryRows = new Map<string, BreakdownRow>();
-    for (const discard of discards) {
+    for (const discard of discardsInRange) {
       // A discard event can carry more than one reason at once (e.g. "Water
       // damage" and "Wear and tear") — each selected reason gets full
       // credit for the event's whole quantity, rather than splitting it
@@ -279,17 +450,29 @@ export class ManageReportsComponent implements OnInit {
       .sort((a, b) => b.rate - a.rate);
   }
 
-  private buildTaskThroughput(tasks: TaskReportRow[], profiles: Profile[]) {
+  /** totalTasks/completedTaskCount are scoped to tasks *created* within
+   *  `range` (a cohort question: "of what opened in this window, how much
+   *  is done now") and averageDaysToClose to tasks *closed* within it
+   *  (updated_at, the same "closed at" proxy daysBetween()'s own doc
+   *  comment already explains) — a separate cohort, not the same tasks.
+   *  overdueTaskCount/workloadByAssignee both stay unranged, reading the
+   *  full `tasks` array regardless — both are "what does the queue look
+   *  like right now" facts, not something that happened in a window, the
+   *  same "current" reasoning retirementRateByCategory's own comment gives. */
+  private buildTaskThroughput(tasks: TaskReportRow[], profiles: Profile[], range: DateRange) {
     const today = getTodayIsoDate();
-    this.totalTasks = tasks.length;
-    const doneTasks = tasks.filter(task => task.status === 'done');
-    this.completedTaskCount = doneTasks.length;
+
+    const tasksCreatedInRange = tasks.filter(task => this.isWithinRange(task.created_at, range));
+    this.totalTasks = tasksCreatedInRange.length;
+    this.completedTaskCount = tasksCreatedInRange.filter(task => task.status === 'done').length;
+
     // Mirrors ManageTasksComponent.isTaskOverdue()'s own condition exactly.
     this.overdueTaskCount = tasks.filter(task => !!task.due_date && task.status !== 'done' && task.due_date < today).length;
 
-    if (doneTasks.length > 0) {
-      const totalDays = doneTasks.reduce((sum, task) => sum + this.daysBetween(task.created_at, task.updated_at), 0);
-      this.averageDaysToClose = totalDays / doneTasks.length;
+    const doneTasksClosedInRange = tasks.filter(task => task.status === 'done' && this.isWithinRange(task.updated_at, range));
+    if (doneTasksClosedInRange.length > 0) {
+      const totalDays = doneTasksClosedInRange.reduce((sum, task) => sum + this.daysBetween(task.created_at, task.updated_at), 0);
+      this.averageDaysToClose = totalDays / doneTasksClosedInRange.length;
     } else {
       this.averageDaysToClose = null;
     }

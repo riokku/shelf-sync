@@ -1,5 +1,5 @@
-import { Component, OnInit, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -12,6 +12,8 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { SupplierFormModalComponent, SupplierFormModalData } from '../../shared/components/supplier-form-modal/supplier-form-modal.component';
+import { FlashTracker } from '../../shared/utils/flash-tracker';
+import { flashAndScrollToHighlighted } from '../../shared/utils/highlight-row';
 
 /** manage/suppliers — admin/manager CRUD for the org's supplier directory
  *  (see the add_supplier_directory migration's own doc comment for why
@@ -38,6 +40,8 @@ export class ManageSuppliersComponent implements OnInit {
   protected supplierService = inject(SupplierService);
   private notification = inject(NotificationService);
   private dialog = inject(MatDialog);
+  private route = inject(ActivatedRoute);
+  private destroyRef = inject(DestroyRef);
 
   isLoading = true;
   removeError: string | null = null;
@@ -45,9 +49,28 @@ export class ManageSuppliersComponent implements OnInit {
    *  InventoryComponent.skeletonCards' own identical doc comment. */
   readonly skeletonRows = [1, 2, 3, 4];
 
+  // This page has no realtime subscription of its own (unlike Orders/
+  // Reservations/Broadcasts, which already had a FlashTracker for that) —
+  // added purely to back the command palette's own "Suppliers" result (see
+  // CommandPaletteService), the same ?highlight= + .realtime-flash landing
+  // treatment those three pages already reuse for the same reason.
+  private flashTracker = new FlashTracker();
+
+  isFlashing(supplierId: string): boolean {
+    return this.flashTracker.isFlashing(supplierId);
+  }
+
   async ngOnInit() {
     await this.supplierService.load();
     this.isLoading = false;
+
+    flashAndScrollToHighlighted(
+      this.route.snapshot.queryParamMap.get('highlight'),
+      this.supplierService.suppliers().map(supplier => supplier.id),
+      id => `supplier-${id}`,
+      this.flashTracker
+    );
+    this.destroyRef.onDestroy(() => this.flashTracker.clear());
   }
 
   /** The Retry button's handler once supplierService.loadError() is set —
