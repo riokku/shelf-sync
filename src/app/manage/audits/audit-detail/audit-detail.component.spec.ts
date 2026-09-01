@@ -4,6 +4,7 @@ import { AuditDetailComponent } from './audit-detail.component';
 import { SupabaseService } from '../../../core/supabase.service';
 import { AuthService } from '../../../core/auth.service';
 import { NotificationService } from '../../../core/notification.service';
+import { ConfettiService } from '../../../core/confetti.service';
 import { InventoryAuditCount } from '../../../shared/models/inventory-audit.model';
 import {
   createFakeAuthService,
@@ -238,6 +239,36 @@ describe('AuditDetailComponent', () => {
 
       expect(component.finishError).toBeNull();
       expect(successSpy).toHaveBeenCalledWith('Audit completed');
+    });
+
+    it('fires a confetti burst and a celebratory toast when every item matched with nothing left uncounted', async () => {
+      await setup();
+      component.counts = [
+        createTestCount({ id: 'c1', countedQuantity: 10, expectedQuantity: 10 }),
+        createTestCount({ id: 'c2', countedQuantity: 4, expectedQuantity: 4 })
+      ];
+      const notification = TestBed.inject(NotificationService);
+      const confetti = TestBed.inject(ConfettiService);
+      const successSpy = spyOn(notification, 'success');
+      const burstSpy = spyOn(confetti, 'burst');
+
+      await component.completeAudit();
+
+      expect(burstSpy).toHaveBeenCalled();
+      expect(successSpy).toHaveBeenCalledWith('🎉 Perfect count — every item matched, zero discrepancies!');
+    });
+
+    it('does not fire confetti when a discrepancy or an uncounted item remains', async () => {
+      await setup();
+      component.counts = [
+        createTestCount({ id: 'c1', countedQuantity: 7, expectedQuantity: 10 })
+      ];
+      const confetti = TestBed.inject(ConfettiService);
+      const burstSpy = spyOn(confetti, 'burst');
+
+      await component.completeAudit();
+
+      expect(burstSpy).not.toHaveBeenCalled();
     });
 
     it('cancelAudit() surfaces an RPC error', async () => {

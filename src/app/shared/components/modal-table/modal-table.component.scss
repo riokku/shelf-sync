@@ -512,33 +512,121 @@ mat-dialog-content.mat-mdc-dialog-content{
   color: var(--mat-sys-on-surface-variant);
 }
 
-.activity-log{
+// Item Timeline — a vertical rail with a colored, icon-bearing marker per
+// entry (see activityColorClass()'s own doc comment for the palette),
+// replacing the old flat .activity-log list (a plain bordered <li> per
+// row with no sense of a continuous history running through them). The
+// rail itself is one absolutely-positioned line behind every marker
+// (::before below) rather than a border on each entry, so it reads as one
+// continuous thread through the item's whole history rather than a series
+// of disconnected dividers.
+.activity-timeline{
+  position: relative;
   list-style: none;
   margin: 0;
   padding: 0;
+}
 
-  li{
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid var(--mat-sys-outline-variant);
+.activity-timeline::before{
+  content: '';
+  position: absolute;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  // Centered on the 2rem marker below (half its width).
+  left: 1rem;
+  width: 2px;
+  background: var(--mat-sys-outline-variant);
+}
 
-    &:last-child{
-      border-bottom: none;
-    }
+.timeline-entry{
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  padding: 0.75rem 0;
+}
 
-    mat-icon{
-      color: var(--mat-sys-primary);
-      flex-shrink: 0;
-    }
+.timeline-marker{
+  position: relative;
+  // Sits above the rail behind it (.activity-timeline::before), not beside
+  // it — without this the line would draw on top of the marker instead of
+  // appearing to pass behind it.
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+
+  mat-icon{
+    font-size: 1.125rem;
+    width: 1.125rem;
+    height: 1.125rem;
   }
 }
 
-.activity-entry{
+// The most recent entry's own marker gets a soft pulsing ring around it —
+// same "the current/latest point is the one the eye should land on"
+// reasoning TrendChartComponent's own single-visible-dot convention already
+// establishes for its line chart, adapted here to a ring since a timeline
+// marker (unlike a line-chart point) is already always visible.
+.timeline-entry-latest .timeline-marker{
+  animation: timeline-latest-pulse 2s ease-in-out infinite;
+}
+
+@keyframes timeline-latest-pulse{
+  0%, 100%{ box-shadow: 0 0 0 3px color-mix(in srgb, var(--mat-sys-primary) 25%, transparent); }
+  50%{ box-shadow: 0 0 0 6px color-mix(in srgb, var(--mat-sys-primary) 10%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .timeline-entry-latest .timeline-marker{
+    animation: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--mat-sys-primary) 25%, transparent);
+  }
+}
+
+// Same four categories activityIcon() already distinguishes with a
+// dedicated icon, colored to match the equivalent .status-pill variant
+// elsewhere in this file (checked-out/available/discard's own warn
+// treatment) so the same event reads the same color wherever it shows up
+// in this component. Everything else (allocated/updated/etc.) shares the
+// neutral .timeline-marker-default below, the same surface-container-high +
+// primary-icon pairing .info-section-header uses for its own icon.
+.timeline-marker-checkout{
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+}
+
+.timeline-marker-checkin{
+  background: var(--app-success-bg);
+  color: var(--app-success-on-bg);
+}
+
+.timeline-marker-create{
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+}
+
+.timeline-marker-discard{
+  background: var(--app-danger-bg);
+  color: var(--app-danger-on-bg);
+}
+
+.timeline-marker-default{
+  background: var(--mat-sys-surface-container-high);
+  color: var(--mat-sys-primary);
+}
+
+.timeline-content{
   display: flex;
   flex-direction: column;
   min-width: 0;
+  // Aligns the message's own first line with the marker's icon rather than
+  // the marker's vertical center.
+  padding-top: 0.125rem;
 }
 
 .activity-message{

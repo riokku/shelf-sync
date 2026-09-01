@@ -12,6 +12,7 @@ import { RouterLink } from '@angular/router';
 import { SupabaseService } from '../../../core/supabase.service';
 import { AuthService, Profile } from '../../../core/auth.service';
 import { NotificationService } from '../../../core/notification.service';
+import { ConfettiService } from '../../../core/confetti.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { RingStatComponent } from '../../../shared/components/ring-stat/ring-stat.component';
 import { InventoryAudit, InventoryAuditCount, isAuditDiscrepancy } from '../../../shared/models/inventory-audit.model';
@@ -54,6 +55,7 @@ export class AuditDetailComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
   protected authService = inject(AuthService);
   private notification = inject(NotificationService);
+  private confetti = inject(ConfettiService);
 
   @Input({ required: true }) auditId!: string;
   @Output() back = new EventEmitter<void>();
@@ -262,6 +264,15 @@ export class AuditDetailComponent implements OnInit {
     this.isFinishing = true;
     this.finishError = null;
 
+    // Captured before the RPC call/loadDetail() reload below — "the whole
+    // audit turned up zero discrepancies, with nothing left uncounted" is a
+    // fact about the audit as it stands right now, worth celebrating
+    // regardless of what completing it does to these rows afterward. The
+    // counts.length > 0 guard rules out the degenerate empty-audit case
+    // (nothing in scope) trivially satisfying "zero discrepancies" without
+    // anyone having actually counted anything.
+    const isPerfectCount = this.counts.length > 0 && this.notYetCounted.length === 0 && this.discrepancies.length === 0;
+
     const { error } = await this.supabase.rpc('complete_inventory_audit', { audit_id: this.audit.id });
 
     this.isFinishing = false;
@@ -272,7 +283,21 @@ export class AuditDetailComponent implements OnInit {
     }
 
     await this.loadDetail();
-    this.notification.success('Audit completed');
+
+    // A genuine "just happened, right here" moment — see ConfettiService's
+    // own doc comment for why that's the bar, and HomeComponent's own
+    // Getting Started card for the kind of "milestone" this deliberately
+    // isn't (that one's completing step happens on a different page
+    // entirely, with no on-screen moment left to animate by the time this
+    // page notices). Every item in scope physically matched what the system
+    // expected — worth more than the plain "Audit completed" every other
+    // completion gets.
+    if (isPerfectCount) {
+      this.confetti.burst();
+      this.notification.success('🎉 Perfect count — every item matched, zero discrepancies!');
+    } else {
+      this.notification.success('Audit completed');
+    }
   }
 
   async cancelAudit() {

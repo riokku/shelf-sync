@@ -14,6 +14,8 @@ import { SupabaseService } from '../core/supabase.service';
 import { ThemeModeService } from '../core/theme-mode.service';
 import { NotificationCenterService } from '../core/notification-center.service';
 import { CommandPaletteService } from '../core/command-palette.service';
+import { ConfettiService } from '../core/confetti.service';
+import { NotificationService } from '../core/notification.service';
 import { EmptyStateComponent } from '../shared/components/empty-state/empty-state.component';
 import { UserAvatarComponent } from '../shared/components/user-avatar/user-avatar.component';
 import { notificationIcon, UserNotification } from '../shared/models/notification.model';
@@ -41,6 +43,8 @@ export class HeaderComponent {
   private supabase = inject(SupabaseService).client;
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
+  private confetti = inject(ConfettiService);
+  private notification = inject(NotificationService);
 
   /** Own fixed-position slide-out panel (see header.component.scss) rather
    *  than MatMenu — a menu is a dropdown anchored to its trigger, sized to
@@ -101,15 +105,67 @@ export class HeaderComponent {
   paletteActiveIndex = 0;
 
   /** No existing global keydown listener anywhere in this app before this —
-   *  matches either modifier key regardless of platform (the tooltip label
+   *  and, as it turns out, at most one is ever safe to declare: two separate
+   *  `@HostListener('window:keydown', ...)`-decorated methods on the same
+   *  class silently collide (the second one's compiled host binding
+   *  replaces the first's rather than both being registered), so
+   *  handlePaletteShortcut()/handleKonamiCode() below are deliberately
+   *  plain methods, both invoked from this one real listener — caught by
+   *  the Ctrl+K/Cmd+K spec's own tests going red the moment a second
+   *  `@HostListener` for the identical event was added here, worth
+   *  remembering the same way this schema's other "diff against the
+   *  previous version"/double-apply lessons are. */
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeydown(event: KeyboardEvent) {
+    this.handlePaletteShortcut(event);
+    this.handleKonamiCode(event);
+  }
+
+  /** Matches either modifier key regardless of platform (the tooltip label
    *  below is what actually differs by platform). preventDefault() stops
    *  the browser's own Ctrl/Cmd+K address-bar-search binding from firing
    *  alongside it. */
-  @HostListener('window:keydown', ['$event'])
   handlePaletteShortcut(event: KeyboardEvent) {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
       event.preventDefault();
       this.togglePalette();
+    }
+  }
+
+  /** The classic Konami code — a small, deliberately pointless easter egg
+   *  that changes nothing about the app beyond a confetti burst and a toast.
+   *  Tracked as a plain index into the sequence rather than a rolling
+   *  keystroke buffer diffed on every keydown — simpler, and a wrong key
+   *  just resets the index (to 1 if that wrong key happens to also be the
+   *  sequence's own first key, so immediately restarting the code after a
+   *  slip doesn't require an extra keypress to "prime" it again, otherwise
+   *  back to 0) rather than needing to re-scan history for a possible
+   *  restart partway through. event.key rather than .code so this reads the
+   *  same regardless of keyboard layout, lowercased only for the two single-
+   *  character letter keys at the end (arrow key names have no case to
+   *  normalize) — same key-reading approach handlePaletteShortcut above
+   *  already uses. */
+  private static readonly KONAMI_SEQUENCE = [
+    'ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown',
+    'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight',
+    'b', 'a'
+  ];
+  private konamiIndex = 0;
+
+  handleKonamiCode(event: KeyboardEvent) {
+    const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+    const expected = HeaderComponent.KONAMI_SEQUENCE[this.konamiIndex];
+
+    if (key !== expected) {
+      this.konamiIndex = key === HeaderComponent.KONAMI_SEQUENCE[0] ? 1 : 0;
+      return;
+    }
+
+    this.konamiIndex++;
+    if (this.konamiIndex === HeaderComponent.KONAMI_SEQUENCE.length) {
+      this.konamiIndex = 0;
+      this.confetti.burst();
+      this.notification.success('🕹️ Konami code! You found the easter egg.');
     }
   }
 

@@ -687,11 +687,13 @@
           @if (data.activityLog.length === 0) {
             <p class="empty-hint">No activity recorded yet.</p>
           } @else {
-            <ul class="activity-log">
+            <ul class="activity-timeline">
               @for (entry of data.activityLog; track $index) {
-                <li>
-                  <mat-icon>{{ activityIcon(entry.message) }}</mat-icon>
-                  <div class="activity-entry">
+                <li class="timeline-entry" [class.timeline-entry-latest]="$index === 0">
+                  <span [class]="'timeline-marker timeline-marker-' + activityColorClass(entry.message)">
+                    <mat-icon>{{ activityIcon(entry.message) }}</mat-icon>
+                  </span>
+                  <div class="timeline-content">
                     <span class="activity-message">{{ entry.message }}</span>
                     <span class="activity-meta">
                       <app-user-avatar [avatarKey]="entry.userAvatarKey" size="sm" />

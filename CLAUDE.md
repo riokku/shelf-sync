@@ -2471,6 +2471,59 @@ all — while `isLoadingStats` was true, only the now-removed stat grid showed a
 trend cards used to just pop in with no loading treatment once removing the stat grid would have left
 nothing between the hero and the studio-grid cards during a load).
 
+An item's Activity Log tab in `ModalTableComponent` was redrawn as a visual vertical timeline
+(`.activity-timeline`) rather than a flat, bordered `<li>`-per-row list — one continuous line
+(`.activity-timeline::before`) runs behind a colored, icon-bearing circular marker per entry,
+reading as one continuous thread through the item's whole history instead of a series of
+disconnected dividers. `activityColorClass()` mirrors `activityIcon()`'s own message-sniffing
+(same keywords, same precedence) to pick a marker color — checkout (tertiary), checked-in (success),
+created (primary), discarded (danger) each get their own, matching the equivalent `.status-pill`
+variant already used elsewhere in this component; everything else (allocated/updated/etc.) shares
+one neutral default, the same surface-container-high + primary-icon pairing `.info-section-header`
+already uses for its own icon — not every message is distinct enough to earn its own color. The
+newest entry's own marker (index 0 — `loadInventoryActivityByItemId()` already orders
+`created_at desc`) gets a soft pulsing ring around it, same "the current/latest point is the one the
+eye should land on" reasoning `TrendChartComponent`'s own single-visible-dot convention already
+establishes for its line chart, adapted to a ring since a timeline marker (unlike a line-chart
+point) is already always visible rather than needing to be picked out from a full row of them.
+Purely a `ModalTableComponent` template/stylesheet change — no schema, no new data.
+
+A shared `ConfettiService` (`core/confetti.service.ts`) fires a brief, full-viewport confetti burst
+for a genuine "just happened, right here" celebration moment — see each call site's own doc comment
+for why that particular moment qualifies (a completed action the viewer can actually see resolve on
+the same page load, not a milestone whose underlying change happened somewhere else — see
+`HomeComponent`'s own doc comment on why its Getting Started card deliberately skipped a "just
+completed" animation for exactly that reason, the bar this reuses). The confetti itself is a
+hand-rolled CSS-particle component, `shared/components/confetti-burst` — same "no new runtime
+dependency" convention `DonutChartComponent`/`RingStatComponent`/`TrendChartComponent`/
+`ReservationCalendarComponent` already established for their own hand-rolled visuals, with colors
+cycling through the live theme's own tokens so a burst recolors itself automatically under any
+`THEME_PRESETS` preset. Rather than going through `MatDialog`/CDK Overlay — a decorative,
+click-through, no-content overlay has no need for either's dialog-style machinery (backdrop, focus
+trap, a positioning strategy) — `ConfettiService.burst()` attaches it by hand via
+`createComponent()`/`ApplicationRef`, appended straight to `<body>` and torn down again once the
+animation finishes (`ConfettiBurstComponent.DURATION_MS`). Skips itself entirely under
+`prefers-reduced-motion`, same convention every other ambient animation in this app already follows.
+`AuditDetailComponent.completeAudit()` is the first real trigger: completing an audit that turned up
+zero discrepancies with nothing left uncounted (`isPerfectCount`, captured before the RPC call and
+the reload that follows it) fires a burst alongside a "🎉 Perfect count" toast in place of the plain
+"Audit completed" every other completion gets — a genuine, on-this-page "the whole shelf matched the
+system exactly" moment, unlike Home's own Getting Started steps.
+
+`HeaderComponent` also carries a small, deliberately pointless easter egg — the classic Konami code
+(`handleKonamiCode()`, tracked as a plain index into the sequence rather than a rolling keystroke
+buffer) fires the same confetti burst plus a "🕹️ Konami code!" toast, changing nothing else about the
+app. Building this surfaced a real Angular gotcha worth remembering: two separate
+`@HostListener('window:keydown', ...)`-decorated methods on the same class silently collide — the
+second one's compiled host binding replaces the first's rather than both being registered, rather
+than the "every `@HostListener` gets its own independent listener" behavior this looked like it should
+have. Caught by the pre-existing Ctrl/Cmd+K command-palette shortcut's own tests going red the moment
+this was added as a second decorated method alongside `handlePaletteShortcut()` — fixed by keeping
+exactly one `@HostListener` (`onWindowKeydown()`) that calls both `handlePaletteShortcut()` and
+`handleKonamiCode()` as plain, undecorated methods. Worth remembering the same way this schema's other
+"diff against the previous version"/double-apply lessons already are: a global host listener added
+to a component that already has one for the identical event needs to merge into it, not sit beside it.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -2609,6 +2662,7 @@ core/
   supplier.service.ts     # SupplierService — org's supplier directory; load()/create()/update()/remove()
   notification-center.service.ts # NotificationCenterService — HeaderComponent's bell dropdown; notifications signal + unreadCount, markAsRead()/markAllAsRead()
   command-palette.service.ts # CommandPaletteService — HeaderComponent's Ctrl/Cmd+K global search; lazily loads/caches searchable data, results(query) is a pure local filter
+  confetti.service.ts     # ConfettiService — fires a hand-rolled confetti burst (shared/components/confetti-burst) for a genuine "just happened" celebration moment
   guards/auth.guard.ts    # CanActivateFn — awaits authService.getSession() directly
   guards/manage.guard.ts  # admin OR manager
   guards/admin.guard.ts   # admin only (manage/settings, manage/billing, manage/danger-zone)
@@ -2658,6 +2712,7 @@ shared/
   components/lock-user-account-modal/ # mandatory-reason dialog backing StudioUserDetailComponent's account-lock toggle
   components/reservation-calendar/ # hand-rolled CSS-grid month calendar (no calendar library) — backs manage/reservations' calendar view
   components/release-note-form-modal/ # self-contained title/description/severity/posted-date dialog backing studio/release-notes, create and edit alike
+  components/confetti-burst/ # hand-rolled CSS confetti particles (no library) — created on demand by ConfettiService, never rendered from a template directly
   models/inventory-item.model.ts   # InventoryItem class (constructor-based, no defaults)
   models/supplier.model.ts   # Supplier — a directory entry inventory_items.supplier_id can point at
   models/inventory-item-order.model.ts # InventoryItemOrder — one restock order against an item's linked supplier
