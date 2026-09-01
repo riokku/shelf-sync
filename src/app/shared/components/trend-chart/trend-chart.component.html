@@ -1,15 +1,28 @@
 <div class="trend-chart">
   <span class="trend-total mono">{{ totalLabel }}</span>
   @if (hasData()) {
-    <div class="trend-bars" role="img" [attr.aria-label]="totalLabel">
-      @for (bar of bars(); track bar.label) {
-        <div
-            class="trend-bar"
-            [class.trend-bar-current]="bar.isCurrent"
-            [title]="bar.label + ': ' + bar.value"
-            [style.height.%]="bar.heightPercent"
+    <div class="trend-line-chart" role="img" [attr.aria-label]="totalLabel">
+      <svg class="trend-line-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <defs>
+          <linearGradient [attr.id]="gradientId" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" [attr.stop-color]="color()" stop-opacity="0.3" />
+            <stop offset="100%" [attr.stop-color]="color()" stop-opacity="0" />
+          </linearGradient>
+        </defs>
+        @if (hasLine()) {
+          <polygon class="trend-area" [attr.points]="areaPointsAttr()" [attr.fill]="'url(#' + gradientId + ')'" />
+          <polyline class="trend-line" [attr.points]="linePointsAttr()" [style.stroke]="color()" />
+        }
+      </svg>
+      @for (point of plottedPoints(); track point.label) {
+        <span
+            class="trend-point"
+            [class.trend-point-current]="point.isCurrent"
+            [style.left.%]="point.xPercent"
+            [style.bottom.%]="point.bottomPercent"
             [style.background]="color()"
-          ></div>
+            [title]="point.label + ': ' + point.value"
+          ></span>
       }
     </div>
   }
