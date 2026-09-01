@@ -1037,7 +1037,7 @@ chips. These chips reflect `audit.lead`/`audit.supporters` specifically — the 
 server-confirmed state, not the live form controls — so a name only ever appears with its icon once a
 save has actually landed, never mid-edit.
 
-`AuditDetailComponent`'s "Count items" section renders *every* not-yet-counted item as its own
+`AuditDetailComponent`'s "Audit items" section renders *every* not-yet-counted item as its own
 bordered card right away — the same `.task-row` visual language (surface-container-low background, a
 matching 1px border, the same radius) `TaskCardComponent` already establishes — rather than a single
 shared form behind a search-and-click autocomplete. Every item in an audit's scope was already added
@@ -2182,7 +2182,7 @@ app was swept for the same shape at the time and confirmed safe — each already
 on its own `<form>`, which provides `ngSubmit` via `FormGroupDirective` regardless of whether
 `FormsModule` is imported.
 
-The same shape recurred later in `AuditDetailComponent`'s "Count items" card (the redesign that
+The same shape recurred later in `AuditDetailComponent`'s "Audit items" card (the redesign that
 gave every not-yet-counted item its own `<form (ngSubmit)="submitCount(count)">`, each field bound
 via its own `[formControl]` rather than a `[formGroup]` on the `<form>` itself) — built well after
 the sweep above, so it wasn't covered by it, and shipped with the identical bug: no `FormsModule`,
