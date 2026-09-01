@@ -48,7 +48,6 @@ describe('StudioComponent', () => {
 function createFakeSupabaseServiceForStats(counts: {
   feedback: number;
   organizations: number;
-  approvedUsers: number;
   errorRows: { app_env: string | null }[];
   orgCreatedAtRows?: { created_at: string }[];
   profileCreatedAtRows?: { created_at: string }[];
@@ -81,7 +80,10 @@ function createFakeSupabaseServiceForStats(counts: {
           return builderFor(counts.organizations, counts.orgCreatedAtRows ?? []);
         }
         if (table === 'profiles') {
-          return builderFor(counts.approvedUsers, counts.profileCreatedAtRows ?? []);
+          // Only ever hit for userSignupTrend's own created_at-only query
+          // now — StudioComponent no longer queries an approved-member
+          // count, so the count half of this pair goes unread.
+          return builderFor(0, counts.profileCreatedAtRows ?? []);
         }
         if (table === 'client_error_log') {
           return builderFor(counts.errorRows.length, counts.errorRows);
@@ -97,7 +99,6 @@ describe('StudioComponent dashboard stats', () => {
   async function createComponent(counts: {
     feedback: number;
     organizations: number;
-    approvedUsers: number;
     errorRows: { app_env: string | null }[];
     orgCreatedAtRows?: { created_at: string }[];
     profileCreatedAtRows?: { created_at: string }[];
@@ -116,17 +117,15 @@ describe('StudioComponent dashboard stats', () => {
     return fixture.componentInstance;
   }
 
-  it('loads the headline organization/user/feedback counts', async () => {
+  it('loads the headline organization/feedback counts', async () => {
     const component = await createComponent({
       feedback: 3,
       organizations: 12,
-      approvedUsers: 47,
       errorRows: []
     });
 
     expect(component.totalOrgCount).toBe(12);
     expect(component.newOrgCount).toBe(12);
-    expect(component.approvedUserCount).toBe(47);
     expect(component.newFeedbackCount).toBe(3);
     expect(component.isLoadingStats).toBeFalse();
   });
@@ -135,7 +134,6 @@ describe('StudioComponent dashboard stats', () => {
     const component = await createComponent({
       feedback: 0,
       organizations: 0,
-      approvedUsers: 0,
       errorRows: [
         { app_env: 'production' },
         { app_env: 'development' },
@@ -151,7 +149,6 @@ describe('StudioComponent dashboard stats', () => {
     const component = await createComponent({
       feedback: 0,
       organizations: 0,
-      approvedUsers: 0,
       errorRows: [],
       orgCreatedAtRows: [{ created_at: now }, { created_at: now }],
       profileCreatedAtRows: [{ created_at: now }]

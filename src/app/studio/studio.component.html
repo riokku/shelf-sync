@@ -9,20 +9,149 @@
         Back
       </button>
     </div>
-    <h2>Studio</h2>
-    <p class="studio-subtitle">Cross-organization tools, visible only to you.</p>
+    <div class="page-hero studio-hero">
+      <span class="studio-hero-backdrop" aria-hidden="true"></span>
+      <span class="studio-hero-scanlines" aria-hidden="true"></span>
+      <span class="studio-hero-vignette" aria-hidden="true"></span>
 
-    @if (isLoadingStats) {
-      <!-- Real card/grid shell, shimmering label/value content — same 5-tile
-           shape the loaded state below always renders. -->
-      <div class="studio-stats-card" aria-hidden="true">
-        <div class="stat-grid">
-          @for (i of skeletonStatTiles; track i) {
-            <div class="stat-tile">
-              <div class="skeleton-line skeleton-stat-label"></div>
-              <div class="skeleton-line skeleton-stat-value"></div>
+      <!-- Purely decorative HUD radar — no real per-org data behind any
+           blip (this component doesn't load anything granular enough to
+           place one per organization). Studio's one page where a bespoke,
+           non-shared backdrop earns its keep — see this component's own
+           style file for why it layers onto .page-hero rather than reusing
+           .page-hero-backdrop/-glow. Eight of the nine blips are instead
+           tagged with one of this page's own destinations/data points —
+           four matching the hero's own pulse row below (Organizations/
+           Signups/Feedback/Errors) plus four more matching four of
+           .studio-grid's own cards further down the page (Users/Usage/
+           Email Log/Audit Log) — each label timed via animation-delay to
+           flash on and linger right as the radar sweep crosses it, then
+           fade — a true scanner "painting" a contact — rather than sitting
+           statically visible; see the style file's own comment for how each
+           delay was derived from the blip's angle around the sweep. The
+           ninth stays a plain, unlabeled ambient contact for visual
+           texture, same as a real scope always has some unidentified
+           clutter alongside its tagged contacts. Each of the four accent
+           colors (cyan/green/amber/red) is reused across two blips rather
+           than growing the palette further — same "hardcoded HUD palette,
+           not the org's own theme" reasoning the pulse chips below already
+           establish. -->
+      <div class="studio-hero-radar" aria-hidden="true">
+        <span class="studio-hero-radar-ring studio-hero-radar-ring-1"></span>
+        <span class="studio-hero-radar-ring studio-hero-radar-ring-2"></span>
+        <span class="studio-hero-radar-ring studio-hero-radar-ring-3"></span>
+        <span class="studio-hero-radar-ring studio-hero-radar-ring-4"></span>
+        <span class="studio-hero-radar-crosshair studio-hero-radar-crosshair-v"></span>
+        <span class="studio-hero-radar-crosshair studio-hero-radar-crosshair-h"></span>
+        <span class="studio-hero-radar-sweep"></span>
+        <span class="studio-hero-blip-wrap" style="left: 27%; top: 20%;">
+          <span class="studio-hero-blip studio-hero-blip-cyan"></span>
+          <span class="studio-hero-blip-label studio-hero-blip-label-cyan" style="animation-delay: 5.35s;">Organizations</span>
+        </span>
+        <span class="studio-hero-blip-wrap" style="left: 63%; top: 32%;">
+          <span class="studio-hero-blip studio-hero-blip-green"></span>
+          <span class="studio-hero-blip-label studio-hero-blip-label-green" style="animation-delay: 0.18s;">Signups</span>
+        </span>
+        <span class="studio-hero-blip-wrap" style="left: 71%; top: 66%;">
+          <span class="studio-hero-blip studio-hero-blip-amber"></span>
+          <span class="studio-hero-blip-label studio-hero-blip-label-amber" style="animation-delay: 1.83s;">Feedback</span>
+        </span>
+        <span class="studio-hero-blip-wrap" style="left: 35%; top: 75%;">
+          <span class="studio-hero-blip studio-hero-blip-red"></span>
+          <span class="studio-hero-blip-label studio-hero-blip-label-red" style="animation-delay: 3.34s;">Errors</span>
+        </span>
+        <span class="studio-hero-blip-wrap" style="left: 85%; top: 45%;">
+          <span class="studio-hero-blip studio-hero-blip-cyan"></span>
+          <span class="studio-hero-blip-label studio-hero-blip-label-cyan studio-hero-blip-label-end" style="animation-delay: 1.01s;">Users</span>
+        </span>
+        <span class="studio-hero-blip-wrap" style="left: 55%; top: 12%;">
+          <span class="studio-hero-blip studio-hero-blip-green"></span>
+          <span class="studio-hero-blip-label studio-hero-blip-label-green" style="animation-delay: 6.17s;">Usage</span>
+        </span>
+        <span class="studio-hero-blip-wrap" style="left: 18%; top: 55%;">
+          <span class="studio-hero-blip studio-hero-blip-amber"></span>
+          <span class="studio-hero-blip-label studio-hero-blip-label-amber" style="animation-delay: 4.25s;">Email Log</span>
+        </span>
+        <span class="studio-hero-blip-wrap" style="left: 78%; top: 85%;">
+          <span class="studio-hero-blip studio-hero-blip-red"></span>
+          <span class="studio-hero-blip-label studio-hero-blip-label-red studio-hero-blip-label-end" style="animation-delay: 2.08s;">Audit Log</span>
+        </span>
+        <span class="studio-hero-blip-wrap" style="left: 52%; top: 45%;">
+          <span class="studio-hero-blip studio-hero-blip-dim"></span>
+        </span>
+      </div>
+
+      <div class="studio-hero-content">
+        <span class="page-hero-kicker studio-hero-kicker">
+          <mat-icon>sensors</mat-icon>
+          Platform · Root access
+        </span>
+
+        <div class="studio-hero-title-wrap">
+          <h2 class="studio-hero-title">Studio</h2>
+          <h2 class="studio-hero-title studio-hero-title-ghost studio-hero-title-ghost-cyan" aria-hidden="true">Studio</h2>
+          <h2 class="studio-hero-title studio-hero-title-ghost studio-hero-title-ghost-magenta" aria-hidden="true">Studio</h2>
+        </div>
+
+        <p class="page-hero-subtitle">Cross-organization tools, visible only to you.</p>
+
+        <div class="page-hero-pulse-row">
+          @if (isLoadingStats) {
+            @for (i of heroSkeletonChips; track i) {
+              <div class="page-hero-pulse-chip studio-hero-pulse-chip" aria-hidden="true">
+                <span class="skeleton-circle studio-hero-pulse-skeleton-icon"></span>
+                <span>
+                  <span class="skeleton-line studio-hero-pulse-skeleton-value"></span>
+                  <span class="skeleton-line studio-hero-pulse-skeleton-label"></span>
+                </span>
+              </div>
+            }
+          } @else {
+            <div class="page-hero-pulse-chip studio-hero-pulse-chip studio-hero-pulse-chip-cyan">
+              <mat-icon>apartment</mat-icon>
+              <span>
+                <span class="page-hero-pulse-value mono">{{ loadError ? '—' : totalOrgCount }}</span>
+                <span class="page-hero-pulse-label">Organizations</span>
+              </span>
+            </div>
+            <div class="page-hero-pulse-chip studio-hero-pulse-chip studio-hero-pulse-chip-green">
+              <mat-icon>trending_up</mat-icon>
+              <span>
+                <span class="page-hero-pulse-value mono">{{ loadError ? '—' : newOrgCount }}</span>
+                <span class="page-hero-pulse-label">New this week</span>
+              </span>
+            </div>
+            <div class="page-hero-pulse-chip studio-hero-pulse-chip studio-hero-pulse-chip-amber">
+              <mat-icon>feedback</mat-icon>
+              <span>
+                <span class="page-hero-pulse-value mono">{{ loadError ? '—' : newFeedbackCount }}</span>
+                <span class="page-hero-pulse-label">Open feedback</span>
+              </span>
+            </div>
+            <div class="page-hero-pulse-chip studio-hero-pulse-chip studio-hero-pulse-chip-red">
+              <mat-icon>bug_report</mat-icon>
+              <span>
+                <span class="page-hero-pulse-value mono">{{ loadError ? '—' : recentErrorCount }}</span>
+                <span class="page-hero-pulse-label">Errors (24h)</span>
+              </span>
             </div>
           }
+        </div>
+      </div>
+    </div>
+
+    @if (isLoadingStats) {
+      <!-- Real card shell, shimmering label/chart content — same two-card
+           shape the loaded state below always renders. The hero's own
+           pulse row (above) carries its own loading state independently. -->
+      <div class="studio-trends-row" aria-hidden="true">
+        <div class="studio-trend-card">
+          <div class="skeleton-line skeleton-trend-label"></div>
+          <div class="skeleton-block skeleton-trend-chart"></div>
+        </div>
+        <div class="studio-trend-card">
+          <div class="skeleton-line skeleton-trend-label"></div>
+          <div class="skeleton-block skeleton-trend-chart"></div>
         </div>
       </div>
     } @else if (loadError) {
@@ -33,31 +162,6 @@
         </button>
       </app-empty-state>
     } @else {
-      <div class="studio-stats-card">
-        <div class="stat-grid">
-          <div class="stat-tile">
-            <span class="stat-label">Organizations</span>
-            <span class="stat-value">{{ totalOrgCount }}</span>
-          </div>
-          <div class="stat-tile">
-            <span class="stat-label">New this week</span>
-            <span class="stat-value">{{ newOrgCount }}</span>
-          </div>
-          <div class="stat-tile">
-            <span class="stat-label">Approved users</span>
-            <span class="stat-value">{{ approvedUserCount }}</span>
-          </div>
-          <div class="stat-tile">
-            <span class="stat-label">Open feedback</span>
-            <span class="stat-value">{{ newFeedbackCount }}</span>
-          </div>
-          <div class="stat-tile">
-            <span class="stat-label">Errors (24h)</span>
-            <span class="stat-value">{{ recentErrorCount }}</span>
-          </div>
-        </div>
-      </div>
-
       <div class="studio-trends-row">
         <div class="studio-trend-card">
           <span class="trend-card-label">Organizations created</span>

@@ -2332,6 +2332,71 @@ previous version"/double-apply lessons: a new notification *kind* touches two se
 constraints (`notifications.kind` and `notification_email_log.kind`), not just one, and only the
 second one's gap is silent rather than a visible error.
 
+`StudioComponent`'s own hero — previously just a bare `<h2>Studio</h2>` plus one plain paragraph,
+the only page-level heading in the app that never got the shared `_page-hero.scss` treatment —
+picked up a bespoke, noticeably bolder "Mission Control" hero: a dark HUD console rather than the
+same azure/tertiary gradient every other `.page-hero` consumer (Home, Inventory, Tasks, the Manage
+hub) shares. Deliberate: Studio is the one page in the app with an audience of exactly one (the
+platform admin — see that component's own doc comment), genuinely "its own domain" in a way no
+other page is, so it's the one place a departure from the shared visual language earns its keep
+rather than reading as inconsistency. It still `@use`s `_page-hero.scss` for the pieces that
+really are the same shape everywhere — `.page-hero` itself (padding/radius/the `color-scheme: dark`
+trick), `.page-hero-kicker`, `.page-hero-subtitle`, `.page-hero-pulse-row`/`-chip`/`-value`/`-label`
+— and only replaces the backdrop layer (`.page-hero-backdrop`/`-glow`) with its own HUD grid +
+scanline + vignette stack, adds a purely decorative rotating-radar-sweep visualization with a
+handful of pinging "blip" dots (no real per-org data behind any individual blip — this component
+doesn't load anything granular enough to place one deliberately), and layers a two-ghost
+chromatic-aberration effect behind the "Studio" title (cyan/magenta duplicates, screen-blended,
+nudged a couple px off-axis). Every accent color (cyan/green/amber/red) is hardcoded rather than
+read from the org's own `--mat-sys-primary`/`-tertiary` the way the shared backdrop does — the same
+"needs to look the same regardless of which theme preset the viewer's org happens to have picked"
+reasoning `StudioOrgDetailComponent`'s own hardcoded "Retire" red already established; a platform
+admin's own console isn't org branding. `.studio-hero` also picks up the same `1px solid
+var(--mat-sys-outline-variant)` border every other panel on this page already has
+(`.studio-trend-card`, `.studio-card`) — `.page-hero` itself has none by default (Home/Inventory/
+Tasks/the Manage hub's own heroes float free of the cards below them), but here it reads as one more
+console panel among several rather than a floating banner, so it picks up the same border those
+panels share. The hero's four pulse chips (Organizations/New this week/Open feedback/Errors 24h) get
+their own loading skeleton (`heroSkeletonChips`, a fixed 4-item array) and render an em dash instead
+of a number if `loadStats()` failed, rather than duplicating that query's own error messaging a
+second time right above the `loadError` empty state that already explains it. Each chip's top-left
+and bottom-right corners (a diagonal pair — a targeting-reticle accent, not a plain box outline,
+which is what marking all four read as on an earlier pass) carry a small solid accent-colored square
+(two `background-image` layers rather than `::before`/`::after`, so both corners share one rule) —
+the shared `.page-hero-pulse-chip`'s own `0.85rem` corner radius is tightened to `0.375rem` here
+specifically so a solid corner fill reads as a clean square rather than getting visibly clipped by
+too generous a curve.
+
+Four of the radar's five decorative blips (see above) are tagged with one of this same page's
+headline categories — Organizations/Signups/Feedback/Errors, the same four the hero's own pulse row
+already shows — via a small mono-font label next to each dot, timed to flash on and fade right as
+the rotating sweep crosses that dot ("a true scanner painting a contact," not a label sitting
+statically visible the whole time). Every label shares one `studio-hero-blip-label-flash` keyframe
+(the same 6.5s period as `.studio-hero-radar-sweep` itself) with a per-blip `animation-delay` set
+inline in the template — computed by hand from each blip's compass bearing around the radar's center
+and the sweep gradient's own ~26° brightness peak (`elapsed = ((bearing - 26) mod 360) / 360 * 6.5s`),
+not derived at runtime. The fifth blip stays a plain, unlabeled, non-flashing dot for visual
+texture — a real scope always has some unidentified clutter alongside its tagged contacts. Every
+animated piece (the radar sweep, the scanline drift, the blip pings, the label flashes, the kicker
+icon's pulse) respects `prefers-reduced-motion`, same as every other ambient animation in this app —
+the label flashes specifically are suppressed outright rather than left ticking on a timer, since
+there's no moving sweep left to "cross" a contact once the sweep itself stops.
+
+The hero's pulse row made the plain 5-tile `.studio-stats-card` stat grid that used to sit directly
+below it (Organizations/New this week/Approved users/Open feedback/Errors 24h) redundant — 4 of its 5
+numbers were now shown twice on the same page load — so that card was removed outright rather than
+kept as a second, plainer copy of the same data. The one number it carried that the hero doesn't
+("Approved users") wasn't kept elsewhere; it wasn't judged worth a whole card of its own, and is
+still visible via each org's own member count on `studio/organizations`/`studio/usage`. `loadStats()`
+dropped the now-unused `profiles`-membership-status-`'approved'` count query it used to make (down to
+five queries from six) — the `profiles` table is still queried once, for `userSignupTrend`'s own
+`created_at` column, feeding the trend chart in `.studio-trends-row` (unaffected by any of this — the
+trend charts were never part of the redundancy, so they're still there, directly below the hero now).
+That row's own loading state gained a real two-card skeleton of its own (it previously had none at
+all — while `isLoadingStats` was true, only the now-removed stat grid showed a placeholder, so the
+trend cards used to just pop in with no loading treatment once removing the stat grid would have left
+nothing between the hero and the studio-grid cards during a load).
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)

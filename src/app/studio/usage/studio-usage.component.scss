@@ -19,10 +19,9 @@
   margin-bottom: 1.5rem;
 }
 
-// Same card treatment StudioComponent's own .studio-stats-card/
-// .studio-trend-card use — duplicated here rather than shared, matching
-// this app's own convention of not centralizing every small
-// presentational pattern.
+// Same card treatment StudioComponent's own .studio-trend-card uses —
+// duplicated here rather than shared, matching this app's own convention
+// of not centralizing every small presentational pattern.
 .usage-card{
   padding: 1.5rem 1.75rem;
   border-radius: 0.9rem;

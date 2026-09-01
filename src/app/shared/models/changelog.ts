@@ -14,6 +14,11 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    date: '2026-09-23',
+    title: 'Studio\'s "Mission Control" hero',
+    description: 'The Studio hub has a new radar-console hero banner up top, in place of the old plain heading.'
+  },
+  {
     date: '2026-09-22',
     title: 'Overdue checkout reminders',
     description: 'A checked-out item can now carry a due-back date. Once it passes, the person holding it and your admins/managers get emailed and notified — repeating every few days until it\'s resolved.'

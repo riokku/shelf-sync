@@ -42,14 +42,21 @@ export class StudioComponent implements OnInit {
 
   /** Headline cross-org numbers — the platform-admin counterpart to
    *  manage/reports' own stat-grid, giving this hub an actual "state of the
-   *  business" glance instead of just three navigation cards. Every count
-   *  here is a plain head:true query, same convention ManageComponent's own
-   *  ngOnInit() already uses for its three pending-queue badges. */
+   *  business" glance instead of just three navigation cards. Displayed in
+   *  the hero's own pulse row (see the template) rather than a separate
+   *  stat-grid card. Every count here is a plain head:true query, same
+   *  convention ManageComponent's own ngOnInit() already uses for its three
+   *  pending-queue badges. */
   isLoadingStats = true;
-  /** Fixed at 5 — the real .stat-grid below always renders exactly this many
-   *  tiles, unlike a data-driven list's own skeletonRows count. */
-  readonly skeletonStatTiles = [1, 2, 3, 4, 5];
-  /** Set when any of loadStats()'s own four queries fails — see
+  /** Fixed at 4 — the Mission Control hero's own pulse row always renders
+   *  exactly this many chips, unlike a data-driven list's own skeletonRows
+   *  count. This is now the only headline-stat display on the page — the
+   *  plain .stat-grid card that used to sit below the hero was removed once
+   *  the hero's own pulse row made it fully redundant (4 of its 5 tiles
+   *  duplicated here; the fifth, approved-member count, wasn't worth
+   *  keeping a whole card around for on its own). */
+  readonly heroSkeletonChips = [1, 2, 3, 4];
+  /** Set when any of loadStats()'s own five queries fails — see
    *  ManageReportsComponent's identical loadError field for the full
    *  reasoning (a failed load otherwise renders indistinguishably from a
    *  genuinely-empty platform). Deliberately scoped to loadStats() only,
@@ -65,7 +72,6 @@ export class StudioComponent implements OnInit {
    *  and was deleted again in the same week. */
   totalOrgCount = 0;
   newOrgCount = 0;
-  approvedUserCount = 0;
   /** Non-development errors in the last 24 hours — filtered client-side
    *  against the fetched rows' own app_env, exactly mirroring
    *  StudioErrorLogComponent's own `row.app_env !== 'development'` check
@@ -105,8 +111,8 @@ export class StudioComponent implements OnInit {
     this.newFeedbackCount = count ?? 0;
   }
 
-  /** Re-runs the stat-grid's own load after a failed one — the Retry
-   *  button's handler (see the template's own loadError branch). */
+  /** Re-runs loadStats() after a failed one — the Retry button's handler
+   *  (see the template's own loadError branch). */
   retryLoad() {
     void this.loadStats();
   }
@@ -118,17 +124,16 @@ export class StudioComponent implements OnInit {
     const weekAgoIso = new Date(now - 7 * 86400000).toISOString();
     const dayAgoIso = new Date(now - 86400000).toISOString();
 
-    const [orgCountResult, newOrgCountResult, userCountResult, errorsResult, orgCreatedAtResult, profileCreatedAtResult] = await Promise.all([
+    const [orgCountResult, newOrgCountResult, errorsResult, orgCreatedAtResult, profileCreatedAtResult] = await Promise.all([
       this.supabase.from('organizations').select('id', { count: 'exact', head: true }).is('deleted_at', null),
       this.supabase.from('organizations').select('id', { count: 'exact', head: true }).gte('created_at', weekAgoIso),
-      this.supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('membership_status', 'approved'),
       this.supabase.from('client_error_log').select('app_env').gte('created_at', dayAgoIso),
       this.supabase.from('organizations').select('created_at'),
       this.supabase.from('profiles').select('created_at')
     ]);
 
     const error = orgCountResult.error?.message ?? newOrgCountResult.error?.message
-      ?? userCountResult.error?.message ?? errorsResult.error?.message
+      ?? errorsResult.error?.message
       ?? orgCreatedAtResult.error?.message ?? profileCreatedAtResult.error?.message ?? null;
     if (error) {
       this.loadError = error;
@@ -139,7 +144,6 @@ export class StudioComponent implements OnInit {
 
     this.totalOrgCount = orgCountResult.count ?? 0;
     this.newOrgCount = newOrgCountResult.count ?? 0;
-    this.approvedUserCount = userCountResult.count ?? 0;
     this.recentErrorCount = (errorsResult.data ?? []).filter(row => row.app_env !== 'development').length;
     this.orgSignupTrend = bucketByWeek((orgCreatedAtResult.data ?? []).map(row => row.created_at), 12);
     this.userSignupTrend = bucketByWeek((profileCreatedAtResult.data ?? []).map(row => row.created_at), 12);
