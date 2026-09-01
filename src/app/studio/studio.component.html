@@ -223,6 +223,17 @@
         <h3>Audit Log</h3>
         <p>Every organization suspend/retire and account lock a platform admin has made.</p>
       </a>
+      <a
+          class="studio-card"
+          routerLink="/studio/release-notes"
+          [matBadge]="unseenReleaseNotesCount"
+          [matBadgeHidden]="unseenReleaseNotesCount === 0"
+          matBadgeColor="warn"
+        >
+        <span class="studio-card-icon studio-card-icon-tertiary"><mat-icon>new_releases</mat-icon></span>
+        <h3>Release Notes</h3>
+        <p>See what's new in ShelfSync — same list Manage's own hub shows.</p>
+      </a>
     </div>
   </div>
 </div>

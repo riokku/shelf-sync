@@ -41,9 +41,10 @@ export class ManageComponent implements OnInit {
    *  shared/utils/changelog.ts) — badged on this hub's own Release Notes
    *  card, same treatment as the three approval-queue counts above even
    *  though this isn't an approval queue itself; it's still "something new
-   *  worth a look" the same way those are. Purely local/static (no
-   *  Supabase query), so it's set directly rather than through the
-   *  Promise.all below. */
+   *  worth a look" the same way those are. Folded into the Promise.all
+   *  below alongside the other counts now that release_notes is a real
+   *  table (see the add_release_notes migration) rather than the static
+   *  array this used to read synchronously. */
   unseenReleaseNotesCount = 0;
   /** Audits still being counted/reconciled — badged on this hub's own
    *  Audits card. Visible to any approved member (same reach the Audits
@@ -61,38 +62,37 @@ export class ManageComponent implements OnInit {
     const profile = await this.authService.getProfile();
     const isAdmin = profile?.role === 'admin';
 
-    const [{ count: retirementCount }, { count: transferCount }, { count: joinCount }, { count: auditCount }] = await Promise.all([
-      this.supabase
-        .from('inventory_items')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'retirement_pending'),
-      this.supabase
-        .from('tasks')
-        .select('id', { count: 'exact', head: true })
-        .not('pending_transfer_to', 'is', null),
-      // isAdmin can only be true when profile is non-null (it's derived from
-      // profile?.role above), so profile!.organization_id is always a real
-      // value on this branch.
-      isAdmin
-        ? this.supabase
-            .from('profiles')
-            .select('id', { count: 'exact', head: true })
-            .eq('organization_id', profile!.organization_id)
-            .eq('membership_status', 'pending')
-        : Promise.resolve({ count: 0, error: null }),
-      this.supabase
-        .from('inventory_audits')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'in_progress')
-    ]);
+    const [{ count: retirementCount }, { count: transferCount }, { count: joinCount }, { count: auditCount }, unseenReleaseNotesCount] =
+      await Promise.all([
+        this.supabase
+          .from('inventory_items')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'retirement_pending'),
+        this.supabase
+          .from('tasks')
+          .select('id', { count: 'exact', head: true })
+          .not('pending_transfer_to', 'is', null),
+        // isAdmin can only be true when profile is non-null (it's derived from
+        // profile?.role above), so profile!.organization_id is always a real
+        // value on this branch.
+        isAdmin
+          ? this.supabase
+              .from('profiles')
+              .select('id', { count: 'exact', head: true })
+              .eq('organization_id', profile!.organization_id)
+              .eq('membership_status', 'pending')
+          : Promise.resolve({ count: 0, error: null }),
+        this.supabase
+          .from('inventory_audits')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'in_progress'),
+        profile ? getUnseenChangelogCount(this.supabase, profile.id) : Promise.resolve(0)
+      ]);
 
     this.pendingRetirementCount = retirementCount ?? 0;
     this.pendingTaskTransferCount = transferCount ?? 0;
     this.pendingJoinRequestCount = joinCount ?? 0;
     this.inProgressAuditCount = auditCount ?? 0;
-
-    if (profile) {
-      this.unseenReleaseNotesCount = getUnseenChangelogCount(profile.id);
-    }
+    this.unseenReleaseNotesCount = unseenReleaseNotesCount;
   }
 }

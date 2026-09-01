@@ -1,15 +1,24 @@
-<div class="manage-release-notes-wrapper">
+<div class="studio-release-notes-wrapper">
   <div class="container">
     <div class="page-toolbar">
       <app-breadcrumbs />
     </div>
     <div class="back-row">
-      <button mat-button type="button" routerLink="/manage">
+      <button mat-button type="button" routerLink="/studio">
         <mat-icon>arrow_back</mat-icon>
         Back
       </button>
     </div>
-    <app-page-header icon="new_releases" title="Release Notes" subtitle="What's shipped recently in ShelfSync." zone="insights" />
+    <app-page-header icon="new_releases" title="Release Notes" subtitle="Post, edit, or delete what's shipped in ShelfSync." zone="studio">
+      <button mat-flat-button color="primary" type="button" (click)="newReleaseNote()">
+        <mat-icon>add</mat-icon>
+        New release note
+      </button>
+    </app-page-header>
+
+    @if (deleteError) {
+      <p class="error-message">{{ deleteError }}</p>
+    }
 
     @if (isLoading) {
       <ul class="changelog-list" aria-hidden="true">
@@ -31,7 +40,7 @@
         </button>
       </app-empty-state>
     } @else if (releaseNotes.length === 0) {
-      <app-empty-state icon="new_releases" message="Nothing posted yet." />
+      <app-empty-state icon="new_releases" message="No release notes yet — post your first one." />
     } @else {
       <ul class="changelog-list">
         @for (entry of releaseNotes; track entry.id) {
@@ -51,6 +60,14 @@
                 }
               </span>
               <span class="changelog-description">{{ entry.description }}</span>
+            </span>
+            <span class="changelog-actions">
+              <button mat-icon-button type="button" matTooltip="Edit release note" (click)="editReleaseNote(entry)">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button type="button" matTooltip="Delete release note" (click)="removeReleaseNote(entry)">
+                <mat-icon>delete</mat-icon>
+              </button>
             </span>
           </li>
         }

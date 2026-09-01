@@ -1,0 +1,62 @@
+<h2 mat-dialog-title>
+  <mat-icon class="release-note-title-icon">new_releases</mat-icon>
+  {{ isEditing ? 'Edit release note' : 'New release note' }}
+</h2>
+<form [formGroup]="form" (ngSubmit)="save()">
+  <mat-dialog-content>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Title</mat-label>
+      <input matInput formControlName="title" maxlength="120" />
+      @if (form.controls.title.hasError('required') && form.controls.title.touched) {
+        <mat-error>A title is required.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Description</mat-label>
+      <textarea matInput formControlName="description" rows="4" placeholder="What changed, in a sentence or two."></textarea>
+      @if (form.controls.description.hasError('required') && form.controls.description.touched) {
+        <mat-error>A description is required.</mat-error>
+      }
+    </mat-form-field>
+
+    <div class="field-row">
+      <mat-form-field appearance="outline">
+        <mat-label>Severity</mat-label>
+        <mat-select formControlName="severity">
+          @for (option of severityOptions; track option.value) {
+            <mat-option [value]="option.value">{{ option.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Posted date</mat-label>
+        <mat-icon matPrefix>event</mat-icon>
+        <input matInput [matDatepicker]="postedAtPicker" formControlName="postedAt" />
+        <mat-datepicker-toggle matSuffix [for]="postedAtPicker"></mat-datepicker-toggle>
+        <mat-datepicker #postedAtPicker></mat-datepicker>
+        @if (form.controls.postedAt.hasError('required') && form.controls.postedAt.touched) {
+          <mat-error>A posted date is required.</mat-error>
+        }
+      </mat-form-field>
+    </div>
+
+    @if (error) {
+      <p class="error-message">{{ error }}</p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancel()">Cancel</button>
+    <button mat-flat-button color="primary" type="submit" [disabled]="isSaving || form.invalid">
+      @if (isSaving) {
+        <mat-spinner diameter="20"></mat-spinner>
+      } @else {
+        <ng-container>
+          <mat-icon class="send-icon">new_releases</mat-icon>
+          {{ isEditing ? 'Save changes' : 'Post release note' }}
+        </ng-container>
+      }
+    </button>
+  </mat-dialog-actions>
+</form>
