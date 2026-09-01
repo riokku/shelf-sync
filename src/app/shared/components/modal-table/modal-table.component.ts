@@ -767,6 +767,31 @@ export class ModalTableComponent implements OnInit {
     return 'history';
   }
 
+  /** Which of the Activity timeline's colored marker variants a message
+   *  maps to — mirrors activityIcon()'s own message-sniffing above (same
+   *  keywords, same precedence order), just returning a CSS class suffix
+   *  (see .timeline-marker-* in the stylesheet) instead of a Material icon
+   *  name. "Allocated"/"Updated"/anything else fold into 'default' rather
+   *  than getting their own color — those two aren't distinct enough
+   *  events to earn a dedicated color the way checking something in/out,
+   *  creating it, or discarding stock already are. */
+  activityColorClass(message: string): string {
+    const lower = message.toLowerCase();
+    if (lower.includes('checked out')) {
+      return 'checkout';
+    }
+    if (lower.includes('checked in')) {
+      return 'checkin';
+    }
+    if (lower.includes('created')) {
+      return 'create';
+    }
+    if (lower.includes('discarded')) {
+      return 'discard';
+    }
+    return 'default';
+  }
+
   async startEdit(){
     this.saveError = null;
     this.editForm.setValue({

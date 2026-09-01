@@ -6,6 +6,8 @@ import { HeaderComponent } from './header.component';
 import { AuthService } from '../core/auth.service';
 import { SupabaseService } from '../core/supabase.service';
 import { NotificationCenterService } from '../core/notification-center.service';
+import { ConfettiService } from '../core/confetti.service';
+import { NotificationService } from '../core/notification.service';
 import { createFakeAuthService, createFakeProfile, createFakeSupabaseService } from '../testing/fakes';
 
 describe('HeaderComponent', () => {
@@ -486,5 +488,61 @@ describe('HeaderComponent command palette', () => {
     component.activatePaletteSelection();
 
     expect(navigateSpy).toHaveBeenCalledWith(expected.routerLink, { queryParams: expected.queryParams });
+  });
+});
+
+describe('HeaderComponent Konami code easter egg', () => {
+  const KONAMI_KEYS = [
+    'ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown',
+    'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight',
+    'b', 'a'
+  ];
+
+  function setup() {
+    TestBed.configureTestingModule({
+      imports: [HeaderComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: SupabaseService, useValue: createFakeSupabaseService() }
+      ]
+    });
+    const fixture = TestBed.createComponent(HeaderComponent);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  function press(key: string) {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key }));
+  }
+
+  it('fires a confetti burst and a toast once the full sequence is entered', () => {
+    setup();
+    const burstSpy = spyOn(TestBed.inject(ConfettiService), 'burst');
+    const successSpy = spyOn(TestBed.inject(NotificationService), 'success');
+
+    KONAMI_KEYS.forEach(press);
+
+    expect(burstSpy).toHaveBeenCalled();
+    expect(successSpy).toHaveBeenCalledWith('🕹️ Konami code! You found the easter egg.');
+  });
+
+  it('does nothing for an incomplete sequence', () => {
+    setup();
+    const burstSpy = spyOn(TestBed.inject(ConfettiService), 'burst');
+
+    ['ArrowUp', 'ArrowUp', 'ArrowUp'].forEach(press);
+
+    expect(burstSpy).not.toHaveBeenCalled();
+  });
+
+  it('can be entered again immediately after completing it once', () => {
+    setup();
+    const burstSpy = spyOn(TestBed.inject(ConfettiService), 'burst');
+
+    KONAMI_KEYS.forEach(press);
+    KONAMI_KEYS.forEach(press);
+
+    expect(burstSpy).toHaveBeenCalledTimes(2);
   });
 });

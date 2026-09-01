@@ -1,0 +1,11 @@
+@for (piece of pieces; track piece.id) {
+  <span
+      class="confetti-piece"
+      [style.left.%]="piece.left"
+      [style.background]="piece.color"
+      [style.animation-delay.ms]="piece.delay"
+      [style.animation-duration.ms]="piece.duration"
+      [style.--drift]="piece.drift + 'px'"
+      [style.--rotation]="piece.rotation + 'deg'"
+    ></span>
+}
