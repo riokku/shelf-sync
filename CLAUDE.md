@@ -2123,13 +2123,37 @@ skeleton conventions rather than inventing new ones. `StudioComponent.loadStats(
 plain queries (`organizations.select('created_at')`, `profiles.select('created_at')` — both already
 permitted by existing policies, no migration needed) bucketed via a new `bucketByWeek()` utility
 (`shared/utils/trend-buckets.ts`) into 12-week `orgSignupTrend`/`userSignupTrend` arrays, rendered by
-a new shared `TrendChartComponent` (`shared/components/trend-chart`) — a hand-rolled CSS bar
-sparkline (plain `<div>`s scaled by `height.%`, no SVG arc math and no charting library, same "no new
-runtime dependency" convention `DonutChartComponent`/`RingStatComponent` already establish for their
-own hand-rolled charts), with every bar but the most recent de-emphasized via lower opacity so the eye
-lands on "right now," and a native `title` attribute per bar standing in for a hover tooltip. Two
-instances sit in a new `.studio-trends-row` under the existing stat grid — "Organizations created" and
-"New signups," the latter in `--mat-sys-tertiary` to read as a visually distinct second series.
+a new shared `TrendChartComponent` (`shared/components/trend-chart`) — originally a hand-rolled CSS
+bar sparkline, later redrawn as a hand-rolled SVG line chart instead (a line reads more naturally as a
+*trend over time* than a row of independent bars does — see below), still no charting library, same
+"no new runtime dependency" convention `DonutChartComponent`/`RingStatComponent` already establish for
+their own hand-rolled charts. Two instances sit in a new `.studio-trends-row` under the existing stat
+grid — "Organizations created" and "New signups," the latter in `--mat-sys-tertiary` to read as a
+visually distinct second series.
+
+`TrendChartComponent`'s line-chart redraw keeps the exact same input API (`points`/`totalLabel`/
+`colorToken`) its bar-chart original had, so neither of `StudioComponent`'s own two usages needed to
+change. The connecting line and its soft gradient area-fill underneath are a single SVG
+`viewBox="0 0 100 100"` with `preserveAspectRatio="none"` (so the chart always exactly fills whatever
+width/height its flex container gives it, the same "always fills its box" behavior the old `height:X%`
+bars had) — a `<polyline>` for the line and a `<polygon>` for the fill (closing down to the baseline at
+each end), both computed from one shared `plottedPoints` array so they can't drift out of sync with each
+other. `vector-effect="non-scaling-stroke"` on the line keeps its stroke a constant visual thickness
+under that viewBox's non-uniform scaling — the standard fix for a responsive SVG line chart, and the
+reason a *stroked* line survives this scaling cleanly while a *filled* circle wouldn't (see the next
+sentence). Per-point markers are deliberately plain HTML `<span>`s (`position: absolute; left/bottom %`,
+a `border-radius: 50%` circle sized in real pixels), not SVG `<circle>`s — an SVG circle's own radius
+would squash into an ellipse under the same non-uniform scaling that `non-scaling-stroke` only protects
+a *stroke* from, not a filled shape's underlying geometry, while a CSS circle sized in pixels is immune
+to viewBox scaling entirely. Only the most recent point renders a visible dot at rest (the point a
+viewer's eye should land on, same "de-emphasize everything but current" spirit the old bar chart's own
+per-bar opacity already had) — every other point stays individually hoverable (still carries its own
+native `title` — the same "exact value on hover, no custom tooltip" layer every bar always had) but sits
+at `opacity: 0` until hovered, so the chart reads as line-plus-one-dot rather than a cluttered row of
+markers. A zero-value point still sits visibly above the baseline (`bottomPercent` floors at 10, not 0)
+rather than flush against it — the same "shouldn't read as a rendering bug" reasoning the old bar
+chart's own 4%-minimum-height floor gave, just no longer needing an artificial minimum at all now that a
+*point* (unlike a zero-height bar) is never actually invisible sitting at the very bottom.
 
 `studio/usage` (`StudioUsageComponent`) is a per-org resource-usage leaderboard plus a Free-tier
 pressure report, both fed by one new cross-org RPC, `platform_get_organization_usage()` (see its own
@@ -2627,7 +2651,7 @@ shared/
   components/page-intro/ # one-time dismissible orientation banner for a page's first-time visitor (Inventory, Tasks, Manage hub)
   components/donut-chart/ # hand-rolled SVG donut chart (no charting library) — backs manage/reports' "Value by category"
   components/ring-stat/ # hand-rolled SVG percentage ring gauge — backs manage/reports' completion-rate stat
-  components/trend-chart/ # hand-rolled CSS bar sparkline (no charting library) — backs studio's own growth trend charts
+  components/trend-chart/ # hand-rolled SVG line-chart sparkline (no charting library) — backs studio's own growth trend charts
   components/page-header/ # icon-chip + title/subtitle header, shared across most manage/* sub-pages
   components/feedback-modal/ # self-contained feedback-type + message dialog backing the Help page's "Send feedback" button
   components/broadcast-modal/ # self-contained title/message + member/item reference picker dialog backing /broadcasts, create and edit alike
