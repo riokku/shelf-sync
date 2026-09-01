@@ -17,7 +17,11 @@ function createTableAwareFakeSupabase(
   } as unknown as SupabaseClient<Database>;
 }
 
-const PROFILES = [createFakeProfile({ id: 'user-1', full_name: 'Jamie Lee', nickname: null })];
+const PROFILES = [
+  createFakeProfile({ id: 'user-1', full_name: 'Jamie Lee', nickname: null, avatar_key: 'shape-1' }),
+  createFakeProfile({ id: 'user-2', full_name: 'Sam Rivera', nickname: null, avatar_key: 'shape-2' }),
+  createFakeProfile({ id: 'user-3', full_name: 'Alex Chen', nickname: null, avatar_key: null })
+];
 
 describe('loadAuditSummaries', () => {
   it('tallies counted/discrepancy counts per audit from a single counts query', async () => {
@@ -85,6 +89,61 @@ describe('loadAuditSummaries', () => {
     expect(audits).toEqual([]);
     expect(error).toBe('Network error');
   });
+
+  it('resolves lead/supporters, sorting supporters by label', async () => {
+    const supabase = createTableAwareFakeSupabase({
+      inventory_audits: {
+        data: [
+          {
+            id: 'audit-1', organization_id: 'org-1', status: 'in_progress', physical_location: null,
+            note: null, started_by: 'user-1', started_at: '2026-01-01T00:00:00.000Z',
+            completed_by: null, completed_at: null, cancelled_by: null, cancelled_at: null,
+            lead_id: 'user-1'
+          }
+        ],
+        error: null
+      },
+      inventory_audit_counts: { data: [], error: null },
+      inventory_audit_supporters: {
+        data: [
+          { audit_id: 'audit-1', user_id: 'user-2' },
+          { audit_id: 'audit-1', user_id: 'user-3' }
+        ],
+        error: null
+      }
+    });
+
+    const { audits } = await loadAuditSummaries(supabase, PROFILES);
+
+    expect(audits[0].lead).toEqual({ id: 'user-1', label: 'Jamie Lee', avatarKey: 'shape-1' });
+    expect(audits[0].supporters).toEqual([
+      { id: 'user-3', label: 'Alex Chen', avatarKey: null },
+      { id: 'user-2', label: 'Sam Rivera', avatarKey: 'shape-2' }
+    ]);
+  });
+
+  it('leaves lead null and supporters empty when nobody has claimed the audit', async () => {
+    const supabase = createTableAwareFakeSupabase({
+      inventory_audits: {
+        data: [
+          {
+            id: 'audit-1', organization_id: 'org-1', status: 'in_progress', physical_location: null,
+            note: null, started_by: 'user-1', started_at: '2026-01-01T00:00:00.000Z',
+            completed_by: null, completed_at: null, cancelled_by: null, cancelled_at: null,
+            lead_id: null
+          }
+        ],
+        error: null
+      },
+      inventory_audit_counts: { data: [], error: null },
+      inventory_audit_supporters: { data: [], error: null }
+    });
+
+    const { audits } = await loadAuditSummaries(supabase, PROFILES);
+
+    expect(audits[0].lead).toBeNull();
+    expect(audits[0].supporters).toEqual([]);
+  });
 });
 
 describe('loadAuditDetail', () => {
@@ -133,6 +192,27 @@ describe('loadAuditDetail', () => {
     expect(table?.itemName).toBe('Round Table');
     expect(table?.isContainerTracked).toBeFalse();
     expect(table?.countedQuantity).toBeNull();
+  });
+
+  it('resolves the audit\'s own lead/supporters alongside its count rows', async () => {
+    const supabase = createTableAwareFakeSupabase({
+      inventory_audits: {
+        data: {
+          id: 'audit-1', organization_id: 'org-1', status: 'in_progress', physical_location: null,
+          note: null, started_by: 'user-1', started_at: '2026-01-01T00:00:00.000Z',
+          completed_by: null, completed_at: null, cancelled_by: null, cancelled_at: null,
+          lead_id: 'user-2'
+        },
+        error: null
+      },
+      inventory_audit_counts: { data: [], error: null },
+      inventory_audit_supporters: { data: [{ user_id: 'user-3' }], error: null }
+    });
+
+    const { audit } = await loadAuditDetail(supabase, 'audit-1', PROFILES);
+
+    expect(audit?.lead).toEqual({ id: 'user-2', label: 'Sam Rivera', avatarKey: 'shape-2' });
+    expect(audit?.supporters).toEqual([{ id: 'user-3', label: 'Alex Chen', avatarKey: null }]);
   });
 
   it('returns a null audit (no error) when the audit id does not resolve to anything visible', async () => {

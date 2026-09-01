@@ -15,7 +15,15 @@
   <div class="audit-header">
     <app-ring-stat [percent]="percentCounted" label="Counted" colorToken="--mat-sys-primary" />
     <div class="audit-header-info">
-      <h2 class="audit-header-location">{{ audit.physicalLocation || 'Whole organization' }}</h2>
+      <div class="audit-header-title-row">
+        <h2 class="audit-header-location">{{ audit.physicalLocation || 'Whole organization' }}</h2>
+        <span class="status-pill" [class]="'audit-' + audit.status">
+          <mat-icon>
+            {{ audit.status === 'completed' ? 'check_circle' : audit.status === 'cancelled' ? 'cancel' : 'hourglass_top' }}
+          </mat-icon>
+          {{ audit.status === 'in_progress' ? 'In progress' : audit.status === 'completed' ? 'Completed' : 'Cancelled' }}
+        </span>
+      </div>
       <p class="audit-header-meta">
         Started by {{ audit.startedByLabel }} &middot; {{ audit.startedAt | date: 'M/d/yy, h:mm a' }}
         @if (audit.note) {
@@ -38,18 +46,22 @@
         }
       </p>
     </div>
-    @if (isInProgress && authService.canManage()) {
+    @if (canCancelAudit || canCompleteAudit) {
       <div class="audit-header-actions">
-        <button mat-button type="button" [disabled]="isFinishing" (click)="cancelAudit()">
-          Cancel audit
-        </button>
-        <button mat-flat-button color="primary" type="button" [disabled]="isFinishing" (click)="completeAudit()">
-          @if (isFinishing) {
-            <mat-spinner diameter="20"></mat-spinner>
-          } @else {
-            Complete audit
-          }
-        </button>
+        @if (canCancelAudit) {
+          <button mat-button type="button" [disabled]="isFinishing" (click)="cancelAudit()">
+            Cancel audit
+          </button>
+        }
+        @if (canCompleteAudit) {
+          <button mat-flat-button color="primary" type="button" [disabled]="isFinishing" (click)="completeAudit()">
+            @if (isFinishing) {
+              <mat-spinner diameter="20"></mat-spinner>
+            } @else {
+              Complete audit
+            }
+          </button>
+        }
       </div>
     }
   </div>
@@ -58,52 +70,146 @@
     <p class="error-message">{{ finishError }}</p>
   }
 
-  @if (isInProgress && notYetCounted.length > 0) {
+  <section class="audit-section audit-team-section">
+    <div class="audit-section-header-row">
+      <h3 class="audit-section-title">
+        <mat-icon>group</mat-icon>
+        Audit team
+      </h3>
+      @if (isInProgress && !isEditingTeam) {
+        <button mat-stroked-button type="button" (click)="startEditingTeam()">
+          <mat-icon>edit</mat-icon>
+          Edit
+        </button>
+      }
+    </div>
+
+    @if (isEditingTeam) {
+      <!-- Editing: the dropdowns are the only thing shown — the saved-team
+           chips below only ever reflect the server's own state, so they'd
+           just be stale/misleading sitting next to an in-progress edit. -->
+      <div class="audit-team-fields">
+        <mat-form-field appearance="outline" class="audit-team-field">
+          <mat-label>Lead</mat-label>
+          <mat-select [formControl]="teamForm.controls.leadId" [disabled]="isSavingTeam" (selectionChange)="onLeadChange()">
+            <mat-option [value]="null">Unclaimed</mat-option>
+            @for (profile of approvedProfiles; track profile.id) {
+              <mat-option [value]="profile.id">{{ profileDisplayName(profile) }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="audit-team-field">
+          <mat-label>Support</mat-label>
+          <mat-select multiple [formControl]="teamForm.controls.supportIds" [disabled]="isSavingTeam">
+            @for (profile of availableSupportProfiles; track profile.id) {
+              <mat-option [value]="profile.id">{{ profileDisplayName(profile) }}</mat-option>
+            } @empty {
+              <mat-option disabled>No other approved members</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+      <div class="audit-team-edit-actions">
+        <button mat-button type="button" [disabled]="isSavingTeam" (click)="cancelEditingTeam()">
+          Cancel
+        </button>
+        <button mat-flat-button color="primary" type="button" [disabled]="isSavingTeam" (click)="saveTeam()">
+          @if (isSavingTeam) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            Save
+          }
+        </button>
+      </div>
+      @if (teamError) {
+        <p class="error-message">{{ teamError }}</p>
+      }
+    } @else if (audit.lead || audit.supporters.length > 0) {
+      <!-- Not editing: the saved team, name-plus-avatar per person. -->
+      <div class="audit-team-chips">
+        @if (audit.lead) {
+          <span class="audit-team-chip audit-team-chip-lead">
+            <app-user-avatar [avatarKey]="audit.lead.avatarKey" size="sm" />
+            {{ audit.lead.label }}
+            <span class="audit-team-chip-tag">Lead</span>
+          </span>
+        }
+        @for (member of audit.supporters; track member.id) {
+          <span class="audit-team-chip">
+            <app-user-avatar [avatarKey]="member.avatarKey" size="sm" />
+            {{ member.label }}
+          </span>
+        }
+      </div>
+    } @else {
+      <p class="audit-team-summary">Nobody has claimed this audit yet.</p>
+    }
+  </section>
+
+  @if (notYetCounted.length > 0) {
     <section class="audit-section">
       <h3 class="audit-section-title">
         <mat-icon>checklist</mat-icon>
-        Count an item
+        @if (isInProgress) {
+          Count items ({{ notYetCounted.length }})
+        } @else {
+          Not yet counted ({{ notYetCounted.length }})
+        }
       </h3>
-      <form (ngSubmit)="submitCount()" class="count-entry-form">
+      @if (!isInProgress) {
+        <!-- The audit finished with these items never counted — a
+             read-only record at this point, not something left to fill
+             in. -->
+        <ul class="not-counted-list">
+          @for (count of notYetCounted; track count.id) {
+            <li>{{ count.itemName }}</li>
+          }
+        </ul>
+      } @else {
         <mat-form-field appearance="outline" class="count-entry-search">
-          <mat-label>Item</mat-label>
-          <mat-icon matPrefix>inventory_2</mat-icon>
-          <input
-              matInput
-              placeholder="Search items not yet counted…"
-              [formControl]="countSearchControl"
-              [matAutocomplete]="countAuto"
-            />
-          <mat-autocomplete #countAuto="matAutocomplete" (optionSelected)="onCountItemSelected($event)">
-            @for (count of filteredNotYetCounted; track count.id) {
-              <mat-option [value]="count.id">{{ count.itemName }}</mat-option>
-            } @empty {
-              <mat-option disabled>No matching items left to count</mat-option>
-            }
-          </mat-autocomplete>
+          <mat-label>Filter</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput placeholder="Filter items not yet counted…" [formControl]="countSearchControl" />
         </mat-form-field>
 
-        @if (selectedCount) {
-          <mat-form-field appearance="outline" class="count-entry-quantity">
-            <mat-label>Counted quantity</mat-label>
-            <mat-icon matPrefix>numbers</mat-icon>
-            <input matInput type="number" min="0" [formControl]="countForm.controls.quantity" />
-          </mat-form-field>
-          <mat-form-field appearance="outline" class="count-entry-note">
-            <mat-label>Note (optional)</mat-label>
-            <input matInput [formControl]="countForm.controls.note" />
-          </mat-form-field>
-          <button mat-flat-button color="primary" type="submit" [disabled]="isSubmittingCount">
-            @if (isSubmittingCount) {
-              <mat-spinner diameter="20"></mat-spinner>
-            } @else {
-              Submit count
-            }
-          </button>
-        }
-      </form>
-      @if (countError) {
-        <p class="error-message">{{ countError }}</p>
+        <ul class="count-entry-list">
+          @for (count of filteredNotYetCounted; track count.id) {
+            <li>
+              <form (ngSubmit)="submitCount(count)" class="count-entry-card">
+                <span class="count-entry-card-title">{{ count.itemName }}</span>
+                <div class="count-entry-quantities">
+                  <mat-form-field appearance="outline" class="count-entry-quantity">
+                    <mat-label>Expected quantity</mat-label>
+                    <input matInput type="number" [value]="count.expectedQuantity" disabled />
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="count-entry-quantity count-entry-quantity-counted">
+                    <mat-label>Counted quantity</mat-label>
+                    <mat-icon matPrefix>numbers</mat-icon>
+                    <input matInput type="number" min="0" [formControl]="countFormFor(count).controls.quantity" />
+                  </mat-form-field>
+                </div>
+                <div class="count-entry-note-row">
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="count-entry-note">
+                    <mat-label>Note (optional)</mat-label>
+                    <input matInput [formControl]="countFormFor(count).controls.note" />
+                  </mat-form-field>
+                  <button mat-flat-button color="primary" type="submit" [disabled]="isSubmittingCount(count.id)">
+                    @if (isSubmittingCount(count.id)) {
+                      <mat-spinner diameter="20"></mat-spinner>
+                    } @else {
+                      Submit count
+                    }
+                  </button>
+                </div>
+                @if (countErrorFor(count.id)) {
+                  <p class="error-message">{{ countErrorFor(count.id) }}</p>
+                }
+              </form>
+            </li>
+          } @empty {
+            <li class="count-entry-empty">No items match that filter.</li>
+          }
+        </ul>
       }
     </section>
   }
@@ -169,23 +275,36 @@
   }
 
   @if (matches.length > 0) {
-    <p class="audit-matches-summary">
-      <mat-icon>check_circle</mat-icon>
-      {{ matches.length }} item{{ matches.length === 1 ? '' : 's' }} matched exactly.
-    </p>
-  }
-
-  @if (notYetCounted.length > 0) {
     <section class="audit-section">
       <h3 class="audit-section-title">
-        <mat-icon>hourglass_top</mat-icon>
-        Not yet counted ({{ notYetCounted.length }})
+        <mat-icon>check_circle</mat-icon>
+        Audited items ({{ matches.length }})
       </h3>
-      <ul class="not-counted-list">
-        @for (count of notYetCounted; track count.id) {
-          <li>{{ count.itemName }}</li>
+      <ul class="count-list">
+        @for (count of matches; track count.id) {
+          <li class="count-row">
+            <div class="count-row-info">
+              <a class="count-item-link" routerLink="/inventory" [queryParams]="{ item: count.itemId }">
+                {{ count.itemName }}
+              </a>
+              <span class="count-delta count-delta-match mono">
+                expected {{ count.expectedQuantity }}, counted {{ count.countedQuantity }}, difference 0
+              </span>
+              <span class="count-meta">
+                Counted by {{ count.countedByLabel || 'Unknown user' }} &middot; {{ count.countedAt | date: 'M/d/yy, h:mm a' }}
+                @if (count.note) {
+                  &middot; {{ count.note }}
+                }
+              </span>
+            </div>
+            <span class="count-match-tag">
+              <mat-icon>check_circle</mat-icon>
+              Matched
+            </span>
+          </li>
         }
       </ul>
     </section>
   }
+
 }

@@ -79,6 +79,12 @@ function createFakeSupabaseServiceForHome(counts: { items: number; tasks: number
         if (table === 'profiles') {
           return builderFor(counts.teammates);
         }
+        // Not under test in this describe block — same "resolve cleanly,
+        // stay empty" treatment as every other table this fake doesn't
+        // distinguish, so ngOnInit()'s own activeAudits query doesn't throw.
+        if (table === 'inventory_audits') {
+          return builderFor(0);
+        }
         return builderFor(counts.items);
       }
     }
@@ -94,6 +100,10 @@ interface PersonalStatsFakeData {
    *  comes back with — see loadPersonalStats()'s own two-step
    *  reservation-name-resolution comment. */
   itemNames?: { id: string; name: string }[];
+  /** ngOnInit()'s own `inventory_audits` query — see activeAudits' own doc
+   *  comment for why this rides alongside the restock query rather than
+   *  inside loadPersonalStats() itself. */
+  activeAudits?: { id: string; physical_location: string | null; started_at: string }[];
 }
 
 /** Table-aware in the same style as createFakeSupabaseServiceForHome above,
@@ -129,6 +139,12 @@ function createFakeSupabaseServiceForPersonalStats(data: PersonalStatsFakeData):
         }
         if (table === 'inventory_item_reservations') {
           return builderFor(data.reservations ?? []);
+        }
+        // Handled explicitly (not left to the inventory_items fallback
+        // below) so it doesn't throw off inventoryItemsCallCount's own
+        // ordering, which only ever tracks real inventory_items calls.
+        if (table === 'inventory_audits') {
+          return builderFor(data.activeAudits ?? []);
         }
         inventoryItemsCallCount++;
         if (inventoryItemsCallCount === 1) {
@@ -333,6 +349,60 @@ function createFakeSupabaseServiceFailingTasksOnce(): SupabaseService {
   };
   return fake as unknown as SupabaseService;
 }
+
+describe('HomeComponent active audits', () => {
+  async function createComponent(activeAudits: PersonalStatsFakeData['activeAudits']) {
+    await TestBed.resetTestingModule().configureTestingModule({
+      imports: [HomeComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: 'staff' })) },
+        { provide: SupabaseService, useValue: createFakeSupabaseServiceForPersonalStats({ activeAudits }) }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(HomeComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    return fixture;
+  }
+
+  it('lists every in-progress audit org-wide, not just ones the signed-in user started', async () => {
+    const fixture = await createComponent([
+      { id: 'audit-1', physical_location: 'Main warehouse', started_at: '2026-09-01' }
+    ]);
+
+    expect(fixture.componentInstance.activeAudits).toEqual([
+      { id: 'audit-1', label: 'Main warehouse', startedAt: '2026-09-01' }
+    ]);
+  });
+
+  it('falls back to "Whole organization" for an org-wide (unscoped) audit', async () => {
+    const fixture = await createComponent([
+      { id: 'audit-1', physical_location: null, started_at: '2026-09-01' }
+    ]);
+
+    expect(fixture.componentInstance.activeAudits[0].label).toBe('Whole organization');
+  });
+
+  it('caps the visible list at 4 entries and reports how many more exist', async () => {
+    const audits = Array.from({ length: 6 }, (_, i) => (
+      { id: `audit-${i}`, physical_location: null, started_at: '2026-09-01' }
+    ));
+    const fixture = await createComponent(audits);
+
+    expect(fixture.componentInstance.activeAudits.length).toBe(6);
+    expect(fixture.componentInstance.visibleActiveAudits.length).toBe(4);
+    expect(fixture.componentInstance.activeAuditsOverflowCount).toBe(2);
+  });
+
+  it('shows an empty list when nothing is in progress', async () => {
+    const fixture = await createComponent([]);
+
+    expect(fixture.componentInstance.activeAudits).toEqual([]);
+    expect(fixture.componentInstance.activeAuditsOverflowCount).toBe(0);
+  });
+});
 
 describe('HomeComponent personal stats load errors', () => {
   // 'staff' so loadGettingStarted() never fires its own inventory_items/

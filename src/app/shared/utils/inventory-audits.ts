@@ -1,8 +1,8 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '../models/database.types';
 import { Profile } from '../../core/auth.service';
-import { InventoryAudit, InventoryAuditCount, InventoryAuditStatus, isAuditDiscrepancy } from '../models/inventory-audit.model';
-import { resolveProfileName } from './profile-label';
+import { InventoryAudit, InventoryAuditCount, InventoryAuditStatus, InventoryAuditTeamMember, isAuditDiscrepancy } from '../models/inventory-audit.model';
+import { resolveProfileAvatarKey, resolveProfileName } from './profile-label';
 
 type InventoryAuditRow = Database['public']['Tables']['inventory_audits']['Row'];
 type InventoryAuditCountRow = Database['public']['Tables']['inventory_audit_counts']['Row'];
@@ -12,7 +12,8 @@ function toInventoryAudit(
   profiles: Profile[],
   totalItems: number,
   countedItems: number,
-  discrepancyCount: number
+  discrepancyCount: number,
+  supporterIds: string[]
 ): InventoryAudit {
   return {
     id: row.id,
@@ -27,7 +28,15 @@ function toInventoryAudit(
     cancelledAt: row.cancelled_at ?? '',
     totalItems,
     countedItems,
-    discrepancyCount
+    discrepancyCount,
+    lead: row.lead_id
+      ? { id: row.lead_id, label: resolveProfileName(row.lead_id, profiles) || 'Unknown user', avatarKey: resolveProfileAvatarKey(row.lead_id, profiles) }
+      : null,
+    supporters: supporterIds
+      .map((id): InventoryAuditTeamMember => (
+        { id, label: resolveProfileName(id, profiles) || 'Unknown user', avatarKey: resolveProfileAvatarKey(id, profiles) }
+      ))
+      .sort((a, b) => a.label.localeCompare(b.label))
   };
 }
 
@@ -68,9 +77,14 @@ export async function loadAuditSummaries(
   supabase: SupabaseClient<Database>,
   profiles: Profile[]
 ): Promise<{ audits: InventoryAudit[]; error: string | null }> {
-  const [{ data: auditRows, error: auditError }, { data: countRows, error: countError }] = await Promise.all([
+  const [
+    { data: auditRows, error: auditError },
+    { data: countRows, error: countError },
+    { data: supporterRows, error: supporterError }
+  ] = await Promise.all([
     supabase.from('inventory_audits').select('*').order('started_at', { ascending: false }),
-    supabase.from('inventory_audit_counts').select('audit_id, expected_quantity, counted_quantity')
+    supabase.from('inventory_audit_counts').select('audit_id, expected_quantity, counted_quantity'),
+    supabase.from('inventory_audit_supporters').select('audit_id, user_id')
   ]);
 
   if (auditError) {
@@ -78,6 +92,9 @@ export async function loadAuditSummaries(
   }
   if (countError) {
     return { audits: [], error: countError.message };
+  }
+  if (supporterError) {
+    return { audits: [], error: supporterError.message };
   }
 
   const countsByAudit = new Map<string, { expected_quantity: number; counted_quantity: number | null }[]>();
@@ -87,13 +104,20 @@ export async function loadAuditSummaries(
     countsByAudit.set(row.audit_id, list);
   }
 
+  const supporterIdsByAudit = new Map<string, string[]>();
+  for (const row of supporterRows ?? []) {
+    const list = supporterIdsByAudit.get(row.audit_id) ?? [];
+    list.push(row.user_id);
+    supporterIdsByAudit.set(row.audit_id, list);
+  }
+
   const audits = (auditRows ?? []).map(row => {
     const counts = countsByAudit.get(row.id) ?? [];
     const countedItems = counts.filter(count => count.counted_quantity !== null).length;
     const discrepancyCount = counts.filter(
       count => count.counted_quantity !== null && count.counted_quantity !== count.expected_quantity
     ).length;
-    return toInventoryAudit(row, profiles, counts.length, countedItems, discrepancyCount);
+    return toInventoryAudit(row, profiles, counts.length, countedItems, discrepancyCount, supporterIdsByAudit.get(row.id) ?? []);
   });
 
   return { audits, error: null };
@@ -120,9 +144,14 @@ export async function loadAuditDetail(
   auditId: string,
   profiles: Profile[]
 ): Promise<{ audit: InventoryAudit | null; counts: InventoryAuditCount[]; error: string | null }> {
-  const [{ data: auditRow, error: auditError }, { data: countRows, error: countError }] = await Promise.all([
+  const [
+    { data: auditRow, error: auditError },
+    { data: countRows, error: countError },
+    { data: supporterRows, error: supporterError }
+  ] = await Promise.all([
     supabase.from('inventory_audits').select('*').eq('id', auditId).maybeSingle(),
-    supabase.from('inventory_audit_counts').select('*').eq('audit_id', auditId)
+    supabase.from('inventory_audit_counts').select('*').eq('audit_id', auditId),
+    supabase.from('inventory_audit_supporters').select('user_id').eq('audit_id', auditId)
   ]);
 
   if (auditError) {
@@ -130,6 +159,9 @@ export async function loadAuditDetail(
   }
   if (countError) {
     return { audit: null, counts: [], error: countError.message };
+  }
+  if (supporterError) {
+    return { audit: null, counts: [], error: supporterError.message };
   }
   if (!auditRow) {
     return { audit: null, counts: [], error: null };
@@ -152,7 +184,10 @@ export async function loadAuditDetail(
 
   const countedItems = counts.filter(count => count.countedQuantity !== null).length;
   const discrepancyCount = counts.filter(isAuditDiscrepancy).length;
-  const audit = toInventoryAudit(auditRow, profiles, counts.length, countedItems, discrepancyCount);
+  const audit = toInventoryAudit(
+    auditRow, profiles, counts.length, countedItems, discrepancyCount,
+    (supporterRows ?? []).map(row => row.user_id)
+  );
 
   return { audit, counts, error: null };
 }

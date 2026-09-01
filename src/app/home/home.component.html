@@ -96,6 +96,20 @@
         <h3>Tasks</h3>
         <p>See what's assigned to you.</p>
       </a>
+      <a class="home-card" routerLink="/manage/reservations">
+        <span class="home-card-icon home-card-icon-e">
+          <mat-icon>event</mat-icon>
+        </span>
+        <h3>Reservations</h3>
+        <p>Book and track upcoming reservations.</p>
+      </a>
+      <a class="home-card" routerLink="/manage/audits">
+        <span class="home-card-icon home-card-icon-f">
+          <mat-icon>fact_check</mat-icon>
+        </span>
+        <h3>Audits</h3>
+        <p>Help reconcile physical stock counts.</p>
+      </a>
       <a class="home-card" routerLink="/account">
         <span class="home-card-icon home-card-icon-c">
           <mat-icon>account_circle</mat-icon>
@@ -207,7 +221,7 @@
 
       <div class="home-list-card">
         <div class="home-list-header">
-          <span class="home-list-icon home-list-icon-c">
+          <span class="home-list-icon home-list-icon-e">
             <mat-icon>event</mat-icon>
           </span>
           <span class="home-list-title">
@@ -238,6 +252,38 @@
           </ul>
           @if (upcomingReservationsOverflowCount > 0) {
             <a class="home-list-more" routerLink="/manage/reservations">+{{ upcomingReservationsOverflowCount }} more</a>
+          }
+        }
+      </div>
+
+      <div class="home-list-card">
+        <div class="home-list-header">
+          <span class="home-list-icon home-list-icon-f">
+            <mat-icon>fact_check</mat-icon>
+          </span>
+          <span class="home-list-title">
+            <span class="home-list-label">Active audits</span>
+            <span class="home-list-count mono">{{ activeAudits.length }}</span>
+          </span>
+        </div>
+        @if (activeAudits.length === 0) {
+          <p class="home-list-empty">No audits are in progress right now.</p>
+        } @else {
+          <ul class="home-list-items">
+            @for (audit of visibleActiveAudits; track audit.id) {
+              <li>
+                <a [routerLink]="['/manage/audits']" [queryParams]="{ audit: audit.id }" class="severity-ok">
+                  <span class="home-list-item-text">
+                    <span class="home-list-item-primary">{{ audit.label }}</span>
+                    <span class="home-list-item-secondary">Started {{ audit.startedAt | date: 'M/d/yy' }}</span>
+                  </span>
+                  <mat-icon class="home-list-item-arrow" aria-hidden="true">chevron_right</mat-icon>
+                </a>
+              </li>
+            }
+          </ul>
+          @if (activeAuditsOverflowCount > 0) {
+            <a class="home-list-more" routerLink="/manage/audits">+{{ activeAuditsOverflowCount }} more</a>
           }
         }
       </div>

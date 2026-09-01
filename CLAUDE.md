@@ -414,10 +414,16 @@ than the reservation itself). The reservation list resolves each entry's item na
 small `inventory_items` lookup keyed by the distinct item ids on the fetched reservations — a plain
 client-side id->name map, same convention as `inventory-item-orders.ts`'s own `itemNamesById`,
 rather than a PostgREST embedded-resource select. Skipped outright for a signed-out session, same
-as `loadGettingStarted()`'s own guard. `.home-grid`'s card order is Inventory, Tasks, Account, then
-Manage last (admin/manager-only, so it's the one card that can be absent) — Manage used to sit
-third, but as the "administer everything" destination it reads better as the final, most-privileged
-stop rather than interrupting the everyday Inventory/Tasks/Account row.
+as `loadGettingStarted()`'s own guard. `.home-grid`'s card order is Inventory, Tasks, Reservations,
+Account, then Manage last (admin/manager-only, so it's the one card that can be absent) — Manage
+used to sit third, but as the "administer everything" destination it reads better as the final,
+most-privileged stop rather than interrupting the everyday row of destinations everyone can reach.
+Reservations was added to this grid after the fact (originally reachable from Home only via its own
+personal "upcoming reservations" list card below, or the nav drawer/Quick Menu) — same
+`approvedGuard` tier as Home itself, so no `@if` gate is needed the way Manage/Studio need one; its
+icon chip (`home-card-icon-e`) is reused by the "Your upcoming reservations" list card's own header
+icon too, matching the "list icon echoes its conceptually-matching nav card" convention this
+paragraph already documents for Tasks/Inventory.
 
 Inventory items can carry a `barcode` (manufacturer UPC/EAN scanned off a retail product, or a
 ShelfSync-generated QR label for an internal asset that never had one — see
@@ -926,8 +932,18 @@ any not-yet-counted item via `submit_audit_count()` — no role check beyond org
 staff-level trust `widen_reservation_access_to_staff.sql` already established for physical warehouse
 work; re-submitting overwrites, so a miscount is fixable until the audit is finalized. A counted
 item lands in one of three buckets purely computed client-side from its `expected_quantity` vs
-`counted_quantity` (`isAuditDiscrepancy()`, `shared/models/inventory-audit.model.ts`): matches
-(collapsed to a summary count only), discrepancies, or (uncounted) not-yet-counted.
+`counted_quantity` (`isAuditDiscrepancy()`, `shared/models/inventory-audit.model.ts`): matches,
+discrepancies, or (uncounted) not-yet-counted. Matches render as their own "Audited items" section,
+the same per-item card treatment Discrepancies already has (`.count-row`, name/expected/counted/
+"difference 0", who counted it and when) rather than a single collapsed "N items matched exactly"
+summary line — a match's own difference is always literally 0 by definition (a match is exactly
+"counted equals expected"), so that field is a plain hardcoded `0` in the template rather than a
+computed one, tagged with a success-toned "Matched" pill instead of Discrepancies' own
+Apply/Applied/Container-tracked tag.
+`AuditDetailComponent`'s own header also denotes the audit's status directly (a `.status-pill`,
+same markup/palette `ManageAuditsComponent`'s own list row already established for this exact
+in_progress/completed/cancelled set) — previously only inferable on the detail page itself from
+which meta lines ("Completed by…"/"Cancelled by…") or header buttons happened to render.
 
 Reconciling a discrepancy is admin/manager-only — the same trust split `approve_item_retirement`
 draws against discarding stock elsewhere in this schema — via `apply_audit_count()` (per-row) or a
@@ -946,7 +962,18 @@ editor. Applying and completing are independent actions: "Complete audit"
 auto-apply whatever's left unapplied, since a manager might deliberately choose not to trust a
 particular count — an unapplied discrepancy stays visible in the completed audit's own history
 rather than being forced through. "Cancel audit" (`cancel_inventory_audit()`) is the only other way
-out of `in_progress`, no reconciliation attempted.
+out of `in_progress`, no reconciliation attempted, and stays admin/manager-only outright — cancelling
+mid-audit is always a judgment call.
+
+Completing itself was originally admin/manager-only too, same as cancelling — widened so any approved
+member can complete an audit once nothing in it is left uncounted (`AuditDetailComponent`'s own
+`canCompleteAudit` getter, `authService.canManage() || notYetCounted.length === 0`), since once every
+item has a submitted count there's no judgment call left to make; leaving discrepancies unapplied is
+still fine (see above), but an admin/manager choosing to complete *before* everything's counted is a
+real decision only they can make. Enforced server-side, not just in the template —
+`complete_inventory_audit()` counts its own audit's still-null `counted_quantity` rows and only
+raises the admin/manager-only exception when that count is nonzero, so a direct RPC call from a
+non-manager on a not-fully-counted audit is rejected exactly like before.
 
 `inventory_audits` is an org-level table (its own `organization_id`), not a per-item child — modeled
 on `broadcasts` rather than the containers/discards/orders/reservations shape, since an audit spans
@@ -962,6 +989,86 @@ already does. `apply_audit_count()` shipped with a real bug caught and fixed sam
 client code depended on it: no guard against being called twice on an already-applied row, which
 would have silently double-shifted the item's quantity on a retry/double-click/stale-render — see
 `20260920120100_fix_apply_audit_count_double_apply.sql`'s own comment.
+
+An in-progress audit can also be claimed by an org member (or several) as an explicit "who owns
+finishing this" signal — a single `lead` plus any number of `supporters`, both surfaced on
+`AuditDetailComponent`'s own "Audit team" section as a Lead `mat-select` and a Support
+`mat-select multiple`, and echoed as a small "Led by X" tag on each row of `ManageAuditsComponent`'s
+own list. Purely organizational: neither changes who's actually allowed to count/apply/complete —
+`set_audit_team()` has no role check beyond org membership, the same staff-level, self-claimable
+("I've got this one") trust `submit_audit_count()` already established, not an admin/manager-only
+assignment. `inventory_audits.lead_id` is a plain nullable FK (same `on delete set null` shape
+`started_by`/`completed_by`/`cancelled_by` already use); support is many-to-many, so it's a child
+table (`inventory_audit_supporters`, `unique (audit_id, user_id)`) rather than a second FK column —
+same real-FK-cascades-cleanly shape `broadcast_references` already established for its own member
+references, not an unenforced `uuid[]`. A lead can never also appear in the support list — enforced
+both client-side (the support picker's own options exclude whoever's currently selected as lead, and
+picking a new lead immediately drops them out of an already-made support selection too) and, since
+the client-side hint alone was never the real enforcement anywhere else in this schema either,
+server-side by `set_audit_team()` itself (strips the lead from the replacement support set
+regardless of what the caller actually sent). `set_audit_team(audit_id, lead_id, support_ids)` takes
+the *whole* replacement set each call (not an add/remove delta) — simpler for a caller resubmitting
+a multi-select's entire current selection — and only while the audit is still `in_progress`, same
+restriction `submit_audit_count()` already has.
+
+`AuditDetailComponent`'s own client-side gesture for this is an explicit Edit/Save/Cancel toggle
+(`isEditingTeam`, same shape `ModalTableComponent`'s own item edit flow already establishes) rather
+than saving on every individual selection change — the two dropdowns and the saved-team chips (see
+below) are mutually exclusive, never both on screen at once. An "Edit" button (hidden once already
+editing, and hidden entirely once the audit is no longer `in_progress`, since `set_audit_team()`
+itself refuses a finished audit) opens the dropdowns via `startEditingTeam()`, which seeds them from
+the audit's own current team rather than whatever was left over from a previous, since-cancelled edit
+session. `onLeadChange()` still drops a newly-picked lead out of the local support selection if they
+were already in it (so a lead never shows up in both lists at once even before saving), but is now a
+purely local, pre-save adjustment — the actual write only happens on an explicit Save click, which
+calls `saveTeam()` and, only on success, closes the dropdowns and reloads. A rejected save stays in
+edit mode with whatever was entered still in place rather than reverting it — Cancel
+(`cancelEditingTeam()`, which does discard back to the last-saved state) is the explicit way to throw
+changes away now that one exists, so a failed Save should stay retryable/adjustable instead of being
+silently thrown away for the caller to redo from scratch.
+
+Once not editing, the saved team renders as name-plus-avatar chips instead of the dropdowns —
+`InventoryAuditTeamMember` carries an `avatarKey` alongside `id`/`label` (resolved via
+`resolveProfileAvatarKey()`, same shape `BroadcastReferencedMember` already established for its own
+avatar+name chip), rendered through `UserAvatarComponent` in the same pill-chip visual language
+`BroadcastsComponent`'s own `.broadcast-reference-chip` established, with the one lead chip given a
+`primary-container` treatment (plus a small "Lead" tag) to stand out from any number of plain support
+chips. These chips reflect `audit.lead`/`audit.supporters` specifically — the already-reloaded,
+server-confirmed state, not the live form controls — so a name only ever appears with its icon once a
+save has actually landed, never mid-edit.
+
+`AuditDetailComponent`'s "Count items" section renders *every* not-yet-counted item as its own
+bordered card right away — the same `.task-row` visual language (surface-container-low background, a
+matching 1px border, the same radius) `TaskCardComponent` already establishes — rather than a single
+shared form behind a search-and-click autocomplete. Every item in an audit's scope was already added
+automatically by `start_inventory_audit()` when the audit began (whole org, or whichever
+`physical_location` it was scoped to), so there's nothing left to "pick": `countSearchControl` is now
+a plain name filter narrowing which cards are visible, not a required selection step. Each card holds
+its own independent `FormGroup` (`countFormFor()`, a `Map<countId, FormGroup>` built lazily per card
+rather than one shared form, since every card is on screen and fillable/submittable at once) — Expected
+quantity (a plain disabled input, the `quantity_remaining` value snapshotted at audit start, never
+editable) sits directly beside Counted quantity (editable) so the figure you're comparing against is
+right where you're typing the one that matters — Counted quantity's own field is wider than Expected's
+(a plain read-only figure needs less room than a labeled, icon-prefixed editable one), and Notes get
+their own row below with the Submit button centered beside them (the note field carries
+`subscriptSizing="dynamic"` so that centering lands against its actual visible input row, not the
+reserved hint/error space `appearance="outline"` otherwise always leaves below it) rather than trailing
+along top-aligned in the same row as the quantity fields.
+`isSubmittingCount(id)`/`countErrorFor(id)` are similarly per-item (a `Set`/`Map` keyed by count id, not
+one shared boolean/string) so submitting one card's count doesn't disable or blank out any other card's
+own in-progress entry. A completed/cancelled audit still shows its own leftover-uncounted items — the
+same section, retitled "Not yet counted," falls back to a plain read-only name list once `isInProgress`
+is false, since there's nothing left to fill in on a finished audit.
+
+Loading a fresh `AuditDetailComponent` and re-loading it after every action on the page (submitting a
+count, applying a discrepancy, completing/cancelling, saving the team) both go through the same private
+`loadDetail()` — but only the very first call is allowed to toggle `isLoading` (which starts `true` as
+the field's own default and is set `false` exactly once, the first time this resolves); every later
+call is a silent background refresh of the already-rendered content, the same "`isLoading` only ever
+toggles on the initial load" shape `ManageAuditsComponent`'s own `loadAudits()` already establishes.
+`loadDetail()` used to re-set `isLoading = true` on *every* call, which meant any action — including
+something as light as picking a name from the lead/support dropdowns above — tore the entire view down
+to its loading skeleton and rebuilt it, reading as the whole page resetting.
 
 `DiscardModalComponent`'s quantity field also has a "Discard all (N)" / "Discard a specific
 quantity" mode toggle (`mode: 'all' | 'partial'`, defaulting to `'all'`) — a restoration of the
@@ -2074,6 +2181,21 @@ direct-method-call test can't catch this class of bug. Every *other* form-bearin
 app was swept for the same shape at the time and confirmed safe — each already binds `[formGroup]`
 on its own `<form>`, which provides `ngSubmit` via `FormGroupDirective` regardless of whether
 `FormsModule` is imported.
+
+The same shape recurred later in `AuditDetailComponent`'s "Count items" card (the redesign that
+gave every not-yet-counted item its own `<form (ngSubmit)="submitCount(count)">`, each field bound
+via its own `[formControl]` rather than a `[formGroup]` on the `<form>` itself) — built well after
+the sweep above, so it wasn't covered by it, and shipped with the identical bug: no `FormsModule`,
+so `ngSubmit` silently never fired and "Submit count" fell through to a real native form submit.
+Caught the same way as the original — live usage ("it refreshes the page but no data is saved"), not
+a test, since every existing test called `submitCount()` directly. Fixed the same way (import
+`FormsModule` alongside `ReactiveFormsModule`, add a DOM-level regression test dispatching a real
+`submit` event). Worth remembering alongside this repo's other recurring-bug lessons: the 2026 sweep
+only ever covered components that existed *at the time* — a bare `<form (ngSubmit)>` with per-field
+`[formControl]`s and no `[formGroup]` is a shape that's easy to reach for again in any *new*
+component built afterward (it looks identical to a correctly-wired reactive form at a glance, and
+compiles clean either way), so this is a shape worth checking by hand in any future form, not a
+one-time sweep that stays valid forever.
 
 Enforcement is the same choke point every other fail-closed state in this schema already uses:
 `account_locked_at is null` is folded into `current_user_org_id()` right alongside its existing
@@ -3336,6 +3458,42 @@ yet on a hard refresh of `/inventory`.
   this shipped, all backfilled as `'standard'` severity (the tier concept didn't exist yet) and
   `created_by` left null (no single real actor to attribute historical entries to, same reasoning
   `seed.sql`'s own placeholder rows leave `checked_out_to`/`retired_by` null for).
+- `add_inventory_audit_team` — adds `inventory_audits.lead_id` (plain nullable FK, `on delete set
+  null`, same shape `started_by`/`completed_by`/`cancelled_by` already use) and
+  `inventory_audit_supporters` (`audit_id`, `user_id`; `unique (audit_id, user_id)`), backing the
+  lead/support claiming feature described in this audit's own Project Overview paragraph above. Same
+  join-through-to-the-parent-audit SELECT policy shape `inventory_audit_counts` already established;
+  no insert/update/delete grant for `authenticated` at all — `set_audit_team()` (new, `SECURITY
+  DEFINER`, no role check beyond org membership — self-claimable, not admin/manager-gated) is the
+  only way either changes. Strips the lead out of the support replacement set server-side regardless
+  of what the caller sent, and silently drops any support id that doesn't resolve to an approved
+  member of the audit's own org rather than rejecting the whole call over one bad id — same
+  "server is what actually enforces it, the client hint is UX only" reasoning `is_locked`'s own RLS
+  `with check` clause already established elsewhere in this schema. Added to the realtime publication
+  with `replica identity full`, same two-part mechanism every other audit-adjacent table already uses.
+- `allow_staff_complete_fully_counted_audit` — `create or replace function` on
+  `complete_inventory_audit()`, diffed against its only previous version
+  (`add_inventory_audits`) per this repo's own "diff against the previous version" rule. Widens who
+  can complete an audit: still admin/manager unconditionally, but now any approved org member too
+  once nothing in the audit is left uncounted (`select count(*) ... where counted_quantity is null`,
+  gating the existing admin/manager-only `raise exception` on that count being nonzero rather than
+  dropping the check outright) — see this audit feature's own Project Overview paragraph above for
+  the full reasoning. No column/table changes, no grant changes — same signature, same `authenticated`
+  grant, purely a body change.
+- `fix_complete_inventory_audit_ambiguity` — same-day follow-up, caught live ("column reference
+  \"audit_id\" is ambiguous") the first time an admin actually tried to complete an audit after the
+  migration above shipped: its own new uncounted-count query left `audit_id` unqualified on the
+  left-hand side of `where audit_id = v_audit.id`, and the function's own parameter is *also* named
+  `audit_id` — a bare `audit_id` inside the query matches both the `inventory_audit_counts` column
+  (via that query's own `from`) and the outer parameter, and plpgsql's default
+  `variable_conflict = error` setting refuses to silently guess which one was meant. Fixed by
+  aliasing the table and qualifying both column references (`v_audit.id` on the right-hand side was
+  already unambiguous, a record field rather than a bare identifier). Diffed against that same
+  migration's version (the only one that's ever existed) per this repo's own rule. Worth remembering
+  alongside `fix_platform_organization_usage_ambiguity`/the `20260919...` `RETURNS TABLE` lessons: a
+  migration push succeeding never validates a plpgsql function body's embedded SQL, only actually
+  running it does — and a routine parameter that happens to share a name with a column it later
+  queries against is exactly the kind of thing that passes review but fails every single call.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

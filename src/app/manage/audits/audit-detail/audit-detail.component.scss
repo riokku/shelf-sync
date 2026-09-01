@@ -29,8 +29,53 @@
   min-width: 0;
 }
 
-.audit-header-location{
+.audit-header-title-row{
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.625rem;
   margin: 0 0 0.25rem;
+}
+
+.audit-header-location{
+  margin: 0;
+}
+
+// Same pill shape/status palette ManageAuditsComponent's own list row
+// already established for this exact status set — duplicated (not shared)
+// per this app's usual small-presentational-pattern convention, so the
+// audit's own status is denoted right on the detail page too, not just
+// inferable from which meta lines/buttons happen to render.
+.status-pill{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+
+  mat-icon{
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+
+  &.audit-in_progress{
+    background: var(--mat-sys-tertiary-container);
+    color: var(--mat-sys-on-tertiary-container);
+  }
+
+  &.audit-completed{
+    background: var(--app-success-bg);
+    color: var(--app-success-on-bg);
+  }
+
+  &.audit-cancelled{
+    background: var(--mat-sys-surface-variant);
+    color: var(--mat-sys-on-surface-variant);
+  }
 }
 
 .audit-header-meta{
@@ -83,19 +128,155 @@
   }
 }
 
-.count-entry-form{
+// Same flex-wrap row shape .count-entry-note-row below already uses —
+// kept as a separate rule since this row's fields (Lead/Support) are
+// fixed-width pickers rather than a growing note field plus a button.
+.audit-team-fields{
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
   flex-wrap: wrap;
 }
 
+.audit-team-field{
+  flex: 1 1 14rem;
+  max-width: 20rem;
+}
+
+// Cancel/Save, right-aligned below the dropdowns — same trailing-button-row
+// shape the Discrepancies section's own "Apply all" already sits in via
+// .audit-section-header-row, just its own row here since Edit/Save/Cancel
+// isn't paired with a section title the way that one is.
+.audit-team-edit-actions{
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.audit-team-summary{
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+}
+
+// Same pill-chip shape BroadcastsComponent's own .broadcast-reference-chip
+// already establishes for an avatar+name pairing — reused here (a separate
+// rule, not a shared class, matching this app's usual small-presentational-
+// pattern convention) for the audit's saved lead/support. Mutually
+// exclusive with .audit-team-fields above — never both on screen at once,
+// see AuditDetailComponent.isEditingTeam's own doc comment.
+.audit-team-chips{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.audit-team-chip{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  background: var(--mat-sys-surface-container-high);
+  font-size: 0.8125rem;
+}
+
+// The one lead chip stands out from any number of plain support chips —
+// same primary-container treatment this app already reaches for to mark
+// "the more prominent one" among otherwise-equal peers.
+.audit-team-chip-lead{
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+}
+
+.audit-team-chip-tag{
+  color: var(--mat-sys-on-primary-container);
+  opacity: 0.75;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+// Every not-yet-counted item already renders as its own card below (see
+// .count-entry-card) — this is a pure filter over that list, not a
+// required "pick one first" step the way an autocomplete would be.
 .count-entry-search{
-  flex: 1 1 16rem;
+  display: block;
+  max-width: 24rem;
+  margin-bottom: 1rem;
+}
+
+.count-entry-list{
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.count-entry-empty{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+}
+
+// Each not-yet-counted item's own count-entry form, in the same visual
+// language as a task row (TaskCardComponent's own .task-row:
+// surface-container-low background, a matching 1px border, the same
+// radius) rather than a bare row of form fields — every item worth
+// counting gets its own bounded card here, instead of one shared form
+// requiring a search-and-click step to switch which item it's for.
+.count-entry-card{
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: 0.5rem;
+  background: var(--mat-sys-surface-container-low);
+  border: 1px solid var(--mat-sys-outline-variant);
+}
+
+.count-entry-card-title{
+  font-weight: 600;
+}
+
+// Expected (read-only) and Counted (editable) sit side by side, so the
+// figure you're comparing against is right where you're typing the one
+// that matters.
+.count-entry-quantities{
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .count-entry-quantity{
-  flex: 0 1 10rem;
+  flex: 1 1 10rem;
+  max-width: 12rem;
+}
+
+// Wider than its Expected sibling above — "Counted quantity" plus the
+// leading numbers icon left this one's own label/placeholder text visibly
+// cramped at the same 12rem cap a plain read-only figure doesn't need.
+.count-entry-quantity-counted{
+  flex: 1 1 12rem;
+  max-width: 16rem;
+}
+
+// Notes get their own row, with Submit sitting right beside it rather than
+// trailing along in the same row as the quantity fields above — centered
+// against the note field's own height (not top-aligned) so it doesn't sit
+// pinned to the label line while the field's box extends below it. The
+// note field itself carries `subscriptSizing="dynamic"` (see the template)
+// so this centers against its actual visible input row, not the reserved
+// hint/error space `appearance="outline"` otherwise always leaves below it
+// even when empty.
+.count-entry-note-row{
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .count-entry-note{
@@ -138,13 +319,21 @@
   color: var(--app-warning-text);
 }
 
+// A matched item's own "difference 0" line — success-toned rather than the
+// warning color .count-delta uses for a real discrepancy, since 0 is good
+// news here, not something to flag.
+.count-delta-match{
+  color: var(--app-success-text);
+}
+
 .count-meta{
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.8125rem;
 }
 
 .count-applied-tag,
-.count-container-tag{
+.count-container-tag,
+.count-match-tag{
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
@@ -159,22 +348,9 @@
   }
 }
 
-.count-applied-tag{
+.count-applied-tag,
+.count-match-tag{
   color: var(--app-success-text);
-}
-
-.audit-matches-summary{
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  color: var(--app-success-text);
-  margin: 0 0 1.5rem;
-
-  mat-icon{
-    font-size: 1.125rem;
-    width: 1.125rem;
-    height: 1.125rem;
-  }
 }
 
 .not-counted-list{

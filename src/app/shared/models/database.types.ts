@@ -352,6 +352,39 @@ export type Database = {
           },
         ]
       }
+      inventory_audit_supporters: {
+        Row: {
+          audit_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          audit_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          audit_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_audit_supporters_audit_id_fkey"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_audits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_audit_supporters_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_audits: {
         Row: {
           cancelled_at: string | null
@@ -359,6 +392,7 @@ export type Database = {
           completed_at: string | null
           completed_by: string | null
           id: string
+          lead_id: string | null
           note: string | null
           organization_id: string
           physical_location: string | null
@@ -372,6 +406,7 @@ export type Database = {
           completed_at?: string | null
           completed_by?: string | null
           id?: string
+          lead_id?: string | null
           note?: string | null
           organization_id?: string
           physical_location?: string | null
@@ -385,6 +420,7 @@ export type Database = {
           completed_at?: string | null
           completed_by?: string | null
           id?: string
+          lead_id?: string | null
           note?: string | null
           organization_id?: string
           physical_location?: string | null
@@ -403,6 +439,13 @@ export type Database = {
           {
             foreignKeyName: "inventory_audits_completed_by_fkey"
             columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_audits_lead_id_fkey"
+            columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1575,6 +1618,14 @@ export type Database = {
       }
       request_task_transfer: {
         Args: { target_id: string; task_id: string }
+        Returns: undefined
+      }
+      set_audit_team: {
+        Args: {
+          p_audit_id: string
+          p_lead_id?: string
+          p_support_ids?: string[]
+        }
         Returns: undefined
       }
       set_inventory_item_lock: {

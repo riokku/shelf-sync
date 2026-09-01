@@ -39,6 +39,12 @@ interface HomeReservationSummary {
   reservedFor: string;
 }
 
+interface HomeAuditSummary {
+  id: string;
+  label: string;
+  startedAt: string;
+}
+
 /** How many entries each personal list card shows before collapsing the
  *  rest into a "+N more" link to the full page — see loadPersonalStats()'s
  *  own doc comment. */
@@ -87,22 +93,39 @@ export class HomeComponent implements OnInit {
    *  Getting Started card below: everyone can have tasks assigned to them,
    *  something checked out, or a reservation they placed themselves (see
    *  the recent widening of manage/reservations to every approved org
-   *  member). Each list is scoped to the signed-in user specifically
-   *  (assigned_to/checked_out_to/reserved_by = auth.uid()), not org-wide —
-   *  a different kind of data than restockCount/pendingManageCount above,
-   *  which are already org-wide facts anyone/any-manager needs to see
+   *  member). Each of the first three lists is scoped to the signed-in user
+   *  specifically (assigned_to/checked_out_to/reserved_by = auth.uid()), not
+   *  org-wide — a different kind of data than restockCount/pendingManageCount
+   *  above, which are already org-wide facts anyone/any-manager needs to see
    *  regardless of who's looking. Sits below the nav-card grid rather than
    *  above it — the cards are still the primary "where do I go" decision,
-   *  this is supplementary detail once that's been taken in. */
+   *  this is supplementary detail once that's been taken in. `activeAudits`
+   *  (see its own doc comment below) is the one card in this grid that
+   *  deliberately breaks the "scoped to you" pattern — an audit isn't
+   *  assigned to anyone the way a task/checkout/reservation is. */
   outstandingTasks: HomeTaskSummary[] = [];
   checkedOutItems: HomeCheckedOutItemSummary[] = [];
   upcomingReservations: HomeReservationSummary[] = [];
-  /** Set when any of loadPersonalStats()'s own three queries fails — see
-   *  ManageReportsComponent's identical loadError field for the full
-   *  reasoning. Without this, a genuine fetch failure here renders
-   *  indistinguishably from the three lists' own "nothing assigned to you"/
-   *  "nothing checked out"/"no upcoming reservations" empty text, on the
-   *  very first page every user sees after signing in. */
+  /** Every currently in-progress audit across the whole org, newest-started
+   *  first — unlike the three personal lists above, an audit isn't "yours"
+   *  the way a task/checkout/reservation is: any approved member can open
+   *  one and submit counts (manage/audits is approvedGuard-only, same tier
+   *  as Home itself), so this surfaces every open audit rather than
+   *  filtering down to "started by you." Before this, a staff member had no
+   *  way to discover an in-progress audit short of the global command
+   *  palette or being told directly — no nav-drawer link, no Manage-hub
+   *  visibility (that hub itself is manageGuard-gated even though the audits
+   *  page it links to isn't), and no notification fires when one starts. */
+  activeAudits: HomeAuditSummary[] = [];
+  /** Set when any of loadPersonalStats()'s own three per-user queries
+   *  fails — see ManageReportsComponent's identical loadError field for the
+   *  full reasoning. Without this, a genuine fetch failure here renders
+   *  indistinguishably from those three lists' own "nothing assigned to
+   *  you"/"nothing checked out"/"no upcoming reservations" empty text, on
+   *  the very first page every user sees after signing in. Doesn't cover
+   *  activeAudits — that query rides alongside restockCount's own in
+   *  ngOnInit() instead, unguarded by session state the same way, so a
+   *  failure there just leaves the list empty rather than surfacing here. */
   personalStatsError: string | null = null;
 
   get visibleOutstandingTasks(): HomeTaskSummary[] {
@@ -124,6 +147,13 @@ export class HomeComponent implements OnInit {
   }
   get upcomingReservationsOverflowCount(): number {
     return Math.max(0, this.upcomingReservations.length - HOME_LIST_VISIBLE_CAP);
+  }
+
+  get visibleActiveAudits(): HomeAuditSummary[] {
+    return this.activeAudits.slice(0, HOME_LIST_VISIBLE_CAP);
+  }
+  get activeAuditsOverflowCount(): number {
+    return Math.max(0, this.activeAudits.length - HOME_LIST_VISIBLE_CAP);
   }
 
   /** How many of outstandingTasks are due *today* specifically — a
@@ -222,16 +252,34 @@ export class HomeComponent implements OnInit {
   }
 
   async ngOnInit() {
-    const [{ data }] = await Promise.all([
+    const [{ data }, { data: auditRows }] = await Promise.all([
       this.supabase
         .from('inventory_items')
         .select('quantity_remaining, low_quantity_threshold')
         .neq('status', 'retired'),
+      // Every in-progress audit org-wide — see activeAudits' own doc
+      // comment above. Runs alongside the restock query rather than nested
+      // inside loadPersonalStats(), same "unguarded by session state,
+      // relies on RLS/approvedGuard alone" precedent restockCount already
+      // sets, since neither is actually scoped to the signed-in user.
+      this.supabase
+        .from('inventory_audits')
+        .select('id, physical_location, started_at')
+        .eq('status', 'in_progress')
+        .order('started_at', { ascending: false }),
       this.loadGettingStarted(),
       this.loadPersonalStats()
     ]);
 
     this.restockCount = (data ?? []).filter(needsRestockAttention).length;
+    this.activeAudits = (auditRows ?? []).map(row => ({
+      id: row.id,
+      // Mirrors ManageAuditsComponent's own template convention for an
+      // org-wide (not location-scoped) audit — see CommandPaletteService's
+      // matchingAudits() doc comment for the same fallback text.
+      label: row.physical_location || 'Whole organization',
+      startedAt: row.started_at
+    }));
   }
 
   /** Retries loadPersonalStats() after a failed load — the "What's on your

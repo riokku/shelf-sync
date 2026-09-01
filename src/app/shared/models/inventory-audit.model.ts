@@ -7,6 +7,21 @@
  *  shared/utils/inventory-audits.ts), not stored columns. */
 export type InventoryAuditStatus = 'in_progress' | 'completed' | 'cancelled';
 
+/** One org member claiming (or claimed as) responsibility for an audit —
+ *  the lead, or one of possibly several support members. Carries the id
+ *  (for the lead/support pickers' own pre-selected value), the
+ *  already-resolved display label, and their avatarKey (for the "name with
+ *  an icon beside it" chip AuditDetailComponent renders once the team is
+ *  saved) — same "id + label(+ avatar) together" shape
+ *  BroadcastReferencedMember already establishes for its own avatar+name
+ *  chip, rather than making every consumer re-resolve a bare id against a
+ *  profiles array. */
+export interface InventoryAuditTeamMember {
+  id: string;
+  label: string;
+  avatarKey: string | null;
+}
+
 export interface InventoryAudit {
   id: string;
   status: InventoryAuditStatus;
@@ -21,6 +36,15 @@ export interface InventoryAudit {
   totalItems: number;
   countedItems: number;
   discrepancyCount: number;
+  /** null until someone claims it — see set_audit_team()'s own migration
+   *  comment. Purely organizational: doesn't change who's actually allowed
+   *  to count/apply/complete, only who's on the hook for finishing it. */
+  lead: InventoryAuditTeamMember | null;
+  /** Sorted by label — set_audit_team() enforces the lead never also
+   *  appears here, both client-side (the support picker excludes whoever's
+   *  currently selected as lead) and server-side (stripped from the
+   *  replacement set regardless of what the caller sent). */
+  supporters: InventoryAuditTeamMember[];
 }
 
 /** One item's snapshot within an audit — expectedQuantity is captured when

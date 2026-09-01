@@ -120,6 +120,22 @@
   font-weight: 600;
 }
 
+// Who's claimed the lead, right in the row — see audit-detail.component's
+// own "Audit team" section for where lead/support are actually claimed.
+.audit-lead{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8125rem;
+
+  mat-icon{
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
 .audit-meta{
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.8125rem;

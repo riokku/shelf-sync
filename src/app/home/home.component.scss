@@ -85,7 +85,7 @@
   }
 }
 
-@for $i from 1 through 3{
+@for $i from 1 through 4{
   .home-list-card:nth-child(#{$i}){
     animation-delay: #{($i - 1) * 0.15}s;
   }
@@ -128,13 +128,15 @@
   }
 }
 
-// Same four two-tone gradient chips .home-card-icon-a/-b/-c/-d define below
-// — reused here (not a parallel set) so a list card's header icon echoes
-// its conceptually-matching nav card (Tasks outstanding <-> Tasks,
-// Checked-out items <-> Inventory) rather than inventing a second palette.
+// Same two-tone gradient chips .home-card-icon-a/-b/-c/-d/-e define below —
+// reused here (not a parallel set) so a list card's header icon echoes its
+// conceptually-matching nav card (Tasks outstanding <-> Tasks, Checked-out
+// items <-> Inventory, Upcoming reservations <-> Reservations) rather than
+// inventing a second palette.
 .home-list-icon-a{ background: linear-gradient(135deg, var(--mat-sys-primary-container), var(--mat-sys-tertiary-container)); color: var(--mat-sys-on-primary-container); }
 .home-list-icon-b{ background: linear-gradient(135deg, var(--mat-sys-tertiary-container), var(--mat-sys-secondary-container)); color: var(--mat-sys-on-tertiary-container); }
-.home-list-icon-c{ background: linear-gradient(135deg, var(--mat-sys-secondary-container), var(--mat-sys-primary-container)); color: var(--mat-sys-on-secondary-container); }
+.home-list-icon-e{ background: linear-gradient(135deg, var(--mat-sys-tertiary-container), var(--mat-sys-primary-container)); color: var(--mat-sys-on-tertiary-container); }
+.home-list-icon-f{ background: linear-gradient(135deg, var(--mat-sys-secondary-container), var(--mat-sys-tertiary-container)); color: var(--mat-sys-on-secondary-container); }
 
 .home-list-title{
   display: flex;
@@ -435,8 +437,8 @@
 }
 
 // Filled, rounded-square icon chip — same shape/sizing landing's own
-// .feature-icon already established. Each of the four cards gets its own
-// two-tone gradient (rather than one flat container color per card) mixing
+// .feature-icon already established. Each card gets its own two-tone
+// gradient (rather than one flat container color per card) mixing
 // two of this org's three theme roles, so the grid reads as a bit richer
 // than a repeated flat tile without losing the "any org preset recolors
 // this automatically" property every other themed visual in this app
@@ -479,6 +481,16 @@
 .home-card-icon-d{
   background: linear-gradient(135deg, var(--mat-sys-primary-container), var(--mat-sys-secondary-container));
   mat-icon{ color: var(--mat-sys-on-primary-container); }
+}
+
+.home-card-icon-e{
+  background: linear-gradient(135deg, var(--mat-sys-tertiary-container), var(--mat-sys-primary-container));
+  mat-icon{ color: var(--mat-sys-on-tertiary-container); }
+}
+
+.home-card-icon-f{
+  background: linear-gradient(135deg, var(--mat-sys-secondary-container), var(--mat-sys-tertiary-container));
+  mat-icon{ color: var(--mat-sys-on-secondary-container); }
 }
 
 .permission-badge{

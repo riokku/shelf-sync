@@ -87,6 +87,12 @@
                       {{ audit.discrepancyCount }} discrepanc{{ audit.discrepancyCount === 1 ? 'y' : 'ies' }}
                     </span>
                   }
+                  @if (audit.lead) {
+                    <span class="audit-lead">
+                      <mat-icon>person</mat-icon>
+                      {{ audit.lead.label }}
+                    </span>
+                  }
                 </div>
                 <div class="audit-meta">
                   Started by {{ audit.startedByLabel }} &middot; {{ audit.startedAt | date: 'M/d/yy, h:mm a' }}
