@@ -29,6 +29,7 @@ function createTestReservation(overrides: Partial<InventoryItemReservationWithIt
     returnedAt: '',
     cancelledByLabel: '',
     cancelledAt: '',
+    groupId: null,
     ...overrides,
   };
 }

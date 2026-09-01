@@ -46,7 +46,8 @@ describe('loadAllInventoryItemReservations', () => {
       returned_by: null,
       returned_at: null,
       cancelled_by: null,
-      cancelled_at: null
+      cancelled_at: null,
+      reservation_group_id: null
     }]);
 
     const { reservations, error } = await loadAllInventoryItemReservations(
@@ -73,7 +74,8 @@ describe('loadAllInventoryItemReservations', () => {
       returnedByLabel: '',
       returnedAt: '',
       cancelledByLabel: '',
-      cancelledAt: ''
+      cancelledAt: '',
+      groupId: null
     }]);
   });
 

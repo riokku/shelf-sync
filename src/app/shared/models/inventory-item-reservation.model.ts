@@ -27,4 +27,13 @@ export interface InventoryItemReservation {
   returnedAt: string;
   cancelledByLabel: string;
   cancelledAt: string;
+  /** Non-null when this reservation was placed alongside one or more other
+   *  items in the same submission (a multi-item booking, or one placed from
+   *  a reservation kit — see ReservationKit) — every sibling row shares the
+   *  same value. Null for an ordinary single-item reservation. Purely a
+   *  grouping tag (see the add_reservation_group_id migration); it names no
+   *  row of its own. ManageReservationsComponent groups by this to render
+   *  one card per booking (with a per-item sub-row each) instead of one card
+   *  per reservation row. */
+  groupId: string | null;
 }

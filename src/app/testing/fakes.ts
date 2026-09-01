@@ -6,8 +6,10 @@ import { InventoryFieldName, InventoryFieldOptionsService } from '../core/invent
 import { SiteSettingsService } from '../core/site-settings.service';
 import { SupabaseService } from '../core/supabase.service';
 import { SupplierService } from '../core/supplier.service';
+import { ReservationKitService } from '../core/reservation-kit.service';
 import { InventoryItem, InventoryItemStatus } from '../shared/models/inventory-item.model';
 import { Supplier } from '../shared/models/supplier.model';
+import { ReservationKit } from '../shared/models/reservation-kit.model';
 import { DEFAULT_INVENTORY_TABLE_COLUMNS, InventoryTableColumnKey } from '../shared/models/inventory-table-column';
 import { DEFAULT_INVENTORY_FORM_FIELDS, InventoryFormFieldKey } from '../shared/models/inventory-form-field';
 import { Database } from '../shared/models/database.types';
@@ -167,6 +169,18 @@ export function createFakeSupplierService(suppliers: Supplier[] = [], loadError:
     remove: async () => null,
   };
   return fake as unknown as SupplierService;
+}
+
+export function createFakeReservationKitService(kits: ReservationKit[] = [], loadError: string | null = null): ReservationKitService {
+  const fake = {
+    kits: signal(kits).asReadonly(),
+    loadError: signal(loadError).asReadonly(),
+    load: async () => {},
+    create: async () => null,
+    update: async () => null,
+    remove: async () => null,
+  };
+  return fake as unknown as ReservationKitService;
 }
 
 export function createFakeActivatedRoute(queryParams: Record<string, string> = {}, pathParams: Record<string, string> = {}): ActivatedRoute {

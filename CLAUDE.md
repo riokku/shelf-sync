@@ -2492,6 +2492,74 @@ presentational (no realtime subscription of its own); it re-derives its grid fro
 `reservations` the host page already passes it, so the existing `inventory_item_reservations`
 subscription on `ManageReservationsComponent` keeps both views current without any change.
 
+A reservation can now book several items at once — picked one at a time, or prefilled from a
+saved kit — rather than always exactly one item, per quantity, per submission.
+`PlaceReservationModalComponent`'s original single-item field (item autocomplete +
+`reservationForm.controls.quantity`) is unchanged and still the primary line; a "+ Add another
+item" button appends further `additionalLines` (a plain array of `{ searchTerm, item, quantity }`
+rows, same shape `ModalTableComponent`'s own `EditableContainer` already establishes for a small
+repeatable-row editor, not an Angular `FormArray`) — every line shares the dialog's one date range/
+"Reserved for"/note, since this is one booking with several item lines, not several independent
+bookings. Submitting loops `create_reservation()` once per line (no RPC accepts an array of ids)
+and tallies success/failure the same way every other bulk action in this app already does; a
+single-line submission is untouched from before (same RPC call, same verbatim error surfacing) —
+only 2+ lines take the new path, which stamps every row with a shared, client-generated
+`reservation_group_id` (`crypto.randomUUID()`) so they read and act as one booking afterward. A
+partial failure keeps the dialog open with only the still-failing lines left pending (the succeeded
+ones are cleared out, since they're already created and can't be un-created from here) rather than
+either silently losing which items failed or blocking on an all-or-nothing assumption.
+
+A **reservation kit** (`ReservationKit`, `shared/models/reservation-kit.model.ts`) is a saved,
+named bundle of items+quantities (e.g. "Wedding package": 50 chairs, 10 tables, 20 linens) an
+admin/manager curates ahead of time so a common multi-item booking doesn't mean picking every item
+and typing every quantity by hand each visit. `PlaceReservationModalComponent` gets a "Hand-pick
+items" / "Use a kit" `mat-button-toggle-group` (`pickMode: 'items' | 'kit'`, shown only once the org
+has any kits at all — with none, the dialog behaves exactly as it did before kits existed, no
+toggle to show) — an explicit up-front choice rather than a kit picker just sitting above the item
+lines unconditionally, which read as an ambiguous "is this optional or not" prefill. Switching modes
+(`setPickMode()`) clears whatever item/kit selection was already made (not the shared date range/
+"Reserved for"/note, which aren't part of *how* items get picked) — a clean slate for whichever way
+was just chosen. 'items' mode shows the item-lines editor immediately, same as before this toggle
+existed; 'kit' mode shows only a kit `mat-select` until one's actually picked (`selectedKitId`) —
+nothing to edit before then — at which point the identical item-lines editor appears below it,
+prefilled from that kit's own items and fully editable (add, remove, change quantities, including
+adding items beyond what the kit had) before submitting. A kit item that no longer resolves to a
+real item (removed from inventory since the kit was made) is silently skipped with a small "N items
+... were skipped" notice rather than blocking the load. Backed by `reservation_kits`/
+`reservation_kit_items` (see the
+`add_reservation_kits` migration below) — same "org-scoped directory, admin/manager curate it, any
+approved member reads/picks from it" shape the supplier directory already established, mirrored via
+`ReservationKitService` (`core/reservation-kit.service.ts`, `providedIn: 'root'`, same
+signal-plus-`loadError` shape `SupplierService` already uses, except `load()` takes an
+`itemNamesById` map from the caller rather than resolving names itself — a kit's own items are only
+ever known by id). `ManageReservationsComponent` gets a second top-level tab, "Kits"
+(`pageTab: 'reservations' | 'kits'`, reflected in the URL as `?tab=` via the same `setPageTab()`/
+`?tab=` shape `ManageInventoryComponent`'s own create/retirements tabs already establish), visible
+only to `authService.canManage()` — full create/edit/delete CRUD via
+`ReservationKitFormModalComponent` (`shared/components/reservation-kit-form-modal`, self-contained
+like `SupplierFormModalComponent` — it does the actual `ReservationKitService.create()`/`update()`
+write itself), same repeatable-item-row editor `PlaceReservationModalComponent`'s own additional
+lines use. Editing a kit is a full replace of its item list rather than an add/remove/update diff
+(`ReservationKitService.update()` deletes every existing `reservation_kit_items` row for that kit
+then re-inserts the submitted set) — same "resubmit the whole set" simplicity `set_audit_team()`
+already established for its own multi-select, a reasonable simplification for a list that's only
+ever a handful of items.
+
+Multi-item reservations placed together — by hand or from a kit — render as one linked group rather
+than several unrelated rows once placed: `ManageReservationsComponent` groups every reservation by
+its (possibly null) `reservation_group_id` into a `ReservationGroupView` (a single-item reservation
+is still its own singleton group of one, rendering through the exact same `#reservationCard`
+template as before grouping existed — grouping is purely additive, not a rewrite of the common
+case). A real multi-item group instead renders through `#reservationGroupCard` — one card with a
+shared header (item count, "Reserved for," dates) plus a per-item sub-row each carrying its own
+status pill and its own individual pick-up/return/cancel action, since one item in a group can move
+through the lifecycle independently of its siblings (e.g. half the chairs get picked up a day before
+the tables). Alongside each item's own action, the group card also offers a bulk "Mark remaining
+picked up"/"Mark remaining returned"/"Cancel remaining" button that acts only on whichever of the
+group's rows are still in the relevant status — same "no RPC accepts an array of ids, loop the
+single-row RPC client-side, tally success/failure" convention every other bulk action in this app
+already follows, not a new group-aware RPC.
+
 Checked-out items (`is_checked_out`/`checked_out_to`) can now carry a `checkout_due_at` date —
 `ModalTableComponent`'s edit flow gets a "Due back" field right under the "Checked out to"
 selector, and once that date passes, the item is "overdue": a red variant of the existing
@@ -2782,6 +2850,7 @@ core/
   auth.service.ts        # session signal (isAuthenticated), signIn/signUp/signOut/getSession
   site-settings.service.ts # theme/logo signals; load() on app start, updateTheme()/uploadLogo()/removeLogo()
   supplier.service.ts     # SupplierService — org's supplier directory; load()/create()/update()/remove()
+  reservation-kit.service.ts # ReservationKitService — org's saved reservation-kit directory; load(itemNamesById)/create()/update()/remove()
   notification-center.service.ts # NotificationCenterService — HeaderComponent's bell dropdown; notifications signal + unreadCount, markAsRead()/markAllAsRead()
   command-palette.service.ts # CommandPaletteService — HeaderComponent's Ctrl/Cmd+K global search; lazily loads/caches searchable data, results(query) is a pure local filter
   confetti.service.ts     # ConfettiService — fires a hand-rolled confetti burst (shared/components/confetti-burst) for a genuine "just happened" celebration moment
@@ -2801,7 +2870,7 @@ tasks/                                                      # standalone persona
 broadcasts/                                                  # every approved member: org-wide announcements feed, see Project Overview above
 manage/                                                     # card hub (ManageComponent) linking to the pages below
   inventory/, tasks/, team/, activity/, suppliers/, orders/ # admin/manager only: inventory (+ CSV export), tasks, team administration, the cross-entity activity feed, the supplier directory, and restock orders
-  reservations/                                             # admin/manager only: date-ranged reservations of an item's stock
+  reservations/                                             # every approved member: date-ranged reservations of an item's stock (single item, several at once, or from a saved kit); admin/manager also get a "Kits" tab to curate the kit directory
   audits/, audits/audit-detail/                              # every approved member: physical inventory audits ("cycle counts"), see Project Overview above
   release-notes/                                            # admin/manager only: "What's new" list, see Project Overview above
   error-log/                                                # admin/manager only: client_error_log viewer, see Supabase Schema section
@@ -2819,7 +2888,8 @@ shared/
   components/supplier-form-modal/ # add/edit dialog backing manage/suppliers' directory CRUD
   components/place-order-modal/ # self-contained item picker + quantity/note dialog backing manage/orders' "Place order"
   components/import-inventory-modal/ # self-contained template-download + upload/preview/validate + bulk-create dialog backing manage/inventory's "Import" button
-  components/place-reservation-modal/ # self-contained item picker + date-range/quantity dialog backing manage/reservations' "New reservation"
+  components/place-reservation-modal/ # self-contained item picker (one item, several, or from a saved kit) + date-range/quantity dialog backing manage/reservations' "New reservation"
+  components/reservation-kit-form-modal/ # add/edit dialog backing manage/reservations' "Kits" tab CRUD
   components/start-audit-modal/ # self-contained scope (physical_location)/note dialog calling start_inventory_audit(), backing manage/audits' "Start audit"
   components/discard-modal/ # quantity ("Discard all" or a specific amount) + mandatory-reason dialog backing ModalTableComponent's "Discard" button
   components/turnstile-widget/ # Cloudflare Turnstile CAPTCHA, embedded on Login/Register/Forgot Password
@@ -2839,6 +2909,7 @@ shared/
   models/supplier.model.ts   # Supplier — a directory entry inventory_items.supplier_id can point at
   models/inventory-item-order.model.ts # InventoryItemOrder — one restock order against an item's linked supplier
   models/inventory-item-reservation.model.ts # InventoryItemReservation — a date-ranged booking of some quantity of an item's stock
+  models/reservation-kit.model.ts # ReservationKit / ReservationKitItem — a saved multi-item template PlaceReservationModalComponent can prefill from
   models/inventory-audit.model.ts # InventoryAudit / InventoryAuditCount / isAuditDiscrepancy() — a physical inventory audit ("cycle count") and its per-item snapshot rows
   models/theme-preset.ts     # THEME_PRESETS — key must match a [data-theme] block in styles.scss
   models/inventory-table-column.ts # optional Inventory table-view columns admin can show/hide (Settings > Data)
@@ -3494,6 +3565,28 @@ yet on a hard refresh of `/inventory`.
   migration push succeeding never validates a plpgsql function body's embedded SQL, only actually
   running it does — and a routine parameter that happens to share a name with a column it later
   queries against is exactly the kind of thing that passes review but fails every single call.
+- `add_reservation_kits` — adds `reservation_kits` (`organization_id` defaulting to
+  `current_user_org_id()`, `name`, `description`; `unique (organization_id, name)`) and
+  `reservation_kit_items` (`kit_id`, `item_id`, `quantity`), backing the saved multi-item reservation
+  templates described above. Mirrors `suppliers`' own RLS shape almost verbatim: any org member can
+  read either table (needed for `PlaceReservationModalComponent`'s "Start from a kit" picker), only
+  admin/manager can insert/update/delete. `reservation_kit_items` has no `organization_id` of its
+  own — same join-through-`kit_id`-to-the-parent's-`organization_id` shape
+  `inventory_item_orders`/`inventory_item_discards` already established as this schema's day-one-
+  correct default for a child table (rather than `inventory_item_containers`' original no-join
+  `using (true)`, which needed its own later retrofit). No RPC for either table — a plain admin/
+  manager-gated insert/update/delete is enough, since nothing here has an atomic side effect on a
+  second table the way `create_reservation()`/`create_broadcast()` do.
+- `add_reservation_group_id` — adds `inventory_item_reservations.reservation_group_id` (plain
+  nullable `uuid`, no foreign key — it names no row of its own, just a client-generated tag shared
+  across sibling rows placed in the same submission) and a `create_reservation()` parameter to set
+  it, backing the multi-item/kit reservation grouping described above. Dropped and recreated rather
+  than a plain `create or replace` (see `add_platform_organization_task_count`'s own comment on why
+  adding a parameter isn't always safe as a bare replace) — diffed against
+  `prevent_reservations_on_locked_items`'s version (the latest at the time) per this repo's own
+  "diff against the previous version" rule; the only changes are the new `group_id` parameter and
+  passing it through to the insert, everything else (the `is_locked` check, the capacity check, both
+  activity log writes) is unchanged.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

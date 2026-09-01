@@ -738,6 +738,7 @@ export type Database = {
           picked_up_at: string | null
           picked_up_by: string | null
           quantity: number
+          reservation_group_id: string | null
           reserved_at: string
           reserved_by: string | null
           reserved_for: string
@@ -756,6 +757,7 @@ export type Database = {
           picked_up_at?: string | null
           picked_up_by?: string | null
           quantity: number
+          reservation_group_id?: string | null
           reserved_at?: string
           reserved_by?: string | null
           reserved_for: string
@@ -774,6 +776,7 @@ export type Database = {
           picked_up_at?: string | null
           picked_up_by?: string | null
           quantity?: number
+          reservation_group_id?: string | null
           reserved_at?: string
           reserved_by?: string | null
           reserved_for?: string
@@ -1267,6 +1270,77 @@ export type Database = {
           },
         ]
       }
+      reservation_kit_items: {
+        Row: {
+          id: string
+          item_id: string
+          kit_id: string
+          quantity: number
+        }
+        Insert: {
+          id?: string
+          item_id: string
+          kit_id: string
+          quantity: number
+        }
+        Update: {
+          id?: string
+          item_id?: string
+          kit_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservation_kit_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservation_kit_items_kit_id_fkey"
+            columns: ["kit_id"]
+            isOneToOne: false
+            referencedRelation: "reservation_kits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reservation_kits: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservation_kits_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_settings: {
         Row: {
           bulk_edit_enabled: boolean
@@ -1509,6 +1583,7 @@ export type Database = {
       create_reservation: {
         Args: {
           end_date: string
+          group_id?: string
           item_id: string
           note?: string
           quantity: number
@@ -1537,6 +1612,7 @@ export type Database = {
           picked_up_at: string | null
           picked_up_by: string | null
           quantity: number
+          reservation_group_id: string | null
           reserved_at: string
           reserved_by: string | null
           reserved_for: string

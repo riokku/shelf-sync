@@ -31,6 +31,7 @@ function createTestReservation(overrides: Partial<InventoryItemReservationWithIt
     returnedAt: '',
     cancelledByLabel: '',
     cancelledAt: '',
+    groupId: null,
     ...overrides,
   };
 }
@@ -262,6 +263,218 @@ describe('PlaceReservationModalComponent', () => {
       component.cancel();
 
       expect(closeSpy).toHaveBeenCalledWith();
+    });
+  });
+
+  describe('multi-item lines', () => {
+    it('addLine() appends a blank line and removeLine() removes it', async () => {
+      await setup();
+      component.addLine();
+      expect(component.additionalLines.length).toBe(1);
+
+      component.removeLine(0);
+      expect(component.additionalLines.length).toBe(0);
+    });
+
+    it('onLineItemSelected() resolves the picked item into that line', async () => {
+      await setup();
+      component.addLine();
+
+      component.onLineItemSelected({ option: { value: 'item-2' } } as never, 0);
+
+      expect(component.additionalLines[0].item).toEqual(ITEMS[1]);
+      expect(component.additionalLines[0].searchTerm).toBe('Table Runners');
+    });
+
+    it('save() places one reservation per line, all sharing a group id, and closes with true once every line succeeds', async () => {
+      await setup();
+      const closeSpy = spyOn(dialogRef, 'close');
+      const rpcSpy = spyOn((component as unknown as { supabase: { rpc: (...args: unknown[]) => unknown } }).supabase, 'rpc')
+        .and.returnValue({ then: (resolve: (v: { error: null }) => void) => resolve({ error: null }) } as never);
+
+      component.onItemSelected({ option: { value: 'item-1' } } as never);
+      component.reservationForm.controls.quantity.setValue(10);
+      component.addLine();
+      component.onLineItemSelected({ option: { value: 'item-2' } } as never, 0);
+      component.additionalLines[0].quantity = 5;
+      component.reservationForm.controls.dateRange.setValue({ start: new Date(2026, 5, 1), end: new Date(2026, 5, 3) });
+      component.reservationForm.controls.reservedFor.setValue('Smith wedding');
+
+      await component.save();
+
+      expect(rpcSpy).toHaveBeenCalledTimes(2);
+      const [firstName, firstParams] = rpcSpy.calls.argsFor(0) as [string, { group_id?: string }];
+      const [, secondParams] = rpcSpy.calls.argsFor(1) as [string, { group_id?: string }];
+      expect(firstName).toBe('create_reservation');
+      expect(firstParams.group_id).toBeTruthy();
+      expect(secondParams.group_id).toBe(firstParams.group_id);
+      expect(closeSpy).toHaveBeenCalledWith(true);
+      expect(component.error).toBeNull();
+    });
+
+    it('save() blocks the same item picked on two lines rather than submitting either', async () => {
+      await setup();
+      const closeSpy = spyOn(dialogRef, 'close');
+
+      component.onItemSelected({ option: { value: 'item-1' } } as never);
+      component.reservationForm.controls.quantity.setValue(10);
+      component.addLine();
+      component.onLineItemSelected({ option: { value: 'item-1' } } as never, 0);
+      component.additionalLines[0].quantity = 5;
+      component.reservationForm.controls.dateRange.setValue({ start: new Date(2026, 5, 1), end: new Date(2026, 5, 3) });
+      component.reservationForm.controls.reservedFor.setValue('Smith wedding');
+
+      await component.save();
+
+      expect(component.error).toContain('picked more than once');
+      expect(closeSpy).not.toHaveBeenCalled();
+    });
+
+    it('save() reports a partial failure and keeps the dialog open with only the failed line still pending', async () => {
+      await setup();
+      const closeSpy = spyOn(dialogRef, 'close');
+      let call = 0;
+      spyOn((component as unknown as { supabase: { rpc: (...args: unknown[]) => unknown } }).supabase, 'rpc').and.callFake(() => {
+        call++;
+        const error = call === 2 ? { message: 'only 3 available' } : null;
+        return { then: (resolve: (v: { error: unknown }) => void) => resolve({ error }) } as never;
+      });
+
+      component.onItemSelected({ option: { value: 'item-1' } } as never);
+      component.reservationForm.controls.quantity.setValue(10);
+      component.addLine();
+      component.onLineItemSelected({ option: { value: 'item-2' } } as never, 0);
+      component.additionalLines[0].quantity = 5;
+      component.reservationForm.controls.dateRange.setValue({ start: new Date(2026, 5, 1), end: new Date(2026, 5, 3) });
+      component.reservationForm.controls.reservedFor.setValue('Smith wedding');
+
+      await component.save();
+
+      expect(closeSpy).not.toHaveBeenCalled();
+      expect(component.error).toContain('1 of 2 reserved');
+      expect(component.error).toContain('Table Runners');
+      // The item that failed is still there to retry; the one that
+      // succeeded was cleared out of the pending set.
+      expect(component.selectedItem).toBeNull();
+      expect(component.additionalLines.length).toBe(1);
+      expect(component.additionalLines[0].item).toEqual(ITEMS[1]);
+    });
+  });
+
+  describe('loadKit()', () => {
+    const KIT = {
+      id: 'kit-1',
+      name: 'Wedding package',
+      description: '',
+      items: [
+        { itemId: 'item-1', itemName: 'Chiavari Chairs', quantity: 50 },
+        { itemId: 'item-2', itemName: 'Table Runners', quantity: 20 }
+      ]
+    };
+
+    it('prefills the primary field from the kit\'s first item and the rest as additional lines', async () => {
+      await setup({ data: { kits: [KIT] } });
+
+      component.loadKit('kit-1');
+
+      expect(component.selectedKitId).toBe('kit-1');
+      expect(component.selectedItem).toEqual(ITEMS[0]);
+      expect(component.reservationForm.controls.quantity.value).toBe(50);
+      expect(component.additionalLines.length).toBe(1);
+      expect(component.additionalLines[0].item).toEqual(ITEMS[1]);
+      expect(component.additionalLines[0].quantity).toBe(20);
+    });
+
+    it('skips a kit item that no longer resolves to a real item and reports how many were skipped', async () => {
+      const kitWithGoneItem = {
+        ...KIT,
+        items: [...KIT.items, { itemId: 'item-gone', itemName: 'Retired Thing', quantity: 3 }]
+      };
+      await setup({ data: { kits: [kitWithGoneItem] } });
+
+      component.loadKit('kit-1');
+
+      expect(component.kitItemsSkipped).toBe(1);
+      expect(component.additionalLines.length).toBe(1);
+    });
+
+    it('is a no-op for an unknown kit id', async () => {
+      await setup({ data: { kits: [KIT] } });
+
+      component.loadKit('does-not-exist');
+
+      expect(component.selectedItem).toBeNull();
+      expect(component.selectedKitId).toBeNull();
+    });
+  });
+
+  describe('setPickMode()', () => {
+    const KIT = {
+      id: 'kit-1',
+      name: 'Wedding package',
+      description: '',
+      items: [{ itemId: 'item-1', itemName: 'Chiavari Chairs', quantity: 50 }]
+    };
+
+    it('defaults to \'items\' mode', async () => {
+      await setup();
+      expect(component.pickMode).toBe('items');
+    });
+
+    it('switches mode and clears whatever item/kit selection was already made', async () => {
+      await setup({ data: { kits: [KIT] } });
+      component.loadKit('kit-1');
+      expect(component.selectedItem).not.toBeNull();
+
+      component.setPickMode('kit');
+
+      expect(component.pickMode).toBe('kit');
+      expect(component.selectedItem).toBeNull();
+      expect(component.selectedKitId).toBeNull();
+      expect(component.additionalLines).toEqual([]);
+      expect(component.itemSearchControl.value).toBe('');
+      expect(component.reservationForm.controls.quantity.value).toBeNull();
+    });
+
+    it('clears a hand-picked item when switching to kit mode', async () => {
+      await setup({ data: { kits: [KIT] } });
+      component.onItemSelected({ option: { value: 'item-1' } } as never);
+      component.reservationForm.controls.quantity.setValue(10);
+
+      component.setPickMode('kit');
+
+      expect(component.selectedItem).toBeNull();
+      expect(component.reservationForm.controls.quantity.value).toBeNull();
+    });
+
+    it('is a no-op when already in that mode', async () => {
+      await setup({ data: { kits: [KIT] } });
+      component.onItemSelected({ option: { value: 'item-1' } } as never);
+
+      component.setPickMode('items');
+
+      // Unchanged — a real reset would have cleared this.
+      expect(component.selectedItem).toEqual(ITEMS[0]);
+    });
+
+    it('leaves the shared date range/reserved-for/note fields untouched', async () => {
+      await setup({ data: { kits: [KIT] } });
+      component.reservationForm.controls.reservedFor.setValue('Smith wedding');
+
+      component.setPickMode('kit');
+
+      expect(component.reservationForm.controls.reservedFor.value).toBe('Smith wedding');
+    });
+  });
+
+  describe('save() in kit mode', () => {
+    it('asks the user to pick a kit rather than "pick an item" when nothing\'s been picked yet', async () => {
+      await setup({ data: { kits: [{ id: 'kit-1', name: 'Wedding package', description: '', items: [] }] } });
+      component.setPickMode('kit');
+
+      await component.save();
+
+      expect(component.error).toBe('Pick a kit to reserve from.');
     });
   });
 });

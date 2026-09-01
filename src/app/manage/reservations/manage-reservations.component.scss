@@ -176,3 +176,145 @@
   flex-shrink: 0;
   gap: 0.5rem;
 }
+
+.page-tab-toggle{
+  margin-bottom: 1.5rem;
+}
+
+.section-hint{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.kits-header-row{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.kit-list{
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.kit-card{
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 0.75rem;
+}
+
+.kit-info{
+  min-width: 0;
+
+  h4{
+    margin: 0 0 0.25rem;
+  }
+}
+
+.kit-description{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+  margin: 0 0 0.5rem;
+}
+
+.kit-item-list{
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+
+  li{
+    margin-bottom: 0.125rem;
+  }
+}
+
+.kit-actions{
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.25rem;
+}
+
+// A multi-item reservation (several rows sharing one reservation_group_id —
+// see that migration's own doc comment) — same visual weight as a single
+// .reservation-card, just with its own header/sub-item-list/group-actions
+// layered in rather than the flat single-row layout that card uses.
+.reservation-group-card{
+  padding: 1rem 1.25rem;
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 0.75rem;
+}
+
+.reservation-group-header{
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+
+  mat-icon{
+    color: var(--mat-sys-primary);
+  }
+}
+
+.reservation-group-title{
+  font-weight: 600;
+  flex: 1 1 auto;
+}
+
+.reservation-group-dates{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+}
+
+.reservation-group-items{
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.reservation-group-item{
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--mat-sys-surface-container);
+  border-radius: 0.5rem;
+}
+
+.reservation-item-actions{
+  display: flex;
+  gap: 0.375rem;
+  margin-left: auto;
+}
+
+.reservation-group-meta{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8125rem;
+
+  .semibold{
+    font-weight: 600;
+  }
+}
+
+.reservation-group-actions{
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}

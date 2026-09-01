@@ -33,7 +33,8 @@ function toInventoryItemReservation(row: InventoryItemReservationRow, profiles: 
     returnedByLabel: resolveProfileName(row.returned_by, profiles),
     returnedAt: row.returned_at ?? '',
     cancelledByLabel: resolveProfileName(row.cancelled_by, profiles),
-    cancelledAt: row.cancelled_at ?? ''
+    cancelledAt: row.cancelled_at ?? '',
+    groupId: row.reservation_group_id
   };
 }
 

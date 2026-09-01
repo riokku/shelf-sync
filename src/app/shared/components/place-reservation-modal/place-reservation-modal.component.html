@@ -1,34 +1,141 @@
 <h2 mat-dialog-title class="reservation-title">
   <mat-icon class="reservation-title-icon">event</mat-icon>
   New reservation
-  <app-help-tooltip text="Books a quantity of this item for a future date range (e.g. for an upcoming event), so it doesn't get double-booked — separate from checking the item out. Nothing happens to its stock or checked-out status until someone actually picks it up." />
+  <app-help-tooltip text="Books a quantity of one or more items for a future date range (e.g. for an upcoming event), so it doesn't get double-booked — separate from checking an item out. Hand-pick items one at a time, or start from a saved kit — either way, every line stays editable before you submit. Nothing happens to stock or checked-out status until someone actually picks it up." />
 </h2>
 <form [formGroup]="reservationForm" (ngSubmit)="save()">
   <mat-dialog-content>
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Item</mat-label>
-      <mat-icon matPrefix>inventory_2</mat-icon>
-      <input
-          matInput
-          placeholder="Search inventory…"
-          [formControl]="itemSearchControl"
-          [matAutocomplete]="itemAuto"
-        />
-      <mat-autocomplete #itemAuto="matAutocomplete" (optionSelected)="onItemSelected($event)">
-        @for (item of filteredItems; track item.id) {
-          <mat-option [value]="item.id" [disabled]="item.isLocked || item.isPendingRetirement">
-            {{ item.name }}
-            @if (item.isLocked) {
-              <mat-icon class="unavailable-item-icon" matTooltip="Locked — this item can't be reserved">lock</mat-icon>
-            } @else if (item.isPendingRetirement) {
-              <mat-icon class="unavailable-item-icon" matTooltip="Pending retirement — this item can't be reserved">hourglass_top</mat-icon>
+    @if (kits.length > 0) {
+      <mat-button-toggle-group class="pick-mode-toggle" [ngModel]="pickMode" [ngModelOptions]="{ standalone: true }" (ngModelChange)="setPickMode($event)">
+        <mat-button-toggle value="items">
+          <mat-icon>checklist</mat-icon>
+          Hand-pick items
+        </mat-button-toggle>
+        <mat-button-toggle value="kit">
+          <mat-icon>inventory_2</mat-icon>
+          Use a kit
+        </mat-button-toggle>
+      </mat-button-toggle-group>
+    }
+
+    @if (pickMode === 'kit') {
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Kit</mat-label>
+        <mat-icon matPrefix>inventory_2</mat-icon>
+        <mat-select [value]="selectedKitId" (selectionChange)="loadKit($event.value)">
+          @for (kit of kits; track kit.id) {
+            <mat-option [value]="kit.id">{{ kit.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      @if (kitItemsSkipped > 0) {
+        <p class="kit-skip-hint">
+          <mat-icon>info</mat-icon>
+          {{ kitItemsSkipped }} {{ kitItemsSkipped === 1 ? 'item' : 'items' }} from that kit
+          {{ kitItemsSkipped === 1 ? "isn't" : "aren't" }} available anymore and
+          {{ kitItemsSkipped === 1 ? 'was' : 'were' }} skipped.
+        </p>
+      }
+    }
+
+    <!-- Hand-pick mode always shows the item-lines editor, ready to fill in.
+         Kit mode only shows it once a kit's actually been picked (see
+         selectedKitId above) — nothing to edit before then — but once one
+         is, every line here (including the "Add another item" button below)
+         works identically to hand-pick mode, so a kit is a starting point,
+         not a locked-in choice. -->
+    @if (pickMode === 'items' || selectedKitId) {
+      <div class="reservation-line">
+        <mat-form-field appearance="outline" class="line-item-field">
+          <mat-label>Item</mat-label>
+          <mat-icon matPrefix>inventory_2</mat-icon>
+          <input
+              matInput
+              placeholder="Search inventory…"
+              [formControl]="itemSearchControl"
+              [matAutocomplete]="itemAuto"
+            />
+          <mat-autocomplete #itemAuto="matAutocomplete" (optionSelected)="onItemSelected($event)">
+            @for (item of filteredItems; track item.id) {
+              <mat-option [value]="item.id" [disabled]="item.isLocked || item.isPendingRetirement">
+                {{ item.name }}
+                @if (item.isLocked) {
+                  <mat-icon class="unavailable-item-icon" matTooltip="Locked — this item can't be reserved">lock</mat-icon>
+                } @else if (item.isPendingRetirement) {
+                  <mat-icon class="unavailable-item-icon" matTooltip="Pending retirement — this item can't be reserved">hourglass_top</mat-icon>
+                }
+              </mat-option>
+            } @empty {
+              <mat-option disabled>No items match.</mat-option>
             }
-          </mat-option>
-        } @empty {
-          <mat-option disabled>No items match.</mat-option>
+          </mat-autocomplete>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="line-quantity-field">
+          <mat-label>Quantity</mat-label>
+          <input matInput type="number" min="1" formControlName="quantity" />
+        </mat-form-field>
+      </div>
+      @if (availableForSelectedRange !== null) {
+        <p class="availability-hint" [class.availability-hint-tight]="availableForSelectedRange <= 0">
+          <mat-icon>info</mat-icon>
+          {{ availableForSelectedRange }} available for these dates
+        </p>
+      }
+
+      @for (line of additionalLines; track $index) {
+        <div class="reservation-line">
+          <mat-form-field appearance="outline" class="line-item-field">
+            <mat-label>Item</mat-label>
+            <mat-icon matPrefix>inventory_2</mat-icon>
+            <input
+                matInput
+                placeholder="Search inventory…"
+                [(ngModel)]="line.searchTerm"
+                [ngModelOptions]="{ standalone: true }"
+                [matAutocomplete]="lineAuto"
+              />
+            <mat-autocomplete #lineAuto="matAutocomplete" (optionSelected)="onLineItemSelected($event, $index)">
+              @for (item of filteredItemsForLine($index); track item.id) {
+                <mat-option [value]="item.id" [disabled]="item.isLocked || item.isPendingRetirement">
+                  {{ item.name }}
+                  @if (item.isLocked) {
+                    <mat-icon class="unavailable-item-icon" matTooltip="Locked — this item can't be reserved">lock</mat-icon>
+                  } @else if (item.isPendingRetirement) {
+                    <mat-icon class="unavailable-item-icon" matTooltip="Pending retirement — this item can't be reserved">hourglass_top</mat-icon>
+                  }
+                </mat-option>
+              } @empty {
+                <mat-option disabled>No items match.</mat-option>
+              }
+            </mat-autocomplete>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="line-quantity-field">
+            <mat-label>Quantity</mat-label>
+            <input
+                matInput
+                type="number"
+                min="1"
+                [(ngModel)]="line.quantity"
+                [ngModelOptions]="{ standalone: true }"
+              />
+          </mat-form-field>
+          <button mat-icon-button type="button" matTooltip="Remove item" (click)="removeLine($index)">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </div>
+        @if (availableFor(line.item) !== null) {
+          <p class="availability-hint" [class.availability-hint-tight]="availableFor(line.item)! <= 0">
+            <mat-icon>info</mat-icon>
+            {{ availableFor(line.item) }} available for these dates
+          </p>
         }
-      </mat-autocomplete>
-    </mat-form-field>
+      }
+
+      <button mat-stroked-button type="button" class="add-line-button" (click)="addLine()">
+        <mat-icon>add</mat-icon>
+        Add another item
+      </button>
+    }
 
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Dates</mat-label>
@@ -42,24 +149,6 @@
         <mat-error>End date must be on or after the start date.</mat-error>
       } @else if (reservationForm.controls.dateRange.controls.start.hasError('required') || reservationForm.controls.dateRange.controls.end.hasError('required')) {
         <mat-error>Pick a start and end date.</mat-error>
-      }
-    </mat-form-field>
-
-    @if (availableForSelectedRange !== null) {
-      <p class="availability-hint" [class.availability-hint-tight]="availableForSelectedRange <= 0">
-        <mat-icon>info</mat-icon>
-        {{ availableForSelectedRange }} available for these dates
-      </p>
-    }
-
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Quantity</mat-label>
-      <mat-icon matPrefix>numbers</mat-icon>
-      <input matInput type="number" min="1" formControlName="quantity" />
-      @if (reservationForm.controls.quantity.hasError('required')) {
-        <mat-error>Quantity is required.</mat-error>
-      } @else if (reservationForm.controls.quantity.hasError('min')) {
-        <mat-error>Quantity must be at least 1.</mat-error>
       }
     </mat-form-field>
 
@@ -90,7 +179,7 @@
       } @else {
         <ng-container>
           <mat-icon>event</mat-icon>
-          Reserve
+          {{ additionalLines.length > 0 ? 'Reserve items' : 'Reserve' }}
         </ng-container>
       }
     </button>

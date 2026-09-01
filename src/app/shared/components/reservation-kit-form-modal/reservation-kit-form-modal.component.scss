@@ -1,0 +1,50 @@
+// Material's own mat-dialog-title has only 6px of top padding by default —
+// see DiscardModalComponent's own identical fix for the full reasoning.
+[mat-dialog-title]{
+  padding-top: 1.5rem;
+}
+
+.kit-form{
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+
+  .full-width{
+    width: 100%;
+  }
+}
+
+.kit-lines-heading{
+  margin: 0.5rem 0 0;
+  font-size: 0.9375rem;
+}
+
+.kit-line-list{
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.kit-line-row{
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.kit-line-item-field{
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.kit-line-quantity-field{
+  flex: 0 0 6rem;
+}
+
+.error-message{
+  color: var(--app-error-text);
+  margin: -0.5rem 0 1rem;
+}

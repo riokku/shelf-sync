@@ -17,6 +17,13 @@
       </button>
     </app-page-header>
 
+    @if (authService.canManage()) {
+      <mat-button-toggle-group class="page-tab-toggle" [ngModel]="pageTab" (ngModelChange)="setPageTab($event)">
+        <mat-button-toggle value="reservations">Reservations</mat-button-toggle>
+        <mat-button-toggle value="kits">Kits</mat-button-toggle>
+      </mat-button-toggle-group>
+    }
+
     @if (reservationError) {
       <p class="error-message">{{ reservationError }}</p>
     }
@@ -52,6 +59,55 @@
           Retry
         </button>
       </app-empty-state>
+    } @else if (pageTab === 'kits' && authService.canManage()) {
+      <div class="kits-header-row">
+        <p class="section-hint">Pre-made bundles of items + quantities that speed up placing a multi-item reservation.</p>
+        <button mat-flat-button color="primary" type="button" (click)="addKit()">
+          <mat-icon>add</mat-icon>
+          New kit
+        </button>
+      </div>
+
+      @if (kitRemoveError) {
+        <p class="error-message">{{ kitRemoveError }}</p>
+      }
+
+      @if (kitService.loadError()) {
+        <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load kits. ' + kitService.loadError()">
+          <button mat-stroked-button type="button" (click)="retryLoadKits()">
+            <mat-icon>refresh</mat-icon>
+            Retry
+          </button>
+        </app-empty-state>
+      } @else if (kitService.kits().length === 0) {
+        <app-empty-state icon="inventory_2" message="No reservation kits yet." />
+      } @else {
+        <ul class="kit-list">
+          @for (kit of kitService.kits(); track kit.id) {
+            <li class="kit-card">
+              <div class="kit-info">
+                <h4>{{ kit.name }}</h4>
+                @if (kit.description) {
+                  <p class="kit-description">{{ kit.description }}</p>
+                }
+                <ul class="kit-item-list">
+                  @for (item of kit.items; track item.itemId) {
+                    <li>{{ item.quantity }}&times; {{ item.itemName }}</li>
+                  }
+                </ul>
+              </div>
+              <div class="kit-actions">
+                <button mat-icon-button type="button" matTooltip="Edit kit" (click)="editKit(kit)">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button mat-icon-button type="button" matTooltip="Delete kit" (click)="removeKit(kit)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </li>
+          }
+        </ul>
+      }
     } @else {
       <div class="reservation-controls-row">
         <mat-button-toggle-group [(ngModel)]="statusFilter" class="status-toggle">
@@ -76,9 +132,13 @@
       </div>
 
       <!-- Shared by both view modes below — the list renders one per
-           filtered reservation, the calendar's own agenda panel renders one
-           per reservation on whatever day is selected — so the status-pill/
-           actions markup only exists once. -->
+           filtered reservation group, the calendar's own agenda panel
+           renders one per group on whatever day is selected — so the
+           status-pill/actions markup only exists once. A singleton group
+           (an ordinary single-item reservation — by far the common case)
+           renders through #reservationCard, identical to before grouping
+           existed; a real multi-item group renders through
+           #reservationGroupCard instead. -->
       <ng-template #reservationCard let-reservation>
         <li [id]="'reservation-' + reservation.id" class="reservation-card" [class.realtime-flash]="isFlashing(reservation.id)">
           <div class="reservation-info">
@@ -158,6 +218,96 @@
         </li>
       </ng-template>
 
+      <ng-template #reservationGroupCard let-group>
+        <li
+            [id]="'reservation-' + group.items[0].id"
+            class="reservation-group-card"
+            [class.realtime-flash]="isFlashing(group.items[0].id)"
+          >
+          <div class="reservation-group-header">
+            <mat-icon>inventory_2</mat-icon>
+            <span class="reservation-group-title">
+              {{ group.items.length }} items reserved for {{ group.items[0].reservedFor }}
+            </span>
+            <span class="reservation-group-dates">
+              {{ group.items[0].startDate | date: 'M/d/yy' }} – {{ group.items[0].endDate | date: 'M/d/yy' }}
+            </span>
+          </div>
+
+          <ul class="reservation-group-items">
+            @for (reservation of group.items; track reservation.id) {
+              <li
+                  [id]="'reservation-' + reservation.id"
+                  class="reservation-group-item"
+                  [class.realtime-flash]="isFlashing(reservation.id)"
+                >
+                <span class="status-pill" [class]="'reservation-' + reservation.status">
+                  <mat-icon>
+                    {{
+                      reservation.status === 'reserved' ? 'event'
+                      : reservation.status === 'picked_up' ? 'local_shipping'
+                      : reservation.status === 'returned' ? 'check_circle'
+                      : 'cancel'
+                    }}
+                  </mat-icon>
+                  {{
+                    reservation.status === 'reserved' ? 'Reserved'
+                    : reservation.status === 'picked_up' ? 'Picked up'
+                    : reservation.status === 'returned' ? 'Returned'
+                    : 'Cancelled'
+                  }}
+                </span>
+                <a class="reservation-item-link" routerLink="/inventory" [queryParams]="{ item: reservation.itemId }">
+                  {{ reservation.itemName }}
+                </a>
+                <span class="reservation-quantity">{{ reservation.quantity }} units</span>
+                @if (reservation.status === 'reserved' || reservation.status === 'picked_up') {
+                  <div class="reservation-item-actions">
+                    @if (reservation.status === 'reserved') {
+                      <button mat-button type="button" [disabled]="isProcessingReservation" (click)="cancelReservation(reservation)">
+                        Cancel
+                      </button>
+                      <button mat-stroked-button type="button" [disabled]="isProcessingReservation" (click)="markPickedUp(reservation)">
+                        Mark picked up
+                      </button>
+                    } @else {
+                      <button mat-stroked-button type="button" [disabled]="isProcessingReservation" (click)="markReturned(reservation)">
+                        Mark returned
+                      </button>
+                    }
+                  </div>
+                }
+              </li>
+            }
+          </ul>
+
+          <div class="reservation-group-meta">
+            Reserved by {{ group.items[0].reservedByLabel }} &middot; {{ group.items[0].reservedAt | date: 'M/d/yy, h:mm a' }}
+            @if (group.items[0].note) {
+              <br />
+              <span class="semibold">Note:</span> {{ group.items[0].note }}
+            }
+          </div>
+
+          @if (groupHasReserved(group)) {
+            <div class="reservation-group-actions">
+              <button mat-button type="button" [disabled]="isProcessingReservation" (click)="cancelGroup(group)">
+                Cancel remaining
+              </button>
+              <button mat-flat-button color="primary" type="button" [disabled]="isProcessingReservation" (click)="markGroupPickedUp(group)">
+                Mark remaining picked up
+              </button>
+            </div>
+          } @else if (groupHasPickedUp(group)) {
+            <div class="reservation-group-actions">
+              <button mat-flat-button color="primary" type="button" [disabled]="isProcessingReservation" (click)="markGroupReturned(group)">
+                Mark remaining returned
+              </button>
+            </div>
+          }
+        </li>
+      </ng-template>
+
       @if (viewMode === 'list') {
         @if (filteredReservations.length === 0) {
           <app-empty-state
@@ -166,8 +316,11 @@
             />
         } @else {
           <ul class="reservation-list">
-            @for (reservation of filteredReservations; track reservation.id) {
-              <ng-container [ngTemplateOutlet]="reservationCard" [ngTemplateOutletContext]="{ $implicit: reservation }" />
+            @for (group of groupedFilteredReservations; track group.key) {
+              <ng-container
+                  [ngTemplateOutlet]="group.items.length > 1 ? reservationGroupCard : reservationCard"
+                  [ngTemplateOutletContext]="{ $implicit: group.items.length > 1 ? group : group.items[0] }"
+                />
             }
           </ul>
         }
@@ -179,8 +332,11 @@
           <app-empty-state icon="event" message="No reservations on this day." />
         } @else {
           <ul class="reservation-list">
-            @for (reservation of selectedDateReservations; track reservation.id) {
-              <ng-container [ngTemplateOutlet]="reservationCard" [ngTemplateOutletContext]="{ $implicit: reservation }" />
+            @for (group of groupedSelectedDateReservations; track group.key) {
+              <ng-container
+                  [ngTemplateOutlet]="group.items.length > 1 ? reservationGroupCard : reservationCard"
+                  [ngTemplateOutletContext]="{ $implicit: group.items.length > 1 ? group : group.items[0] }"
+                />
             }
           </ul>
         }

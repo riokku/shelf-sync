@@ -1,0 +1,75 @@
+<h2 mat-dialog-title>{{ isEditing ? 'Edit kit' : 'New kit' }}</h2>
+<mat-dialog-content>
+  <form class="kit-form">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Kit name</mat-label>
+      <mat-icon matPrefix>inventory_2</mat-icon>
+      <input matInput [formControl]="nameControl" />
+      @if (nameControl.hasError('required')) {
+        <mat-error>Name is required.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Description (optional)</mat-label>
+      <mat-icon matPrefix>notes</mat-icon>
+      <textarea matInput [formControl]="descriptionControl" rows="2"></textarea>
+    </mat-form-field>
+
+    <h3 class="kit-lines-heading">Items</h3>
+    <ul class="kit-line-list">
+      @for (line of lines; track $index) {
+        <li class="kit-line-row">
+          <mat-form-field appearance="outline" class="kit-line-item-field">
+            <mat-label>Item</mat-label>
+            <input
+                matInput
+                placeholder="Search inventory…"
+                [(ngModel)]="line.searchTerm"
+                [ngModelOptions]="{ standalone: true }"
+                [matAutocomplete]="kitItemAuto"
+              />
+            <mat-autocomplete #kitItemAuto="matAutocomplete" (optionSelected)="onLineItemSelected($event, $index)">
+              @for (item of filteredItemsForLine($index); track item.id) {
+                <mat-option [value]="item.id">{{ item.name }}</mat-option>
+              } @empty {
+                <mat-option disabled>No items match.</mat-option>
+              }
+            </mat-autocomplete>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="kit-line-quantity-field">
+            <mat-label>Quantity</mat-label>
+            <input
+                matInput
+                type="number"
+                min="1"
+                [(ngModel)]="line.quantity"
+                [ngModelOptions]="{ standalone: true }"
+              />
+          </mat-form-field>
+          <button mat-icon-button type="button" matTooltip="Remove item" (click)="removeLine($index)">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </li>
+      }
+    </ul>
+    <button mat-stroked-button type="button" (click)="addLine()">
+      <mat-icon>add</mat-icon>
+      Add item
+    </button>
+  </form>
+
+  @if (error) {
+    <p class="error-message">{{ error }}</p>
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="cancel()">Cancel</button>
+  <button mat-flat-button color="primary" type="button" (click)="save()" [disabled]="isSaving">
+    @if (isSaving) {
+      <mat-spinner diameter="20"></mat-spinner>
+    } @else {
+      Save
+    }
+  </button>
+</mat-dialog-actions>

@@ -1,15 +1,17 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { ActivatedRoute, provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { of } from 'rxjs';
 
 import { ManageReservationsComponent } from './manage-reservations.component';
 import { SupabaseService } from '../../core/supabase.service';
 import { AuthService } from '../../core/auth.service';
+import { ReservationKitService } from '../../core/reservation-kit.service';
 import { NotificationService } from '../../core/notification.service';
 import { PlaceReservationModalComponent } from '../../shared/components/place-reservation-modal/place-reservation-modal.component';
 import { createFakeActivatedRoute, createFakeAuthService, createFakeProfile, createFakeSupabaseService } from '../../testing/fakes';
 import { InventoryItemReservationWithItem } from '../../shared/utils/inventory-item-reservations';
+import { ReservationKit } from '../../shared/models/reservation-kit.model';
 
 function createTestReservation(overrides: Partial<InventoryItemReservationWithItem> = {}): InventoryItemReservationWithItem {
   return {
@@ -30,6 +32,7 @@ function createTestReservation(overrides: Partial<InventoryItemReservationWithIt
     returnedAt: '',
     cancelledByLabel: '',
     cancelledAt: '',
+    groupId: null,
     ...overrides,
   };
 }
@@ -224,6 +227,191 @@ describe('ManageReservationsComponent', () => {
       await component.cancelReservation(createTestReservation());
 
       expect(component.reservationError).toBe('can no longer be cancelled');
+    });
+  });
+
+  describe('groupedFilteredReservations', () => {
+    it('keeps an ordinary reservation (no groupId) as its own singleton group', async () => {
+      await setup();
+      component.reservations = [createTestReservation({ id: 'r-1', groupId: null })];
+
+      const groups = component.groupedFilteredReservations;
+
+      expect(groups.length).toBe(1);
+      expect(groups[0].items.length).toBe(1);
+      expect(groups[0].groupId).toBeNull();
+    });
+
+    it('collapses rows sharing a groupId into one group, preserving first-seen order', async () => {
+      await setup();
+      component.reservations = [
+        createTestReservation({ id: 'r-1', itemId: 'item-1', groupId: 'group-1' }),
+        createTestReservation({ id: 'r-2', itemId: 'item-2', groupId: 'group-1' }),
+        createTestReservation({ id: 'r-3', itemId: 'item-3', groupId: null })
+      ];
+
+      const groups = component.groupedFilteredReservations;
+
+      expect(groups.length).toBe(2);
+      expect(groups[0].groupId).toBe('group-1');
+      expect(groups[0].items.map(r => r.id)).toEqual(['r-1', 'r-2']);
+      expect(groups[1].items[0].id).toBe('r-3');
+    });
+  });
+
+  describe('groupHasReserved() / groupHasPickedUp()', () => {
+    it('reflect whether any item in the group is still in that status', async () => {
+      await setup();
+      const group = {
+        key: 'group-1',
+        groupId: 'group-1',
+        items: [
+          createTestReservation({ id: 'r-1', status: 'reserved' }),
+          createTestReservation({ id: 'r-2', status: 'picked_up' })
+        ]
+      };
+
+      expect(component.groupHasReserved(group)).toBeTrue();
+      expect(component.groupHasPickedUp(group)).toBeTrue();
+    });
+  });
+
+  describe('markGroupPickedUp()', () => {
+    it('acts only on the still-"reserved" items in the group and toasts once', async () => {
+      await setup();
+      const notification = TestBed.inject(NotificationService);
+      const successSpy = spyOn(notification, 'success');
+      const rpcSpy = spyOn((component as unknown as { supabase: { rpc: (...args: unknown[]) => unknown } }).supabase, 'rpc')
+        .and.returnValue({ then: (resolve: (v: { error: null }) => void) => resolve({ error: null }) } as never);
+
+      const group = {
+        key: 'group-1',
+        groupId: 'group-1',
+        items: [
+          createTestReservation({ id: 'r-1', status: 'reserved' }),
+          createTestReservation({ id: 'r-2', status: 'picked_up' })
+        ]
+      };
+
+      await component.markGroupPickedUp(group);
+
+      expect(rpcSpy).toHaveBeenCalledTimes(1);
+      expect(rpcSpy).toHaveBeenCalledWith('mark_reservation_picked_up', { reservation_id: 'r-1' });
+      expect(component.reservationError).toBeNull();
+      expect(successSpy).toHaveBeenCalledWith('Reservation group marked picked up');
+    });
+
+    it('reports how many failed rather than assuming all-or-nothing', async () => {
+      await setup();
+      let call = 0;
+      spyOn((component as unknown as { supabase: { rpc: (...args: unknown[]) => unknown } }).supabase, 'rpc').and.callFake(() => {
+        call++;
+        const error = call === 2 ? { message: 'not awaiting pickup' } : null;
+        return { then: (resolve: (v: { error: unknown }) => void) => resolve({ error }) } as never;
+      });
+
+      const group = {
+        key: 'group-1',
+        groupId: 'group-1',
+        items: [
+          createTestReservation({ id: 'r-1', itemName: 'Chiavari Chairs', status: 'reserved' }),
+          createTestReservation({ id: 'r-2', itemName: 'Round Tables', status: 'reserved' })
+        ]
+      };
+
+      await component.markGroupPickedUp(group);
+
+      expect(component.reservationError).toContain('1 of 2');
+      expect(component.reservationError).toContain('Round Tables');
+    });
+
+    it('does nothing when no item in the group is still reserved', async () => {
+      await setup();
+      const rpcSpy = spyOn((component as unknown as { supabase: { rpc: (...args: unknown[]) => unknown } }).supabase, 'rpc');
+
+      const group = { key: 'group-1', groupId: 'group-1', items: [createTestReservation({ status: 'returned' })] };
+
+      await component.markGroupPickedUp(group);
+
+      expect(rpcSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('setPageTab()', () => {
+    it('switches the tab and reflects it in the URL', async () => {
+      await setup();
+      const router = TestBed.inject(Router);
+      const navigateSpy = spyOn(router, 'navigate').and.resolveTo(true);
+
+      component.setPageTab('kits');
+
+      expect(component.pageTab).toBe('kits');
+      expect(navigateSpy).toHaveBeenCalledWith([], jasmine.objectContaining({ queryParams: { tab: 'kits' } }));
+    });
+
+    it('is a no-op when already on that tab', async () => {
+      await setup();
+      const router = TestBed.inject(Router);
+      const navigateSpy = spyOn(router, 'navigate');
+
+      component.setPageTab('reservations');
+
+      expect(navigateSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('kits tab CRUD', () => {
+    it('addKit() opens the kit form modal with the org\'s item catalog', async () => {
+      await setup();
+      const dialog = TestBed.inject(MatDialog);
+      const openSpy = spyOn(dialog, 'open').and.returnValue(createFakeDialogRef(undefined));
+
+      component.addKit();
+
+      expect(openSpy).toHaveBeenCalledWith(jasmine.anything(), jasmine.objectContaining({
+        data: jasmine.objectContaining({ items: jasmine.any(Array) })
+      }));
+    });
+
+    function performRemoveKit(kit: ReservationKit) {
+      return (component as unknown as { performRemoveKit: (kit: ReservationKit) => Promise<void> }).performRemoveKit(kit);
+    }
+
+    it('removeKit() opens a confirm dialog before deleting anything', async () => {
+      await setup();
+      const dialog = TestBed.inject(MatDialog);
+      const openSpy = spyOn(dialog, 'open').and.returnValue(createFakeDialogRef(undefined));
+
+      component.removeKit({ id: 'kit-1', name: 'Wedding package', description: '', items: [] });
+
+      expect(openSpy).toHaveBeenCalledWith(jasmine.anything(), jasmine.objectContaining({
+        data: jasmine.objectContaining({ danger: true })
+      }));
+    });
+
+    it('performRemoveKit() (the confirm dialog\'s callback) deletes and toasts on success', async () => {
+      await setup();
+      const notification = TestBed.inject(NotificationService);
+      const successSpy = spyOn(notification, 'success');
+      const removeSpy = spyOn(TestBed.inject(ReservationKitService), 'remove').and.resolveTo(null);
+
+      await performRemoveKit({ id: 'kit-1', name: 'Wedding package', description: '', items: [] });
+
+      expect(removeSpy).toHaveBeenCalledWith('kit-1');
+      expect(successSpy).toHaveBeenCalledWith('Kit deleted');
+      expect(component.kitRemoveError).toBeNull();
+    });
+
+    it('performRemoveKit() surfaces a delete failure rather than toasting', async () => {
+      await setup();
+      const notification = TestBed.inject(NotificationService);
+      const successSpy = spyOn(notification, 'success');
+      spyOn(TestBed.inject(ReservationKitService), 'remove').and.resolveTo('Network error');
+
+      await performRemoveKit({ id: 'kit-1', name: 'Wedding package', description: '', items: [] });
+
+      expect(component.kitRemoveError).toBe('Network error');
+      expect(successSpy).not.toHaveBeenCalled();
     });
   });
 });
