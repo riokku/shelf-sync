@@ -1632,22 +1632,72 @@ rather than a deliberate choice) — which also means it no longer shows at all 
 specific item/task's own detail view, matching the hero's own scoping.
 
 Admins and managers get a `manage/release-notes` route (`ManageReleaseNotesComponent`, `manageGuard`)
-— a "What's new" list of shipped features (`CHANGELOG_ENTRIES` in `shared/models/changelog.ts`), a
-hand-maintained, newest-first array kept alongside CLAUDE.md's own running log, each entry's `date`
-matching when it actually shipped. This used to be a section on the Help page itself; it's now its
-own page, reachable only via a card on the Manage hub — admin/manager-only for now, since the Manage
-hub is the only place it's linked from (a natural future extension is surfacing it to every role once
-it has a home outside that hub). `shared/utils/changelog.ts` builds an unseen-count badge on top of
-the list (`getUnseenChangelogCount()`/`markChangelogSeen()`, both `localStorage`-backed and per-user
-like `PageIntroComponent`'s own dismissal, not per-organization) — the very first time this is ever
-checked for a user with no stored value at all, it bootstraps them as caught-up-as-of-now rather than
-surfacing every entry that ever shipped before they first looked, the same way a freshly-connected
-email inbox doesn't retroactively mark years of old mail unread. `ManageComponent` badges this count
-on its own Release Notes card, same treatment its Inventory/Tasks/Team cards already give their own
-pending-request counts even though this isn't an approval queue — set directly in `ngOnInit()`
-alongside those (synchronous, no Supabase query needed). Visiting `manage/release-notes` is what
-actually clears it: `ManageReleaseNotesComponent.ngOnInit()` calls `markChangelogSeen()`, and the
-Manage hub's own next load picks that up.
+— a read-only "What's new" list of shipped features, reachable only via a card on the Manage hub
+(admin/manager-only for now, since the Manage hub is the only place it's linked from — a natural
+future extension is surfacing it to every role once it has a home outside that hub). This used to be
+a section on the Help page itself, then a hand-maintained `CHANGELOG_ENTRIES` array
+(`shared/models/changelog.ts`) kept alongside CLAUDE.md's own running log — it's now backed by a real
+`release_notes` table (`add_release_notes` migration, see the Supabase Schema section below), so a
+platform admin can post/edit/delete entries from Studio at runtime instead of a code change. Every
+entry carries a `severity` (`standard`/`emphasized`/`critical`) that drives distinct styling —
+`ReleaseNoteSeverity` and the shared `RELEASE_NOTE_SEVERITY_LABELS`/`RELEASE_NOTE_SEVERITY_OPTIONS`
+live in `shared/models/release-note.model.ts`. `standard` (the common case) renders identically to the
+list's original plain styling; `emphasized` and `critical` each get a colored left accent, a matching
+tinted background wash, and a small uppercase pill badge naming the tier — reusing this app's existing
+`--app-warning-*`/`--app-danger-*` badge-pill token pairs (amber, then red) rather than inventing a
+third "highlight" color, the same escalation the low-stock/out-of-stock status pills already use for
+"notable" vs. "urgent." `shared/utils/release-notes.ts` (`loadReleaseNotes()`/`createReleaseNote()`/
+`updateReleaseNote()`/`deleteReleaseNote()`) is the shared read/write layer both pages sit on top of —
+plain Supabase calls, no RPC, since `release_notes`' own RLS (`is_platform_admin()`-gated writes, any-
+authenticated-user reads) is a flat check with no atomic multi-table side effect the way e.g.
+`create_broadcast()` needs. `shared/utils/changelog.ts` (kept, despite the underlying data no longer
+being a static "changelog") still builds the unseen-count badge on top of the list
+(`getUnseenChangelogCount()`/`markChangelogSeen()`, both `localStorage`-backed and per-user like
+`PageIntroComponent`'s own dismissal, not per-organization, under the same `shelf-sync:changelog-last-
+seen:<userId>` key this always used — kept unchanged so switching to a DB-backed list didn't reset
+every existing user's read/unread state) — the very first time this is ever checked for a user with no
+stored value at all, it bootstraps them as caught-up-as-of-now rather than surfacing every entry that
+ever shipped before they first looked, the same way a freshly-connected email inbox doesn't
+retroactively mark years of old mail unread. Unlike its original static-array version,
+`getUnseenChangelogCount()` is now async (it issues its own narrow `release_notes` query, just
+`posted_at`, since a hub badge doesn't need the full title/description text every row also carries) and
+takes a Supabase client alongside the userId; `markChangelogSeen()` takes the caller's own already-
+loaded newest `postedAt` directly rather than re-deriving it, since both `ManageReleaseNotesComponent`
+and `StudioReleaseNotesComponent` already have their freshly-loaded list in hand by the time they call
+it. `ManageComponent` badges this count on its own Release Notes card, same treatment its
+Inventory/Tasks/Team cards already give their own pending-request counts even though this isn't an
+approval queue — folded into `ngOnInit()`'s existing `Promise.all` alongside those now that it's a real
+query, rather than set synchronously beforehand. Visiting `manage/release-notes` is what actually
+clears it: `ManageReleaseNotesComponent.ngOnInit()` calls `markChangelogSeen()`, and the Manage hub's
+own next load picks that up.
+
+Writing a release note is Studio-only — `studio/release-notes`/`StudioReleaseNotesComponent`
+(`platformAdminGuard`), a full create/edit/delete CRUD page alongside Manage's read-only one, both
+reading the same platform-wide table. This is genuinely global content (every organization sees the
+exact same list), so authorship belongs with the app's own maintainer, not any org's own admin/manager
+— `release_notes` has no `organization_id` column and no per-org policy join anywhere, the first table
+in this schema like that. Structurally this started as the same near-identical-fork shape
+`StudioErrorLogComponent` already established for forking a `manage/*` page onto Studio, then grew real
+CRUD once the underlying data moved off a static array — `manage/release-notes` is gated by
+`manageGuard` (org role admin/manager), which `is_platform_admin` doesn't imply (the two are
+deliberately orthogonal — see Studio's own intro paragraph above), so a platform-admin-only account
+with no elevated role in their own org would otherwise have no way to even *see* what shipped, let
+alone post it. A "New release note" button opens `ReleaseNoteFormModalComponent`
+(`shared/components/release-note-form-modal`) — self-contained like `BroadcastModalComponent`/
+`SupplierFormModalComponent` (it does the actual `createReleaseNote()`/`updateReleaseNote()` write
+itself), title/description/severity/posted-date fields, `data.releaseNote` optional-means-create same
+shape those two already use. Each row gets Edit/Delete icon buttons (`ConfirmDialogComponent` gates
+delete, `danger: true`, matching every other permanent-delete confirm in this app) — no extra
+client-side role gate needed beyond the route's own `platformAdminGuard`, since only a platform admin
+ever reaches this page at all. No realtime subscription (unlike this page's closest sibling,
+`BroadcastsComponent`) — with a single platform-admin audience, "someone else changed this while I was
+looking" isn't a real scenario the way it is on a multi-editor page. `StudioComponent` badges its own
+Release Notes card the same way `ManageComponent` already does (`unseenReleaseNotesCount`, awaited
+alongside `loadPendingBadge()`/`loadStats()` in `ngOnInit()`'s own `Promise.all`, not folded inside
+`loadStats()` itself — this count has no "genuinely broken vs. empty" ambiguity worth its own
+`loadError`/retry treatment the way that method's five queries do) — and since
+`getUnseenChangelogCount()`'s `localStorage` key is per-user, not per-page, visiting either hub's
+Release Notes page clears both hubs' badges together.
 
 Every user can build their own "Quick menu" from the Account page — an opt-in toggle plus a
 checkbox picker (up to `MAX_QUICK_MENU_ITEMS`, currently 5) choosing which destinations appear as
@@ -2507,7 +2557,7 @@ The app mixes two Angular module styles, which is important to know before addin
   own Settings card, not a direct header nav link or Home card, matching Billing/Danger Zone's own
   precedent of being Manage-hub-only rather than duplicated elsewhere. `studio` and its flat
   sibling routes (`studio/feedback`, `studio/error-log`, `studio/organizations`, `studio/users`,
-  `studio/usage`, `studio/email-log`, `studio/audit-log`)
+  `studio/usage`, `studio/email-log`, `studio/audit-log`, `studio/release-notes`)
   follow the exact same card-hub/flat-sibling-routes shape as `manage` — but guarded by
   `platformAdminGuard`, a genuinely different, cross-org audience (`profiles.is_platform_admin`,
   not any `role`) than every guard above; see the Project Overview section above for the full
@@ -2561,7 +2611,7 @@ manage/                                                     # card hub (ManageCo
   settings/                                                # admin-only: theme picker + logo upload (site_settings) — see Project Overview above
 account/                                                    # profile info, avatar picker, light/dark mode toggle, quick-menu picker
 help/                                                        # static in-app "how do I..." reference (see Project Overview above)
-studio/                                                     # platform-admin only (is_platform_admin, not any org role): card hub (StudioComponent) linking to feedback/, error-log/, organizations/, users/, usage/, email-log/, audit-log/ — see Project Overview above
+studio/                                                     # platform-admin only (is_platform_admin, not any org role): card hub (StudioComponent) linking to feedback/, error-log/, organizations/, users/, usage/, email-log/, audit-log/, release-notes/ — see Project Overview above
 shared/
   components/modal-table/    # standalone Material dialog showing InventoryItem details
   components/bulk-action-toolbar/ # shared "N selected / select all / clear" chrome for every page with bulk actions
@@ -2583,6 +2633,7 @@ shared/
   components/broadcast-modal/ # self-contained title/message + member/item reference picker dialog backing /broadcasts, create and edit alike
   components/lock-user-account-modal/ # mandatory-reason dialog backing StudioUserDetailComponent's account-lock toggle
   components/reservation-calendar/ # hand-rolled CSS-grid month calendar (no calendar library) — backs manage/reservations' calendar view
+  components/release-note-form-modal/ # self-contained title/description/severity/posted-date dialog backing studio/release-notes, create and edit alike
   models/inventory-item.model.ts   # InventoryItem class (constructor-based, no defaults)
   models/supplier.model.ts   # Supplier — a directory entry inventory_items.supplier_id can point at
   models/inventory-item-order.model.ts # InventoryItemOrder — one restock order against an item's linked supplier
@@ -2592,7 +2643,7 @@ shared/
   models/inventory-table-column.ts # optional Inventory table-view columns admin can show/hide (Settings > Data)
   models/pricing-tier.ts     # PRICING_TIERS — shared by PricingComponent (/pricing) and ManageBillingComponent
   models/notification.model.ts # UserNotification / NotificationKind / notificationIcon() — backs HeaderComponent's bell dropdown
-  models/changelog.ts        # CHANGELOG_ENTRIES — hand-maintained "What's new" list, backs manage/release-notes
+  models/release-note.model.ts # ReleaseNote / ReleaseNoteSeverity / RELEASE_NOTE_SEVERITY_LABELS — backs manage/release-notes and studio/release-notes
   models/help-faq.ts         # HELP_FAQ_SECTIONS — question/answer/links data backing the searchable Help page
   models/quick-menu.ts       # QUICK_MENU_OPTIONS / MAX_QUICK_MENU_ITEMS — backs AccountComponent's picker and HeaderComponent's own icon row
   models/feedback.ts         # FeedbackType / FEEDBACK_TYPE_LABELS — backs FeedbackModalComponent, mirrored by hand in the send-notification-email Edge Function
@@ -2608,6 +2659,7 @@ shared/
   utils/inventory-item-reservations.ts # loadAllInventoryItemReservations() / loadUpcomingReservationsForItem() — backs manage/reservations and ModalTableComponent's read-only summary
   utils/inventory-audits.ts # loadAuditSummaries() / loadAuditDetail() — backs manage/audits' list and its embedded AuditDetailComponent
   utils/broadcasts.ts        # loadBroadcasts() / createBroadcast() / updateBroadcast() / deleteBroadcast() — backs /broadcasts and BroadcastModalComponent
+  utils/release-notes.ts     # loadReleaseNotes() / createReleaseNote() / updateReleaseNote() / deleteReleaseNote() — backs manage/release-notes and studio/release-notes
   utils/inventory-export.ts  # buildInventoryExportCsv() / downloadCsv() — backs manage/inventory's "Export" button
   utils/inventory-import.ts  # buildInventoryImportTemplateCsv() / parseAndValidateImportRows() / buildImportInsertPayload() — backs manage/inventory's "Import" button
   utils/activity-log.ts      # loadActivityLog() / logActivity() — org-wide activity_log, backs Manage > Activity Log
@@ -2615,7 +2667,7 @@ shared/
   utils/supplier-label.ts    # resolveSupplierName() — mirrors profile-label.ts for inventory_items.supplier_id
   utils/barcode.ts           # buildItemQrValue()/parseItemQrValue() — ShelfSync's own QR-label encoding
   utils/presence.ts          # isProfileOnline()/formatLastSeen() — reads profiles.last_active_at, backs Manage > Team's presence indicator
-  utils/changelog.ts         # getUnseenChangelogCount()/markChangelogSeen() — localStorage-backed, backs ManageComponent's Release Notes card badge
+  utils/changelog.ts         # getUnseenChangelogCount()/markChangelogSeen() — localStorage-backed, backs Manage's and Studio's own Release Notes card badges
   utils/realtime.ts          # subscribeToTableChanges() — Supabase Realtime postgres_changes wrapper, see Project Overview above
   utils/debounce.ts          # debounce() — plain setTimeout debounce with .cancel(), backs the task pages' realtime reload handlers
   utils/flash-tracker.ts     # FlashTracker — tracks which ids show the .realtime-flash "someone else just changed this" pulse
@@ -3186,6 +3238,25 @@ yet on a hard refresh of `/inventory`.
   constraint the same way. Worth remembering alongside this repo's other "diff against the previous
   version"/double-apply lessons: a new notification *kind* touches two separate check constraints,
   not one, and only the second one's gap fails silently rather than as a visible error.
+- `add_release_notes` — adds `release_notes` (`title`, `description`, `severity` — a plain checked
+  `text` column, not a real Postgres enum, same shape `activity_log.entity_type`/`notifications.kind`
+  already have — `posted_at`, `created_by`, `created_at`/`updated_at`), backing Studio's release-notes
+  CRUD and Manage's read-only "What's new" list (see both components' own Project Overview paragraphs
+  above). The first table in this schema with no `organization_id` column at all and no per-org join in
+  any of its policies — every organization reads the exact same list, so there's nothing to scope.
+  SELECT is any authenticated user (`using (true)`, no `anon` grant needed — both routes sit behind
+  `approvedGuard`); INSERT/UPDATE/DELETE are each a flat `is_platform_admin()` check, no RPC needed
+  (unlike `create_broadcast()`/`create_reservation()`, nothing here has an atomic side effect on
+  another table) — the "same authenticated Postgres role" limitation the Important RLS constraint note
+  below describes is specifically about column-level `GRANT`s; a row-level policy can reference a
+  `SECURITY DEFINER` helper like `is_platform_admin()` freely, the same way `current_user_role()` is
+  already used directly inside plenty of other tables' own insert/update/delete policies. Backfills
+  every entry from the previously hand-maintained `CHANGELOG_ENTRIES` array
+  (`shared/models/changelog.ts`, deleted by this same change) so switching to a DB-backed list didn't
+  lose any shipped-feature history — every organization's "What's new" feed read identically the moment
+  this shipped, all backfilled as `'standard'` severity (the tier concept didn't exist yet) and
+  `created_by` left null (no single real actor to attribute historical entries to, same reasoning
+  `seed.sql`'s own placeholder rows leave `checked_out_to`/`retired_by` null for).
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

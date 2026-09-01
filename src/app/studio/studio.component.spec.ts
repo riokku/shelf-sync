@@ -2,8 +2,9 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { StudioComponent } from './studio.component';
+import { AuthService } from '../core/auth.service';
 import { SupabaseService } from '../core/supabase.service';
-import { createFakeSupabaseService } from '../testing/fakes';
+import { createFakeAuthService, createFakeProfile, createFakeQueryBuilder, createFakeSupabaseService } from '../testing/fakes';
 
 describe('StudioComponent', () => {
   let component: StudioComponent;
@@ -14,6 +15,7 @@ describe('StudioComponent', () => {
       imports: [StudioComponent],
       providers: [
         provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ is_platform_admin: true })) },
         { provide: SupabaseService, useValue: createFakeSupabaseService({ data: [], count, error: null }) }
       ]
     })
@@ -38,6 +40,53 @@ describe('StudioComponent', () => {
   it('shows zero when nothing new is waiting', async () => {
     await createComponent(0);
     expect(component.newFeedbackCount).toBe(0);
+  });
+});
+
+/** Table-aware, scoped to just release_notes vs. everything else — the
+ *  plain createFakeSupabaseService() above hands back one canned result for
+ *  every `.from()` call, which would leak the release_notes posted_at rows
+ *  into loadStats()'s own organizations/profiles created_at queries
+ *  (bucketByWeek() territory) if reused here. */
+function createFakeSupabaseServiceWithReleaseNotes(postedDates: string[]): SupabaseService {
+  const fake = {
+    client: {
+      from: (table: string) =>
+        table === 'release_notes'
+          ? createFakeQueryBuilder({ data: postedDates.map(posted_at => ({ posted_at })), error: null })
+          : createFakeQueryBuilder({ data: [], count: 0, error: null })
+    }
+  };
+  return fake as unknown as SupabaseService;
+}
+
+describe('StudioComponent unseenReleaseNotesCount', () => {
+  afterEach(() => {
+    try {
+      localStorage.clear();
+    } catch {
+      // Same "best effort" reasoning this app's own storage access has.
+    }
+  });
+
+  it('badges the Release Notes card with the signed-in user\'s unseen changelog count', async () => {
+    localStorage.setItem('shelf-sync:changelog-last-seen:user-1', '2000-01-01');
+    const postedDates = ['2026-09-01', '2026-08-01'];
+
+    await TestBed.configureTestingModule({
+      imports: [StudioComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ id: 'user-1', is_platform_admin: true })) },
+        { provide: SupabaseService, useValue: createFakeSupabaseServiceWithReleaseNotes(postedDates) }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(StudioComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance.unseenReleaseNotesCount).toBe(postedDates.length);
   });
 });
 
@@ -107,6 +156,7 @@ describe('StudioComponent dashboard stats', () => {
       imports: [StudioComponent],
       providers: [
         provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ is_platform_admin: true })) },
         { provide: SupabaseService, useValue: createFakeSupabaseServiceForStats(counts) }
       ]
     }).compileComponents();
@@ -202,6 +252,7 @@ describe('StudioComponent dashboard stats load errors', () => {
       imports: [StudioComponent],
       providers: [
         provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ is_platform_admin: true })) },
         { provide: SupabaseService, useValue: createFakeSupabaseServiceFailingOrgsOnce() }
       ]
     }).compileComponents();

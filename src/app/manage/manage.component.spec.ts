@@ -5,7 +5,6 @@ import { ManageComponent } from './manage.component';
 import { AuthService } from '../core/auth.service';
 import { SupabaseService } from '../core/supabase.service';
 import { createFakeAuthService, createFakeProfile, createFakeSupabaseService } from '../testing/fakes';
-import { getUnseenChangelogCount } from '../shared/utils/changelog';
 
 describe('ManageComponent', () => {
   let component: ManageComponent;
@@ -70,15 +69,18 @@ describe('ManageComponent unseenReleaseNotesCount', () => {
 
   it('badges the Release Notes card with the signed-in user\'s unseen changelog count', async () => {
     localStorage.setItem('shelf-sync:changelog-last-seen:user-1', '2000-01-01');
-    const expectedCount = getUnseenChangelogCount('user-1');
-    expect(expectedCount).toBeGreaterThan(0);
+    // The same canned result createFakeSupabaseService() hands back for
+    // every `.from()` call also backs getUnseenChangelogCount()'s own
+    // release_notes query — two posted_at rows, both newer than the
+    // last-seen date set above, so both count as unseen.
+    const postedRows = [{ posted_at: '2026-09-01' }, { posted_at: '2026-08-01' }];
 
     await TestBed.configureTestingModule({
       imports: [ManageComponent],
       providers: [
         provideRouter([]),
         { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ id: 'user-1', role: 'admin' })) },
-        { provide: SupabaseService, useValue: createFakeSupabaseService() }
+        { provide: SupabaseService, useValue: createFakeSupabaseService({ data: postedRows, error: null }) }
       ]
     }).compileComponents();
 
@@ -86,6 +88,6 @@ describe('ManageComponent unseenReleaseNotesCount', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(fixture.componentInstance.unseenReleaseNotesCount).toBe(expectedCount);
+    expect(fixture.componentInstance.unseenReleaseNotesCount).toBe(2);
   });
 });

@@ -357,6 +357,18 @@ const routes: Routes = [
     data: { breadcrumb: 'Audit Log', breadcrumbParent: STUDIO_BREADCRUMB_PARENT },
     title: 'ShelfSync | Studio Audit Log'
   },
+  {
+    path: 'studio/release-notes',
+    loadComponent: () =>
+      import('./studio/release-notes/studio-release-notes.component').then(m => m.StudioReleaseNotesComponent),
+    // A near-identical fork of manage/release-notes (same shape
+    // StudioErrorLogComponent already established) — manageGuard doesn't
+    // follow from is_platform_admin, so a platform-admin-only account has no
+    // other way to reach it.
+    canActivate: [approvedGuard, platformAdminGuard],
+    data: { breadcrumb: 'Release Notes', breadcrumbParent: STUDIO_BREADCRUMB_PARENT },
+    title: 'ShelfSync | Studio Release Notes'
+  },
   // Catches any URL that doesn't match a route above — must stay last.
   // Unguarded (reachable by a signed-out visitor too, see
   // NotFoundComponent's own doc comment). Gets an explicit `title` like

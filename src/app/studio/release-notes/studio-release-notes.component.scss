@@ -1,7 +1,7 @@
 @use '../../shared/styles/page-toolbar';
 @use '../../shared/styles/skeleton';
 
-.manage-release-notes-wrapper{
+.studio-release-notes-wrapper{
   color: var(--mat-sys-on-surface);
   padding: 3rem 1.5rem;
   max-width: 100%;
@@ -16,6 +16,10 @@
   font-weight: 600;
 }
 
+.error-message{
+  color: var(--app-error-text);
+}
+
 .changelog-list{
   list-style: none;
   margin: 0;
@@ -27,7 +31,7 @@
   display: flex;
   align-items: flex-start;
   gap: 1rem;
-  padding: 0.75rem;
+  padding: 0.75rem 0.75rem 0.75rem 0.75rem;
   border-bottom: 1px solid var(--mat-sys-outline-variant);
   // Transparent by default so a standard-severity row (the common case)
   // sits flush with no accent — only emphasized/critical rows below get a
@@ -61,6 +65,7 @@
   flex-direction: column;
   gap: 0.125rem;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .changelog-title-row{
@@ -73,6 +78,12 @@
 .changelog-description{
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.875rem;
+}
+
+.changelog-actions{
+  flex: 0 0 auto;
+  display: flex;
+  gap: 0.125rem;
 }
 
 // Same pill shape studio-error-log.component.scss's own .env-badge already

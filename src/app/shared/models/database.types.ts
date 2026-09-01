@@ -1183,6 +1183,47 @@ export type Database = {
           },
         ]
       }
+      release_notes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          posted_at: string
+          severity: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description: string
+          id?: string
+          posted_at?: string
+          severity?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          posted_at?: string
+          severity?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "release_notes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_settings: {
         Row: {
           bulk_edit_enabled: boolean

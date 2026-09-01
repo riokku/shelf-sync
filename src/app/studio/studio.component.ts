@@ -3,11 +3,13 @@ import { RouterModule } from '@angular/router';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { AuthService } from '../core/auth.service';
 import { SupabaseService } from '../core/supabase.service';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 import { EmptyStateComponent } from '../shared/components/empty-state/empty-state.component';
 import { TrendChartComponent, TrendPoint } from '../shared/components/trend-chart/trend-chart.component';
 import { bucketByWeek } from '../shared/utils/trend-buckets';
+import { getUnseenChangelogCount } from '../shared/utils/changelog';
 
 /** A card hub, same shape as ManageComponent, for a genuinely different
  *  audience: the app's own maintainer, not any org's own admin/manager.
@@ -33,12 +35,24 @@ import { bucketByWeek } from '../shared/utils/trend-buckets';
   styleUrl: './studio.component.scss',
 })
 export class StudioComponent implements OnInit {
+  private authService = inject(AuthService);
   private supabase = inject(SupabaseService).client;
 
   /** Feedback nobody's looked at yet — badged on the Feedback card, same
    *  "pending queue" badge treatment ManageComponent's own cards use, *and*
    *  reused as one of the headline stats below (see loadStats()). */
   newFeedbackCount = 0;
+  /** How many Release Notes entries this user hasn't seen yet — badged on
+   *  this hub's own Release Notes card, same treatment and same underlying
+   *  per-user (not per-page) storage key ManageComponent.unseenReleaseNotesCount
+   *  already uses, so visiting either hub's Release Notes page clears both
+   *  badges together. Awaited directly in ngOnInit, alongside (not inside)
+   *  loadStats()'s own Promise.all — release_notes is a real table now
+   *  (see the add_release_notes migration), not the static array this used
+   *  to read synchronously, but this count has no "genuinely broken vs.
+   *  empty" ambiguity worth its own loadError/retry treatment the way
+   *  loadStats()'s five queries do. */
+  unseenReleaseNotesCount = 0;
 
   /** Headline cross-org numbers — the platform-admin counterpart to
    *  manage/reports' own stat-grid, giving this hub an actual "state of the
@@ -100,7 +114,16 @@ export class StudioComponent implements OnInit {
   }
 
   async ngOnInit() {
-    await Promise.all([this.loadPendingBadge(), this.loadStats()]);
+    const profile = await this.authService.getProfile();
+    await Promise.all([
+      this.loadPendingBadge(),
+      this.loadStats(),
+      profile ? this.loadUnseenReleaseNotesCount(profile.id) : Promise.resolve()
+    ]);
+  }
+
+  private async loadUnseenReleaseNotesCount(userId: string) {
+    this.unseenReleaseNotesCount = await getUnseenChangelogCount(this.supabase, userId);
   }
 
   private async loadPendingBadge() {
