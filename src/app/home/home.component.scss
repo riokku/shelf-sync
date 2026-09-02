@@ -390,7 +390,12 @@
 
 .home-grid{
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  // 13rem let auto-fit pack 5-6 tiles across on a wide desktop, one per
+  // destination rather than a deliberate grid — 18rem caps it at 4 across
+  // at this app's own widest container (1400px, see styles.scss's own
+  // $container-max-widths comment) and 3 across at every other desktop
+  // breakpoint, still collapsing to 2/1 on narrower viewports same as before.
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
   gap: 1.1rem;
   margin-bottom: 2.25rem;
 }
