@@ -4,6 +4,7 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
@@ -12,6 +13,7 @@ import { NotificationService } from '../core/notification.service';
 import { SupabaseService } from '../core/supabase.service';
 import { ThemeModeService } from '../core/theme-mode.service';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
+import { ChangePasswordModalComponent } from '../shared/components/change-password-modal/change-password-modal.component';
 import { UserAvatarComponent } from '../shared/components/user-avatar/user-avatar.component';
 import { AVATAR_PRESETS } from '../shared/models/avatar-preset';
 import { MAX_QUICK_MENU_ITEMS, QUICK_MENU_OPTIONS } from '../shared/models/quick-menu';
@@ -37,6 +39,7 @@ export class AccountComponent implements OnInit {
   protected authService = inject(AuthService);
   private supabase = inject(SupabaseService).client;
   private notification = inject(NotificationService);
+  private dialog = inject(MatDialog);
   protected themeMode = inject(ThemeModeService);
 
   profile: Profile | null = null;
@@ -146,6 +149,29 @@ export class AccountComponent implements OnInit {
     };
     await this.authService.refreshProfile();
     this.notification.success('Quick menu saved');
+  }
+
+  /** ChangePasswordModalComponent is self-contained — it does the actual
+   *  current-password reauth + updatePassword() itself (see its own doc
+   *  comment) — so this just opens it and toasts on a truthy close, same
+   *  shape ManageSuppliersComponent's own openForm() already establishes
+   *  for a self-contained modal. */
+  openChangePassword() {
+    if (!this.profile) {
+      return;
+    }
+
+    const dialogRef = this.dialog.open(ChangePasswordModalComponent, {
+      data: { email: this.profile.email },
+      width: 'clamp(26rem, 45vw, 32rem)',
+      maxWidth: '90vw'
+    });
+
+    dialogRef.afterClosed().subscribe((changed: boolean | undefined) => {
+      if (changed) {
+        this.notification.success('Password updated');
+      }
+    });
   }
 
   async selectAvatar(avatarKey: string) {

@@ -64,6 +64,12 @@ function loadTurnstile(): Promise<void> {
  *  require it on just one of the three, which is why this same component is
  *  reused on all three rather than only Register.
  *
+ *  A fourth usage, ChangePasswordModalComponent, is post-login rather than
+ *  pre-login — it needs a token for the same reason Login does, since it
+ *  reauthenticates the caller's current password via the same
+ *  signInWithPassword() call, which the project-wide captcha requirement
+ *  above covers regardless of whether the caller already has a session.
+ *
  *  `verified`/`cleared` (not a two-way-bindable token property) mirror
  *  Turnstile's own callback/expired-callback/error-callback shape directly:
  *  the parent form owns the actual token value and is what needs to clear

@@ -1,12 +1,19 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
+import { of } from 'rxjs';
 
 import { AccountComponent } from './account.component';
 import { AuthService, Profile } from '../core/auth.service';
 import { NotificationService } from '../core/notification.service';
 import { SupabaseService } from '../core/supabase.service';
+import { ChangePasswordModalComponent } from '../shared/components/change-password-modal/change-password-modal.component';
 import { createFakeAuthService, createFakeProfile } from '../testing/fakes';
 import { MAX_QUICK_MENU_ITEMS } from '../shared/models/quick-menu';
+
+function createFakeDialogRef(result: unknown): MatDialogRef<unknown> {
+  return { afterClosed: () => of(result) } as unknown as MatDialogRef<unknown>;
+}
 
 describe('AccountComponent', () => {
   let component: AccountComponent;
@@ -140,6 +147,73 @@ describe('AccountComponent quick menu', () => {
     await component.saveQuickMenu();
 
     expect(component.quickMenuError).toBe('boom');
+    expect(notificationSuccessSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('AccountComponent change password', () => {
+  let component: AccountComponent;
+  let notificationSuccessSpy: jasmine.Spy;
+
+  async function setup(): Promise<ComponentFixture<AccountComponent>> {
+    const profile = createFakeProfile({ email: 'staff@example.com' });
+    // ngOnInit's own organizations lookup needs a stubbed SupabaseService —
+    // without one, it hits the real client and fixture.whenStable() below
+    // never resolves. Same shape the quick-menu describe block's own setup()
+    // uses for every table but 'profiles'.
+    const supabase = {
+      client: {
+        from: () => ({ select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }) })
+      }
+    } as unknown as SupabaseService;
+
+    await TestBed.configureTestingModule({
+      imports: [AccountComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService(profile) },
+        { provide: SupabaseService, useValue: supabase }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(AccountComponent);
+    component = fixture.componentInstance;
+    notificationSuccessSpy = spyOn((component as unknown as { notification: NotificationService }).notification, 'success');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    return fixture;
+  }
+
+  it('openChangePassword() opens ChangePasswordModalComponent with the caller\'s own email', async () => {
+    await setup();
+    const dialog = TestBed.inject(MatDialog);
+    const openSpy = spyOn(dialog, 'open').and.returnValue(createFakeDialogRef(undefined));
+
+    component.openChangePassword();
+
+    expect(openSpy).toHaveBeenCalledWith(
+      ChangePasswordModalComponent,
+      jasmine.objectContaining({ data: { email: 'staff@example.com' } })
+    );
+  });
+
+  it('toasts on a truthy close', async () => {
+    await setup();
+    const dialog = TestBed.inject(MatDialog);
+    spyOn(dialog, 'open').and.returnValue(createFakeDialogRef(true));
+
+    component.openChangePassword();
+
+    expect(notificationSuccessSpy).toHaveBeenCalledWith('Password updated');
+  });
+
+  it('does not toast when the modal is dismissed without changing the password', async () => {
+    await setup();
+    const dialog = TestBed.inject(MatDialog);
+    spyOn(dialog, 'open').and.returnValue(createFakeDialogRef(undefined));
+
+    component.openChangePassword();
+
     expect(notificationSuccessSpy).not.toHaveBeenCalled();
   });
 });

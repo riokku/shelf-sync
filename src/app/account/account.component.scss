@@ -52,6 +52,12 @@ mat-card{
   }
 }
 
+// Sits right under the profile dl's own Role row, rather than a separate
+// tile — dl has no bottom margin of its own to lean on for this spacing.
+.change-password-button{
+  margin-top: 1.25rem;
+}
+
 .quick-menu-card{
   // mat-slide-toggle has no block-level display of its own, so with
   // nothing else between it and the Save button (e.g. the toggle off, no
