@@ -13,6 +13,7 @@ import { Database } from '../../../shared/models/database.types';
 import { profileDisplayName } from '../../../shared/utils/profile-label';
 import { isProfileOnline, formatLastSeen } from '../../../shared/utils/presence';
 import { FEEDBACK_STATUS_LABELS, FEEDBACK_TYPE_LABELS, FeedbackStatus, FeedbackType } from '../../../shared/models/feedback';
+import { computeOrgHealthTier, ORG_HEALTH_FEATURES, ORG_HEALTH_TIER_LABELS, OrgHealthTier } from '../../../shared/models/org-health';
 import { BreadcrumbsComponent } from '../../../shared/components/breadcrumbs/breadcrumbs.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
@@ -53,7 +54,12 @@ const ACTION_LABELS: Record<string, string> = {
  *  SECURITY DEFINER function turned out to already bypass RLS for its own
  *  leaderboard use on StudioUsageComponent; extending it with a task_count
  *  column and an optional p_organization_id filter was simpler than adding
- *  a second policy pair from scratch.
+ *  a second policy pair from scratch. That same usage row also drives
+ *  healthTier (Bronze/Silver/Gold — see shared/models/org-health.ts) and
+ *  notAdoptedLabels, the same feature-adoption signal
+ *  StudioUsageComponent's own "Org health" section and
+ *  StudioOrganizationsComponent's table column both show, here explained
+ *  rather than just badged.
  *
  *  Also where a platform admin actually acts on an org — suspend/unsuspend
  *  (an immediate, reversible access block for abuse/non-payment, see
@@ -125,6 +131,14 @@ export class StudioOrgDetailComponent implements OnInit {
   itemCount: number | null = null;
   taskCount: number | null = null;
   storageMb: number | null = null;
+  /** Same source, reduced through computeOrgHealthTier() — see
+   *  shared/models/org-health.ts's own doc comment for what the tier means.
+   *  notAdoptedLabels names which of the five signals are still at zero, so
+   *  this page (unlike the list views) also explains *why* the badge reads
+   *  the way it does. */
+  healthTier: OrgHealthTier | null = null;
+  notAdoptedLabels: string[] = [];
+  readonly healthTierLabels = ORG_HEALTH_TIER_LABELS;
 
   /** The org's own uploaded logo (Settings > Style), if it has one — resolved
    *  via SiteSettingsService.loadLogoUrlForOrganization(), the same
@@ -268,6 +282,20 @@ export class StudioOrgDetailComponent implements OnInit {
     this.itemCount = usage?.[0]?.item_count ?? null;
     this.taskCount = usage?.[0]?.task_count ?? null;
     this.storageMb = usage?.[0] ? Math.round((usage[0].storage_bytes / BYTES_PER_MB) * 10) / 10 : null;
+    if (usage?.[0]) {
+      const adoption = {
+        containerCount: usage[0].container_count,
+        reservationCount: usage[0].reservation_count,
+        orderCount: usage[0].order_count,
+        broadcastCount: usage[0].broadcast_count,
+        completedAuditCount: usage[0].completed_audit_count
+      };
+      this.healthTier = computeOrgHealthTier(adoption);
+      this.notAdoptedLabels = ORG_HEALTH_FEATURES.filter(feature => adoption[feature.key] === 0).map(feature => feature.label);
+    } else {
+      this.healthTier = null;
+      this.notAdoptedLabels = [];
+    }
     this.orgLogoUrl = logoUrl;
 
     // A platform admin almost certainly isn't a member of the org they just

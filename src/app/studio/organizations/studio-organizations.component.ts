@@ -8,6 +8,7 @@ import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadc
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { Database } from '../../shared/models/database.types';
+import { computeOrgHealthTier, ORG_HEALTH_TIER_LABELS, OrgHealthTier } from '../../shared/models/org-health';
 
 type OrganizationRow = Database['public']['Tables']['organizations']['Row'];
 
@@ -26,6 +27,9 @@ interface OrganizationSummary extends OrganizationRow {
   itemCount: number | null;
   taskCount: number | null;
   storageMb: number | null;
+  /** null alongside the other usage fields above, for the identical reason
+   *  — a retired org simply has no row in this call's own result. */
+  healthTier: OrgHealthTier | null;
 }
 
 const BYTES_PER_MB = 1024 * 1024;
@@ -43,7 +47,11 @@ const BYTES_PER_MB = 1024 * 1024;
  *  organization_id param that page doesn't use but this one doesn't need
  *  either, since this list wants every org's row at once) — so the same
  *  data StudioOrgDetailComponent shows one org at a time is visible here
- *  across the whole list without opening each org individually. */
+ *  across the whole list without opening each org individually. healthTier
+ *  is derived client-side from that same RPC result's five feature-adoption
+ *  counts via computeOrgHealthTier() (see shared/models/org-health.ts) —
+ *  same Bronze/Silver/Gold badge StudioUsageComponent's own "Org health"
+ *  section and StudioOrgDetailComponent's meta list both show. */
 @Component({
   selector: 'app-studio-organizations',
   imports: [DatePipe, RouterLink, MatButtonModule, MatIconModule, BreadcrumbsComponent, PageHeaderComponent, EmptyStateComponent],
@@ -60,6 +68,7 @@ export class StudioOrganizationsComponent implements OnInit {
   /** Repeat-count for the loading-state skeleton table rows — see
    *  InventoryComponent.skeletonCards' own identical doc comment. */
   readonly skeletonRows = [1, 2, 3, 4];
+  readonly healthTierLabels = ORG_HEALTH_TIER_LABELS;
 
   async ngOnInit() {
     await this.loadOrganizations();
@@ -121,7 +130,16 @@ export class StudioOrganizationsComponent implements OnInit {
         lastActiveAt: stats.lastActive,
         itemCount: orgUsage?.item_count ?? null,
         taskCount: orgUsage?.task_count ?? null,
-        storageMb: orgUsage ? Math.round((orgUsage.storage_bytes / BYTES_PER_MB) * 10) / 10 : null
+        storageMb: orgUsage ? Math.round((orgUsage.storage_bytes / BYTES_PER_MB) * 10) / 10 : null,
+        healthTier: orgUsage
+          ? computeOrgHealthTier({
+              containerCount: orgUsage.container_count,
+              reservationCount: orgUsage.reservation_count,
+              orderCount: orgUsage.order_count,
+              broadcastCount: orgUsage.broadcast_count,
+              completedAuditCount: orgUsage.completed_audit_count
+            })
+          : null
       };
     });
     this.isLoading = false;

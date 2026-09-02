@@ -1,0 +1,72 @@
+<h2 mat-dialog-title class="schedule-form-title">
+  <mat-icon class="schedule-form-title-icon">event_repeat</mat-icon>
+  {{ isEditing ? 'Edit recurring audit' : 'New recurring audit' }}
+</h2>
+<form [formGroup]="form" (ngSubmit)="save()">
+  <mat-dialog-content>
+    <p class="schedule-form-instructions">
+      Automatically starts a real audit on this cadence — everyone sees it as "Upcoming" once its
+      next occurrence is about a week away.
+    </p>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Scope</mat-label>
+      <mat-icon matPrefix>place</mat-icon>
+      <mat-select formControlName="physicalLocation">
+        <mat-option [value]="null">Whole organization</mat-option>
+        @for (option of inventoryFieldOptions.optionsFor('physical_location'); track option) {
+          <mat-option [value]="option">{{ option }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Frequency</mat-label>
+      <mat-icon matPrefix>repeat</mat-icon>
+      <mat-select formControlName="frequency">
+        @for (frequency of frequencies; track frequency) {
+          <mat-option [value]="frequency">{{ frequencyLabels[frequency] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    @if (!isEditing) {
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>First occurrence</mat-label>
+        <mat-icon matPrefix>event</mat-icon>
+        <input matInput [matDatepicker]="firstOccurrencePicker" [min]="minDate" formControlName="firstOccurrenceDate" />
+        <mat-datepicker-toggle matSuffix [for]="firstOccurrencePicker"></mat-datepicker-toggle>
+        <mat-datepicker #firstOccurrencePicker></mat-datepicker>
+      </mat-form-field>
+    } @else {
+      <p class="schedule-form-hint">
+        <mat-icon inline>lock_clock</mat-icon>
+        This schedule's own start date can't move — pause it instead if you need to skip an
+        occurrence, or cancel it and create a new one to change the timing.
+      </p>
+    }
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Note (optional)</mat-label>
+      <mat-icon matPrefix>notes</mat-icon>
+      <textarea matInput placeholder="e.g. Monthly warehouse count" formControlName="note" rows="2"></textarea>
+    </mat-form-field>
+
+    @if (error) {
+      <p class="error-message">{{ error }}</p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancel()">Cancel</button>
+    <button mat-flat-button color="primary" type="submit" [disabled]="isSaving">
+      @if (isSaving) {
+        <mat-spinner diameter="20"></mat-spinner>
+      } @else {
+        <ng-container>
+          <mat-icon>{{ isEditing ? 'save' : 'event_repeat' }}</mat-icon>
+          {{ isEditing ? 'Save changes' : 'Create schedule' }}
+        </ng-container>
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

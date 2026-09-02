@@ -163,6 +163,33 @@
   margin: -0.5rem 0 1rem;
 }
 
+// Hardcoded, not theme-derived — see shared/models/org-health.ts's own doc
+// comment for why (and for keeping these three in sync with
+// StudioUsageComponent's/StudioOrganizationsComponent's identical copies).
+.health-badge{
+  display: inline-block;
+  padding: 0.125rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-right: 0.375rem;
+
+  &.health-badge-bronze{
+    background: #a0673f;
+    color: #ffffff;
+  }
+
+  &.health-badge-silver{
+    background: #8b929b;
+    color: #ffffff;
+  }
+
+  &.health-badge-gold{
+    background: #c99a2e;
+    color: #2b2200;
+  }
+}
+
 .platform-actions-buttons{
   display: flex;
   flex-wrap: wrap;

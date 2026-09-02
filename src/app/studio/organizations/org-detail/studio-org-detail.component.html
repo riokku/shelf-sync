@@ -133,6 +133,17 @@
           <dd class="mono">{{ taskCount !== null ? taskCount + ' tasks' : '—' }}</dd>
           <dt>Storage</dt>
           <dd class="mono">{{ storageMb !== null ? storageMb + ' MB' : '—' }}</dd>
+          <dt>Health</dt>
+          <dd class="org-meta-full-value">
+            @if (healthTier) {
+              <span class="health-badge" [class]="'health-badge-' + healthTier">{{ healthTierLabels[healthTier] }}</span>
+              <span class="section-hint">
+                {{ notAdoptedLabels.length === 0 ? 'Using every feature' : '— not yet: ' + notAdoptedLabels.join(', ') }}
+              </span>
+            } @else {
+              —
+            }
+          </dd>
         </dl>
 
         <section class="org-section">

@@ -2714,6 +2714,56 @@ exactly one `@HostListener` (`onWindowKeydown()`) that calls both `handlePalette
 "diff against the previous version"/double-apply lessons already are: a global host listener added
 to a component that already has one for the identical event needs to merge into it, not sit beside it.
 
+`studio/usage` gained a fourth section, "Org health" — a Bronze/Silver/Gold badge per org, a
+support-attention/upsell signal distinct from that page's own item/member/storage leaderboard
+(resource *cost*) and the "Over the Free tier" card (resource *ceiling*): is this org actually
+adopting ShelfSync's own deeper features, or just parked on the basics. `shared/models/org-health.ts`'s
+`computeOrgHealthTier()` counts how many of five signals an org has ever used at all — container/box
+tracking, reservations, restock orders, broadcasts, a completed audit — and maps 4-5 adopted to
+Gold, 2-3 to Silver, 0-1 to Bronze; deliberately a plain adoption-breadth count with no
+recency/engagement weighting, so it stays a one-glance "uses 4 of 5" rather than needing its own
+explainer. All five counts are just five more columns on the already-`SECURITY DEFINER`
+`platform_get_organization_usage()` (`add_platform_organization_feature_adoption` migration — see
+Supabase Schema below), so no new RLS policy was needed, same reasoning
+`add_platform_organization_task_count` already established for extending this one RPC rather than
+adding a fresh cross-org policy pair each time Studio needs one more cross-org number.
+`StudioUsageComponent`'s own "Org health" list sorts Bronze first (needs the most attention) and
+names what each org *hasn't* adopted yet next to its badge — more actionable for a platform admin
+deciding who to nudge than listing what already works. The same badge (and, on the org's own detail
+page, the same missing-feature explainer) also rides along on `StudioOrganizationsComponent`'s table
+(a "Health" column) and `StudioOrgDetailComponent`'s meta list, all three reading the identical
+per-org RPC result rather than three separate queries. The badge's own colors are hardcoded, not
+theme-derived — same "Studio's own console isn't org branding" reasoning
+`StudioOrgDetailComponent`'s own hardcoded "Retire" red already establishes — and duplicated (not
+shared via a component) across all three consumers' own stylesheets, matching how `.status-badge`'s
+own small pill styling is already duplicated across this app rather than centralized.
+
+Admins/managers can also set up a **recurring** audit — a weekly/monthly/quarterly cadence (org-wide,
+or scoped to one `physical_location`, same scope a one-off audit already offers) that auto-starts a
+real audit on schedule instead of someone remembering to click "Start audit" every time. Backed by a
+new `inventory_audit_schedules` table (see the `add_inventory_audit_schedules` migration below) and a
+daily `pg_cron` sweep, `run_scheduled_inventory_audits()`, that snapshots the item counts and creates
+the real `inventory_audits` row itself once a schedule's `next_occurrence_date` arrives, then advances
+that date by the schedule's own frequency. Once a schedule's next occurrence is within a week, it
+shows as "Upcoming" in `manage/audits` — a small read-only card, visible to every approved member
+(same open visibility real audits already have), naming the cadence/location and how many days out it
+is — while its own scope (location/frequency/note) can no longer be edited until that occurrence
+actually fires (`update_audit_schedule()` refuses once `next_occurrence_date - current_date <= 7`).
+Pausing or resuming the whole series stays allowed regardless of how close the next occurrence is —
+deliberately a separate RPC (`set_audit_schedule_active()`) with no such lock check, since "skip/stop
+it" is a different, always-safe action from "change what it does." A second, admin/manager-only
+"Recurring audits" section further down the same page lists every schedule (active or paused) with
+Edit/Pause-Resume actions — Edit disabled with a tooltip while locked — and an "Add recurring audit"
+button opening `AuditScheduleFormModalComponent` (`shared/components/audit-schedule-form-modal`,
+optional `data.schedule` means edit vs. create, same shape `SupplierFormModalComponent`/
+`ReleaseNoteFormModalComponent` already establish); the first-occurrence datepicker only renders in
+create mode, since editing can never move that date at all. A spawned audit's `schedule_id` (nullable
+FK back to the schedule that created it) is purely a traceability breadcrumb — nothing in the UI
+surfaces it yet, a natural small follow-up. `manage/audits`' existing realtime subscription gained a
+third channel on `inventory_audit_schedules`, folded into the same debounced reload/flash pair its
+`inventory_audits`/`inventory_audit_counts` channels already share, rather than a second debounce/
+flash pair just for schedules.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -2871,7 +2921,7 @@ broadcasts/                                                  # every approved me
 manage/                                                     # card hub (ManageComponent) linking to the pages below
   inventory/, tasks/, team/, activity/, suppliers/, orders/ # admin/manager only: inventory (+ CSV export), tasks, team administration, the cross-entity activity feed, the supplier directory, and restock orders
   reservations/                                             # every approved member: date-ranged reservations of an item's stock (single item, several at once, or from a saved kit); admin/manager also get a "Kits" tab to curate the kit directory
-  audits/, audits/audit-detail/                              # every approved member: physical inventory audits ("cycle counts"), see Project Overview above
+  audits/, audits/audit-detail/                              # every approved member: physical inventory audits ("cycle counts") plus recurring audit schedules, see Project Overview above
   release-notes/                                            # admin/manager only: "What's new" list, see Project Overview above
   error-log/                                                # admin/manager only: client_error_log viewer, see Supabase Schema section
   reports/                                                  # admin/manager only: inventory value/stock health, stock movement/loss, task throughput
@@ -2891,6 +2941,7 @@ shared/
   components/place-reservation-modal/ # self-contained item picker (one item, several, or from a saved kit) + date-range/quantity dialog backing manage/reservations' "New reservation"
   components/reservation-kit-form-modal/ # add/edit dialog backing manage/reservations' "Kits" tab CRUD
   components/start-audit-modal/ # self-contained scope (physical_location)/note dialog calling start_inventory_audit(), backing manage/audits' "Start audit"
+  components/audit-schedule-form-modal/ # self-contained scope/frequency/first-occurrence-date/note dialog calling create_audit_schedule()/update_audit_schedule(), backing manage/audits' "Recurring audits" section
   components/discard-modal/ # quantity ("Discard all" or a specific amount) + mandatory-reason dialog backing ModalTableComponent's "Discard" button
   components/turnstile-widget/ # Cloudflare Turnstile CAPTCHA, embedded on Login/Register/Forgot Password
   components/help-tooltip/ # small "?" matTooltip icon button explaining a non-obvious control inline
@@ -2910,7 +2961,8 @@ shared/
   models/inventory-item-order.model.ts # InventoryItemOrder — one restock order against an item's linked supplier
   models/inventory-item-reservation.model.ts # InventoryItemReservation — a date-ranged booking of some quantity of an item's stock
   models/reservation-kit.model.ts # ReservationKit / ReservationKitItem — a saved multi-item template PlaceReservationModalComponent can prefill from
-  models/inventory-audit.model.ts # InventoryAudit / InventoryAuditCount / isAuditDiscrepancy() — a physical inventory audit ("cycle count") and its per-item snapshot rows
+  models/inventory-audit.model.ts # InventoryAudit / InventoryAuditCount / isAuditDiscrepancy() / InventoryAuditSchedule / isAuditScheduleUpcoming() / isAuditScheduleLocked() — a physical inventory audit ("cycle count"), its per-item snapshot rows, and recurring audit schedules
+  models/org-health.ts # OrgHealthTier / computeOrgHealthTier() — Bronze/Silver/Gold feature-adoption badge, backs studio/usage, studio/organizations, and studio/organizations/:id
   models/theme-preset.ts     # THEME_PRESETS — key must match a [data-theme] block in styles.scss
   models/inventory-table-column.ts # optional Inventory table-view columns admin can show/hide (Settings > Data)
   models/pricing-tier.ts     # PRICING_TIERS — shared by PricingComponent (/pricing) and ManageBillingComponent
@@ -2930,6 +2982,7 @@ shared/
   utils/inventory-item-orders.ts # loadAllInventoryItemOrders() — every org order, backs manage/orders
   utils/inventory-item-reservations.ts # loadAllInventoryItemReservations() / loadUpcomingReservationsForItem() — backs manage/reservations and ModalTableComponent's read-only summary
   utils/inventory-audits.ts # loadAuditSummaries() / loadAuditDetail() — backs manage/audits' list and its embedded AuditDetailComponent
+  utils/inventory-audit-schedules.ts # loadAuditSchedules() — backs manage/audits' Upcoming section and its "Recurring audits" management list
   utils/broadcasts.ts        # loadBroadcasts() / createBroadcast() / updateBroadcast() / deleteBroadcast() — backs /broadcasts and BroadcastModalComponent
   utils/release-notes.ts     # loadReleaseNotes() / createReleaseNote() / updateReleaseNote() / deleteReleaseNote() — backs manage/release-notes and studio/release-notes
   utils/inventory-export.ts  # buildInventoryExportCsv() / downloadCsv() — backs manage/inventory's "Export" button
@@ -3587,6 +3640,42 @@ yet on a hard refresh of `/inventory`.
   "diff against the previous version" rule; the only changes are the new `group_id` parameter and
   passing it through to the insert, everything else (the `is_locked` check, the capacity check, both
   activity log writes) is unchanged.
+- `add_platform_organization_feature_adoption` — extends `platform_get_organization_usage()` again
+  (drop + recreate — table functions can't change return columns via `create or replace`, same
+  constraint `20260919120100`/`add_platform_organization_task_count` already noted) with 5 more
+  per-org `bigint` counts (`container_count`/`reservation_count`/`order_count`/`broadcast_count`/
+  `completed_audit_count`), backing the "Org health" Bronze/Silver/Gold badge described above
+  (`shared/models/org-health.ts`'s `computeOrgHealthTier()`). Same reasoning
+  `add_platform_organization_task_count` already gives for extending this RPC rather than adding a
+  new cross-org SELECT policy pair — it's already `SECURITY DEFINER` and already bypasses RLS for
+  its own leaderboard use. `container_count`/`reservation_count`/`order_count` all join through
+  `item_id -> inventory_items.organization_id`, the same shape this function's own `storage_bytes`
+  subquery already uses (none of those three tables carry an `organization_id` column of their own);
+  `broadcast_count`/`completed_audit_count` group directly on their own `organization_id` instead.
+- `add_inventory_audit_schedules` — adds `inventory_audit_schedules` (org-level, its own
+  `organization_id` — same shape `inventory_audits` itself uses, not a child-via-`item_id` table —
+  `physical_location`, `frequency` checked to `weekly`/`monthly`/`quarterly`, `note`,
+  `next_occurrence_date`, `active`, `created_by`/`created_at`) and `inventory_audits.schedule_id`
+  (nullable FK back to it, `on delete set null`), backing recurring audit schedules (see Project
+  Overview above for the full "Upcoming" / locked-while-imminent mechanism). SELECT is any approved
+  org member, same open visibility real audits already have; **no INSERT/UPDATE/DELETE grant for
+  `authenticated` at all**, same shape `inventory_audits` itself uses — every write goes through
+  three new `SECURITY DEFINER` RPCs, all admin/manager-gated like `start_inventory_audit()`:
+  `create_audit_schedule()` (validates frequency and that the first occurrence isn't in the past),
+  `update_audit_schedule()` (refuses once `next_occurrence_date - current_date <= 7` — the "upcoming,
+  locked" window), and `set_audit_schedule_active()` (pause/resume — deliberately **not** subject to
+  that same lock check, so stopping the series stays possible right up to the day it fires). The
+  actual daily sweep, `run_scheduled_inventory_audits()` (`SECURITY DEFINER` + `pg_cron`, `'0 6 * * *'`
+  — same shape `notify_overdue_checkouts()`/`purge_expired_organizations()` already established for a
+  scheduled job with no request/session context), reimplements `start_inventory_audit()`'s own
+  snapshot-insert logic directly rather than calling that RPC (which is role/session-gated and always
+  attributes to `auth.uid()`, null here) — a spawned audit is attributed to the schedule's own
+  `created_by` instead. Each schedule's own attempt runs inside its own `begin/exception` block so
+  one org's failure (most likely: nothing left in scope for that location) can't abort the rest of
+  the run for every other org's schedule, same "one bad row can't block the batch" reasoning
+  `notify_overdue_checkouts()`'s own per-item loop already relies on; `next_occurrence_date` always
+  advances afterward, success or failure, so an org with a temporarily-empty scope retries at its
+  *next* real occurrence instead of failing (and logging a skip) every single day forever.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

@@ -209,12 +209,28 @@ describe('StudioOrgDetailComponent', () => {
     expect(component.storageMb).toBe(5);
   });
 
-  it('leaves item/task/storage counts null when the usage RPC returns nothing', async () => {
+  it('leaves item/task/storage/healthTier counts null when the usage RPC returns nothing', async () => {
     await setup('org-1', { organization: createTestOrg({ id: 'org-1' }) });
 
     expect(component.itemCount).toBeNull();
     expect(component.taskCount).toBeNull();
     expect(component.storageMb).toBeNull();
+    expect(component.healthTier).toBeNull();
+    expect(component.notAdoptedLabels).toEqual([]);
+  });
+
+  it('derives healthTier and notAdoptedLabels from the usage RPC\'s own feature-adoption counts', async () => {
+    const rpc = jasmine.createSpy('rpc').and.resolveTo({
+      data: [{
+        organization_id: 'org-1', member_count: 1, item_count: 1, task_count: 1, storage_bytes: 0,
+        container_count: 0, reservation_count: 5, order_count: 0, broadcast_count: 2, completed_audit_count: 0
+      }],
+      error: null
+    });
+    await setup('org-1', { organization: createTestOrg({ id: 'org-1' }), rpc });
+
+    expect(component.healthTier).toBe('silver');
+    expect(component.notAdoptedLabels).toEqual(['Container/box tracking', 'Restock orders', 'Completed an audit']);
   });
 
   it('resolves the org\'s own logo via SiteSettingsService, scoped by this org\'s id', async () => {

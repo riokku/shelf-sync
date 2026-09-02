@@ -29,6 +29,7 @@
               <th>Items</th>
               <th>Tasks</th>
               <th>Storage</th>
+              <th>Health</th>
               <th>Last active</th>
               <th>Status</th>
             </tr>
@@ -42,6 +43,7 @@
                 <td><div class="skeleton-line skeleton-cell-narrow"></div></td>
                 <td><div class="skeleton-line skeleton-cell-narrow"></div></td>
                 <td><div class="skeleton-line skeleton-cell-narrow"></div></td>
+                <td><div class="skeleton-block skeleton-cell-badge"></div></td>
                 <td><div class="skeleton-line skeleton-cell-narrow"></div></td>
                 <td><div class="skeleton-block skeleton-cell-badge"></div></td>
               </tr>
@@ -62,6 +64,7 @@
               <th>Items</th>
               <th>Tasks</th>
               <th>Storage</th>
+              <th>Health</th>
               <th>Last active</th>
               <th>Status</th>
             </tr>
@@ -84,6 +87,13 @@
                 <td class="mono">{{ org.itemCount ?? '—' }}</td>
                 <td class="mono">{{ org.taskCount ?? '—' }}</td>
                 <td class="mono">{{ org.storageMb !== null ? (org.storageMb + ' MB') : '—' }}</td>
+                <td>
+                  @if (org.healthTier) {
+                    <span class="health-badge" [class]="'health-badge-' + org.healthTier">{{ healthTierLabels[org.healthTier] }}</span>
+                  } @else {
+                    &mdash;
+                  }
+                </td>
                 <td>{{ org.lastActiveAt ? (org.lastActiveAt | date: 'M/d/yy') : '—' }}</td>
                 <td>
                   @if (org.deleted_at) {

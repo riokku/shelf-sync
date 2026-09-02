@@ -2,6 +2,7 @@ import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { SupabaseService } from '../../core/supabase.service';
@@ -12,9 +13,18 @@ import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadc
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { StartAuditModalComponent } from '../../shared/components/start-audit-modal/start-audit-modal.component';
+import { AuditScheduleFormModalComponent } from '../../shared/components/audit-schedule-form-modal/audit-schedule-form-modal.component';
 import { AuditDetailComponent } from './audit-detail/audit-detail.component';
-import { InventoryAudit } from '../../shared/models/inventory-audit.model';
+import {
+  AUDIT_FREQUENCY_LABELS,
+  daysUntilAuditOccurrence,
+  InventoryAudit,
+  InventoryAuditSchedule,
+  isAuditScheduleLocked,
+  isAuditScheduleUpcoming
+} from '../../shared/models/inventory-audit.model';
 import { loadAuditSummaries } from '../../shared/utils/inventory-audits';
+import { loadAuditSchedules } from '../../shared/utils/inventory-audit-schedules';
 import { subscribeToTableChanges } from '../../shared/utils/realtime';
 import { FlashTracker } from '../../shared/utils/flash-tracker';
 import { debounce } from '../../shared/utils/debounce';
@@ -38,19 +48,32 @@ import { debounce } from '../../shared/utils/debounce';
  *  points). No hasUnsavedChanges()/confirm-before-leaving dance the way
  *  ModalTableComponent's own detail view needs — every action here
  *  (submitting a count, applying a discrepancy) is its own immediate RPC
- *  call, never a draft sitting unsaved. */
+ *  call, never a draft sitting unsaved.
+ *
+ *  Also hosts recurring audit schedules (inventory_audit_schedules) — see
+ *  create_audit_schedule()'s own migration comment for the full mechanism.
+ *  Every approved member sees the "Upcoming" section (schedules within a
+ *  week of their next occurrence — upcomingSchedules), same open visibility
+ *  the audits list itself already has; only admin/manager sees the
+ *  management list (all schedules, active or paused) with Edit/Pause-Resume
+ *  actions, gated in the template the same way "Start audit" already is. */
 @Component({
   selector: 'app-manage-audits',
   imports: [
     DatePipe,
     MatButtonModule,
     MatIconModule,
+    MatTooltipModule,
     RouterLink,
     BreadcrumbsComponent,
     PageHeaderComponent,
     EmptyStateComponent,
     AuditDetailComponent
   ],
+  // AuditScheduleFormModalComponent is opened via MatDialog.open(), not
+  // referenced from this component's own template, so it's intentionally
+  // not listed above — same convention every other dialog-opening component
+  // in this app already follows (e.g. StartAuditModalComponent itself).
   templateUrl: './manage-audits.component.html',
   styleUrl: './manage-audits.component.scss',
 })
@@ -77,6 +100,18 @@ export class ManageAuditsComponent implements OnInit {
   private profiles: Profile[] = [];
   audits: InventoryAudit[] = [];
 
+  /** Recurring audit schedules — see loadAuditSchedules()'s own doc comment.
+   *  Loaded regardless of role (any approved member needs to see the
+   *  Upcoming section derived from this), management actions are what's
+   *  actually gated to admin/manager (in the template, mirroring "Start
+   *  audit" itself). */
+  schedules: InventoryAuditSchedule[] = [];
+  scheduleLoadError: string | null = null;
+  readonly frequencyLabels = AUDIT_FREQUENCY_LABELS;
+  readonly isAuditScheduleLocked = isAuditScheduleLocked;
+  private togglingScheduleIds = new Set<string>();
+  scheduleActionError: string | null = null;
+
   selectedAuditId: string | null = null;
 
   // Which rows should currently show the brief "someone else just changed
@@ -89,7 +124,7 @@ export class ManageAuditsComponent implements OnInit {
 
   async ngOnInit() {
     await Promise.all([this.loadProfiles(), this.inventoryFieldOptions.load()]);
-    await this.loadAudits();
+    await Promise.all([this.loadAudits(), this.loadSchedules()]);
     this.isLoading = false;
 
     // Supports a deep link (?audit=<id>), same shape ManageInventoryComponent's
@@ -117,11 +152,24 @@ export class ManageAuditsComponent implements OnInit {
       }
       this.debouncedReloadAudits();
     });
+    // A schedule change (created, edited, paused/resumed, or advanced by
+    // run_scheduled_inventory_audits() itself) reloads schedules alongside
+    // audits via the same debounced call below — cheap either way, and
+    // keeps one debounce/flash pair covering all three tables rather than a
+    // second one just for this.
+    const schedulesChannel = subscribeToTableChanges(this.supabase, 'inventory_audit_schedules', payload => {
+      const scheduleId = payload.eventType === 'DELETE' ? payload.old.id : payload.new.id;
+      if (scheduleId) {
+        this.pendingFlashIds.add(scheduleId);
+      }
+      this.debouncedReloadAudits();
+    });
     this.destroyRef.onDestroy(() => {
       this.debouncedReloadAudits.cancel();
       this.flashTracker.clear();
       void this.supabase.removeChannel(auditsChannel);
       void this.supabase.removeChannel(countsChannel);
+      void this.supabase.removeChannel(schedulesChannel);
     });
   }
 
@@ -139,7 +187,7 @@ export class ManageAuditsComponent implements OnInit {
   }
 
   private async reloadAndFlashChangedAudits() {
-    await this.loadAudits();
+    await Promise.all([this.loadAudits(), this.loadSchedules()]);
     for (const id of this.pendingFlashIds) {
       this.flashTracker.flash(id);
     }
@@ -159,6 +207,97 @@ export class ManageAuditsComponent implements OnInit {
     }
     this.loadError = null;
     this.audits = audits;
+  }
+
+  // --- Recurring audit schedules -------------------------------------------
+
+  /** Re-runs loadSchedules() after a failed load — the Upcoming/management
+   *  sections' own Retry button handler, separate from retryLoad() above
+   *  since the two lists load (and can fail) independently. */
+  retryLoadSchedules() {
+    void this.loadSchedules();
+  }
+
+  private async loadSchedules() {
+    const { schedules, error } = await loadAuditSchedules(this.supabase, this.profiles);
+    if (error) {
+      this.scheduleLoadError = error;
+      return;
+    }
+    this.scheduleLoadError = null;
+    this.schedules = schedules;
+  }
+
+  /** Every approved member's own view — schedules within a week of firing,
+   *  soonest first (loadAuditSchedules() already orders by
+   *  next_occurrence_date). A paused schedule never appears here regardless
+   *  of date (see isAuditScheduleUpcoming()'s own doc comment). */
+  get upcomingSchedules(): InventoryAuditSchedule[] {
+    return this.schedules.filter(isAuditScheduleUpcoming);
+  }
+
+  /** "Starts today"/"Starts in 3 days" — the Upcoming card's own timing
+   *  line, computed once per card rather than calling
+   *  daysUntilAuditOccurrence() three times inline in the template. */
+  scheduleTimingLabel(schedule: InventoryAuditSchedule): string {
+    const days = daysUntilAuditOccurrence(schedule);
+    return days <= 0 ? 'Starts today' : `Starts in ${days} day${days === 1 ? '' : 's'}`;
+  }
+
+  isTogglingSchedule(scheduleId: string): boolean {
+    return this.togglingScheduleIds.has(scheduleId);
+  }
+
+  openCreateSchedule() {
+    const dialogRef = this.dialog.open(AuditScheduleFormModalComponent, {
+      width: 'clamp(28rem, 45vw, 34rem)',
+      maxWidth: '90vw'
+    });
+    dialogRef.afterClosed().subscribe(saved => void this.handleScheduleFormResult(saved, 'created'));
+  }
+
+  openEditSchedule(schedule: InventoryAuditSchedule) {
+    const dialogRef = this.dialog.open(AuditScheduleFormModalComponent, {
+      width: 'clamp(28rem, 45vw, 34rem)',
+      maxWidth: '90vw',
+      data: { schedule }
+    });
+    dialogRef.afterClosed().subscribe(saved => void this.handleScheduleFormResult(saved, 'updated'));
+  }
+
+  private async handleScheduleFormResult(saved: boolean | undefined, verb: 'created' | 'updated') {
+    if (!saved) {
+      return;
+    }
+    await this.loadSchedules();
+    this.notification.success(`Recurring audit ${verb}`);
+  }
+
+  /** Pause/resume — deliberately not gated by isAuditScheduleLocked() the
+   *  way the Edit button is, since set_audit_schedule_active() itself has
+   *  no such check (see that RPC's own migration comment for why stopping
+   *  the series stays allowed regardless of how soon it's due to fire). */
+  async toggleScheduleActive(schedule: InventoryAuditSchedule) {
+    if (this.togglingScheduleIds.has(schedule.id)) {
+      return;
+    }
+    this.togglingScheduleIds.add(schedule.id);
+    this.scheduleActionError = null;
+
+    const { error } = await this.supabase.rpc('set_audit_schedule_active', {
+      p_schedule_id: schedule.id,
+      p_active: !schedule.active
+    });
+
+    this.togglingScheduleIds.delete(schedule.id);
+
+    if (error) {
+      this.scheduleActionError = error.message;
+      return;
+    }
+
+    await this.loadSchedules();
+    this.notification.success(schedule.active ? 'Recurring audit paused' : 'Recurring audit resumed');
   }
 
   openStartAudit() {

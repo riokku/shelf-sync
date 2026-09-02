@@ -352,6 +352,57 @@ export type Database = {
           },
         ]
       }
+      inventory_audit_schedules: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          frequency: string
+          id: string
+          next_occurrence_date: string
+          note: string | null
+          organization_id: string
+          physical_location: string | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          frequency: string
+          id?: string
+          next_occurrence_date: string
+          note?: string | null
+          organization_id?: string
+          physical_location?: string | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          frequency?: string
+          id?: string
+          next_occurrence_date?: string
+          note?: string | null
+          organization_id?: string
+          physical_location?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_audit_schedules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_audit_schedules_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_audit_supporters: {
         Row: {
           audit_id: string
@@ -396,6 +447,7 @@ export type Database = {
           note: string | null
           organization_id: string
           physical_location: string | null
+          schedule_id: string | null
           started_at: string
           started_by: string | null
           status: string
@@ -410,6 +462,7 @@ export type Database = {
           note?: string | null
           organization_id?: string
           physical_location?: string | null
+          schedule_id?: string | null
           started_at?: string
           started_by?: string | null
           status?: string
@@ -424,6 +477,7 @@ export type Database = {
           note?: string | null
           organization_id?: string
           physical_location?: string | null
+          schedule_id?: string | null
           started_at?: string
           started_by?: string | null
           status?: string
@@ -455,6 +509,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_audits_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_audit_schedules"
             referencedColumns: ["id"]
           },
           {
@@ -1571,6 +1632,15 @@ export type Database = {
         Args: { audit_id: string }
         Returns: undefined
       }
+      create_audit_schedule: {
+        Args: {
+          p_first_occurrence_date?: string
+          p_frequency?: string
+          p_note?: string
+          p_physical_location?: string
+        }
+        Returns: string
+      }
       create_broadcast: {
         Args: {
           p_item_ids?: string[]
@@ -1651,9 +1721,14 @@ export type Database = {
       platform_get_organization_usage: {
         Args: { p_organization_id?: string }
         Returns: {
+          broadcast_count: number
+          completed_audit_count: number
+          container_count: number
           item_count: number
           member_count: number
+          order_count: number
           organization_id: string
+          reservation_count: number
           storage_bytes: number
           task_count: number
         }[]
@@ -1696,6 +1771,11 @@ export type Database = {
         Args: { target_id: string; task_id: string }
         Returns: undefined
       }
+      run_scheduled_inventory_audits: { Args: never; Returns: undefined }
+      set_audit_schedule_active: {
+        Args: { p_active: boolean; p_schedule_id: string }
+        Returns: undefined
+      }
       set_audit_team: {
         Args: {
           p_audit_id: string
@@ -1717,6 +1797,15 @@ export type Database = {
           audit_count_id: string
           p_counted_quantity: number
           p_note?: string
+        }
+        Returns: undefined
+      }
+      update_audit_schedule: {
+        Args: {
+          p_frequency?: string
+          p_note?: string
+          p_physical_location?: string
+          p_schedule_id: string
         }
         Returns: undefined
       }

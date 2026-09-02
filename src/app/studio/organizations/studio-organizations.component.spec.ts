@@ -32,6 +32,11 @@ interface FakeUsageRow {
   item_count: number;
   task_count: number;
   storage_bytes: number;
+  container_count?: number;
+  reservation_count?: number;
+  order_count?: number;
+  broadcast_count?: number;
+  completed_audit_count?: number;
 }
 
 function createFakeSupabaseServiceForOrganizations(data: {
@@ -116,13 +121,26 @@ describe('StudioOrganizationsComponent', () => {
     expect(org.storageMb).toBe(5);
   });
 
-  it('leaves item/task/storage null for an org the usage RPC has no row for', async () => {
+  it('leaves item/task/storage/healthTier null for an org the usage RPC has no row for', async () => {
     await createComponent({ organizations: [createTestOrgRow({ id: 'org-retired' })], usage: [] });
 
     const org = component.organizations[0];
     expect(org.itemCount).toBeNull();
     expect(org.taskCount).toBeNull();
     expect(org.storageMb).toBeNull();
+    expect(org.healthTier).toBeNull();
+  });
+
+  it('derives healthTier from the usage RPC\'s own feature-adoption counts', async () => {
+    await createComponent({
+      organizations: [createTestOrgRow({ id: 'org-1' })],
+      usage: [{
+        organization_id: 'org-1', member_count: 1, item_count: 1, task_count: 1, storage_bytes: 0,
+        container_count: 3, reservation_count: 5, order_count: 1, broadcast_count: 2, completed_audit_count: 1
+      }]
+    });
+
+    expect(component.organizations[0].healthTier).toBe('gold');
   });
 
   it('surfaces a failed load rather than reading as an empty list', async () => {

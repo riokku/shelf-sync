@@ -7,8 +7,15 @@ import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadc
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { pricingTierByKey } from '../../shared/models/pricing-tier';
+import {
+  computeOrgHealthTier,
+  ORG_HEALTH_FEATURES,
+  ORG_HEALTH_TIER_LABELS,
+  OrgFeatureAdoption,
+  OrgHealthTier
+} from '../../shared/models/org-health';
 
-interface OrgUsage {
+interface OrgUsage extends OrgFeatureAdoption {
   organizationId: string;
   name: string;
   memberCount: number;
@@ -27,14 +34,32 @@ interface OverLimitRow {
   exceeded: string[];
 }
 
+/** One "Org health" row — see org-health.ts's own doc comment for what the
+ *  tier means. notAdoptedLabels (rather than adopted ones) is what's
+ *  actually shown next to the badge — "what's this org missing" is the more
+ *  actionable read for a platform admin deciding who to nudge, and it's
+ *  naturally empty (rendered as "Using every feature") for a Gold org. */
+interface OrgHealthRow {
+  organizationId: string;
+  name: string;
+  tier: OrgHealthTier;
+  notAdoptedLabels: string[];
+}
+
 const BYTES_PER_MB = 1024 * 1024;
 
-/** Platform-admin resource usage leaderboard + Free-tier pressure report —
- *  the counterpart to Studio's own headline stat grid (StudioComponent),
- *  which only ever shows platform-wide totals, never a per-org breakdown of
- *  who's actually driving Supabase storage/egress cost or already past
- *  what the Free tier (shared/models/pricing-tier.ts) allows. Both sections
- *  read the same platform_get_organization_usage() RPC result — one
+/** Bronze first (needs the most attention) — ties broken alphabetically by
+ *  name, matching every other Studio list's own default sort. */
+const TIER_SORT_ORDER: Record<OrgHealthTier, number> = { bronze: 0, silver: 1, gold: 2 };
+
+/** Platform-admin resource usage leaderboard + Free-tier pressure report,
+ *  plus an "Org health" section — the counterpart to Studio's own headline
+ *  stat grid (StudioComponent), which only ever shows platform-wide totals,
+ *  never a per-org breakdown of who's actually driving Supabase
+ *  storage/egress cost, already past what the Free tier
+ *  (shared/models/pricing-tier.ts) allows, or actually adopting the
+ *  product's own deeper features (see shared/models/org-health.ts). All
+ *  three read the same platform_get_organization_usage() RPC result — one
  *  cross-org aggregate query, joined against `organizations` for display
  *  names the same client-side-map way StudioOrganizationsComponent already
  *  correlates its own cross-org profiles query. */
@@ -59,6 +84,8 @@ export class StudioUsageComponent implements OnInit {
   topByItems: UsageBreakdownRow[] = [];
   topByMembers: UsageBreakdownRow[] = [];
   overLimit: OverLimitRow[] = [];
+  orgHealth: OrgHealthRow[] = [];
+  readonly tierLabels = ORG_HEALTH_TIER_LABELS;
 
   get hasAnyUsage(): boolean {
     return this.usage.length > 0;
@@ -102,13 +129,19 @@ export class StudioUsageComponent implements OnInit {
       name: namesById.get(row.organization_id) ?? 'Unknown organization',
       memberCount: row.member_count,
       itemCount: row.item_count,
-      storageMb: Math.round((row.storage_bytes / BYTES_PER_MB) * 10) / 10
+      storageMb: Math.round((row.storage_bytes / BYTES_PER_MB) * 10) / 10,
+      containerCount: row.container_count,
+      reservationCount: row.reservation_count,
+      orderCount: row.order_count,
+      broadcastCount: row.broadcast_count,
+      completedAuditCount: row.completed_audit_count
     }));
 
     this.topByStorage = this.topN(this.usage, org => org.storageMb);
     this.topByItems = this.topN(this.usage, org => org.itemCount);
     this.topByMembers = this.topN(this.usage, org => org.memberCount);
     this.overLimit = this.buildOverLimitRows(this.usage);
+    this.orgHealth = this.buildOrgHealthRows(this.usage);
 
     this.isLoading = false;
   }
@@ -147,5 +180,20 @@ export class StudioUsageComponent implements OnInit {
     }
 
     return rows.sort((a, b) => b.exceeded.length - a.exceeded.length);
+  }
+
+  /** Bronze first (needs the most attention), ties broken alphabetically.
+   *  notAdoptedLabels is what the template actually shows next to the badge
+   *  — see OrgHealthRow's own doc comment for why "what's missing" reads
+   *  more actionable than "what's already adopted." */
+  private buildOrgHealthRows(orgs: OrgUsage[]): OrgHealthRow[] {
+    return orgs
+      .map((org): OrgHealthRow => ({
+        organizationId: org.organizationId,
+        name: org.name,
+        tier: computeOrgHealthTier(org),
+        notAdoptedLabels: ORG_HEALTH_FEATURES.filter(feature => org[feature.key] === 0).map(feature => feature.label)
+      }))
+      .sort((a, b) => TIER_SORT_ORDER[a.tier] - TIER_SORT_ORDER[b.tier] || a.name.localeCompare(b.name));
   }
 }

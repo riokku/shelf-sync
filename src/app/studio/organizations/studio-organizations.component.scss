@@ -95,3 +95,29 @@
   background: var(--app-danger-bg);
   color: var(--app-danger-on-bg);
 }
+
+// Hardcoded, not theme-derived — see shared/models/org-health.ts's own doc
+// comment for why (and for keeping these three in sync with
+// StudioUsageComponent's/StudioOrgDetailComponent's identical copies).
+.health-badge{
+  padding: 0.125rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+
+  &.health-badge-bronze{
+    background: #a0673f;
+    color: #ffffff;
+  }
+
+  &.health-badge-silver{
+    background: #8b929b;
+    color: #ffffff;
+  }
+
+  &.health-badge-gold{
+    background: #c99a2e;
+    color: #2b2200;
+  }
+}

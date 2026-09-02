@@ -1,3 +1,5 @@
+import { getTodayIsoDate, parseIsoDate } from '../utils/date';
+
 /** A physical inventory audit ("cycle count") — reconciles what the system
  *  thinks is in stock against what's actually on the shelf. Started
  *  org-wide or scoped to one physicalLocation ('' means whole org, mirrors
@@ -74,4 +76,70 @@ export interface InventoryAuditCount {
  *  (countedQuantity === null) is neither a match nor a discrepancy. */
 export function isAuditDiscrepancy(count: InventoryAuditCount): boolean {
   return count.countedQuantity !== null && count.countedQuantity !== count.expectedQuantity;
+}
+
+// --- Recurring audit schedules ---------------------------------------------
+
+/** A recurring cadence for auto-starting real audits — see
+ *  run_scheduled_inventory_audits()'s own migration comment for the
+ *  server-side half. Deliberately a small fixed set (this schema's usual
+ *  "small fixed set of options, not open-ended" convention — mirrors
+ *  ReservationStatus/ReleaseNoteSeverity) rather than a free-form interval. */
+export type AuditFrequency = 'weekly' | 'monthly' | 'quarterly';
+
+export const AUDIT_FREQUENCY_LABELS: Record<AuditFrequency, string> = {
+  weekly: 'Weekly',
+  monthly: 'Monthly',
+  quarterly: 'Quarterly'
+};
+
+/** physicalLocation '' means whole org, same empty-string-for-null
+ *  convention InventoryAudit.physicalLocation itself already uses.
+ *  nextOccurrenceDate is the one field run_scheduled_inventory_audits()
+ *  advances each time it fires — everything else only ever changes via an
+ *  explicit edit. */
+export interface InventoryAuditSchedule {
+  id: string;
+  physicalLocation: string;
+  frequency: AuditFrequency;
+  note: string;
+  nextOccurrenceDate: string;
+  active: boolean;
+  createdByLabel: string;
+  createdAt: string;
+}
+
+/** How many days out "upcoming" starts — both for showing a schedule in the
+ *  Upcoming list and for locking its own field edits, since they're the same
+ *  threshold by design (see update_audit_schedule()'s own migration
+ *  comment). */
+const UPCOMING_WINDOW_DAYS = 7;
+
+/** Exported for display too (e.g. "starts in 3 days") — not just the two
+ *  boolean checks below. */
+export function daysUntilAuditOccurrence(schedule: InventoryAuditSchedule): number {
+  const msPerDay = 1000 * 60 * 60 * 24;
+  // parseIsoDate/getTodayIsoDate (shared/utils/date.ts) both parse as local
+  // midnight, so the difference below is a whole number of local days —
+  // reusing them here (rather than `new Date(isoDate)`'s UTC parsing) avoids
+  // the same off-by-one-day pitfall their own doc comments already flag.
+  const today = parseIsoDate(getTodayIsoDate())!;
+  const target = parseIsoDate(schedule.nextOccurrenceDate)!;
+  return Math.round((target.getTime() - today.getTime()) / msPerDay);
+}
+
+/** An active schedule whose next occurrence is within the upcoming window —
+ *  what the Upcoming section in ManageAuditsComponent shows to every
+ *  approved member. A paused schedule never shows here regardless of its
+ *  date, since it isn't actually going to fire. */
+export function isAuditScheduleUpcoming(schedule: InventoryAuditSchedule): boolean {
+  return schedule.active && daysUntilAuditOccurrence(schedule) <= UPCOMING_WINDOW_DAYS;
+}
+
+/** Same threshold as isAuditScheduleUpcoming(), but gates field edits only
+ *  (location/frequency/note) — pausing/resuming the whole series stays
+ *  allowed regardless, mirroring set_audit_schedule_active()'s own lack of
+ *  this check server-side. */
+export function isAuditScheduleLocked(schedule: InventoryAuditSchedule): boolean {
+  return daysUntilAuditOccurrence(schedule) <= UPCOMING_WINDOW_DAYS;
 }

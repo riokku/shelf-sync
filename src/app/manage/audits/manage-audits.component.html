@@ -37,6 +37,30 @@
     @if (selectedAuditId) {
       <app-audit-detail [auditId]="selectedAuditId" (back)="closeAuditDetail()" />
     } @else {
+      @if (!isLoading && upcomingSchedules.length > 0) {
+        <div class="upcoming-audits-section">
+          <h3 class="upcoming-audits-heading">
+            <mat-icon>event_repeat</mat-icon>
+            Upcoming
+          </h3>
+          <ul class="upcoming-audits-list">
+            @for (schedule of upcomingSchedules; track schedule.id) {
+              <li class="upcoming-audit-card" [class.realtime-flash]="isFlashing(schedule.id)">
+                <mat-icon class="upcoming-audit-icon">event_repeat</mat-icon>
+                <div class="upcoming-audit-info">
+                  <span class="upcoming-audit-title">
+                    {{ frequencyLabels[schedule.frequency] }} audit — {{ schedule.physicalLocation || 'Whole organization' }}
+                  </span>
+                  <span class="upcoming-audit-meta">
+                    {{ scheduleTimingLabel(schedule) }} ({{ schedule.nextOccurrenceDate | date: 'M/d/yy' }})
+                  </span>
+                </div>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+
       @if (isLoading) {
         <ul class="audit-list" aria-hidden="true">
           @for (i of skeletonRows; track i) {
@@ -106,6 +130,77 @@
             </li>
           }
         </ul>
+      }
+
+      @if (authService.canManage()) {
+        <div class="audit-schedules-section">
+          <div class="audit-schedules-header">
+            <h3 class="audit-schedules-heading">
+              <mat-icon>event_repeat</mat-icon>
+              Recurring audits
+            </h3>
+            <button mat-stroked-button type="button" (click)="openCreateSchedule()">
+              <mat-icon>add</mat-icon>
+              Add recurring audit
+            </button>
+          </div>
+
+          @if (scheduleActionError) {
+            <p class="error-message">{{ scheduleActionError }}</p>
+          }
+
+          @if (scheduleLoadError) {
+            <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load recurring audits. ' + scheduleLoadError">
+              <button mat-stroked-button type="button" (click)="retryLoadSchedules()">
+                <mat-icon>refresh</mat-icon>
+                Retry
+              </button>
+            </app-empty-state>
+          } @else if (schedules.length === 0) {
+            <p class="audit-schedules-empty">No recurring audits set up yet.</p>
+          } @else {
+            <ul class="audit-schedules-list">
+              @for (schedule of schedules; track schedule.id) {
+                <li class="audit-schedule-row" [class.audit-schedule-paused]="!schedule.active">
+                  <div class="audit-schedule-info">
+                    <span class="audit-schedule-title">
+                      {{ frequencyLabels[schedule.frequency] }} &middot; {{ schedule.physicalLocation || 'Whole organization' }}
+                      @if (!schedule.active) {
+                        <span class="status-pill audit-schedule-paused-pill">Paused</span>
+                      }
+                    </span>
+                    <span class="audit-schedule-meta">
+                      Next: {{ schedule.nextOccurrenceDate | date: 'M/d/yy' }} &middot; set up by {{ schedule.createdByLabel }}
+                      @if (schedule.note) {
+                        &middot; {{ schedule.note }}
+                      }
+                    </span>
+                  </div>
+                  <div class="audit-schedule-actions">
+                    <button
+                        mat-icon-button
+                        type="button"
+                        [disabled]="isAuditScheduleLocked(schedule)"
+                        [matTooltip]="isAuditScheduleLocked(schedule) ? 'Starts within a week — can\'t be edited now' : 'Edit'"
+                        (click)="openEditSchedule(schedule)"
+                      >
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button
+                        mat-icon-button
+                        type="button"
+                        [disabled]="isTogglingSchedule(schedule.id)"
+                        [matTooltip]="schedule.active ? 'Pause' : 'Resume'"
+                        (click)="toggleScheduleActive(schedule)"
+                      >
+                      <mat-icon>{{ schedule.active ? 'pause_circle' : 'play_circle' }}</mat-icon>
+                    </button>
+                  </div>
+                </li>
+              }
+            </ul>
+          }
+        </div>
       }
     }
   </div>

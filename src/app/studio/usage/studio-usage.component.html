@@ -96,6 +96,25 @@
         </div>
       </div>
 
+      <div class="usage-card usage-org-health-card">
+        <h3>Org health</h3>
+        <p class="usage-card-hint">
+          How much of ShelfSync's own feature set each org actually uses — a quick signal for
+          who's just parked on the basics versus getting real value out of it.
+        </p>
+        <ul class="org-health-list">
+          @for (row of orgHealth; track row.organizationId) {
+            <li>
+              <a class="org-health-name" [routerLink]="['/studio/organizations', row.organizationId]">{{ row.name }}</a>
+              <span class="health-badge" [class]="'health-badge-' + row.tier">{{ tierLabels[row.tier] }}</span>
+              <span class="org-health-missing">
+                {{ row.notAdoptedLabels.length === 0 ? 'Using every feature' : 'Not yet: ' + row.notAdoptedLabels.join(', ') }}
+              </span>
+            </li>
+          }
+        </ul>
+      </div>
+
       <div class="usage-card usage-over-limit-card">
         <h3>Over the Free tier</h3>
         <p class="usage-card-hint">

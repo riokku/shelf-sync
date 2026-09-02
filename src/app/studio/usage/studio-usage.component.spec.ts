@@ -9,6 +9,11 @@ interface FakeUsageRow {
   member_count: number;
   item_count: number;
   storage_bytes: number;
+  container_count?: number;
+  reservation_count?: number;
+  order_count?: number;
+  broadcast_count?: number;
+  completed_audit_count?: number;
 }
 
 function createFakeSupabaseServiceForUsage(data: {
@@ -24,10 +29,22 @@ function createFakeSupabaseServiceForUsage(data: {
     return b;
   }
 
+  // Defaults every feature-adoption count to 0 (matching the real RPC's own
+  // coalesce(..., 0)) so a test that doesn't care about org health can leave
+  // those fields out entirely without producing `undefined` counts.
+  const usageWithDefaults = (data.usage ?? []).map(row => ({
+    container_count: 0,
+    reservation_count: 0,
+    order_count: 0,
+    broadcast_count: 0,
+    completed_audit_count: 0,
+    ...row
+  }));
+
   const fake = {
     client: {
       from: () => builder({ data: data.orgs ?? [], error: null }),
-      rpc: () => builder({ data: data.usage ?? [], error: data.usageError ?? null })
+      rpc: () => builder({ data: usageWithDefaults, error: data.usageError ?? null })
     }
   };
   return fake as unknown as SupabaseService;
@@ -96,5 +113,28 @@ describe('StudioUsageComponent', () => {
 
     expect(component.loadError).toBe('network error');
     expect(component.hasAnyUsage).toBeFalse();
+  });
+
+  describe('orgHealth', () => {
+    it('sorts bronze first, gold last, naming what a bronze org hasn\'t adopted', async () => {
+      const component = await createComponent({
+        usage: [
+          {
+            organization_id: 'org-gold', member_count: 1, item_count: 1, storage_bytes: 0,
+            container_count: 3, reservation_count: 5, order_count: 1, broadcast_count: 2, completed_audit_count: 1
+          },
+          { organization_id: 'org-bronze', member_count: 1, item_count: 1, storage_bytes: 0 }
+        ],
+        orgs: [{ id: 'org-gold', name: 'Gold Co' }, { id: 'org-bronze', name: 'Bronze Co' }]
+      });
+
+      expect(component.orgHealth.map(row => row.name)).toEqual(['Bronze Co', 'Gold Co']);
+      expect(component.orgHealth[0].tier).toBe('bronze');
+      expect(component.orgHealth[0].notAdoptedLabels).toEqual([
+        'Container/box tracking', 'Reservations', 'Restock orders', 'Broadcasts', 'Completed an audit'
+      ]);
+      expect(component.orgHealth[1].tier).toBe('gold');
+      expect(component.orgHealth[1].notAdoptedLabels).toEqual([]);
+    });
   });
 });

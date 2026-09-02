@@ -101,6 +101,74 @@
   }
 }
 
+.usage-org-health-card{
+  margin-bottom: 1.5rem;
+}
+
+.org-health-list{
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li{
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0;
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+
+    &:last-child{
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+  }
+}
+
+.org-health-name{
+  font-weight: 600;
+  color: var(--mat-sys-primary);
+  text-decoration: none;
+
+  &:hover{
+    text-decoration: underline;
+  }
+}
+
+.org-health-missing{
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8125rem;
+}
+
+// Hardcoded, not theme-derived — see org-health.ts's own
+// ORG_HEALTH_TIER_COLORS doc comment for why a badge needs to read the same
+// regardless of the org's own picked THEME_PRESETS color.
+.health-badge{
+  flex-shrink: 0;
+  padding: 0.125rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+
+  &.health-badge-bronze{
+    background: #a0673f;
+    color: #ffffff;
+  }
+
+  &.health-badge-silver{
+    background: #8b929b;
+    color: #ffffff;
+  }
+
+  &.health-badge-gold{
+    background: #c99a2e;
+    color: #2b2200;
+  }
+}
+
 .usage-over-limit-card{
   margin-bottom: 2rem;
 }
