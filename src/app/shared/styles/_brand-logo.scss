@@ -57,6 +57,22 @@
   }
 }
 
+// The one ambient/auto-playing animation in this partial with no reduced-
+// motion guard until now. Unlike a plain opacity/transform reveal (see
+// _stagger.scss's own cascade-in — removing its animation alone is enough,
+// since its un-animated base state is already the finished look), this
+// mark's *base* rule above is deliberately the undrawn start state
+// (stroke-dasharray/stroke-dashoffset: 1) — the animation is what draws it.
+// So disabling the animation here also has to restate the finished
+// (100%) state directly, or the mark would render invisible at rest.
+@media (prefers-reduced-motion: reduce){
+  .brand-logo path{
+    animation: none;
+    stroke: #ffffff;
+    stroke-dashoffset: 0;
+  }
+}
+
 // Sized off height (not the old fixed-minimum width) so it scales down
 // to sit at the same height as .brand-logo beside it, rather than forcing
 // at least 20rem of width regardless of how much room the two have.

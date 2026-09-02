@@ -22,7 +22,7 @@
   // contributes nothing), stacking with .task-id-row's own margin-top into
   // a much bigger gap than inventory's — and visually detaching the whole
   // GUID+Actions row from the title above it.
-  h2{
+  :is(h1, h2){
     text-transform: uppercase;
     margin: 1.5rem 0 0;
   }

@@ -35,6 +35,29 @@
   }
 }
 
+// Standard "offscreen until focused" skip link — a keyboard user tabbing
+// from the very top of any page lands here first and can jump straight
+// past the header/nav to the routed page's own content, rather than
+// tabbing through every header control (search, notifications, brand link,
+// hamburger) on every single page load.
+.skip-link{
+  position: absolute;
+  top: -3rem;
+  left: 1rem;
+  z-index: 1000;
+  padding: 0.6rem 1.1rem;
+  border-radius: 0.5rem;
+  background: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary);
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 0.15s ease-out;
+
+  &:focus-visible{
+    top: 1rem;
+  }
+}
+
 .header{
   flex: 0 1 auto;
 }

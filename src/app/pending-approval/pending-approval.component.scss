@@ -62,7 +62,7 @@
     color: var(--mat-sys-primary);
   }
 
-  h2{
+  :is(h1, h2){
     margin: 0;
   }
 

@@ -9,7 +9,7 @@
       Back
     </button>
   </div>
-  <h2>My Account</h2>
+  <h1>My Account</h1>
 
   <div class="account-cards">
   @if (isLoading) {
@@ -101,7 +101,7 @@
           }
         </div>
         @if (avatarError) {
-          <p class="error-message">{{ avatarError }}</p>
+          <p class="error-message" role="alert">{{ avatarError }}</p>
         }
       </mat-card-content>
     </mat-card>
@@ -136,7 +136,7 @@
         }
 
         @if (quickMenuError) {
-          <p class="error-message">{{ quickMenuError }}</p>
+          <p class="error-message" role="alert">{{ quickMenuError }}</p>
         }
         @if (quickMenuChanged) {
           <button

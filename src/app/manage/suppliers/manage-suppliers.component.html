@@ -15,6 +15,7 @@
         title="Suppliers"
         subtitle="Who you order inventory from — pick from this list when creating or editing an item."
         zone="inventory"
+        headingLevel="h1"
       >
       <button mat-flat-button color="primary" type="button" (click)="addSupplier()">
         <mat-icon>add</mat-icon>
@@ -23,7 +24,7 @@
     </app-page-header>
 
     @if (removeError) {
-      <p class="error-message">{{ removeError }}</p>
+      <p class="error-message" role="alert">{{ removeError }}</p>
     }
 
     @if (isLoading) {
@@ -92,10 +93,10 @@
                   }
                 </td>
                 <td class="supplier-actions">
-                  <button mat-icon-button type="button" matTooltip="Edit supplier" (click)="editSupplier(supplier)">
+                  <button mat-icon-button type="button" matTooltip="Edit supplier" aria-label="Edit supplier" (click)="editSupplier(supplier)">
                     <mat-icon>edit</mat-icon>
                   </button>
-                  <button mat-icon-button type="button" matTooltip="Remove supplier" (click)="removeSupplier(supplier)">
+                  <button mat-icon-button type="button" matTooltip="Remove supplier" aria-label="Remove supplier" (click)="removeSupplier(supplier)">
                     <mat-icon>delete</mat-icon>
                   </button>
                 </td>

@@ -119,7 +119,7 @@
                 [ngModelOptions]="{ standalone: true }"
               />
           </mat-form-field>
-          <button mat-icon-button type="button" matTooltip="Remove item" (click)="removeLine($index)">
+          <button mat-icon-button type="button" matTooltip="Remove item" aria-label="Remove item" (click)="removeLine($index)">
             <mat-icon>delete</mat-icon>
           </button>
         </div>

@@ -17,7 +17,7 @@
   padding: 3rem 1.5rem;
   max-width: 100%;
 
-  h2{
+  :is(h1, h2){
     text-transform: uppercase;
     margin: 1.5rem 0 0;
   }

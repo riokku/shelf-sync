@@ -81,14 +81,25 @@
 
   // Deliberately subtle — this is a footer credit, not a piece of
   // navigation or status the way HeaderComponent's own two-line org-info
-  // block is. A plain, explicit light gray (not a Material token, not
-  // color: inherit) for both lines uniformly, same footer-on-dark reasoning
-  // as the divider above — it reads correctly regardless of the ambient
-  // page background, including that permanently-dark region. Size/weight
-  // alone (not color) is what still lets "Studio Rio" read as the more
-  // prominent of the two lines.
+  // block is. Size/weight alone (not color) is what still lets "Studio Rio"
+  // read as the more prominent of the two lines.
+  //
+  // The default (theme-following) embedding sits on a light-or-dark surface
+  // depending on [data-mode] (see AppComponent's own .site-wrapper), so this
+  // needs a real light-dark() pair for AA contrast — a fixed #c4c4c4 alone
+  // reads ~1.7:1 against a light surface, a hard WCAG AA fail (needs
+  // 4.5:1); #6b6b6b gets ~5.3:1 there while the dark-mode value is
+  // unchanged. :host(.footer-on-dark) below keeps the original fixed gray —
+  // that embedding (the landing page's CTA/footer region) is permanently
+  // dark regardless of [data-mode], the same reason the logo invert above
+  // has its own :host(.footer-on-dark) opt-out.
   .footer-brand-line,
   .footer-brand-name{
+    color: light-dark(#6b6b6b, #c4c4c4);
+  }
+
+  :host(.footer-on-dark) .footer-brand-line,
+  :host(.footer-on-dark) .footer-brand-name{
     color: #c4c4c4;
   }
 

@@ -198,7 +198,12 @@ html {
   // the light-mode value is a deeper shade chosen for contrast against a
   // light surface.
   --app-error-text: light-dark(#c92a2a, #ff6b6b);
-  --app-overdue-text: light-dark(#c92a2a, #e03131);
+  // Dark-mode value bumped from the original #e03131 (borderline ~4.1:1
+  // against a dark surface as plain text, though fine as this same hex's
+  // other job — --app-danger-bg's opaque badge fill, which doesn't need
+  // light-dark() at all) to reuse --app-error-text's own already-verified
+  // dark value instead of a bespoke, weaker shade. Light value unaffected.
+  --app-overdue-text: light-dark(#c92a2a, #ff6b6b);
   --app-success-text: light-dark(#2b8a3e, #51cf66);
   --app-warning-text: light-dark(#a15c00, #f59f00);
 
@@ -212,9 +217,14 @@ html {
   // stylesheets one shared source instead.
   --app-warning-bg: #f59f00;
   --app-warning-on-bg: #1a1a1a;
-  --app-danger-bg: #e03131;
+  // Darkened from the original #e03131 (4.51:1 against white — technically
+  // AA-passing but only by 0.01, too close to the 4.5:1 line for comfort at
+  // the small badge sizes these render at) to #c81f1f (5.72:1).
+  --app-danger-bg: #c81f1f;
   --app-danger-on-bg: #ffffff;
-  --app-success-bg: #2b8a3e;
+  // Darkened from the original #2b8a3e (4.37:1 against white — a real AA
+  // fail at badge text sizes) to #237a35 (5.38:1).
+  --app-success-bg: #237a35;
   --app-success-on-bg: #ffffff;
 
   // Two extra typefaces alongside mat.theme()'s own Roboto (index.html's

@@ -34,7 +34,7 @@
             <mat-icon>inventory_2</mat-icon>
             {{ heroItemCount }} active items
           </span>
-          <h2>Inventory</h2>
+          <h1>Inventory</h1>
           <p class="page-hero-subtitle">Browse by card or table, filter by category or location, and click any item for its full history.</p>
           <div class="page-hero-pulse-row">
             <div class="page-hero-pulse-chip">
@@ -302,7 +302,7 @@
                 </button>
               </app-bulk-action-toolbar>
               @if (bulkActionError) {
-                <p class="error-message">{{ bulkActionError }}</p>
+                <p class="error-message" role="alert">{{ bulkActionError }}</p>
               }
             }
             @if (viewMode === 'card') {
@@ -378,6 +378,7 @@
                             [checked]="isSelected(item.id)"
                             [disabled]="!canSelectItem(item)"
                             [matTooltip]="canSelectItem(item) ? '' : 'Locked — only admins/managers can edit this item'"
+                            [attr.aria-label]="'Select ' + item.name"
                             (change)="toggleItemSelection(item.id, $event.checked)"
                           ></mat-checkbox>
                       }
@@ -402,6 +403,7 @@
                           [checked]="isSelected(item.id)"
                           [disabled]="!canSelectItem(item)"
                           [matTooltip]="canSelectItem(item) ? '' : 'Locked — only admins/managers can edit this item'"
+                          [attr.aria-label]="'Select ' + item.name"
                           (change)="toggleItemSelection(item.id, $event.checked)"
                         ></mat-checkbox>
                     </td>

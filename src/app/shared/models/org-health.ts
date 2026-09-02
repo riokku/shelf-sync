@@ -21,9 +21,11 @@ export type OrgHealthTier = 'bronze' | 'silver' | 'gold';
  *  console isn't org branding" reasoning StudioOrgDetailComponent's own
  *  "Retire" red already establishes: a badge needs to read the same shade
  *  of gold regardless of which THEME_PRESETS color the org being described
- *  happens to have picked for itself. Keep bronze #a0673f/silver #8b929b/
+ *  happens to have picked for itself. Keep bronze #a0673f/silver #5f6670/
  *  gold #c99a2e (on white, except gold's dark-on-gold #2b2200) in sync
- *  across all three if this ever changes. */
+ *  across all three if this ever changes — silver was originally #8b929b
+ *  (3.14:1 against white, a real WCAG AA fail at this badge's text size)
+ *  until an accessibility pass darkened it to #5f6670 (5.80:1). */
 export const ORG_HEALTH_TIER_LABELS: Record<OrgHealthTier, string> = {
   bronze: 'Bronze',
   silver: 'Silver',

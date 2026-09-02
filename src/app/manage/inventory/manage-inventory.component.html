@@ -14,7 +14,7 @@
     }
 
     @if (!selectedItemDetail) {
-      <app-page-header icon="inventory_2" title="Manage Inventory" zone="inventory">
+      <app-page-header icon="inventory_2" title="Manage Inventory" zone="inventory" headingLevel="h1">
         <button
             mat-stroked-button
             type="button"
@@ -89,6 +89,7 @@
                     matSuffix
                     type="button"
                     matTooltip="Scan a barcode or QR code"
+                    aria-label="Scan a barcode or QR code"
                     (click)="scanBarcodeForNewItem()"
                   >
                   <mat-icon>qr_code_scanner</mat-icon>
@@ -118,7 +119,7 @@
                   (change)="onImagesSelected($event)"
                 />
               @if (imageLimitError) {
-                <p class="error-message">{{ imageLimitError }}</p>
+                <p class="error-message" role="alert">{{ imageLimitError }}</p>
               }
               @if (imagePreviews.length > 0) {
                 <div class="image-preview-row">
@@ -290,6 +291,7 @@
                           mat-icon-button
                           type="button"
                           matTooltip="Remove container"
+                          aria-label="Remove container"
                           (click)="removeNewContainer($index)"
                         >
                         <mat-icon>delete</mat-icon>
@@ -328,7 +330,7 @@
         </div>
 
         @if (itemError) {
-          <p class="error-message">{{ itemError }}</p>
+          <p class="error-message" role="alert">{{ itemError }}</p>
         }
 
         <button mat-flat-button color="primary" type="submit" [disabled]="isSavingItem">
@@ -345,7 +347,7 @@
     } @else {
       <div class="retirements-view">
         @if (retirementError) {
-          <p class="error-message">{{ retirementError }}</p>
+          <p class="error-message" role="alert">{{ retirementError }}</p>
         }
         @if (loadError) {
           <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load retirement requests. ' + loadError">
@@ -398,6 +400,7 @@
                     [checked]="isRetirementSelected(item.id)"
                     (change)="toggleRetirementSelection(item.id, $event.checked)"
                     (click)="$event.stopPropagation()"
+                    [attr.aria-label]="'Select ' + item.name"
                   ></mat-checkbox>
                 <div class="task-row-main clickable" role="button" tabindex="0"
                     [attr.aria-label]="'View details for ' + item.name"

@@ -7,6 +7,7 @@
           mat-icon-button
           type="button"
           [matTooltip]="idCopied ? 'Copied!' : 'Copy ID'"
+          [attr.aria-label]="idCopied ? 'Copied' : 'Copy ID'"
           (click)="copyId()"
         >
         <mat-icon>{{ idCopied ? 'check' : 'content_copy' }}</mat-icon>
@@ -15,12 +16,13 @@
           mat-icon-button
           type="button"
           [matTooltip]="linkCopied ? 'Copied!' : 'Copy link'"
+          [attr.aria-label]="linkCopied ? 'Copied' : 'Copy link'"
           (click)="copyLink()"
         >
         <mat-icon>{{ linkCopied ? 'check' : 'link' }}</mat-icon>
       </button>
       @if (barcodeFeatureEnabled) {
-        <button mat-icon-button type="button" matTooltip="View/print item label" (click)="openQrLabel()">
+        <button mat-icon-button type="button" matTooltip="View/print item label" aria-label="View/print item label" (click)="openQrLabel()">
           <mat-icon>qr_code_2</mat-icon>
         </button>
       }
@@ -31,6 +33,7 @@
             class="lock-toggle-button"
             [class.lock-toggle-button-locked]="data.isLocked"
             [disabled]="isProcessingLock || !authService.canManage()"
+            [attr.aria-label]="lockToggleTooltip"
             (click)="toggleLock()"
           >
           <mat-icon>{{ data.isLocked ? 'lock_open' : 'lock' }}</mat-icon>
@@ -39,12 +42,12 @@
     </div>
     @if (isOutOfStock) {
       <span class="status-pill low-stock">
-        <mat-icon>remove_shopping_cart</mat-icon>
+        <mat-icon aria-hidden="true">remove_shopping_cart</mat-icon>
         Out of stock
       </span>
     } @else if (isLowStock) {
       <span class="status-pill low-stock">
-        <mat-icon>warning</mat-icon>
+        <mat-icon aria-hidden="true">warning</mat-icon>
         Low stock
       </span>
     }
@@ -129,7 +132,7 @@
   </div>
 }
 @if (lockError) {
-  <p class="error-message save-error">{{ lockError }}</p>
+  <p class="error-message save-error" role="alert">{{ lockError }}</p>
 }
 @if (barcodeFeatureEnabled && data.barcode) {
   <div class="asset-id-row barcode-row">
@@ -172,7 +175,7 @@
                   (change)="onNewImagesSelected($event)"
                 />
               @if (imageLimitError) {
-                <p class="error-message">{{ imageLimitError }}</p>
+                <p class="error-message" role="alert">{{ imageLimitError }}</p>
               }
               @if (existingImages.length > 0 || newImagePreviews.length > 0) {
                 <div class="image-preview-row">
@@ -440,6 +443,7 @@
                           mat-icon-button
                           type="button"
                           matTooltip="Remove container"
+                          aria-label="Remove container"
                           (click)="removeContainer($index)"
                         >
                         <mat-icon>delete</mat-icon>
@@ -620,12 +624,12 @@
                     <span class="semibold">Status:</span>
                     @if (data.isCheckedOut) {
                       <span class="status-pill checked-out">
-                        <mat-icon>person</mat-icon>
+                        <mat-icon aria-hidden="true">person</mat-icon>
                         Checked out
                       </span>
                     } @else {
                       <span class="status-pill available">
-                        <mat-icon>check_circle</mat-icon>
+                        <mat-icon aria-hidden="true">check_circle</mat-icon>
                         Available
                       </span>
                     }
@@ -643,7 +647,7 @@
                     @if (data.status === 'retirement_pending') {
                       <span class="semibold">Retirement:</span>
                       <span class="status-pill pending-retirement">
-                        <mat-icon>hourglass_top</mat-icon>
+                        <mat-icon aria-hidden="true">hourglass_top</mat-icon>
                         Pending retirement
                       </span>
                       <span class="retirement-meta">
@@ -655,7 +659,7 @@
                     } @else if (data.status === 'retired') {
                       <span class="semibold">Retirement:</span>
                       <span class="status-pill retired">
-                        <mat-icon>inventory_2</mat-icon>
+                        <mat-icon aria-hidden="true">inventory_2</mat-icon>
                         Retired
                       </span>
                       <span class="retirement-meta">
@@ -709,11 +713,11 @@
   </form>
 </mat-dialog-content>
 @if (saveError) {
-  <p class="error-message save-error">{{ saveError }}</p>
+  <p class="error-message save-error" role="alert">{{ saveError }}</p>
 }
 @if (retirementError) {
-  <p class="error-message save-error">{{ retirementError }}</p>
+  <p class="error-message save-error" role="alert">{{ retirementError }}</p>
 }
 @if (discardError) {
-  <p class="error-message save-error">{{ discardError }}</p>
+  <p class="error-message save-error" role="alert">{{ discardError }}</p>
 }

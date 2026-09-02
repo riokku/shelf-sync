@@ -10,7 +10,7 @@
       </button>
     </div>
 
-    <app-page-header icon="event" title="Reservations" [subtitle]="pageSubtitle" zone="inventory">
+    <app-page-header icon="event" title="Reservations" [subtitle]="pageSubtitle" zone="inventory" headingLevel="h1">
       <button mat-flat-button color="primary" type="button" (click)="openPlaceReservation()">
         <mat-icon>event</mat-icon>
         New reservation
@@ -25,7 +25,7 @@
     }
 
     @if (reservationError) {
-      <p class="error-message">{{ reservationError }}</p>
+      <p class="error-message" role="alert">{{ reservationError }}</p>
     }
 
     @if (isLoading) {
@@ -69,7 +69,7 @@
       </div>
 
       @if (kitRemoveError) {
-        <p class="error-message">{{ kitRemoveError }}</p>
+        <p class="error-message" role="alert">{{ kitRemoveError }}</p>
       }
 
       @if (kitService.loadError()) {
@@ -97,10 +97,10 @@
                 </ul>
               </div>
               <div class="kit-actions">
-                <button mat-icon-button type="button" matTooltip="Edit kit" (click)="editKit(kit)">
+                <button mat-icon-button type="button" matTooltip="Edit kit" aria-label="Edit kit" (click)="editKit(kit)">
                   <mat-icon>edit</mat-icon>
                 </button>
-                <button mat-icon-button type="button" matTooltip="Delete kit" (click)="removeKit(kit)">
+                <button mat-icon-button type="button" matTooltip="Delete kit" aria-label="Delete kit" (click)="removeKit(kit)">
                   <mat-icon>delete</mat-icon>
                 </button>
               </div>

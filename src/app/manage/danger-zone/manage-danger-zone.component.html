@@ -9,7 +9,7 @@
         Back
       </button>
     </div>
-    <app-page-header icon="warning" title="Danger Zone" variant="danger" />
+    <app-page-header icon="warning" title="Danger Zone" variant="danger" headingLevel="h1" />
 
     <div class="danger-zone-card">
       <section class="danger-zone-section">
@@ -19,7 +19,7 @@
           team member, and setting in your organization.
         </p>
         @if (exportError) {
-          <p class="error-message">{{ exportError }}</p>
+          <p class="error-message" role="alert">{{ exportError }}</p>
         }
         <button mat-stroked-button type="button" (click)="exportOrganizationData()" [disabled]="isExporting">
           @if (isExporting) {
@@ -44,7 +44,7 @@
           be undone once the grace period elapses.
         </p>
         @if (deleteError) {
-          <p class="error-message">{{ deleteError }}</p>
+          <p class="error-message" role="alert">{{ deleteError }}</p>
         }
         <button mat-flat-button color="warn" type="button" (click)="deleteOrganization()" [disabled]="isDeletingOrg || !organizationName">
           @if (isDeletingOrg) {

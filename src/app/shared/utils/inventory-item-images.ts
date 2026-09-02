@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '../models/database.types';
+import { compressImageFile } from './image-compression';
 
 export const INVENTORY_IMAGES_BUCKET = 'inventory-images';
 
@@ -35,7 +36,13 @@ export async function uploadInventoryItemImages(
   startPosition: number
 ): Promise<string | null> {
   for (let i = 0; i < files.length; i++) {
-    const file = files[i];
+    // Downscaled/re-encoded here, right before its own upload, rather than
+    // all up front — a batch of up to MAX_INVENTORY_ITEM_IMAGES full-size
+    // decoded bitmaps held in memory at once is unnecessary when each one
+    // is only ever needed for the moment of its own upload. See
+    // compressImageFile()'s own doc comment for why this exists at all —
+    // item photos are this app's biggest Supabase storage/egress cost lever.
+    const file = await compressImageFile(files[i]);
     const position = startPosition + i;
     const path = `${itemId}/${Date.now()}-${position}-${file.name}`;
 
