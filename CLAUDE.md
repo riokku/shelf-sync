@@ -2764,6 +2764,80 @@ third channel on `inventory_audit_schedules`, folded into the same debounced rel
 `inventory_audits`/`inventory_audit_counts` channels already share, rather than a second debounce/
 flash pair just for schedules.
 
+A comprehensive accessibility pass swept the whole app for real WCAG gaps rather than a targeted
+single-feature fix. Icon-only buttons that relied on `matTooltip` alone (which doesn't produce an
+accessible name) got real `aria-label`s across `ModalTableComponent` and a dozen-plus Edit/Delete
+icon pairs elsewhere; bulk-select `mat-checkbox`es that announced only "checkbox, not checked" with
+no row context now include the row's own label. The three hand-rolled fixed-position header panels
+(nav drawer, notifications, command palette — see `HeaderComponent`'s own doc comments) already had
+a real `cdkTrapFocus` on open, but never restored focus to their own trigger button on close, since
+all three stay permanently in the DOM (`[attr.inert]`-toggled, not `@if`) and `CdkTrapFocus`'s own
+restore logic only ever fires from `ngOnDestroy` — each trigger is now grabbed via
+`@ViewChild(..., { read: ElementRef })` (plain `mat-icon-button`s are real Angular Components in
+this Material version, not directives, so the unqualified form of `@ViewChild` resolves to the
+component instance rather than the DOM node — caught by the test suite, not by inspection) and
+`.focus()`ed explicitly from each close method. The global Ctrl/Cmd+K listener
+(`handlePaletteShortcut()`) gained an `event.target` guard — it previously hijacked the keystroke
+out of *any* text field anywhere in the app, not just when nothing was focused. Every authenticated
+page now has exactly one real `<h1>` — none existed before this, since `PageHeaderComponent`
+hardcoded `<h2>` for both routed pages and dialog content alike; it gained a `headingLevel: 'h1' |
+'h2'` input (default `'h2'`, unchanged for `ModalTableComponent`/`TaskDetailModalComponent`'s own
+dialog-content usage), set to `'h1'` on all 25 real routed-page usages. The title element itself
+stays a real `<h2>` tag regardless of `headingLevel` — a duplicated `<h1>`/`<h2>` pair (one per
+`@if`/`@else` branch) looked like the obvious approach but silently breaks `[headerTitleExtra]`
+content projection, since Angular buckets projected content into the first matching `<ng-content>`
+slot at compile time, not per-branch at runtime (caught by this component's own spec going red);
+`'h1'` instead overrides the *accessible* heading level via `role="heading"`/`aria-level="1"`, the
+standard technique for exposing a different heading level than an element's own tag. Every other
+top-level page that renders its own local title directly rather than through `PageHeaderComponent`
+(Home/Inventory/Tasks/Manage hub/Studio hub/Account/Help/`PendingApprovalComponent`) got a real
+`<h1>` tag instead, with matching `:is(h1, h2)`/plain-selector-widening updates in
+`shared/styles/_page-hero.scss` and each page's own stylesheet so the visual treatment didn't
+change. A skip-to-content link (`app.component.html`/`.scss`, gated behind the same `showChrome()`
+check the header/footer already use) and a real `<header>`/`role="banner"` landmark (a plain tag
+swap on `header.component.html`'s root, since `.header-wrapper` was already styled by class
+everywhere) round out the structural fixes. Color contrast got a pass too: the footer credit text
+(`#c4c4c4` always, ~1.7:1 against a light-mode surface — a real AA failure on every logged-in page's
+default footer embedding) now uses `light-dark(#6b6b6b, #c4c4c4)`, keeping the original fixed gray
+only for `.footer-on-dark`'s permanently-dark embedding via the same `:host(.footer-on-dark)`
+override pattern the logo invert next to it already established; `--app-success-bg`/`--app-danger-bg`
+and `.health-badge-silver` (duplicated across three Studio stylesheets) were all darkened for real
+AA margin at the small badge text sizes they render at, and `--app-overdue-text`'s dark-mode value
+now reuses `--app-error-text`'s own already-verified shade instead of a bespoke, weaker one. The
+command palette's search input regained a `:focus-visible` ring (it had `outline: none` with no
+replacement). Every hand-built `<p class="error-message">` — ~55 of them across 37 files, none of
+which ever announced to a screen reader on insertion, confirmed via a codebase-wide search turning
+up zero `role`/`aria-live` usage outside what Material itself injects — picked up `role="alert"`
+via a small one-off verified codemod (excluding `error-message-preview`, an unrelated log-row
+preview span); `EmptyStateComponent`'s `variant="error"` state got the same treatment on its host
+element. `shared/styles/_brand-logo.scss`'s 8.5s auto-playing stroke-draw reveal was the one ambient
+animation in the app with no `prefers-reduced-motion` guard — fixing it needed more than just
+disabling the animation, since (unlike e.g. `_stagger.scss`'s `cascade-in`) this mark's own *base*
+rule is the undrawn start state, so the guard also has to restate the finished (100%) state directly
+or the mark would render invisible at rest. A narrower, deliberately-scoped icon-redundancy cleanup
+(a small `<mat-icon>` sitting next to text that already says the same thing, so a screen reader
+announces both — e.g. "warning Low stock") landed only in the highest-traffic spots
+(`BreadcrumbsComponent`'s "Home" link, `HeaderComponent`'s nav-drawer links, `ModalTableComponent`'s
+status pills) rather than the full ~606-instance sweep across ~90 templates a first audit turned
+up — a deliberate, asked-for scope call, since this category is best-practice noise reduction
+rather than a WCAG failure (the information is still there either way).
+
+Inventory item photos are downscaled/re-encoded client-side before upload
+(`shared/utils/image-compression.ts`'s `compressImageFile()`, called from inside
+`uploadInventoryItemImages()` — the one choke point every photo upload in the app already goes
+through, per that function's own doc comment, so this needed no changes at any of its four call
+sites) — a modern phone photo (4000px+, several MB) is far larger than this app's own image
+gallery/lightbox ever displays it at, and per-org photo storage/egress is this app's own pricing
+model's #1 identified Supabase cost lever (see `PricingComponent`'s own doc comment). Deliberately
+conservative rather than clever: resize to a 1600px longer edge and re-encode as JPEG at a fixed
+0.82 quality via a plain `<canvas>` + `toBlob()` (no library — consistent with this app's existing
+"hand-roll it" convention for `DonutChartComponent`/`TrendChartComponent`/etc.), then keep whichever
+of (compressed, original) is actually smaller — never risk uploading something bigger than what was
+picked. GIF and SVG pass through untouched (rasterizing through a canvas would lose animation/vector
+fidelity), and any decode/encode failure anywhere along the way falls back to the original file
+rather than blocking the upload over a compression nicety — a broken image is exactly the kind of
+file that should still reach the caller's own existing upload error handling, not a new one here.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -2977,6 +3051,7 @@ shared/
   utils/inventory-item.mapper.ts   # toInventoryItem(row, images, checkedOutToLabel, activityLog?, ..., supplierLabel?) — DB row -> InventoryItem
   utils/inventory-item-name.ts     # isDuplicateItemName() — shared by the CSV importer and the manual "Create item" form's own duplicate-name check
   utils/inventory-item-images.ts   # loadInventoryImagesByItemId() / uploadInventoryItemImages() / deleteInventoryItemImage()
+  utils/image-compression.ts       # compressImageFile() — client-side downscale/re-encode run inside uploadInventoryItemImages() before every photo upload
   utils/inventory-item-activity.ts # loadInventoryActivityByItemId() / logInventoryItemActivity() — inventory_item_activity
   utils/inventory-item-discards.ts # logInventoryItemDiscard() / loadAllInventoryItemDiscards() — structured counterpart to the free-text discard activity line, backs manage/reports
   utils/inventory-item-orders.ts # loadAllInventoryItemOrders() — every org order, backs manage/orders
@@ -3676,6 +3751,26 @@ yet on a hard refresh of `/inventory`.
   `notify_overdue_checkouts()`'s own per-item loop already relies on; `next_occurrence_date` always
   advances afterward, success or failure, so an org with a temporarily-empty scope retries at its
   *next* real occurrence instead of failing (and logging a skip) every single day forever.
+- `fix_inventory_images_storage_policy_name_shadowing` — a severe, months-live bug caught via a real
+  user report ("Item created, but image upload failed: new row violates row-level security policy")
+  rather than by inspection: `fix_org_isolation_bugs`' own org-scoping fix for the `inventory-images`
+  bucket's INSERT/DELETE policies used a bare `storage.foldername(name)` meant to reference
+  `storage.objects.name` (the upload path), but the correlated subquery it sits inside also
+  introduces `inventory_items i` — which *also* has a `name` column (the item's own display name) —
+  making that the innermost scope. Unlike this schema's other ambiguous-name bugs (caught by
+  PL/pgSQL's `variable_conflict = error` setting, e.g. `fix_platform_organization_usage_ambiguity`/
+  `fix_complete_inventory_audit_ambiguity`), plain SQL name resolution has no such guard: it silently
+  resolved `name` to `i.name` with no error at migration-push time, confirmed live via `pg_policies`
+  already showing the persisted expression as `storage.foldername(i.name)`. A plain item name with
+  no `/` in it makes `storage.foldername()` return an *empty* array, so indexing `[1]` is null and
+  the `exists(...)` check was unconditionally false — every single inventory photo upload and delete
+  had been silently rejected, for every org and every role, since the day that migration shipped.
+  Fixed by qualifying the outer column explicitly (`storage.foldername(storage.objects.name)`)
+  rather than leaving it bare, the only way to reference an outer column safely once a correlated
+  subquery might introduce a same-named one — worth remembering as its own category alongside this
+  schema's other "diff against the previous version" lessons: qualifying a column doesn't help if
+  it's qualified against the *wrong* table, and this class of bug produces no error anywhere, ever,
+  short of someone actually hitting the policy.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power
