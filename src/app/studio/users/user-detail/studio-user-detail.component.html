@@ -9,7 +9,7 @@
         Back
       </button>
     </div>
-    <app-page-header [title]="displayName || 'User'">
+    <app-page-header [title]="displayName || 'User'" headingLevel="h1">
       <app-user-avatar headerFigure [avatarKey]="profile?.avatar_key" size="lg" />
     </app-page-header>
 
@@ -112,7 +112,7 @@
         <section class="user-section platform-actions">
           <h3>Platform actions</h3>
           @if (actionError) {
-            <p class="error-message">{{ actionError }}</p>
+            <p class="error-message" role="alert">{{ actionError }}</p>
           }
           @if (isViewingOwnAccount) {
             <p class="section-hint">You can't lock your own account.</p>

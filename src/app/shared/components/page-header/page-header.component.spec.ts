@@ -21,6 +21,18 @@ describe('PageHeaderComponent', () => {
     expect(el.querySelector('h2')?.textContent).toContain('Reports');
   });
 
+  it('exposes the title as an accessible level-1 heading when headingLevel is set to h1, without changing its tag', async () => {
+    const fixture = await createComponent();
+    fixture.componentInstance.title = 'Manage Team';
+    fixture.componentInstance.headingLevel = 'h1';
+    fixture.detectChanges();
+
+    const heading: HTMLElement | null = fixture.nativeElement.querySelector('h2');
+    expect(heading?.textContent).toContain('Manage Team');
+    expect(heading?.getAttribute('role')).toBe('heading');
+    expect(heading?.getAttribute('aria-level')).toBe('1');
+  });
+
   it('omits the subtitle paragraph entirely when none is given', async () => {
     const fixture = await createComponent();
     fixture.componentInstance.icon = 'bar_chart';

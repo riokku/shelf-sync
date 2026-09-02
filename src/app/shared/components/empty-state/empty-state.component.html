@@ -1,4 +1,4 @@
-<div class="empty-state" [class.compact]="compact" [class.error]="variant === 'error'">
+<div class="empty-state" [class.compact]="compact" [class.error]="variant === 'error'" [attr.role]="variant === 'error' ? 'alert' : null">
   @if (compact) {
     <mat-icon class="empty-state-icon">{{ icon }}</mat-icon>
   } @else {

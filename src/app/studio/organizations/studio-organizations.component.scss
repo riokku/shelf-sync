@@ -112,7 +112,10 @@
   }
 
   &.health-badge-silver{
-    background: #8b929b;
+    // #5f6670, not the original #8b929b (3.14:1 against white — a real
+    // WCAG AA fail at this badge's 12px bold text size; see
+    // org-health.ts's own doc comment).
+    background: #5f6670;
     color: #ffffff;
   }
 

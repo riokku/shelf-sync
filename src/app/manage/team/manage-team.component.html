@@ -16,7 +16,7 @@
       </div>
     }
     @if (!selectedTask) {
-      <app-page-header title="Manage Team" zone="team">
+      <app-page-header title="Manage Team" zone="team" headingLevel="h1">
         <app-ring-stat headerFigure [percent]="onlinePercent" label="Online now" />
       </app-page-header>
     }
@@ -26,7 +26,7 @@
     } @else {
     <div class="team-list">
       @if (membershipError) {
-        <p class="error-message">{{ membershipError }}</p>
+        <p class="error-message" role="alert">{{ membershipError }}</p>
       }
       @if (inviteLink) {
         <div class="invite-link-section">
@@ -67,6 +67,7 @@
                 <mat-checkbox
                     [checked]="isPendingSelected(profile.id)"
                     (change)="togglePendingSelection(profile.id, $event.checked)"
+                    [attr.aria-label]="'Select ' + profileLabel(profile)"
                   ></mat-checkbox>
                 <span class="pending-member-name">
                   <span class="avatar-status-wrapper">

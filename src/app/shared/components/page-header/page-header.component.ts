@@ -97,4 +97,19 @@ export class PageHeaderComponent {
    *  that top-aligning its actions would read as misaligned, not currently
    *  used by any caller. */
   @Input() alignActions: 'start' | 'center' = 'start';
+  /** 'h2' (the default) is right for every dialog-content usage
+   *  (ModalTableComponent, TaskDetailModalComponent) — a dialog's title
+   *  isn't the document's own top-level heading. Every real *routed* page
+   *  using this component (every manage/* and studio/* sub-page) should
+   *  pass 'h1' instead, since for that page this title *is* the page's own
+   *  top-level heading — before this input existed, no page anywhere in the
+   *  authenticated app had an `<h1>` at all.
+   *
+   *  The title element itself stays a real `<h2>` regardless — see the
+   *  template's own comment for why duplicating it into a real `<h1>`/`<h2>`
+   *  pair breaks `[headerTitleExtra]` projection. 'h1' instead overrides the
+   *  *accessible* heading level via `role="heading"`/`aria-level`, the
+   *  standard technique for exposing a different heading level than an
+   *  element's own tag. */
+  @Input() headingLevel: 'h1' | 'h2' = 'h2';
 }

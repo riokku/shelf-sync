@@ -1,4 +1,4 @@
-<section class="header-wrapper">
+<header class="header-wrapper">
   <a class="brand" routerLink="/home">
     @if (siteSettings.logoUrl(); as logoUrl) {
       <img [src]="logoUrl" alt="Site logo" class="custom-logo" />
@@ -52,6 +52,7 @@
        drawer) rather than living buried a click deeper. -->
   <div class="header-actions">
     <button
+        #paletteTrigger
         mat-icon-button
         type="button"
         class="palette-trigger"
@@ -64,6 +65,7 @@
       <mat-icon>search</mat-icon>
     </button>
     <button
+        #notificationsTrigger
         mat-icon-button
         type="button"
         class="notifications-trigger"
@@ -103,6 +105,7 @@
       <app-user-avatar [avatarKey]="authService.profile()?.avatar_key" size="md" />
     </a>
     <button
+        #navMenuTrigger
         mat-icon-button
         type="button"
         class="nav-menu-trigger"
@@ -112,7 +115,7 @@
       <mat-icon>menu</mat-icon>
     </button>
   </div>
-</section>
+</header>
 
 <!-- A self-managed fixed-position panel rather than MatMenu — a menu is a
      dropdown sized to its content and anchored to its trigger, which could
@@ -151,11 +154,11 @@
   </div>
   <nav class="nav-drawer-links">
     <a mat-button routerLink="/home" routerLinkActive="active">
-      <mat-icon>home</mat-icon>
+      <mat-icon aria-hidden="true">home</mat-icon>
       Home
     </a>
     <a mat-button routerLink="/inventory" routerLinkActive="active">
-      <mat-icon>inventory_2</mat-icon>
+      <mat-icon aria-hidden="true">inventory_2</mat-icon>
       <!-- matBadge sits on this span (just the text), not the whole
            full-width row — anchored to the row itself, the badge's default
            "above after" position would land at the row's own right edge,
@@ -172,7 +175,7 @@
         >Inventory</span>
     </a>
     <a mat-button routerLink="/tasks" routerLinkActive="active">
-      <mat-icon>checklist</mat-icon>
+      <mat-icon aria-hidden="true">checklist</mat-icon>
       Tasks
     </a>
     <!-- Every approved org member can reach this now, not just admin/manager
@@ -181,19 +184,19 @@
          here rather than behind the canManage() check below with the rest
          of Manage. -->
     <a mat-button routerLink="/manage/reservations" routerLinkActive="active">
-      <mat-icon>event</mat-icon>
+      <mat-icon aria-hidden="true">event</mat-icon>
       Reservations
     </a>
     <!-- Same "every approved member, not just admin/manager" tier as
          Reservations right above — see that route's own comment in
          app-routing.module.ts. -->
     <a mat-button routerLink="/broadcasts" routerLinkActive="active">
-      <mat-icon>campaign</mat-icon>
+      <mat-icon aria-hidden="true">campaign</mat-icon>
       Broadcasts
     </a>
     @if (authService.canManage()) {
       <a mat-button routerLink="/manage" routerLinkActive="active">
-        <mat-icon>admin_panel_settings</mat-icon>
+        <mat-icon aria-hidden="true">admin_panel_settings</mat-icon>
         <!-- Same "badge on the text span, not the whole row, without
              overlapping the last letter" reasoning as the Inventory link
              above. -->
@@ -211,25 +214,25 @@
          signed-in user, including an org's own admin, never sees this. -->
     @if (authService.isPlatformAdmin()) {
       <a mat-button routerLink="/studio" routerLinkActive="active">
-        <mat-icon>dashboard</mat-icon>
+        <mat-icon aria-hidden="true">dashboard</mat-icon>
         Studio
       </a>
     }
     <mat-divider></mat-divider>
     <button mat-button type="button" (click)="themeMode.toggle()">
-      <mat-icon>{{ themeMode.mode() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
+      <mat-icon aria-hidden="true">{{ themeMode.mode() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
       {{ themeMode.mode() === 'dark' ? 'Light mode' : 'Dark mode' }}
     </button>
     <a mat-button routerLink="/help" routerLinkActive="active">
-      <mat-icon>help_outline</mat-icon>
+      <mat-icon aria-hidden="true">help_outline</mat-icon>
       Help
     </a>
     <a mat-button routerLink="/account" routerLinkActive="active">
-      <mat-icon>account_circle</mat-icon>
+      <mat-icon aria-hidden="true">account_circle</mat-icon>
       Account
     </a>
     <button mat-button type="button" (click)="logout()">
-      <mat-icon>logout</mat-icon>
+      <mat-icon aria-hidden="true">logout</mat-icon>
       Logout
     </button>
   </nav>
@@ -317,6 +320,7 @@
   <div class="command-palette-input-row">
     <mat-icon>search</mat-icon>
     <input
+        #paletteQueryInput
         type="text"
         class="command-palette-input"
         placeholder="Search pages, inventory, tasks… by name or ID"

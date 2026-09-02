@@ -24,6 +24,7 @@
           title="Inventory Audits"
           subtitle="Reconcile what the system thinks is in stock against what's actually on the shelf."
           zone="inventory"
+          headingLevel="h1"
         >
         @if (authService.canManage()) {
           <button mat-flat-button color="primary" type="button" (click)="openStartAudit()">
@@ -146,7 +147,7 @@
           </div>
 
           @if (scheduleActionError) {
-            <p class="error-message">{{ scheduleActionError }}</p>
+            <p class="error-message" role="alert">{{ scheduleActionError }}</p>
           }
 
           @if (scheduleLoadError) {
@@ -182,6 +183,7 @@
                         type="button"
                         [disabled]="isAuditScheduleLocked(schedule)"
                         [matTooltip]="isAuditScheduleLocked(schedule) ? 'Starts within a week — can\'t be edited now' : 'Edit'"
+                        [attr.aria-label]="isAuditScheduleLocked(schedule) ? 'Starts within a week — can\'t be edited now' : 'Edit'"
                         (click)="openEditSchedule(schedule)"
                       >
                       <mat-icon>edit</mat-icon>
@@ -191,6 +193,7 @@
                         type="button"
                         [disabled]="isTogglingSchedule(schedule.id)"
                         [matTooltip]="schedule.active ? 'Pause' : 'Resume'"
+                        [attr.aria-label]="schedule.active ? 'Pause' : 'Resume'"
                         (click)="toggleScheduleActive(schedule)"
                       >
                       <mat-icon>{{ schedule.active ? 'pause_circle' : 'play_circle' }}</mat-icon>

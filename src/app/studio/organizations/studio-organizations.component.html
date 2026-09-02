@@ -9,7 +9,7 @@
         Back
       </button>
     </div>
-    <app-page-header icon="apartment" title="Organizations" subtitle="Every organization using ShelfSync, most recently created first." zone="studio" />
+    <app-page-header icon="apartment" title="Organizations" subtitle="Every organization using ShelfSync, most recently created first." zone="studio" headingLevel="h1" />
 
     @if (loadError) {
       <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load organizations. ' + loadError">

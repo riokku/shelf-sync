@@ -9,7 +9,7 @@
         Back
       </button>
     </div>
-    <app-page-header icon="new_releases" title="Release Notes" subtitle="Post, edit, or delete what's shipped in ShelfSync." zone="studio">
+    <app-page-header icon="new_releases" title="Release Notes" subtitle="Post, edit, or delete what's shipped in ShelfSync." zone="studio" headingLevel="h1">
       <button mat-flat-button color="primary" type="button" (click)="newReleaseNote()">
         <mat-icon>add</mat-icon>
         New release note
@@ -17,7 +17,7 @@
     </app-page-header>
 
     @if (deleteError) {
-      <p class="error-message">{{ deleteError }}</p>
+      <p class="error-message" role="alert">{{ deleteError }}</p>
     }
 
     @if (isLoading) {
@@ -62,10 +62,10 @@
               <span class="changelog-description">{{ entry.description }}</span>
             </span>
             <span class="changelog-actions">
-              <button mat-icon-button type="button" matTooltip="Edit release note" (click)="editReleaseNote(entry)">
+              <button mat-icon-button type="button" matTooltip="Edit release note" [attr.aria-label]="'Edit release note: ' + entry.title" (click)="editReleaseNote(entry)">
                 <mat-icon>edit</mat-icon>
               </button>
-              <button mat-icon-button type="button" matTooltip="Delete release note" (click)="removeReleaseNote(entry)">
+              <button mat-icon-button type="button" matTooltip="Delete release note" [attr.aria-label]="'Delete release note: ' + entry.title" (click)="removeReleaseNote(entry)">
                 <mat-icon>delete</mat-icon>
               </button>
             </span>

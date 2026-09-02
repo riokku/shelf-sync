@@ -1,4 +1,4 @@
-import { Component, DestroyRef, HostListener, computed, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, HostListener, ViewChild, computed, effect, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { A11yModule } from '@angular/cdk/a11y';
@@ -46,6 +46,26 @@ export class HeaderComponent {
   private confetti = inject(ConfettiService);
   private notification = inject(NotificationService);
 
+  /** The 3 trigger buttons that open the panels below — grabbed so each
+   *  close method can hand focus back to whichever one opened it. Needed
+   *  because all 3 panels stay permanently in the DOM ([attr.inert]-toggled,
+   *  not @if — see each panel's own doc comment), so CdkTrapFocus's own
+   *  restore-previously-focused-element behavior (which only runs from its
+   *  ngOnDestroy) never fires on a close; without this, focus is simply
+   *  dropped to document.body every time one of these panels closes. */
+  // { read: ElementRef } is required here — all 3 triggers are
+  // mat-icon-button, and modern (MDC-based) Angular Material buttons are
+  // real Components, not plain directives, so an unqualified
+  // @ViewChild('name') on one of these resolves to the MatIconButton
+  // component instance (which has no .nativeElement of its own) rather than
+  // the native <button> ElementRef this needs to call .focus() on.
+  @ViewChild('navMenuTrigger', { read: ElementRef }) private navMenuTrigger?: ElementRef<HTMLElement>;
+  @ViewChild('notificationsTrigger', { read: ElementRef }) private notificationsTrigger?: ElementRef<HTMLElement>;
+  @ViewChild('paletteTrigger', { read: ElementRef }) private paletteTrigger?: ElementRef<HTMLElement>;
+  /** The palette's own search input — see handlePaletteShortcut()'s own doc
+   *  comment for why this needs to be distinguished from "typing elsewhere". */
+  @ViewChild('paletteQueryInput') private paletteQueryInput?: ElementRef<HTMLInputElement>;
+
   /** Own fixed-position slide-out panel (see header.component.scss) rather
    *  than MatMenu — a menu is a dropdown anchored to its trigger, sized to
    *  its content, which on a narrow viewport could end up wider than the
@@ -63,6 +83,7 @@ export class HeaderComponent {
 
   closeNavMenu() {
     this._isNavMenuOpen.set(false);
+    this.navMenuTrigger?.nativeElement.focus();
   }
 
   /** Same "own fixed-position panel rather than MatMenu" shape as the nav
@@ -83,6 +104,7 @@ export class HeaderComponent {
 
   closeNotifications() {
     this._isNotificationsOpen.set(false);
+    this.notificationsTrigger?.nativeElement.focus();
   }
 
   /** Marks the clicked row read and closes the panel — navigation itself is
@@ -124,12 +146,29 @@ export class HeaderComponent {
   /** Matches either modifier key regardless of platform (the tooltip label
    *  below is what actually differs by platform). preventDefault() stops
    *  the browser's own Ctrl/Cmd+K address-bar-search binding from firing
-   *  alongside it. */
+   *  alongside it.
+   *
+   *  Skips entirely while focus is already inside a text field elsewhere in
+   *  the app (an inventory item's name, a task note, a settings field,
+   *  etc.) — without this, the shortcut hijacked the keystroke out of
+   *  whatever the user was typing and toggled the palette instead, since
+   *  this is a genuine global `window:keydown` listener with no target
+   *  check. The one exception is the palette's own search input — Ctrl/Cmd+K
+   *  toggling it closed again from inside itself is expected, not a bug. */
   handlePaletteShortcut(event: KeyboardEvent) {
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
-      event.preventDefault();
-      this.togglePalette();
+    if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'k') {
+      return;
     }
+    const target = event.target as HTMLElement | null;
+    const isTypingElsewhere =
+      !!target &&
+      target !== this.paletteQueryInput?.nativeElement &&
+      (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable);
+    if (isTypingElsewhere) {
+      return;
+    }
+    event.preventDefault();
+    this.togglePalette();
   }
 
   /** The classic Konami code — a small, deliberately pointless easter egg
@@ -186,6 +225,7 @@ export class HeaderComponent {
 
   closePalette() {
     this._isPaletteOpen.set(false);
+    this.paletteTrigger?.nativeElement.focus();
   }
 
   /** A plain getter, not a computed() — paletteQuery is a plain two-way-

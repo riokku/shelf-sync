@@ -15,6 +15,7 @@
         title="Broadcasts"
         subtitle="Announcements from admins and managers, posted to the whole team."
         zone="team"
+        headingLevel="h1"
       >
       @if (authService.canManage()) {
         <button mat-flat-button color="primary" type="button" (click)="newBroadcast()">
@@ -25,7 +26,7 @@
     </app-page-header>
 
     @if (deleteError) {
-      <p class="error-message">{{ deleteError }}</p>
+      <p class="error-message" role="alert">{{ deleteError }}</p>
     }
 
     @if (isLoading) {
@@ -68,10 +69,10 @@
               </div>
               @if (canEdit(broadcast)) {
                 <div class="broadcast-actions">
-                  <button mat-icon-button type="button" matTooltip="Edit" (click)="editBroadcast(broadcast)">
+                  <button mat-icon-button type="button" matTooltip="Edit" [attr.aria-label]="'Edit ' + broadcast.title" (click)="editBroadcast(broadcast)">
                     <mat-icon>edit</mat-icon>
                   </button>
-                  <button mat-icon-button type="button" matTooltip="Delete" (click)="removeBroadcast(broadcast)">
+                  <button mat-icon-button type="button" matTooltip="Delete" [attr.aria-label]="'Delete ' + broadcast.title" (click)="removeBroadcast(broadcast)">
                     <mat-icon>delete</mat-icon>
                   </button>
                 </div>

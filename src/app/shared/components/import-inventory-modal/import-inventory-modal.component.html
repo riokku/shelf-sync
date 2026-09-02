@@ -25,7 +25,7 @@
     </div>
 
     @if (fileError) {
-      <p class="error-message">{{ fileError }}</p>
+      <p class="error-message" role="alert">{{ fileError }}</p>
     }
   }
 
@@ -87,7 +87,7 @@
       Imported {{ succeededCount }} item{{ succeededCount === 1 ? '' : 's' }}.
     </p>
     @if (failedRows.length > 0) {
-      <p class="error-message">
+      <p class="error-message" role="alert">
         {{ failedRows.length }} row{{ failedRows.length === 1 ? '' : 's' }} couldn't be saved:
         @for (failed of failedRows; track failed.rowNumber) {
           <br />Row {{ failed.rowNumber }} ({{ failed.name || 'unnamed' }}): {{ failed.reason }}

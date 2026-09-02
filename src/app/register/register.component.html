@@ -67,7 +67,7 @@
                 </p>
               } @else {
                 @if (invalidInviteLink) {
-                  <p class="error-message">This invite link is invalid or has expired. Create a new organization instead.</p>
+                  <p class="error-message" role="alert">This invite link is invalid or has expired. Create a new organization instead.</p>
                 }
                 <mat-form-field appearance="outline" class="full-width">
                   <mat-label>Organization name</mat-label>
@@ -127,10 +127,10 @@
                 </mat-form-field>
               </div>
               @if (form.errors?.['passwordMismatch'] && form.controls.confirmPassword.touched) {
-                <p class="error-message">Passwords do not match.</p>
+                <p class="error-message" role="alert">Passwords do not match.</p>
               }
               @if (errorMessage) {
-                <p class="error-message">{{ errorMessage }}</p>
+                <p class="error-message" role="alert">{{ errorMessage }}</p>
               }
             </div>
             <app-turnstile-widget (verified)="captchaToken = $event" (cleared)="captchaToken = null" />

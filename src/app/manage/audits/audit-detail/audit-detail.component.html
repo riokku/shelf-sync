@@ -67,7 +67,7 @@
   </div>
 
   @if (finishError) {
-    <p class="error-message">{{ finishError }}</p>
+    <p class="error-message" role="alert">{{ finishError }}</p>
   }
 
   <section class="audit-section audit-team-section">
@@ -122,7 +122,7 @@
         </button>
       </div>
       @if (teamError) {
-        <p class="error-message">{{ teamError }}</p>
+        <p class="error-message" role="alert">{{ teamError }}</p>
       }
     } @else if (audit.lead || audit.supporters.length > 0) {
       <!-- Not editing: the saved team, name-plus-avatar per person. -->
@@ -202,7 +202,7 @@
                   </button>
                 </div>
                 @if (countErrorFor(count.id)) {
-                  <p class="error-message">{{ countErrorFor(count.id) }}</p>
+                  <p class="error-message" role="alert">{{ countErrorFor(count.id) }}</p>
                 }
               </form>
             </li>
@@ -233,7 +233,7 @@
       </div>
 
       @if (applyError) {
-        <p class="error-message">{{ applyError }}</p>
+        <p class="error-message" role="alert">{{ applyError }}</p>
       }
 
       <ul class="count-list">

@@ -9,7 +9,7 @@
         Back
       </button>
     </div>
-    <app-page-header icon="palette" title="Settings" zone="admin" />
+    <app-page-header icon="palette" title="Settings" zone="admin" headingLevel="h1" />
 
     <mat-button-toggle-group [ngModel]="viewMode" (ngModelChange)="setViewMode($event)" class="view-toggle">
       <mat-button-toggle value="data">
@@ -71,7 +71,7 @@
                 }
               </div>
               @if (formFieldsError) {
-                <p class="error-message">{{ formFieldsError }}</p>
+                <p class="error-message" role="alert">{{ formFieldsError }}</p>
               }
               @if (formFieldsChanged) {
                 <button
@@ -116,7 +116,7 @@
                 }
               </div>
               @if (tableColumnsError) {
-                <p class="error-message">{{ tableColumnsError }}</p>
+                <p class="error-message" role="alert">{{ tableColumnsError }}</p>
               }
               @if (tableColumnsChanged) {
                 <button
@@ -163,7 +163,7 @@
               }
             </div>
             @if (themeError) {
-              <p class="error-message">{{ themeError }}</p>
+              <p class="error-message" role="alert">{{ themeError }}</p>
             }
             @if (themeChanged) {
               <button
@@ -198,7 +198,7 @@
             }
             <input type="file" accept="image/*" (change)="onLogoSelected($event)" />
             @if (logoError) {
-              <p class="error-message">{{ logoError }}</p>
+              <p class="error-message" role="alert">{{ logoError }}</p>
             }
             <div class="logo-actions">
               @if (selectedLogoFile) {
@@ -242,7 +242,7 @@
                 Require approval for retirement requests
               </mat-slide-toggle>
               @if (requireRetirementApprovalError) {
-                <p class="error-message">{{ requireRetirementApprovalError }}</p>
+                <p class="error-message" role="alert">{{ requireRetirementApprovalError }}</p>
               }
               @if (requireRetirementApprovalChanged) {
                 <button
@@ -277,7 +277,7 @@
                 Allow bulk edit on the Inventory page
               </mat-slide-toggle>
               @if (bulkEditFeatureEnabledError) {
-                <p class="error-message">{{ bulkEditFeatureEnabledError }}</p>
+                <p class="error-message" role="alert">{{ bulkEditFeatureEnabledError }}</p>
               }
               @if (bulkEditFeatureEnabledChanged) {
                 <button
@@ -313,7 +313,7 @@
                 Restrict price and supplier edits to admins and managers
               </mat-slide-toggle>
               @if (restrictPriceSupplierEditsError) {
-                <p class="error-message">{{ restrictPriceSupplierEditsError }}</p>
+                <p class="error-message" role="alert">{{ restrictPriceSupplierEditsError }}</p>
               }
               @if (restrictPriceSupplierEditsChanged) {
                 <button
@@ -392,7 +392,7 @@
                 Checked-out item is overdue
               </mat-slide-toggle>
               @if (emailNotificationsError) {
-                <p class="error-message">{{ emailNotificationsError }}</p>
+                <p class="error-message" role="alert">{{ emailNotificationsError }}</p>
               }
               @if (emailNotificationsChanged) {
                 <button

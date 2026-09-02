@@ -9,7 +9,7 @@
         Back
       </button>
     </div>
-    <app-page-header icon="apartment" [logoUrl]="orgLogoUrl ?? undefined" [title]="organization?.name || 'Organization'" />
+    <app-page-header icon="apartment" [logoUrl]="orgLogoUrl ?? undefined" [title]="organization?.name || 'Organization'" headingLevel="h1" />
 
     @if (loadError) {
       <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load this organization. ' + loadError">
@@ -254,7 +254,7 @@
         <section class="org-section platform-actions">
           <h3>Platform actions</h3>
           @if (actionError) {
-            <p class="error-message">{{ actionError }}</p>
+            <p class="error-message" role="alert">{{ actionError }}</p>
           }
           <div class="platform-actions-buttons">
             @if (isRetired) {

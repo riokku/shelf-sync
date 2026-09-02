@@ -142,6 +142,16 @@ describe('HeaderComponent notifications panel', () => {
     expect(markAsReadSpy).toHaveBeenCalledWith('notif-1');
     expect(component.isNotificationsOpen()).toBeFalse();
   });
+
+  it('closeNotifications() returns focus to the bell trigger button', () => {
+    const fixture = setup();
+    const trigger: HTMLButtonElement = fixture.nativeElement.querySelector('.notifications-trigger');
+    fixture.componentInstance.toggleNotifications();
+
+    fixture.componentInstance.closeNotifications();
+
+    expect(document.activeElement).toBe(trigger);
+  });
 });
 
 describe('HeaderComponent quick menu', () => {
@@ -230,6 +240,16 @@ describe('HeaderComponent nav drawer', () => {
     expect(component.isNavMenuOpen()).toBeTrue();
     component.closeNavMenu();
     expect(component.isNavMenuOpen()).toBeFalse();
+  });
+
+  it('closeNavMenu() returns focus to the hamburger trigger button', () => {
+    const fixture = setup();
+    const trigger: HTMLButtonElement = fixture.nativeElement.querySelector('.nav-menu-trigger');
+    fixture.componentInstance.openNavMenu();
+
+    fixture.componentInstance.closeNavMenu();
+
+    expect(document.activeElement).toBe(trigger);
   });
 });
 
@@ -488,6 +508,32 @@ describe('HeaderComponent command palette', () => {
     component.activatePaletteSelection();
 
     expect(navigateSpy).toHaveBeenCalledWith(expected.routerLink, { queryParams: expected.queryParams });
+  });
+
+  it('closePalette() returns focus to the search trigger button', () => {
+    const fixture = setup();
+    const trigger: HTMLButtonElement = fixture.nativeElement.querySelector('.palette-trigger');
+    fixture.componentInstance.openPalette();
+
+    fixture.componentInstance.closePalette();
+
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('does not open on Ctrl+K while focus is in an unrelated text field', () => {
+    const component = setup().componentInstance;
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+
+    const event = new KeyboardEvent('keydown', { key: 'k', ctrlKey: true });
+    Object.defineProperty(event, 'target', { value: input });
+    const preventDefaultSpy = spyOn(event, 'preventDefault');
+    window.dispatchEvent(event);
+
+    expect(component.isPaletteOpen()).toBeFalse();
+    expect(preventDefaultSpy).not.toHaveBeenCalled();
+    input.remove();
   });
 });
 

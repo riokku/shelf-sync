@@ -36,7 +36,19 @@
   <span class="page-header-figure"><ng-content select="[headerFigure]" /></span>
   <div class="page-header-text">
     @if (title) {
-      <h2>{{ title }}<ng-content select="[headerTitleExtra]" /></h2>
+      <!-- Always a real <h2> element — a second <ng-content select> for the
+           same [headerTitleExtra] selector (one per branch of an <h1>/<h2>
+           @if/@else) doesn't work the way it looks like it should: Angular
+           buckets each piece of projected content into exactly one matching
+           <ng-content> slot at compile time, not per-branch at runtime, so
+           whichever branch *isn't* first in template order silently never
+           receives it (caught by this component's own content-projection
+           spec). aria-level's override behavior on a `role="heading"`
+           element is the standard technique for "needs to announce as a
+           different heading level than its actual tag" — see headingLevel's
+           own doc comment for why this component's *tag* can't just always
+           be <h1>. -->
+      <h2 [attr.role]="headingLevel === 'h1' ? 'heading' : null" [attr.aria-level]="headingLevel === 'h1' ? 1 : null">{{ title }}<ng-content select="[headerTitleExtra]" /></h2>
     }
     @if (subtitle) {
       <p class="page-header-subtitle">{{ subtitle }}</p>

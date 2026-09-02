@@ -17,7 +17,7 @@
     } @else if (isLocked) {
       <div class="status-card">
         <mat-icon class="status-icon">lock</mat-icon>
-        <h2>Account locked</h2>
+        <h1>Account locked</h1>
         <p>
           Your account
           @if (organizationName) {
@@ -33,7 +33,7 @@
     } @else if (organizationName) {
       <div class="status-card">
         <mat-icon class="status-icon">hourglass_top</mat-icon>
-        <h2>Awaiting approval</h2>
+        <h1>Awaiting approval</h1>
         <p>
           Your request to join <span class="semibold">{{ organizationName }}</span> is awaiting
           approval from an admin. You'll get access as soon as they approve it.
@@ -46,7 +46,7 @@
     } @else {
       <div class="status-card">
         <mat-icon class="status-icon">person_off</mat-icon>
-        <h2>We couldn't find your account</h2>
+        <h1>We couldn't find your account</h1>
         <p>
           Your request may have been denied, or your access was removed. Contact your
           organization's admin, or sign out and start over.

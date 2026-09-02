@@ -16,7 +16,7 @@
       </div>
     }
     @if (!selectedTask) {
-      <app-page-header icon="checklist" title="Manage Tasks" zone="team" />
+      <app-page-header icon="checklist" title="Manage Tasks" zone="team" headingLevel="h1" />
     }
 
     @if (selectedTask) {
@@ -112,7 +112,7 @@
         </div>
 
         @if (taskError) {
-          <p class="error-message">{{ taskError }}</p>
+          <p class="error-message" role="alert">{{ taskError }}</p>
         }
 
         <button mat-flat-button color="primary" type="submit" [disabled]="isSavingTask">
@@ -166,7 +166,7 @@
         </div>
 
         @if (deleteTaskError) {
-          <p class="error-message">{{ deleteTaskError }}</p>
+          <p class="error-message" role="alert">{{ deleteTaskError }}</p>
         }
         @if (loadError) {
           <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load tasks. ' + loadError">
@@ -227,7 +227,7 @@
               </button>
             </app-bulk-action-toolbar>
             @if (bulkActionError) {
-              <p class="error-message">{{ bulkActionError }}</p>
+              <p class="error-message" role="alert">{{ bulkActionError }}</p>
             }
           }
           <div class="task-rows">
@@ -250,6 +250,7 @@
                       [checked]="isTaskSelected(task.id)"
                       (change)="toggleTaskSelection(task.id, $event.checked)"
                       (click)="$event.stopPropagation()"
+                      [attr.aria-label]="'Select ' + task.title"
                     ></mat-checkbox>
                 }
                 <div class="task-row-main">

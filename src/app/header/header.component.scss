@@ -514,6 +514,16 @@
   font: inherit;
   font-size: 1rem;
 
+  // A plain <input>, not a Material control — those keep their own
+  // MDC-supplied focus treatment automatically, but this one needs its
+  // own :focus-visible ring now that the outline above is suppressed, so
+  // tabbing/shift-tabbing back into it from the results list below still
+  // shows where focus is.
+  &:focus-visible{
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+
   &::placeholder{
     color: var(--mat-sys-on-surface-variant);
   }

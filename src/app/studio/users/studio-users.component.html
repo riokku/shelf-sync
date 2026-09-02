@@ -9,7 +9,7 @@
         Back
       </button>
     </div>
-    <app-page-header icon="person_search" title="Users" subtitle="Browse the most recent signups, or search by name or email to find someone specific." zone="studio" />
+    <app-page-header icon="person_search" title="Users" subtitle="Browse the most recent signups, or search by name or email to find someone specific." zone="studio" headingLevel="h1" />
 
     @if (loadError) {
       <app-empty-state icon="cloud_off" variant="error" [message]="'Couldn\'t load the user directory. ' + loadError">

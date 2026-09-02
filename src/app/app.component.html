@@ -1,10 +1,14 @@
 <div class="site-wrapper">
   @if (showChrome()) {
+    <!-- Visually hidden until focused (a keyboard user tabbing from the very
+         top of the page) — see .skip-link in app.component.scss. Only
+         rendered when there's chrome underneath it to actually skip past. -->
+    <a class="skip-link" href="#main-content">Skip to main content</a>
     <div class="header">
       <app-header></app-header>
     </div>
   }
-  <main>
+  <main id="main-content">
     <router-outlet></router-outlet>
   </main>
   @if (showChrome()) {
