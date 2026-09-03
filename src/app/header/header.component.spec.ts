@@ -562,16 +562,32 @@ describe('HeaderComponent Konami code easter egg', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key }));
   }
 
-  it('fires a confetti burst and a toast once the full sequence is entered', () => {
+  afterEach(() => {
+    document.documentElement.removeAttribute('data-theme');
+  });
+
+  it('starts party mode (confetti + a temporary theme swap) and a toast once the full sequence is entered', fakeAsync(() => {
     setup();
+    // PartyModeService.start() calls the real, DI-shared ConfettiService
+    // under the hood — spying on the injected instance directly still
+    // intercepts that call.
     const burstSpy = spyOn(TestBed.inject(ConfettiService), 'burst');
     const successSpy = spyOn(TestBed.inject(NotificationService), 'success');
 
     KONAMI_KEYS.forEach(press);
 
     expect(burstSpy).toHaveBeenCalled();
+    expect(document.documentElement.getAttribute('data-theme')).toBe('party');
     expect(successSpy).toHaveBeenCalledWith('🕹️ Konami code! You found the easter egg.');
-  });
+
+    // PartyModeService.start() schedules real setInterval/setTimeout timers
+    // — every test that triggers it has to run them to completion inside
+    // fakeAsync, or they leak into whatever test runs next in this same
+    // Karma session and fire for real, well after that test's own TestBed
+    // environment has been torn down (see party-mode.service.spec.ts's own
+    // near-identical comment for the exact failure this caused once).
+    tick(8000);
+  }));
 
   it('does nothing for an incomplete sequence', () => {
     setup();
@@ -582,13 +598,20 @@ describe('HeaderComponent Konami code easter egg', () => {
     expect(burstSpy).not.toHaveBeenCalled();
   });
 
-  it('can be entered again immediately after completing it once', () => {
+  it('can be re-entered immediately — the toast fires again, but party mode itself is left running rather than restacked', fakeAsync(() => {
     setup();
     const burstSpy = spyOn(TestBed.inject(ConfettiService), 'burst');
+    const successSpy = spyOn(TestBed.inject(NotificationService), 'success');
 
     KONAMI_KEYS.forEach(press);
     KONAMI_KEYS.forEach(press);
 
-    expect(burstSpy).toHaveBeenCalledTimes(2);
-  });
+    // PartyModeService.start() ignores a call while already active (see its
+    // own doc comment) — the second entry's own burst is suppressed, but
+    // nothing about re-entering the sequence itself is blocked.
+    expect(burstSpy).toHaveBeenCalledTimes(1);
+    expect(successSpy).toHaveBeenCalledTimes(2);
+
+    tick(8000); // see the first test's own comment on why this is needed
+  }));
 });
