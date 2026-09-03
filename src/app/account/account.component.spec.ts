@@ -151,6 +151,145 @@ describe('AccountComponent quick menu', () => {
   });
 });
 
+describe('AccountComponent editing profile info', () => {
+  let component: AccountComponent;
+  let updateSpy: jasmine.Spy;
+  let notificationSuccessSpy: jasmine.Spy;
+
+  /** Same narrow, table-aware fake the quick-menu describe block's own
+   *  setup() uses — saveProfile()'s assertions need to inspect exactly
+   *  what was passed to profiles.update(). */
+  async function setup(profileOverrides: Partial<Profile> = {}): Promise<ComponentFixture<AccountComponent>> {
+    const profile = createFakeProfile({
+      full_name: 'Original Name',
+      nickname: 'Orig',
+      email: 'original@example.com',
+      ...profileOverrides
+    });
+    updateSpy = jasmine.createSpy('update').and.returnValue({ eq: () => Promise.resolve({ error: null }) });
+    const supabase = {
+      client: {
+        from: (table: string) => {
+          if (table === 'profiles') {
+            return { update: updateSpy };
+          }
+          return { select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }) };
+        }
+      }
+    } as unknown as SupabaseService;
+
+    await TestBed.configureTestingModule({
+      imports: [AccountComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService(profile) },
+        { provide: SupabaseService, useValue: supabase }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(AccountComponent);
+    component = fixture.componentInstance;
+    notificationSuccessSpy = spyOn((component as unknown as { notification: NotificationService }).notification, 'success');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    return fixture;
+  }
+
+  it('a staff viewer can only edit nickname — full name and email stay disabled', async () => {
+    await setup({ role: 'staff' });
+
+    expect(component.canEditFullProfile).toBeFalse();
+    component.startEditProfile();
+
+    expect(component.profileForm.controls.nickname.enabled).toBeTrue();
+    expect(component.profileForm.controls.fullName.disabled).toBeTrue();
+    expect(component.profileForm.controls.email.disabled).toBeTrue();
+  });
+
+  it('an admin/manager viewer can edit every field', async () => {
+    await setup({ role: 'manager' });
+
+    expect(component.canEditFullProfile).toBeTrue();
+    component.startEditProfile();
+
+    expect(component.profileForm.controls.nickname.enabled).toBeTrue();
+    expect(component.profileForm.controls.fullName.enabled).toBeTrue();
+    expect(component.profileForm.controls.email.enabled).toBeTrue();
+  });
+
+  it('a staff save only sends the nickname change — full name/email round-trip unchanged', async () => {
+    await setup({ role: 'staff' });
+    component.startEditProfile();
+    component.profileForm.controls.nickname.setValue('New Nickname');
+
+    await component.saveProfile();
+
+    // getRawValue() still round-trips the disabled fullName/email controls'
+    // seeded (unchanged) values — this update can't accidentally null out
+    // a field a staff viewer was never offered a way to edit.
+    expect(updateSpy).toHaveBeenCalledWith({
+      full_name: 'Original Name',
+      nickname: 'New Nickname',
+      email: 'original@example.com'
+    });
+    expect(component.profile?.nickname).toBe('New Nickname');
+    expect(component.isEditingProfile).toBeFalse();
+    expect(notificationSuccessSpy).toHaveBeenCalledWith('Profile updated');
+  });
+
+  it('an admin/manager save sends every field, including a changed full name and email', async () => {
+    await setup({ role: 'admin' });
+    component.startEditProfile();
+    component.profileForm.setValue({ fullName: 'New Name', nickname: 'New Nick', email: 'new@example.com' });
+
+    await component.saveProfile();
+
+    expect(updateSpy).toHaveBeenCalledWith({
+      full_name: 'New Name',
+      nickname: 'New Nick',
+      email: 'new@example.com'
+    });
+    expect(component.profile?.full_name).toBe('New Name');
+    expect(component.profile?.email).toBe('new@example.com');
+  });
+
+  it('rejects saving with an invalid email and never calls update()', async () => {
+    await setup({ role: 'admin' });
+    component.startEditProfile();
+    component.profileForm.controls.email.setValue('not-an-email');
+
+    await component.saveProfile();
+
+    expect(updateSpy).not.toHaveBeenCalled();
+    expect(component.isEditingProfile).toBeTrue();
+    expect(component.profileForm.controls.email.touched).toBeTrue();
+  });
+
+  it('surfaces an error message and leaves editing open on a failed save', async () => {
+    await setup({ role: 'admin' });
+    updateSpy.and.returnValue({ eq: () => Promise.resolve({ error: { message: 'boom' } }) });
+    component.startEditProfile();
+
+    await component.saveProfile();
+
+    expect(component.profileSaveError).toBe('boom');
+    expect(component.isEditingProfile).toBeTrue();
+    expect(notificationSuccessSpy).not.toHaveBeenCalled();
+  });
+
+  it('cancelEditProfile() exits editing without saving', async () => {
+    await setup({ role: 'admin' });
+    component.startEditProfile();
+    component.profileForm.controls.nickname.setValue('Ignored');
+
+    component.cancelEditProfile();
+
+    expect(component.isEditingProfile).toBeFalse();
+    expect(updateSpy).not.toHaveBeenCalled();
+    expect(component.profile?.nickname).toBe('Orig');
+  });
+});
+
 describe('AccountComponent change password', () => {
   let component: AccountComponent;
   let notificationSuccessSpy: jasmine.Spy;

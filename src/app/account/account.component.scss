@@ -54,8 +54,23 @@ mat-card{
 
 // Sits right under the profile dl's own Role row, rather than a separate
 // tile — dl has no bottom margin of its own to lean on for this spacing.
-.change-password-button{
+// Holds Edit/Change password in view mode, Save/Cancel while editing — see
+// account.component.html — flex-wrap so a narrow card doesn't clip a
+// button rather than shrinking it.
+.profile-actions{
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
   margin-top: 1.25rem;
+}
+
+// A dd holding an editable field (rather than plain text) gets a capped
+// width — an outline mat-form-field left to its own intrinsic width would
+// otherwise stretch across the dl's full 1fr value column.
+dd mat-form-field{
+  width: 100%;
+  max-width: 16rem;
 }
 
 .quick-menu-card{
