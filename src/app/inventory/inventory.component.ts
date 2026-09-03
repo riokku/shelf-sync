@@ -24,6 +24,7 @@ import { BreadcrumbParent, BreadcrumbsComponent } from '../shared/components/bre
 import { EmptyStateComponent } from '../shared/components/empty-state/empty-state.component';
 import { BulkActionToolbarComponent } from '../shared/components/bulk-action-toolbar/bulk-action-toolbar.component';
 import { PageIntroComponent } from '../shared/components/page-intro/page-intro.component';
+import { LoadingCaptionComponent } from '../shared/components/loading-caption/loading-caption.component';
 import { BulkReassignModalComponent, BulkReassignModalResult } from '../shared/components/bulk-reassign-modal/bulk-reassign-modal.component';
 import { HasUnsavedChanges } from '../core/guards/unsaved-changes.guard';
 import { confirmLeaveWithoutSaving } from '../shared/utils/confirm-leave';
@@ -71,6 +72,7 @@ type StatusFilter = 'active' | 'include_retired' | 'retired_only';
         EmptyStateComponent,
         BulkActionToolbarComponent,
         PageIntroComponent,
+        LoadingCaptionComponent,
         ModalTableComponent
     ],
     templateUrl: './inventory.component.html',

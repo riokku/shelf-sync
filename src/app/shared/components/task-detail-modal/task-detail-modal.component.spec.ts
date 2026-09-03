@@ -7,6 +7,7 @@ import { TransferTaskModalComponent } from '../transfer-task-modal/transfer-task
 import { AuthService } from '../../../core/auth.service';
 import { SupabaseService } from '../../../core/supabase.service';
 import { NotificationService } from '../../../core/notification.service';
+import { ConfettiService } from '../../../core/confetti.service';
 import {
   createFakeAuthService,
   createFakeMatDialogRef,
@@ -300,5 +301,93 @@ describe('TaskDetailModalComponent Save button', () => {
 
     expect(rpcSpy).not.toHaveBeenCalled();
     expect(backSpy).toHaveBeenCalledWith(false);
+  });
+});
+
+describe('TaskDetailModalComponent first-completion celebration', () => {
+  async function createComponentWithTask(
+    taskOverrides: Parameters<typeof createTestTask>[0] = {},
+    supabaseResult: { data?: unknown; count?: number; error?: unknown } = { data: [], count: 1, error: null }
+  ) {
+    await TestBed.configureTestingModule({
+      imports: [TaskDetailModalComponent],
+      providers: [
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile()) },
+        { provide: SupabaseService, useValue: createFakeSupabaseService(supabaseResult) },
+        { provide: MatDialogRef, useValue: createFakeMatDialogRef() },
+        { provide: MAT_DIALOG_DATA, useValue: createTestTask(taskOverrides) }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(TaskDetailModalComponent);
+    const component = fixture.componentInstance;
+    const burstSpy = spyOn((component as unknown as { confetti: ConfettiService }).confetti, 'burst');
+    const successSpy = spyOn((component as unknown as { notification: NotificationService }).notification, 'success');
+    fixture.detectChanges();
+    return { component, fixture, burstSpy, successSpy };
+  }
+
+  it('celebrates when the assignee completes their first-ever task', async () => {
+    const { component, fixture, burstSpy, successSpy } = await createComponentWithTask(
+      { status: 'todo', assigned_to: 'user-1' },
+      { data: [], count: 1, error: null }
+    );
+    component.selectedStatus = 'done';
+
+    await component.saveStatus();
+    // celebrateIfFirstCompletion() is deliberately fire-and-forget from
+    // saveStatus() itself (see that method's own comment) — awaiting the
+    // outer call alone isn't enough to observe its effects, so this waits
+    // for the zone to go stable (every pending promise it kicked off, since
+    // it still runs inside Angular's zone) the same way this app's other
+    // "flush a chained-but-unawaited promise" specs already do.
+    await fixture.whenStable();
+
+    expect(burstSpy).toHaveBeenCalled();
+    expect(successSpy).toHaveBeenCalledWith('🎉 First task completed! Nice work.');
+  });
+
+  it('does not celebrate when this is not the assignee\'s first completed task', async () => {
+    const { component, fixture, burstSpy, successSpy } = await createComponentWithTask(
+      { status: 'todo', assigned_to: 'user-1' },
+      { data: [], count: 5, error: null }
+    );
+    component.selectedStatus = 'done';
+
+    await component.saveStatus();
+    await fixture.whenStable();
+
+    expect(burstSpy).not.toHaveBeenCalled();
+    expect(successSpy).not.toHaveBeenCalledWith('🎉 First task completed! Nice work.');
+  });
+
+  it('does not celebrate when someone other than the assignee completes the task', async () => {
+    const { component, fixture, burstSpy } = await createComponentWithTask(
+      { status: 'todo', assigned_to: 'someone-else' },
+      { data: [], count: 1, error: null }
+    );
+    component.selectedStatus = 'done';
+
+    await component.saveStatus();
+    await fixture.whenStable();
+
+    expect(burstSpy).not.toHaveBeenCalled();
+  });
+
+  it('does not celebrate (or even query) when the new status isn\'t done', async () => {
+    const { component, fixture, burstSpy } = await createComponentWithTask(
+      { status: 'todo', assigned_to: 'user-1' },
+      { data: [], count: 1, error: null }
+    );
+    const supabase = TestBed.inject(SupabaseService);
+    const fromSpy = spyOn(supabase.client, 'from').and.callThrough();
+    component.selectedStatus = 'in_progress';
+    fixture.detectChanges();
+
+    await component.saveStatus();
+    await fixture.whenStable();
+
+    expect(burstSpy).not.toHaveBeenCalled();
+    expect(fromSpy).not.toHaveBeenCalled();
   });
 });

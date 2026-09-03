@@ -13,6 +13,7 @@ import { TaskCardComponent } from './task-card/task-card.component';
 import { BreadcrumbParent, BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 import { EmptyStateComponent } from '../shared/components/empty-state/empty-state.component';
 import { PageIntroComponent } from '../shared/components/page-intro/page-intro.component';
+import { LoadingCaptionComponent } from '../shared/components/loading-caption/loading-caption.component';
 import { resolveProfileName } from '../shared/utils/profile-label';
 import { subscribeToTableChanges } from '../shared/utils/realtime';
 import { getTodayIsoDate } from '../shared/utils/date';
@@ -26,7 +27,7 @@ type Task = Database['public']['Tables']['tasks']['Row'];
   selector: 'app-tasks',
   imports: [
     MatProgressSpinnerModule, MatButtonModule, MatIconModule, RouterLink, TaskCardComponent, BreadcrumbsComponent,
-    EmptyStateComponent, PageIntroComponent, TaskDetailModalComponent
+    EmptyStateComponent, PageIntroComponent, LoadingCaptionComponent, TaskDetailModalComponent
   ],
   templateUrl: './tasks.component.html',
   styleUrl: './tasks.component.scss',

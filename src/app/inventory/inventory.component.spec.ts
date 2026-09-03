@@ -822,6 +822,17 @@ describe('InventoryComponent applyBulkReassign()', () => {
     const component = await createComponent(service);
     component.inventoryList = [createTestInventoryItem({ id: '1', category: 'Tools', physicalLocation: 'Warehouse A' })];
     component.selectedItemIds = new Set(['1']);
+    // A successful bulk write calls the real NotificationService, which
+    // opens a real MatSnackBar/CDK Overlay — every other test in this file
+    // mocks that out, and this one should too rather than being the one
+    // real-overlay call left running loose in a shared, 1000+-test Karma
+    // session (this exact gap once produced a real, hard-to-trace
+    // "Injector has already been destroyed" crash much later in a full
+    // suite run, triggered by something entirely unrelated to this test).
+    spyOn(
+      (component as unknown as { notification: { successWithUndo: (msg: string, undo: () => void) => void } }).notification,
+      'successWithUndo'
+    );
 
     await callApplyBulkReassign(component, { category: { value: 'Safety' }, physicalLocation: { value: 'Warehouse B' } });
 

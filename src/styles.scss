@@ -168,6 +168,41 @@ html {
     ));
   }
 
+  // A sixth preset, deliberately *not* listed in THEME_PRESETS (see that
+  // model's own comment) — nothing in Settings ever offers this as a
+  // choice. PartyModeService is the only thing that ever sets this
+  // attribute, via SiteSettingsService.applyTheme()'s existing non-
+  // persisting "live preview" swap (built for Settings' own theme picker,
+  // reused here for a swap that's ephemeral for a different reason), always
+  // reverting to whatever the org's real theme is a few seconds later — see
+  // that service's own doc comment for the trigger (the Konami code).
+  // Magenta+cyan is a combination none of the five real presets above use,
+  // so this reads as its own distinct, deliberately loud moment rather than
+  // just another color option.
+  &[data-theme='party'] {
+    @include mat.theme((
+      color: (
+        theme-type: color-scheme,
+        primary: mat.$magenta-palette,
+        tertiary: mat.$cyan-palette,
+      ),
+      typography: Roboto,
+      density: 0,
+    ));
+
+    // A continuous rainbow sweep across the whole rendered page for as long
+    // as party mode is active — filter cascades to every descendant the
+    // same way it would on any other element, so this isn't scoped to just
+    // this theme block's own colors. Skipped under prefers-reduced-motion,
+    // same as every other ambient animation in this app — the vivid
+    // magenta/cyan color swap above still applies on its own either way.
+    animation: party-mode-hue-cycle 3s linear infinite;
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  }
+
   // mat.theme()'s all-in-one API only emits the --mat-sys-* system-level
   // roles, not derived per-component tokens like --mat-dialog-subhead-color.
   // Material's own dialog title/body CSS still references those tokens
@@ -241,6 +276,12 @@ html {
   // give tabular digits.
   --font-display: 'Bricolage Grotesque', 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+}
+
+// Backs [data-theme='party'] above — a plain full-circle hue rotation.
+@keyframes party-mode-hue-cycle {
+  from { filter: hue-rotate(0deg); }
+  to { filter: hue-rotate(360deg); }
 }
 
 // Every page-level heading gets the display face — a plain element

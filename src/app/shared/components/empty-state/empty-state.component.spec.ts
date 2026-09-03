@@ -45,4 +45,43 @@ describe('EmptyStateComponent', () => {
 
     expect(fixture.nativeElement.querySelector('.empty-state.error')).toBeNull();
   });
+
+  describe('playful', () => {
+    it('is off by default — no second line rendered under the message', async () => {
+      const fixture = await createComponent();
+      fixture.componentInstance.message = 'No items yet.';
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('.empty-state-playful')).toBeNull();
+    });
+
+    it('adds a second line alongside (not instead of) the caller\'s own message', async () => {
+      const fixture = await createComponent();
+      fixture.componentInstance.message = 'No items yet.';
+      fixture.componentInstance.playful = true;
+      fixture.detectChanges();
+
+      const el: HTMLElement = fixture.nativeElement;
+      expect(el.querySelector('p:not(.empty-state-playful)')?.textContent).toContain('No items yet.');
+      expect(el.querySelector('.empty-state-playful')?.textContent?.trim().length).toBeGreaterThan(0);
+    });
+
+    it('is suppressed for an error variant even when playful is set', async () => {
+      const fixture = await createComponent();
+      fixture.componentInstance.playful = true;
+      fixture.componentInstance.variant = 'error';
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('.empty-state-playful')).toBeNull();
+    });
+
+    it('is suppressed in compact mode even when playful is set', async () => {
+      const fixture = await createComponent();
+      fixture.componentInstance.playful = true;
+      fixture.componentInstance.compact = true;
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('.empty-state-playful')).toBeNull();
+    });
+  });
 });

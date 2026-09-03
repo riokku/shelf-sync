@@ -14,7 +14,7 @@ import { SupabaseService } from '../core/supabase.service';
 import { ThemeModeService } from '../core/theme-mode.service';
 import { NotificationCenterService } from '../core/notification-center.service';
 import { CommandPaletteService } from '../core/command-palette.service';
-import { ConfettiService } from '../core/confetti.service';
+import { PartyModeService } from '../core/party-mode.service';
 import { NotificationService } from '../core/notification.service';
 import { EmptyStateComponent } from '../shared/components/empty-state/empty-state.component';
 import { UserAvatarComponent } from '../shared/components/user-avatar/user-avatar.component';
@@ -43,7 +43,7 @@ export class HeaderComponent {
   private supabase = inject(SupabaseService).client;
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
-  private confetti = inject(ConfettiService);
+  private partyMode = inject(PartyModeService);
   private notification = inject(NotificationService);
 
   /** The 3 trigger buttons that open the panels below — grabbed so each
@@ -171,8 +171,11 @@ export class HeaderComponent {
     this.togglePalette();
   }
 
-  /** The classic Konami code — a small, deliberately pointless easter egg
-   *  that changes nothing about the app beyond a confetti burst and a toast.
+  /** The classic Konami code — a small, deliberately pointless easter egg.
+   *  Fires PartyModeService.start() (a confetti drizzle plus a temporary
+   *  'party' theme, both self-reverting — see that service's own doc
+   *  comment) alongside the toast below; nothing here persists anything,
+   *  so this genuinely changes nothing about the app once it's over.
    *  Tracked as a plain index into the sequence rather than a rolling
    *  keystroke buffer diffed on every keydown — simpler, and a wrong key
    *  just resets the index (to 1 if that wrong key happens to also be the
@@ -203,7 +206,7 @@ export class HeaderComponent {
     this.konamiIndex++;
     if (this.konamiIndex === HeaderComponent.KONAMI_SEQUENCE.length) {
       this.konamiIndex = 0;
-      this.confetti.burst();
+      this.partyMode.start();
       this.notification.success('🕹️ Konami code! You found the easter egg.');
     }
   }

@@ -9,6 +9,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SupabaseService } from '../../../core/supabase.service';
 import { NotificationService } from '../../../core/notification.service';
+import { ConfettiService } from '../../../core/confetti.service';
 import { AuthService, Profile } from '../../../core/auth.service';
 import { Database } from '../../models/database.types';
 import { InventoryItem } from '../../models/inventory-item.model';
@@ -53,6 +54,7 @@ type Task = Database['public']['Tables']['tasks']['Row'];
 export class TaskDetailModalComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
   private notification = inject(NotificationService);
+  private confetti = inject(ConfettiService);
   protected authService = inject(AuthService);
   // The plain service, not the whole MatDialogModule (see this component's
   // own imports array comment above) — importing that module would provide
@@ -429,6 +431,8 @@ export class TaskDetailModalComponent implements OnInit {
     this.isSaving = true;
     this.error = null;
 
+    const isCompletingNow = this.task.status !== 'done' && this.selectedStatus === 'done';
+
     // Goes through update_task_status() rather than a raw table update — a
     // plain assignee (not admin/manager) no longer has any direct UPDATE
     // access to tasks at all, only this RPC, which is column-scoped to
@@ -445,6 +449,43 @@ export class TaskDetailModalComponent implements OnInit {
       return;
     }
 
+    if (isCompletingNow) {
+      // Non-blocking — the modal closes (back.emit below) right away
+      // regardless of how this resolves; the toast/confetti, if they fire
+      // at all, land a beat after on whatever page is underneath, same as
+      // every other best-effort follow-up write in this app.
+      void this.celebrateIfFirstCompletion();
+    }
+
     this.back.emit(true);
+  }
+
+  /** Confetti + a toast for completing your first-ever task — a genuine,
+   *  resolves-right-here-on-this-page milestone (this task visibly moves
+   *  into Completed the moment the modal closes), unlike HomeComponent's
+   *  own Getting Started card, which deliberately skipped this exact
+   *  treatment because its own completing action almost always happens on
+   *  a *different* page than Home itself (see that component's own doc
+   *  comment). Only fires for the assignee completing their own task, not
+   *  an admin/manager marking someone else's task done on their behalf —
+   *  "your first completed task" isn't a milestone for whoever happened to
+   *  click Save. Best-effort: a failed count query just means no
+   *  celebration, not an error worth surfacing over a decorative extra. */
+  private async celebrateIfFirstCompletion() {
+    const session = await this.authService.getSession();
+    if (!session || this.task.assigned_to !== session.user.id) {
+      return;
+    }
+
+    const { count } = await this.supabase
+      .from('tasks')
+      .select('id', { count: 'exact', head: true })
+      .eq('assigned_to', session.user.id)
+      .eq('status', 'done');
+
+    if (count === 1) {
+      this.confetti.burst();
+      this.notification.success('🎉 First task completed! Nice work.');
+    }
   }
 }

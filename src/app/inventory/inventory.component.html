@@ -226,6 +226,7 @@
              early (it depends on data not yet loaded), so this doesn't
              try to match a remembered table-view preference; card view is
              a reasonable, low-risk default guess either way. -->
+        <app-loading-caption />
         <div class="row inventory-gallery-wrapper" aria-hidden="true">
           @for (i of skeletonCards; track i) {
             <div class="col-12 col-md-6 col-lg-4 inventory-card">
@@ -246,7 +247,7 @@
       } @else if (inventoryList.length === 0) {
         <div class="row">
           <div class="col-12">
-            <app-empty-state icon="inventory_2" message="No inventory items yet." />
+            <app-empty-state icon="inventory_2" message="No inventory items yet." [playful]="true" />
           </div>
         </div>
       } @else {
