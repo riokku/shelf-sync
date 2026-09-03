@@ -586,6 +586,15 @@ describe('ModalTableComponent', () => {
 
     it('decrements quantityRemaining/quantityTotal directly for a flat (no-container) discard', async () => {
       const { discardComponent } = await setup({ quantityRemaining: 10, quantityTotal: 20 });
+      // A successful discard calls the real NotificationService, which
+      // opens a real MatSnackBar/CDK Overlay — mocked out here the same way
+      // every other successful-write test in this file already does, so
+      // this isn't a stray real-overlay call left running loose in a
+      // shared, 1000+-test Karma session.
+      spyOn(
+        (discardComponent as unknown as { notification: { successWithUndo: (msg: string, undo: () => void) => void } }).notification,
+        'successWithUndo'
+      );
 
       await performDiscard(discardComponent, { quantity: 3, reasons: ['Water damage'], containerId: null });
 
@@ -604,6 +613,10 @@ describe('ModalTableComponent', () => {
         quantityAllocated: 2,
         containersTableResult: { data: remainingContainers, error: null }
       });
+      spyOn(
+        (discardComponent as unknown as { notification: { successWithUndo: (msg: string, undo: () => void) => void } }).notification,
+        'successWithUndo'
+      );
 
       await performDiscard(discardComponent, { quantity: 3, reasons: ['Damaged in transit'], containerId: 'box-1' });
 
@@ -633,6 +646,10 @@ describe('ModalTableComponent', () => {
     it('also logs a structured discard row for reporting, alongside the free-text activity line', async () => {
       const { discardComponent, discardsBuilder } = await setup({ quantityRemaining: 10, quantityTotal: 20 });
       const insertSpy = spyOn(discardsBuilder as { insert: (...args: unknown[]) => unknown }, 'insert').and.callThrough();
+      spyOn(
+        (discardComponent as unknown as { notification: { successWithUndo: (msg: string, undo: () => void) => void } }).notification,
+        'successWithUndo'
+      );
 
       await performDiscard(discardComponent, { quantity: 3, reasons: ['Water damage', 'Wear and tear'], containerId: null });
 

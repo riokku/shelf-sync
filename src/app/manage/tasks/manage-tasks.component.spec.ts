@@ -892,6 +892,13 @@ describe('ManageTasksComponent bulk actions', () => {
       component.selectedTaskIds = new Set(['1', '2']);
       component.taskFilterSearch = 'restock';
       component.bulkStatusValue = 'done';
+      // See the sibling tests above's own successWithUndo spy — a
+      // successful update here calls the real NotificationService/
+      // MatSnackBar otherwise.
+      spyOn(
+        (component as unknown as { notification: { successWithUndo: (msg: string, undo: () => void) => void } }).notification,
+        'successWithUndo'
+      );
 
       await component.applyBulkStatusChange();
 
