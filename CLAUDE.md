@@ -3022,6 +3022,68 @@ the timestamp when this is set; `ModalTableComponent`'s own optimistic local app
 edit (before a reload would otherwise pick it up) sets it from `ImpersonationService.isImpersonating()`
 directly, matching what the server-side trigger would compute for that identical write.
 
+A small round of pure-delight additions, no schema/RPC changes — each reuses machinery this app
+already had rather than inventing a new mechanism. Inventory and Tasks (this app's own two busiest
+pages, the same two `_skeleton.scss`/`_stagger.scss` themselves started on) now show a new
+`LoadingCaptionComponent` next to their shimmering skeleton placeholders — a small, genuinely
+meaningless witty line ("Untangling extension cords…", "Recounting the folding chairs…") that
+rotates every 2.2s for as long as the real load is still in flight, themed to this app's own
+event-rental inventory rather than a generic "Loading…". Its own rotation interval is scheduled via
+`NgZone.runOutsideAngular()` (re-entering the zone only for the actual signal write each tick) — a
+plain in-zone `setInterval` here would make `NgZone`/`ComponentFixture.whenStable()` treat the
+component as permanently-pending work for as long as it's mounted, silently hanging any spec that
+awaits `whenStable()` while this is still showing (caught the hard way: an earlier version without
+this shipped clean in isolation but broke a large swath of `inventory.component.spec.ts`'s and
+`manage-tasks.component.spec.ts`'s own existing tests once run as part of the full suite, surfacing
+as a stray "Uncaught TypeError" + timeout combination that took real digging to trace back —
+`ManageTeamComponent`'s own 30s presence-poll interval had already hit this exact class of bug once
+before, see that component's own spec comment on why it uses `fakeAsync`/`tick()` instead of
+`whenStable()`). Skipped entirely under `prefers-reduced-motion` (one static caption, no rotation),
+same as every other ambient animation in this app. Started narrow on just these two pages rather
+than swept onto every loading state — a natural extension to pick up elsewhere the same incremental
+way skeleton loading itself was.
+
+`EmptyStateComponent` gained an opt-in `playful` input — when set, a small second line (one random
+pick from a short pool of genuinely generic one-liners: "Crickets. 🦗", "Tumbleweeds only.", etc.)
+renders under the caller's own real `message`, never replacing it — the real message is what
+actually tells a visitor what's missing, so losing it for a joke would be a real regression, not
+just a style choice. Ignored outright for `variant="error"` (a failed load isn't the moment for a
+joke) and `compact` (no room for a second line). Wired up on exactly two genuinely-empty (not
+filtered-to-zero) states for now — Inventory's "No inventory items yet." and Tasks' "You have no
+tasks assigned to you." — the same "start on the two busiest pages" scope `LoadingCaptionComponent`
+above uses, out of the 30-odd places this component is used across the app.
+
+A sixth, deliberately hidden `[data-theme='party']` preset in `styles.scss` (magenta+cyan, a
+combination none of the five real `THEME_PRESETS` use) pairs with a new root-provided
+`PartyModeService` (`core/party-mode.service.ts`) — `start()` swaps the whole app into it via
+`SiteSettingsService.applyTheme()` (the exact same non-persisting "live preview" swap that method's
+own Settings-page theme picker already uses, reused here for a swap that's ephemeral for a different
+reason), fires a confetti burst every 1.4s, and after 8s reverts to whatever the org's real theme
+actually is — reading it from `siteSettings.theme()`, the persisted signal, not the DOM attribute
+directly, since only `updateTheme()` (never `applyTheme()`) ever touches that signal; this holds
+correctly in the overwhelmingly common case (the DOM attribute and that signal always agree outside
+of the rare moment someone's mid-preview on the Settings page themselves) without needing a second
+tracked "what's currently showing" value. A second `start()` call while already active is a no-op
+(not restacked) — restacking would both leave stray timers running past their own 8s window and risk
+capturing 'party' itself as "the theme to revert to." Backs the classic Konami code easter egg in
+`HeaderComponent` (already a "deliberately pointless" confetti-burst-plus-toast — see its own doc
+comment — now upgraded to trigger the fuller party-mode version instead of a single bare burst), and,
+same as `LoadingCaptionComponent` above, its own `setInterval`/`setTimeout` are scheduled via
+`NgZone.runOutsideAngular()` for the identical `whenStable()`-hang reason, re-entering the zone via
+`ngZone.run()` only for the two calls that actually need Angular to notice them (the repeated
+confetti bursts, and the final theme-revert-plus-flag-reset).
+
+Completing your first-ever task now fires a confetti burst and a "🎉 First task completed! Nice
+work." toast — `TaskDetailModalComponent.saveStatus()`'s own genuine, resolves-right-here-on-this-
+page milestone (the task visibly moves into Completed the instant the modal closes), the same bar
+`AuditDetailComponent.completeAudit()`'s own "🎉 Perfect count" celebration already clears and
+`HomeComponent`'s Getting Started card deliberately couldn't (see that card's own doc comment on why
+it skipped this treatment — its own completing action almost always happens on a *different* page
+than Home itself). Only fires for the assignee completing their own task, not an admin/manager
+completing someone else's on their behalf — checked via a plain `tasks` count query
+(`assigned_to = auth.uid() and status = 'done'`, `count === 1`) run non-blocking alongside the modal's
+own close, so a slow/failed count never delays or breaks the actual save.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -3174,6 +3236,7 @@ core/
   notification-center.service.ts # NotificationCenterService — HeaderComponent's bell dropdown; notifications signal + unreadCount, markAsRead()/markAllAsRead()
   command-palette.service.ts # CommandPaletteService — HeaderComponent's Ctrl/Cmd+K global search; lazily loads/caches searchable data, results(query) is a pure local filter
   confetti.service.ts     # ConfettiService — fires a hand-rolled confetti burst (shared/components/confetti-burst) for a genuine "just happened" celebration moment
+  party-mode.service.ts   # PartyModeService — Konami-code easter egg: temporary 'party' theme + a confetti drizzle, both self-reverting
   impersonation.service.ts # ImpersonationService — platform-admin "impersonate as user" session swap; start()/stop(), isImpersonating signal backing ImpersonationBannerComponent
   guards/auth.guard.ts    # CanActivateFn — awaits authService.getSession() directly
   guards/manage.guard.ts  # admin OR manager
@@ -3229,6 +3292,7 @@ shared/
   components/confetti-burst/ # hand-rolled CSS confetti particles (no library) — created on demand by ConfettiService, never rendered from a template directly
   components/impersonate-user-modal/ # mandatory-reason dialog backing StudioUserDetailComponent's "Impersonate" button
   components/impersonation-banner/ # persistent, unmissable "you are impersonating someone" bar, rendered from AppComponent alongside the header
+  components/loading-caption/ # rotating witty caption shown next to Inventory/Tasks' skeleton loading placeholders
   models/inventory-item.model.ts   # InventoryItem class (constructor-based, no defaults)
   models/supplier.model.ts   # Supplier — a directory entry inventory_items.supplier_id can point at
   models/inventory-item-order.model.ts # InventoryItemOrder — one restock order against an item's linked supplier
