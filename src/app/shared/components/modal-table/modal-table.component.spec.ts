@@ -643,5 +643,41 @@ describe('ModalTableComponent', () => {
         container_id: null
       }));
     });
+
+    it('offers an undo instead of a plain success toast', async () => {
+      const { discardComponent } = await setup({ quantityRemaining: 10, quantityTotal: 20 });
+      const notificationUndoSpy = spyOn(
+        (discardComponent as unknown as { notification: { successWithUndo: (msg: string, undo: () => void) => void } }).notification,
+        'successWithUndo'
+      );
+
+      await performDiscard(discardComponent, { quantity: 3, reasons: ['Water damage'], containerId: null });
+
+      expect(notificationUndoSpy).toHaveBeenCalledWith('Stock discarded', jasmine.any(Function));
+    });
+
+    it('undoing a flat-item discard restores the pre-discard quantities', async () => {
+      const { discardComponent } = await setup({ quantityRemaining: 10, quantityTotal: 20 });
+      let undo: (() => void) | undefined;
+      spyOn(
+        (discardComponent as unknown as { notification: { successWithUndo: (msg: string, undo: () => void) => void } }).notification,
+        'successWithUndo'
+      ).and.callFake((_msg, fn) => { undo = fn; });
+      const notificationSuccessSpy = spyOn(
+        (discardComponent as unknown as { notification: { success: (msg: string) => void } }).notification,
+        'success'
+      );
+
+      await performDiscard(discardComponent, { quantity: 3, reasons: ['Water damage'], containerId: null });
+      expect(discardComponent.data.quantityRemaining).toBe(7);
+      expect(discardComponent.data.quantityTotal).toBe(17);
+
+      await undo?.();
+
+      expect(discardComponent.data.quantityRemaining).toBe(10);
+      expect(discardComponent.data.quantityTotal).toBe(20);
+      expect(discardComponent.discardError).toBeNull();
+      expect(notificationSuccessSpy).toHaveBeenCalledWith('Discard undone');
+    });
   });
 });

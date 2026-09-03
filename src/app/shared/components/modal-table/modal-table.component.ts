@@ -571,6 +571,16 @@ export class ModalTableComponent implements OnInit {
       return;
     }
 
+    // Captured before either branch below writes over them — what
+    // undoDiscard() restores. The item-level pair covers both branches
+    // (a container discard re-derives them too); previousContainerQuantity
+    // only applies to the container branch.
+    const previousRemaining = this.data.quantityRemaining;
+    const previousTotal = this.data.quantityTotal;
+    const previousContainerQuantity = result.containerId
+      ? this.existingContainers.find(c => c.id === result.containerId)?.quantity ?? null
+      : null;
+
     let boxLabel = '';
 
     if (result.containerId) {
@@ -638,7 +648,63 @@ export class ModalTableComponent implements OnInit {
     await this.refreshActivityLog();
 
     this.isDiscarding = false;
-    this.notification.success('Stock discarded');
+    this.notification.successWithUndo('Stock discarded', () =>
+      this.undoDiscard(result.quantity, previousRemaining, previousTotal, result.containerId, previousContainerQuantity, boxLabel)
+    );
+  }
+
+  /** successWithUndo()'s own action for performDiscard() above — restores
+   *  the item's (and, for a container-tracked item, that specific box's)
+   *  pre-discard quantities directly, the exact reverse of the write
+   *  performDiscard() just made. Deliberately leaves the
+   *  inventory_item_discards row it just inserted alone rather than trying
+   *  to delete it — that table grants authenticated no UPDATE/DELETE at
+   *  all, permanent by design like every other audit-trail table in this
+   *  schema (see logInventoryItemDiscard()'s own doc comment), so the
+   *  correct record of "this discard happened, and was then undone" is a
+   *  second activity-log line here, not erasing the first one. */
+  private async undoDiscard(
+    quantity: number,
+    previousRemaining: number,
+    previousTotal: number,
+    containerId: string | null,
+    previousContainerQuantity: number | null,
+    boxLabel: string
+  ) {
+    const session = await this.authService.getSession();
+    if (!session) {
+      return;
+    }
+
+    if (containerId && previousContainerQuantity !== null) {
+      const { error: containerError } = await this.supabase.from('inventory_item_containers')
+        .update({ quantity: previousContainerQuantity })
+        .eq('id', containerId);
+      if (containerError) {
+        this.discardError = containerError.message;
+        return;
+      }
+      this.existingContainers = await loadInventoryItemContainers(this.supabase, this.data.id);
+    }
+
+    const { error: itemError } = await this.supabase.from('inventory_items')
+      .update({ quantity_remaining: previousRemaining, quantity_total: previousTotal })
+      .eq('id', this.data.id);
+    if (itemError) {
+      this.discardError = itemError.message;
+      return;
+    }
+    this.data.quantityRemaining = previousRemaining;
+    this.data.quantityTotal = previousTotal;
+
+    const message = boxLabel
+      ? `Restored ${quantity} units to ${boxLabel} (undid discard)`
+      : `Restored ${quantity} units (undid discard)`;
+    await logInventoryItemActivity(this.supabase, this.data.id, session.user.id, message);
+    await logActivity(this.supabase, session.user.id, 'inventory_item', this.data.id, `${this.data.name}: ${message}`);
+    await this.refreshActivityLog();
+
+    this.notification.success('Discard undone');
   }
 
   /** Shared runner for all four retirement RPCs: applies the known local

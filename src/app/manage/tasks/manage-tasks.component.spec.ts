@@ -817,19 +817,25 @@ describe('ManageTasksComponent bulk actions', () => {
       expect(rpcCalls.length).toBe(0);
     });
 
-    it('updates every selected task and reports success', async () => {
+    it('updates every selected task and offers an undo', async () => {
       const { service, rpcCalls } = createBulkTaskActionFakeSupabaseService();
       const component = await createComponent(service);
-      component.allTasks = [createTestTask({ id: '1' }), createTestTask({ id: '2' })];
+      component.allTasks = [createTestTask({ id: '1', status: 'todo' }), createTestTask({ id: '2', status: 'in_progress' })];
       component.selectedTaskIds = new Set(['1', '2']);
       component.bulkStatusValue = 'done';
-      const notificationSuccessSpy = spyOn((component as unknown as { notification: { success: (msg: string) => void } }).notification, 'success');
+      // A successful bulk status change offers an undo, not a plain
+      // success() toast — see successWithUndo()'s own doc comment on
+      // NotificationService.
+      const notificationUndoSpy = spyOn(
+        (component as unknown as { notification: { successWithUndo: (msg: string, undo: () => void) => void } }).notification,
+        'successWithUndo'
+      );
 
       await component.applyBulkStatusChange();
 
       expect(rpcCalls.length).toBe(2);
       expect(rpcCalls.every(call => call.fn === 'update_task_status' && call.args['new_status'] === 'done')).toBeTrue();
-      expect(notificationSuccessSpy).toHaveBeenCalledWith('Updated 2 tasks');
+      expect(notificationUndoSpy).toHaveBeenCalledWith('Updated 2 tasks', jasmine.any(Function));
       expect(component.selectedTaskIds.size).toBe(0);
       expect(component.bulkActionError).toBeNull();
     });
@@ -840,12 +846,40 @@ describe('ManageTasksComponent bulk actions', () => {
       component.allTasks = [createTestTask({ id: '1' }), createTestTask({ id: '2' })];
       component.selectedTaskIds = new Set(['1', '2']);
       component.bulkStatusValue = 'done';
-      const notificationSuccessSpy = spyOn((component as unknown as { notification: { success: (msg: string) => void } }).notification, 'success');
+      const notificationUndoSpy = spyOn(
+        (component as unknown as { notification: { successWithUndo: (msg: string, undo: () => void) => void } }).notification,
+        'successWithUndo'
+      );
 
       await component.applyBulkStatusChange();
 
-      expect(notificationSuccessSpy).toHaveBeenCalledWith('Updated 1 task');
+      expect(notificationUndoSpy).toHaveBeenCalledWith('Updated 1 task', jasmine.any(Function));
       expect(component.bulkActionError).toBe("1 of 2 tasks couldn't be updated.");
+    });
+
+    it('the undo action reverts every task back to its captured pre-change status', async () => {
+      const { service, rpcCalls } = createBulkTaskActionFakeSupabaseService();
+      const component = await createComponent(service);
+      component.allTasks = [createTestTask({ id: '1', status: 'todo' }), createTestTask({ id: '2', status: 'in_progress' })];
+      component.selectedTaskIds = new Set(['1', '2']);
+      component.bulkStatusValue = 'done';
+      let undo: (() => void) | undefined;
+      spyOn(
+        (component as unknown as { notification: { successWithUndo: (msg: string, undo: () => void) => void } }).notification,
+        'successWithUndo'
+      ).and.callFake((_msg, fn) => { undo = fn; });
+      const notificationSuccessSpy = spyOn((component as unknown as { notification: { success: (msg: string) => void } }).notification, 'success');
+
+      await component.applyBulkStatusChange();
+      rpcCalls.length = 0; // only care about the undo's own RPC calls below
+
+      await undo?.();
+
+      expect(rpcCalls.length).toBe(2);
+      const byTask = new Map(rpcCalls.map(call => [call.args['task_id'], call.args['new_status']]));
+      expect(byTask.get('1')).toBe('todo');
+      expect(byTask.get('2')).toBe('in_progress');
+      expect(notificationSuccessSpy).toHaveBeenCalledWith('Reverted 2 tasks');
     });
 
     it('only acts on the currently-visible (filtered) selection', async () => {

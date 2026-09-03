@@ -25,4 +25,26 @@ export class NotificationService {
       verticalPosition: 'bottom'
     });
   }
+
+  /** Same success toast, plus a trailing "Undo" (or caller-supplied label)
+   *  action that runs `onUndo` — for an action that's cheap and safe to
+   *  reverse right after it happens (a bulk reassign, a bulk status change,
+   *  a discard), rather than either a confirm dialog up front (friction on
+   *  every single use, for a mistake that's rare) or no safety net at all.
+   *  A longer duration than the plain success() toast (6s vs 3s) gives a
+   *  reader an actual chance to click it before it disappears. Deliberately
+   *  still success-only, same as success() above — this is a safety net for
+   *  a *completed* action, not error handling. */
+  successWithUndo(message: string, onUndo: () => void | Promise<void>, undoLabel = 'Undo') {
+    const ref = this.snackBar.openFromComponent<SuccessToastComponent, SuccessToastData>(SuccessToastComponent, {
+      data: { message, undoLabel },
+      duration: 6000,
+      panelClass: 'app-success-snackbar',
+      horizontalPosition: 'end',
+      verticalPosition: 'bottom'
+    });
+    ref.onAction().subscribe(() => {
+      void onUndo();
+    });
+  }
 }

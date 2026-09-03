@@ -1,4 +1,9 @@
 <div class="success-toast">
   <mat-icon class="success-toast-icon">check_circle</mat-icon>
   <span>{{ data.message }}</span>
+  @if (data.undoLabel) {
+    <button mat-button type="button" class="success-toast-undo" (click)="snackBarRef.dismissWithAction()">
+      {{ data.undoLabel }}
+    </button>
+  }
 </div>

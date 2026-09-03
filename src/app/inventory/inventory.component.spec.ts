@@ -774,7 +774,12 @@ describe('InventoryComponent applyBulkReassign()', () => {
       createTestInventoryItem({ id: '2', category: 'Safety', physicalLocation: 'Warehouse A' })
     ];
     component.selectedItemIds = new Set(['1', '2']);
-    const notificationSuccessSpy = spyOn((component as unknown as { notification: { success: (msg: string) => void } }).notification, 'success');
+    // A successful bulk reassign offers an undo, not a plain success() toast
+    // — see successWithUndo()'s own doc comment on NotificationService.
+    const notificationUndoSpy = spyOn(
+      (component as unknown as { notification: { successWithUndo: (msg: string, undo: () => void) => void } }).notification,
+      'successWithUndo'
+    );
 
     // Item '2' is already in 'Safety' — bulk-setting category to 'Safety'
     // should update '1' only, not touch '2' at all.
@@ -783,9 +788,33 @@ describe('InventoryComponent applyBulkReassign()', () => {
     expect(updateCalls.length).toBe(1);
     expect(updateCalls[0].id).toBe('1');
     expect(updateCalls[0].values).toEqual({ category: 'Safety' });
-    expect(notificationSuccessSpy).toHaveBeenCalledWith('Updated 1 item');
+    expect(notificationUndoSpy).toHaveBeenCalledWith('Updated 1 item', jasmine.any(Function));
     expect(component.selectedItemIds.size).toBe(0);
     expect(component.bulkActionError).toBeNull();
+  });
+
+  it('undoBulkReassign() writes each item\'s captured pre-reassign value back', async () => {
+    const { service, updateCalls } = createBulkReassignFakeSupabaseService();
+    const component = await createComponent(service);
+    // undoBulkReassign() diffs its captured "previous" value against the
+    // item's *current* one (picked up from inventoryList, which the
+    // realtime subscription already patched to the post-bulk-write value by
+    // the time undo can run) — so this list stands in for that patched
+    // state, not the pre-reassign one.
+    component.inventoryList = [createTestInventoryItem({ id: '1', category: 'Safety', physicalLocation: 'Warehouse B' })];
+    const notificationSuccessSpy = spyOn((component as unknown as { notification: { success: (msg: string) => void } }).notification, 'success');
+
+    await (component as unknown as { undoBulkReassign: (entries: unknown[]) => Promise<void> }).undoBulkReassign([
+      { id: '1', category: 'Tools', physicalLocation: 'Warehouse B' }
+    ]);
+
+    expect(updateCalls.length).toBe(1);
+    // Only category actually differs (physicalLocation is already back at
+    // 'Warehouse B'), so only category is sent in the revert write — same
+    // "skip fields already at the target value" behavior the forward bulk
+    // write itself has.
+    expect(updateCalls[0]).toEqual({ id: '1', values: { category: 'Tools' } });
+    expect(notificationSuccessSpy).toHaveBeenCalledWith('Reverted 1 item');
   });
 
   it('updates both fields at once when both are checked', async () => {
@@ -807,12 +836,15 @@ describe('InventoryComponent applyBulkReassign()', () => {
       createTestInventoryItem({ id: '2', category: 'Tools' })
     ];
     component.selectedItemIds = new Set(['1', '2']);
-    const notificationSuccessSpy = spyOn((component as unknown as { notification: { success: (msg: string) => void } }).notification, 'success');
+    const notificationUndoSpy = spyOn(
+      (component as unknown as { notification: { successWithUndo: (msg: string, undo: () => void) => void } }).notification,
+      'successWithUndo'
+    );
 
     await callApplyBulkReassign(component, { category: { value: 'Safety' }, physicalLocation: null });
 
     expect(updateCalls.map(call => call.id).sort()).toEqual(['1', '2']);
-    expect(notificationSuccessSpy).toHaveBeenCalledWith('Updated 1 item');
+    expect(notificationUndoSpy).toHaveBeenCalledWith('Updated 1 item', jasmine.any(Function));
     expect(component.bulkActionError).toBe("1 of 2 items couldn't be updated — check they're not locked.");
   });
 

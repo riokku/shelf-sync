@@ -383,6 +383,15 @@ export class ManageTasksComponent implements OnInit, HasUnsavedChanges {
     this.isBulkProcessing = true;
     this.bulkActionError = null;
 
+    // Captured before the write below — what undoBulkStatusChange() reverts
+    // each task back to. A task already at the target status is left out
+    // entirely, same as applyBulkReassign()'s own "nothing to do" skip —
+    // there'd be nothing to revert for it.
+    const revertEntries = ids
+      .map(id => ({ id, previousStatus: this.allTasks.find(task => task.id === id)?.status }))
+      .filter((entry): entry is { id: string; previousStatus: TaskStatus } =>
+        entry.previousStatus !== undefined && entry.previousStatus !== status);
+
     const results = await Promise.all(
       ids.map(id => this.supabase.rpc('update_task_status', { task_id: id, new_status: status }))
     );
@@ -393,7 +402,8 @@ export class ManageTasksComponent implements OnInit, HasUnsavedChanges {
     await this.loadTasks();
 
     if (succeededCount > 0) {
-      this.notification.success(`Updated ${succeededCount} task${succeededCount === 1 ? '' : 's'}`);
+      const message = `Updated ${succeededCount} task${succeededCount === 1 ? '' : 's'}`;
+      this.notification.successWithUndo(message, () => this.undoBulkStatusChange(revertEntries));
     }
     // Not clearTaskSelection() — that also nulls bulkActionError, which
     // would erase the message set right below before anyone could read it.
@@ -401,6 +411,36 @@ export class ManageTasksComponent implements OnInit, HasUnsavedChanges {
     this.bulkStatusValue = null;
     if (failedCount > 0) {
       this.bulkActionError = `${failedCount} of ${ids.length} task${ids.length === 1 ? '' : 's'} couldn't be updated.`;
+    }
+  }
+
+  /** successWithUndo()'s own action for applyBulkStatusChange() above —
+   *  re-runs update_task_status() per task back to its captured pre-change
+   *  status, the same RPC the original bulk change itself used (a plain
+   *  assignee has no direct tasks UPDATE grant at all to fall back on —
+   *  see close_task_assignee_column_gap — so this RPC is the only path
+   *  either way). Best-effort per task, same tally convention every bulk
+   *  action in this app already follows. */
+  private async undoBulkStatusChange(entries: { id: string; previousStatus: TaskStatus }[]) {
+    if (entries.length === 0) {
+      return;
+    }
+
+    this.isBulkProcessing = true;
+    const results = await Promise.all(
+      entries.map(entry => this.supabase.rpc('update_task_status', { task_id: entry.id, new_status: entry.previousStatus }))
+    );
+    const failedCount = results.filter(result => result.error).length;
+    const revertedCount = entries.length - failedCount;
+
+    this.isBulkProcessing = false;
+    await this.loadTasks();
+
+    if (revertedCount > 0) {
+      this.notification.success(`Reverted ${revertedCount} task${revertedCount === 1 ? '' : 's'}`);
+    }
+    if (failedCount > 0) {
+      this.bulkActionError = `${failedCount} of ${entries.length} task${entries.length === 1 ? '' : 's'} couldn't be reverted.`;
     }
   }
 
