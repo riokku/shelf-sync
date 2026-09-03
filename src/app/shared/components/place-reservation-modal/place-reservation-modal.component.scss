@@ -11,6 +11,113 @@ form{
   width: 100%;
 }
 
+// This dialog's own scrollable surface moves from mat-dialog-content itself
+// down to .reservation-items-scroll below — Material's global
+// `.mat-mdc-dialog-content { max-height: 65vh; overflow: auto }` rule (tuned
+// for a single-column dialog body) would otherwise scroll the *whole* two-
+// column layout together once the item list grows long enough, taking the
+// left column's static info (and the right column's own pick-mode toggle)
+// out of view along with it. mat-dialog-content.mat-mdc-dialog-content beats
+// that global rule's specificity (element + class vs. class alone)
+// regardless of stylesheet load order — same fix ModalTableComponent/
+// TaskDetailModalComponent already established, though those two disable
+// the scroll outright rather than relocating it.
+mat-dialog-content.mat-mdc-dialog-content{
+  max-height: none;
+  overflow: visible;
+}
+
+// Left is the booking's own shared details (dates/reserved-for/note) and
+// stays static; right is the actual item picker. Each column carries its
+// own flex-column gap matching the form's, since nesting them inside
+// .reservation-columns takes them out of the form's own direct-children
+// gap. flex-start (not stretch) keeps the left column at its own natural
+// height rather than being stretched to match the right column's, which
+// would read oddly once the right column has its own internally-scrolling
+// item list rather than actually being that tall.
+.reservation-columns{
+  display: flex;
+  align-items: flex-start;
+  gap: 2rem;
+
+  @media (max-width: 40rem){
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+}
+
+.reservation-column{
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.reservation-column-left{
+  flex: 0 1 20rem;
+
+  @media (max-width: 40rem){
+    flex-basis: auto;
+    width: 100%;
+  }
+}
+
+.reservation-column-right{
+  flex: 1 1 26rem;
+  min-width: 0;
+}
+
+// Sits above .reservation-items-scroll, outside its scroll container, so
+// the toggle/"Add another item"/kit picker all stay reachable no matter how
+// far down the item list someone's scrolled — see the template's own
+// comment on why this needs to stay put.
+.reservation-picker-header{
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+// Toggle on the left, "Add another item" pinned to the right — see
+// .add-line-button's own margin-left: auto below, which is what actually
+// does the right-aligning regardless of whether the toggle rendered beside
+// it (no kits means no toggle at all, not an empty space where one would
+// have been).
+.picker-header-row{
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+// The one part of the right column that actually scrolls. A fixed height
+// (not just a cap) is what keeps "Add another item"'s own position from
+// jumping around as lines are added/removed — sizing to content instead
+// would mean the box (and everything below it) grows a little with every
+// line until the cap kicks in, only becoming a fixed height once it's
+// already overflowing. min() so a short viewport doesn't force a dialog
+// taller than the screen the way a plain rem value could.
+.reservation-items-scroll{
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  height: min(22rem, 50vh);
+  overflow-y: auto;
+  // An outline mat-form-field's floating label pops up above the field's
+  // own top border (Material notches the outline to let it sit centered on
+  // that line) — with no top padding here, the first row's label had
+  // nowhere to float into and got clipped flush against this container's
+  // own top edge the instant overflow-y: auto gave it something to clip
+  // against. The label only needs about half its own line-height of room
+  // above the field; 0.5rem covers that with a little to spare.
+  padding-top: 0.5rem;
+  // Keeps a visible scrollbar from sitting flush against the field content
+  // beside it.
+  padding-right: 0.25rem;
+
+  @media (max-width: 40rem){
+    height: 16rem;
+  }
+}
+
 .reservation-title{
   display: flex;
   align-items: center;
@@ -44,9 +151,16 @@ form{
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  // No longer needs a negative top margin to compensate for the old
-  // tighter form gap above.
-  margin: 0;
+  // subscriptSizing="dynamic" on the reservation-line's own mat-form-fields
+  // (see their own template usage) already stops the default "fixed"
+  // subscript sizing from reserving invisible hint/error space below each
+  // field, so this negative top margin isn't compensating for that the way
+  // .kit-skip-hint's identical margin is — it's pulling the hint in past the
+  // column's own 1.25rem gap deliberately, since this reads as commentary on
+  // the line directly above it, not a separate line of its own. Only the top
+  // margin is negative — the gap below to the next reservation-line stays
+  // the column's normal 1.25rem, keeping that visual association one-sided.
+  margin: -0.75rem 0 0;
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.875rem;
 
@@ -90,17 +204,14 @@ form{
   flex: 0 0 7rem;
 }
 
+// Lives in .picker-header-row now (a flex row, not a column), pinned to the
+// right edge via margin-left: auto — this is what actually right-aligns it
+// whether or not .pick-mode-toggle rendered beside it, unlike
+// justify-content: space-between on the row itself, which would only push
+// it right when there's another flex item to space *against* (with no
+// toggle, a lone space-between child sits at the row's start, not its end).
 .add-line-button{
-  align-self: flex-start;
-  margin-bottom: 0.5rem;
-}
-
-// Same "don't stretch to the column's full width" reasoning .add-line-button
-// below already needs, for the same reason (form is a flex column with the
-// default stretch alignment).
-.pick-mode-toggle{
-  align-self: flex-start;
-  margin-bottom: 0.5rem;
+  margin-left: auto;
 }
 
 .kit-skip-hint{

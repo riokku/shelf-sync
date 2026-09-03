@@ -330,8 +330,13 @@ export class ManageReservationsComponent implements OnInit {
   openPlaceReservation() {
     const dialogRef = this.dialog.open(PlaceReservationModalComponent, {
       data: { items: this.reservableItems, reservations: this.reservations, kits: this.kitService.kits() },
-      width: 'clamp(32rem, 55vw, 40rem)',
-      maxWidth: '90vw'
+      // Wider than the typical single-column dialog here — the dialog's own
+      // two-column layout (dates/reserved-for/note beside the item picker,
+      // see PlaceReservationModalComponent's own template comment) needs the
+      // extra room to actually read as two columns rather than two cramped
+      // slivers.
+      width: 'clamp(32rem, 75vw, 56rem)',
+      maxWidth: '95vw'
     });
 
     // Split out from the subscribe callback itself (rather than an inline
