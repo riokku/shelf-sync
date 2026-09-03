@@ -854,6 +854,11 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
 
     let failedCount = 0;
     let changedCount = 0;
+    // What undoBulkReassign() below writes each item back to — captured
+    // per-item right before its own write, not up front, so an item that
+    // turned out to have nothing to change (see the changes.length === 0
+    // branch) is correctly left out of the revert set entirely.
+    const revertEntries: { id: string; category: string | null; physicalLocation: string | null }[] = [];
 
     await Promise.all(ids.map(async id => {
       const item = this.inventoryList.find(candidate => candidate.id === id);
@@ -879,6 +884,9 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
         return;
       }
 
+      const previousCategory = item.category;
+      const previousPhysicalLocation = item.physicalLocation;
+
       const { error } = await this.supabase.from('inventory_items').update(updates).eq('id', id);
       if (error) {
         failedCount++;
@@ -886,6 +894,7 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
       }
 
       changedCount++;
+      revertEntries.push({ id, category: previousCategory, physicalLocation: previousPhysicalLocation });
       const message = `Updated ${changes.join(', ')}`;
       // Best-effort, same as every other activity-log write in this app —
       // a failed log shouldn't undo (or block reporting) the change itself.
@@ -896,13 +905,73 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
     this.isBulkProcessing = false;
 
     if (changedCount > 0) {
-      this.notification.success(`Updated ${changedCount} item${changedCount === 1 ? '' : 's'}`);
+      const message = `Updated ${changedCount} item${changedCount === 1 ? '' : 's'}`;
+      this.notification.successWithUndo(message, () => this.undoBulkReassign(revertEntries));
     }
     // Not clearSelection() — that also nulls bulkActionError, which would
     // erase the message being set right below before anyone could read it.
     this.selectedItemIds = new Set();
     if (failedCount > 0) {
       this.bulkActionError = `${failedCount} of ${ids.length} item${ids.length === 1 ? '' : 's'} couldn't be updated — check they're not locked.`;
+    }
+  }
+
+  /** successWithUndo()'s own action for applyBulkReassign() above — writes
+   *  each item's captured pre-reassign category/physical location straight
+   *  back, the same per-item update + dual activity-log shape the original
+   *  bulk write itself already uses, so the reversal shows up in each
+   *  item's own history as one more ordinary edit rather than erasing the
+   *  fact the bulk reassign happened. Diffs against the item's *current*
+   *  value (picked up from inventoryList, which the realtime subscription
+   *  already patched to the new value by the time this can run) rather
+   *  than blindly writing the old value back, so a concurrent further edit
+   *  to that same item in the meantime isn't silently clobbered. */
+  private async undoBulkReassign(entries: { id: string; category: string | null; physicalLocation: string | null }[]) {
+    const session = await this.authService.getSession();
+    if (!session || entries.length === 0) {
+      return;
+    }
+
+    let failedCount = 0;
+    let revertedCount = 0;
+
+    await Promise.all(entries.map(async entry => {
+      const item = this.inventoryList.find(candidate => candidate.id === entry.id);
+      if (!item) {
+        return;
+      }
+
+      const updates: { category?: string | null; physical_location?: string | null } = {};
+      const changes: string[] = [];
+      if (entry.category !== item.category) {
+        updates.category = entry.category;
+        changes.push(`Category (${item.category || '—'} → ${entry.category || '—'})`);
+      }
+      if (entry.physicalLocation !== item.physicalLocation) {
+        updates.physical_location = entry.physicalLocation;
+        changes.push(`Physical location (${item.physicalLocation || '—'} → ${entry.physicalLocation || '—'})`);
+      }
+      if (changes.length === 0) {
+        return;
+      }
+
+      const { error } = await this.supabase.from('inventory_items').update(updates).eq('id', entry.id);
+      if (error) {
+        failedCount++;
+        return;
+      }
+
+      revertedCount++;
+      const message = `Undid bulk update: ${changes.join(', ')}`;
+      await logInventoryItemActivity(this.supabase, entry.id, session.user.id, message);
+      await logActivity(this.supabase, session.user.id, 'inventory_item', entry.id, `${item.name}: ${message}`);
+    }));
+
+    if (revertedCount > 0) {
+      this.notification.success(`Reverted ${revertedCount} item${revertedCount === 1 ? '' : 's'}`);
+    }
+    if (failedCount > 0) {
+      this.bulkActionError = `${failedCount} of ${entries.length} item${entries.length === 1 ? '' : 's'} couldn't be reverted.`;
     }
   }
 

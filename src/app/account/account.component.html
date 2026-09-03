@@ -62,22 +62,85 @@
             <p class="section-hint">{{ profile.role }}</p>
           </div>
         </div>
-        <dl>
-          <dt>Organization</dt>
-          <dd>{{ organizationName || '—' }}</dd>
-          <dt>Full name</dt>
-          <dd>{{ profile.full_name || '—' }}</dd>
-          <dt>Nickname</dt>
-          <dd>{{ profile.nickname || '—' }}</dd>
-          <dt>Email</dt>
-          <dd>{{ profile.email }}</dd>
-          <dt>Role</dt>
-          <dd>{{ profile.role }}</dd>
-        </dl>
-        <button mat-stroked-button type="button" class="change-password-button" (click)="openChangePassword()">
-          <mat-icon>lock_reset</mat-icon>
-          Change password
-        </button>
+        <form [formGroup]="profileForm" (ngSubmit)="saveProfile()">
+          <dl>
+            <dt>Organization</dt>
+            <dd>{{ organizationName || '—' }}</dd>
+
+            <dt>Full name</dt>
+            <dd>
+              @if (isEditingProfile && canEditFullProfile) {
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                  <input matInput formControlName="fullName" />
+                </mat-form-field>
+              } @else {
+                {{ profile.full_name || '—' }}
+              }
+            </dd>
+
+            <dt>Nickname</dt>
+            <dd>
+              @if (isEditingProfile) {
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                  <input matInput formControlName="nickname" />
+                </mat-form-field>
+              } @else {
+                {{ profile.nickname || '—' }}
+              }
+            </dd>
+
+            <dt>
+              Email
+              <app-help-tooltip text="Where ShelfSync sends your notifications — separate from the email you sign in with." />
+            </dt>
+            <dd>
+              @if (isEditingProfile && canEditFullProfile) {
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                  <input matInput type="email" formControlName="email" />
+                  @if (profileForm.controls.email.hasError('required')) {
+                    <mat-error>Email is required.</mat-error>
+                  } @else if (profileForm.controls.email.hasError('email')) {
+                    <mat-error>Enter a valid email address.</mat-error>
+                  }
+                </mat-form-field>
+              } @else {
+                {{ profile.email }}
+              }
+            </dd>
+
+            <dt>Role</dt>
+            <dd>{{ profile.role }}</dd>
+          </dl>
+
+          @if (profileSaveError) {
+            <p class="error-message" role="alert">{{ profileSaveError }}</p>
+          }
+
+          <div class="profile-actions">
+            @if (!isEditingProfile) {
+              <button mat-stroked-button type="button" (click)="startEditProfile()">
+                <mat-icon>edit</mat-icon>
+                Edit
+              </button>
+              <button mat-stroked-button type="button" (click)="openChangePassword()">
+                <mat-icon>lock_reset</mat-icon>
+                Change password
+              </button>
+            } @else {
+              <button mat-flat-button color="primary" type="submit" [disabled]="isSavingProfile || profileForm.invalid">
+                @if (isSavingProfile) {
+                  <mat-spinner diameter="20"></mat-spinner>
+                } @else {
+                  <ng-container>
+                    <mat-icon>check</mat-icon>
+                    Save
+                  </ng-container>
+                }
+              </button>
+              <button mat-button type="button" [disabled]="isSavingProfile" (click)="cancelEditProfile()">Cancel</button>
+            }
+          </div>
+        </form>
       </mat-card-content>
     </mat-card>
 

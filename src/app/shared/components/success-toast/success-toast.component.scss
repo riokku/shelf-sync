@@ -49,3 +49,17 @@
     animation: none;
   }
 }
+
+// The panel's own --mat-snack-bar-supporting-text-color (set on
+// .app-success-snackbar in styles.scss) already tints the message text for
+// contrast against the success background; a plain mat-button reads too
+// faint against that same background with Material's own default text-
+// button tokens, so this button pair is repointed at the identical on-bg
+// token instead, underlined to still read as an action rather than a
+// second plain label.
+.success-toast-undo{
+  --mat-text-button-label-text-color: var(--app-success-on-bg);
+  --mat-text-button-state-layer-color: var(--app-success-on-bg);
+  text-decoration: underline;
+  text-underline-offset: 0.15rem;
+}
