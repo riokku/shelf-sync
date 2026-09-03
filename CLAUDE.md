@@ -552,6 +552,34 @@ your email", forgot-password, reset-password's post-submit state) are a differen
 deliberately left alone — those aren't brief feedback next to a form still in use, they're the
 entire remaining page content, which a toast is the wrong shape for.
 
+Three actions that are cheap and safe to reverse right after they happen — the Inventory page's
+bulk category/physical-location reassign, Manage Tasks' bulk status change, and
+`ModalTableComponent`'s Discard flow — offer an "Undo" action on their own success toast instead of
+either a confirm dialog up front (friction on every single use, for a mistake that's rare) or no
+safety net at all. `NotificationService.successWithUndo(message, onUndo, undoLabel?)` is the shared
+mechanism: `SuccessToastComponent` (already every success toast's content component) gained an
+optional trailing `mat-button` rendered only when `undoLabel` is set, which calls the toast's own
+`MatSnackBarRef.dismissWithAction()` on click — a bare `openFromComponent()` config has no built-in
+action slot the way the string-based `open(message, action)` API does, so the button has to live
+inside the component's own template, with `successWithUndo()` subscribing to `onAction()` to run the
+caller's `onUndo` callback. A longer duration than the plain `success()` toast (6s vs 3s) gives a
+reader an actual chance to click it. Each of the three call sites captures whatever it's about to
+overwrite *before* writing (a per-item previous category/physical-location pair, a per-task previous
+status, the item's — and, for a container-tracked discard, that specific box's — pre-discard
+quantities) and its own `undoBulkReassign()`/`undoBulkStatusChange()`/`undoDiscard()` writes that
+snapshot straight back through the exact same write path the original action used (a plain
+`inventory_items` update, `update_task_status()`, a plain `inventory_items`/
+`inventory_item_containers` update respectively), logging the reversal as one more ordinary
+activity-log entry rather than erasing the record that the original action happened — undoing a
+discard in particular deliberately never touches the `inventory_item_discards` row itself, which
+grants `authenticated` no UPDATE/DELETE at all and is permanent by design (see that table's own
+migration note) — the correct audit trail is "this discard happened, and was then undone" as two
+lines, not one erased line. `undoBulkReassign()` diffs its captured value against the item's
+*current* one (already patched by the realtime subscription to the post-write value by the time undo
+can run) rather than blindly overwriting, so a concurrent further edit to that item in the meantime
+isn't silently clobbered — same reasoning `applyBulkReassign()` itself already uses to skip a field
+that's already at its target value.
+
 Manage > Team shows each member as either online now (a small pulsing green dot on their avatar)
 or, when they aren't, "Last seen \<relative time\>" text in the same spot — both driven by
 `profiles.last_active_at`, touched by a client-side heartbeat rather than anything live/socket-based
@@ -1845,6 +1873,47 @@ columns on its own, and `break-inside: avoid` on every card keeps one from ever 
 split across the column break. Sized by `column-width` (same technique Settings' own
 `.table-column-groups` already established) so a narrow/mobile viewport collapses to a single
 column automatically rather than needing a matching breakpoint here.
+
+The Account page's profile-info card got its own Edit/Save/Cancel flow (same shape
+`ModalTableComponent`'s own item-edit flow already established) so a signed-in user can update their
+own full name, nickname, and email — previously read-only `<dd>` text with no way to change any of
+it short of an admin/manager editing it for them via Manage > Team (see
+`EditProfileModalComponent`'s own paragraph just below — a different, older, admin-only feature this
+is deliberately *not* merged into: that dialog edits *any other* member's profile including role,
+from the team roster; this is a person editing their *own* row, with no role field at all, since a
+self-service role change would be a privilege-escalation path this schema has always kept RPC-only
+regardless of who's asking). What's actually editable is role-gated client-side, not at the RLS/grant
+layer — `full_name`/`nickname`/`email` have shared one flat, no-privilege-distinction-to-protect
+column grant since the day each was added (same reasoning `add_last_active_at_to_profiles`'s own doc
+comment already gives for `avatar_key`/`last_active_at`), so a staff member could already write any
+of these to their own row directly before this existed; `AccountComponent.canEditFullProfile`
+(`authService.canManage()`) simply curates which fields the *form* offers — full name and email stay
+plain read-only text for a staff viewer even while editing, nickname stays editable for everyone —
+the same "UI-only kill switch, nothing behind it at the RLS layer" shape `BARCODE_FEATURE_ENABLED`
+already establishes. `startEdit()` still enables/disables the full-name/email `FormControl`s per that
+same check (mirroring `ModalTableComponent.startEdit()`'s own `canEditPriceSupplier`-gated
+enable/disable pair) so `saveProfile()`'s `getRawValue()` still round-trips a disabled control's
+seeded, unchanged value — a staff save can never accidentally null out a full name/email it was never
+offered a way to touch. Email carries a `HelpTooltipComponent` clarifying it's where ShelfSync sends
+notifications (see `send-notification-email`'s own section below), not the Supabase Auth credential
+used to sign in — the two are genuinely separate values (`profiles.email` vs. `auth.users.email`),
+and changing this field doesn't touch the latter; `ChangePasswordModalComponent`'s own "Change
+password" button is the only thing on this page that touches real Auth credentials. Organization and
+Role stay plain read-only text in both view and edit mode regardless of role — organization identity
+isn't a per-profile field to begin with, and a role change (self or otherwise) only ever happens
+through `admin_set_user_role()`, whether that's reached via `EditProfileModalComponent` on the team
+roster or, in principle, anywhere else.
+
+Manage > Team's own admin-only `openEditProfile()` (`EditProfileModalComponent`) predates the
+Account page flow above and solves a different problem: an admin editing *someone else's* full
+name/nickname/email *and role* from the team roster, gated behind `authService.role() === 'admin'`
+specifically (stricter than the usual admin-or-manager `canManage()` — a manager can't reach this
+dialog at all) rather than `manageGuard`'s broader admin-or-manager reach, since a role change is the
+one field in that dialog that's genuinely privileged. Its Edit button has no guard against opening it
+on the caller's own row the way the neighboring Remove button does (`@if (member.profile.id !==
+currentUserId)`) — an admin *can* self-edit their own role through it today, but only ever a lateral/
+downgrade move (choosing a role other than the one that already got them onto this admin-only
+button), never an escalation, so this was left as-is rather than added to this pass's scope.
 
 A visual pass brought some of the landing page's own confidence — gradient light, a more
 characterful display face, motion — inside the authenticated shell, starting with `HomeComponent`
