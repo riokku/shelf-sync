@@ -32,14 +32,43 @@ describe('loadActivityLog', () => {
 
   it('resolves a known actor to their display name and avatar', async () => {
     const fake = createFakeSupabaseClient({
-      rows: [{ created_at: '2026-08-19T10:00:00.000Z', actor_id: 'user-1', entity_type: 'task', message: 'Created task "Restock"' }]
+      rows: [{
+        created_at: '2026-08-19T10:00:00.000Z',
+        actor_id: 'user-1',
+        entity_type: 'task',
+        message: 'Created task "Restock"',
+        via_impersonation: false
+      }]
     });
 
     const { entries } = await loadActivityLog(fake.client as never, profiles, { from: 'a', to: 'b' });
 
     expect(entries).toEqual([
-      { timestamp: '2026-08-19T10:00:00.000Z', actor: 'Kirsty', actorAvatarKey: 'ocean', entityType: 'task', message: 'Created task "Restock"' }
+      {
+        timestamp: '2026-08-19T10:00:00.000Z',
+        actor: 'Kirsty',
+        actorAvatarKey: 'ocean',
+        entityType: 'task',
+        message: 'Created task "Restock"',
+        viaImpersonation: false
+      }
     ]);
+  });
+
+  it('carries via_impersonation through as viaImpersonation', async () => {
+    const fake = createFakeSupabaseClient({
+      rows: [{
+        created_at: '2026-08-19T10:00:00.000Z',
+        actor_id: 'user-1',
+        entity_type: 'task',
+        message: 'Signed in as this account',
+        via_impersonation: true
+      }]
+    });
+
+    const { entries } = await loadActivityLog(fake.client as never, profiles, { from: 'a', to: 'b' });
+
+    expect(entries[0].viaImpersonation).toBeTrue();
   });
 
   it('labels a null actor_id as System rather than looking it up', async () => {

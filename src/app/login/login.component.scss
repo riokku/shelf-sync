@@ -7,6 +7,17 @@
 // "centered glass card floating over a full-page video" treatment (that
 // partial is gone now — register.component.scss owns its own version of
 // this same layout for the same reason).
+// A calm, neutral-positive confirmation, not an error — reads as "this
+// happened as expected", the opposite tone .error-message elsewhere in this
+// app carries. --app-success-text stays fixed regardless of light/dark
+// (this page is pinned dark — see .login-page's own color-scheme comment
+// above), the same fixed-token reasoning every other hardcoded color on
+// this page already follows.
+.impersonation-ended-message{
+  color: var(--app-success-text);
+  margin: 0 0 1rem;
+}
+
 .login-page{
   position: relative;
   display: flex;

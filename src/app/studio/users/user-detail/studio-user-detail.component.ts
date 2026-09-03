@@ -8,6 +8,7 @@ import { MatSlideToggle, MatSlideToggleModule, MatSlideToggleChange } from '@ang
 import { SupabaseService } from '../../../core/supabase.service';
 import { AuthService, Profile } from '../../../core/auth.service';
 import { NotificationService } from '../../../core/notification.service';
+import { ImpersonationService } from '../../../core/impersonation.service';
 import { Database } from '../../../shared/models/database.types';
 import { profileDisplayName } from '../../../shared/utils/profile-label';
 import { isProfileOnline, formatLastSeen } from '../../../shared/utils/presence';
@@ -17,9 +18,11 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
 import { UserAvatarComponent } from '../../../shared/components/user-avatar/user-avatar.component';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { LockUserAccountModalComponent } from '../../../shared/components/lock-user-account-modal/lock-user-account-modal.component';
+import { ImpersonateUserModalComponent } from '../../../shared/components/impersonate-user-modal/impersonate-user-modal.component';
 
 type OrganizationRow = Database['public']['Tables']['organizations']['Row'];
 type PlatformActionLogRow = Database['public']['Tables']['platform_action_log']['Row'];
+type ImpersonationSessionRow = Database['public']['Tables']['impersonation_sessions']['Row'];
 
 // Mirrors StudioAuditLogComponent's own ACTION_LABELS — duplicated rather
 // than shared, same "not every small presentational pattern gets
@@ -64,6 +67,23 @@ const ACTION_LABELS: Record<string, string> = {
  *  since that indirect round-trip is what let the toggle drift out of sync
  *  with the real, already-committed lock state in practice.
  *
+ *  Also where a platform admin impersonates this person (add_impersonation_sessions,
+ *  ImpersonationService) — an "Impersonate" button alongside the lock toggle
+ *  (disabled once canImpersonate is false: this person is themselves a
+ *  platform admin, or is the viewer's own account), opening
+ *  ImpersonateUserModalComponent for the same mandatory-reason shape locking
+ *  already uses. Unlike every other action on this page, success here
+ *  doesn't leave anything to update — ImpersonationService.start() ends the
+ *  caller's own session and navigates away as the target user entirely, so
+ *  impersonateUser() only ever has an error state left to show. A "Recent
+ *  impersonation" section (own accordion-free list, same shape "Recent
+ *  platform actions" already established one section up, sharing that same
+ *  section's now-generalized peopleNamesById map rather than a second
+ *  parallel actor-resolution query) shows this person's own impersonation
+ *  history — who, when, why, and, for a session nobody explicitly stopped
+ *  (a closed tab, a crashed browser), a small "End session" cleanup action
+ *  wired to platform_end_impersonation_session().
+ *
  *  The page header's own icon chip is this person's chosen avatar (see
  *  UserAvatarComponent, projected via PageHeaderComponent's [headerFigure]
  *  slot) rather than a fixed glyph — it used to also sit again, redundantly,
@@ -96,6 +116,7 @@ export class StudioUserDetailComponent implements OnInit {
   private dialog = inject(MatDialog);
   private notification = inject(NotificationService);
   protected authService = inject(AuthService);
+  private impersonationService = inject(ImpersonationService);
 
   isLoading = true;
   loadError: string | null = null;
@@ -107,10 +128,18 @@ export class StudioUserDetailComponent implements OnInit {
    *  locked this account is almost certainly a different person. */
   lockedByName: string | null = null;
   recentActions: PlatformActionLogRow[] = [];
-  private actionActorNamesById = new Map<string, string>();
+  recentImpersonations: ImpersonationSessionRow[] = [];
+  /** Shared by both recent-history sections above — a platform_action_log
+   *  actor id and an impersonation_sessions platform_admin_id are the same
+   *  kind of lookup (a profiles id -> display name), so both lists' distinct
+   *  ids get resolved in one combined query rather than two parallel ones. */
+  private peopleNamesById = new Map<string, string>();
 
   isActionPending = false;
   actionError: string | null = null;
+  isImpersonatePending = false;
+  impersonateError: string | null = null;
+  endImpersonationError: string | null = null;
 
   get isLocked(): boolean {
     return !!this.profile?.account_locked_at;
@@ -146,15 +175,33 @@ export class StudioUserDetailComponent implements OnInit {
     return !!this.profile && this.profile.id === this.authService.profile()?.id;
   }
 
+  /** Mirrors the impersonate-user Edge Function's own guards
+   *  (add_impersonation_sessions) — can't impersonate a platform admin (no
+   *  privilege to gain, and it'd be a way to chain impersonation) or your
+   *  own account (there'd be nothing to see that isn't already your own
+   *  session). Checked here purely so the button doesn't invite a click
+   *  that's always going to be rejected server-side anyway. */
+  get canImpersonate(): boolean {
+    return !!this.profile && !this.profile.is_platform_admin && !this.isViewingOwnAccount;
+  }
+
   actionLabel(row: PlatformActionLogRow): string {
     return ACTION_LABELS[row.action] ?? row.action;
   }
 
   actionActorName(row: PlatformActionLogRow): string {
-    if (!row.actor_id) {
+    return this.personName(row.actor_id);
+  }
+
+  impersonationAdminName(row: ImpersonationSessionRow): string {
+    return this.personName(row.platform_admin_id);
+  }
+
+  private personName(id: string | null): string {
+    if (!id) {
       return 'Former platform admin';
     }
-    return this.actionActorNamesById.get(row.actor_id) ?? 'Former platform admin';
+    return this.peopleNamesById.get(id) ?? 'Former platform admin';
   }
 
   async ngOnInit() {
@@ -216,23 +263,39 @@ export class StudioUserDetailComponent implements OnInit {
       this.lockedByName = null;
     }
 
-    const { data: actions } = await this.supabase
-      .from('platform_action_log')
-      .select('*')
-      .eq('target_type', 'user')
-      .eq('target_id', id)
-      .order('created_at', { ascending: false })
-      .limit(5);
+    const [{ data: actions }, { data: impersonations }] = await Promise.all([
+      this.supabase
+        .from('platform_action_log')
+        .select('*')
+        .eq('target_type', 'user')
+        .eq('target_id', id)
+        .order('created_at', { ascending: false })
+        .limit(5),
+      this.supabase
+        .from('impersonation_sessions')
+        .select('*')
+        .eq('target_user_id', id)
+        .order('started_at', { ascending: false })
+        .limit(5)
+    ]);
     this.recentActions = actions ?? [];
+    this.recentImpersonations = impersonations ?? [];
 
-    // Same "resolve just the distinct actor ids this page's own action log
+    // Same "resolve just the distinct actor ids this page's own history
     // actually has" shape StudioOrgDetailComponent's own identical follow-up
     // query uses — a platform admin acting on this person is almost
-    // certainly not this person themselves.
-    const actorIds = [...new Set((actions ?? []).map(action => action.actor_id).filter((actorId): actorId is string => !!actorId))];
-    if (actorIds.length > 0) {
-      const { data: actors } = await this.supabase.from('profiles').select('*').in('id', actorIds);
-      this.actionActorNamesById = new Map((actors ?? []).map(actor => [actor.id, profileDisplayName(actor)]));
+    // certainly not this person themselves. One combined query/map for both
+    // lists, since a platform_action_log actor_id and an
+    // impersonation_sessions platform_admin_id are the same kind of lookup.
+    const peopleIds = [
+      ...new Set([
+        ...(actions ?? []).map(action => action.actor_id),
+        ...(impersonations ?? []).map(session => session.platform_admin_id)
+      ].filter((personId): personId is string => !!personId))
+    ];
+    if (peopleIds.length > 0) {
+      const { data: people } = await this.supabase.from('profiles').select('*').in('id', peopleIds);
+      this.peopleNamesById = new Map((people ?? []).map(person => [person.id, profileDisplayName(person)]));
     }
 
     this.isLoading = false;
@@ -327,5 +390,52 @@ export class StudioUserDetailComponent implements OnInit {
       this.lockedByName = null;
       this.notification.success('Account unlocked.');
     });
+  }
+
+  /** Opens ImpersonateUserModalComponent for a mandatory reason, then hands
+   *  off to ImpersonationService.start() — success there ends the caller's
+   *  own session and navigates away entirely (see that service's own doc
+   *  comment), so there's nothing left on this page to update afterward;
+   *  only a failure is ever visible here. */
+  impersonateUser() {
+    if (this.isImpersonatePending || !this.profile || !this.canImpersonate) {
+      return;
+    }
+    const profile = this.profile;
+    const orgName = this.organization?.name ?? 'their organization';
+    const dialogRef = this.dialog.open(ImpersonateUserModalComponent, {
+      data: { userName: this.displayName, orgName },
+      width: 'clamp(28rem, 50vw, 34rem)',
+      maxWidth: '90vw'
+    });
+
+    dialogRef.afterClosed().subscribe(async (reason?: string) => {
+      if (!reason) {
+        return;
+      }
+      this.isImpersonatePending = true;
+      this.impersonateError = null;
+
+      const error = await this.impersonationService.start(profile, orgName, reason);
+
+      this.isImpersonatePending = false;
+      if (error) {
+        this.impersonateError = error;
+      }
+    });
+  }
+
+  /** Cleanup for a session nobody explicitly stopped (a closed tab, a
+   *  crashed browser) — see platform_end_impersonation_session()'s own doc
+   *  comment. Only ever offered for a still-open row (ended_at is null). */
+  async endImpersonationSession(session: ImpersonationSessionRow) {
+    this.endImpersonationError = null;
+    const { error } = await this.supabase.rpc('platform_end_impersonation_session', { session_id: session.id });
+    if (error) {
+      this.endImpersonationError = error.message;
+      return;
+    }
+    session.ended_at = new Date().toISOString();
+    this.notification.success('Impersonation session closed.');
   }
 }

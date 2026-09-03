@@ -1,0 +1,29 @@
+<h2 mat-dialog-title>
+  <mat-icon class="confirm-dialog-warning-icon">visibility</mat-icon>
+  Impersonate this user?
+</h2>
+<form (ngSubmit)="confirm()">
+  <mat-dialog-content>
+    <p>
+      You'll be signed in as <span class="semibold">{{ data.userName }}</span>'s real account at
+      {{ data.orgName }} — you'll see exactly what they see, and anything you do will be saved to
+      their account. Your own session will end when you start; sign back in afterward to return
+      to yours.
+    </p>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Reason for impersonating this account</mat-label>
+      <textarea matInput [formControl]="reasonControl" rows="3"></textarea>
+      @if (reasonControl.invalid && reasonControl.touched) {
+        <mat-error>A reason is required.</mat-error>
+      }
+    </mat-form-field>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancel()">Cancel</button>
+    <button mat-flat-button color="warn" type="submit">
+      <mat-icon>visibility</mat-icon>
+      Start impersonating
+    </button>
+  </mat-dialog-actions>
+</form>

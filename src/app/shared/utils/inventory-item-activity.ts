@@ -25,7 +25,8 @@ export async function loadInventoryActivityByItemId(
       timestamp: row.created_at,
       user: row.user_id ? (resolveProfileName(row.user_id, profiles) || 'Unknown user') : 'System',
       userAvatarKey: row.user_id ? resolveProfileAvatarKey(row.user_id, profiles) : null,
-      message: row.message
+      message: row.message,
+      viaImpersonation: row.via_impersonation
     };
     const existing = activityByItemId.get(row.item_id) ?? [];
     existing.push(entry);

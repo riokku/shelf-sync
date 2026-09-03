@@ -7,6 +7,7 @@ import { SiteSettingsService } from '../core/site-settings.service';
 import { SupabaseService } from '../core/supabase.service';
 import { SupplierService } from '../core/supplier.service';
 import { ReservationKitService } from '../core/reservation-kit.service';
+import { ImpersonationService } from '../core/impersonation.service';
 import { InventoryItem, InventoryItemStatus } from '../shared/models/inventory-item.model';
 import { Supplier } from '../shared/models/supplier.model';
 import { ReservationKit } from '../shared/models/reservation-kit.model';
@@ -181,6 +182,28 @@ export function createFakeReservationKitService(kits: ReservationKit[] = [], loa
     remove: async () => null,
   };
   return fake as unknown as ReservationKitService;
+}
+
+/** Backs ImpersonationBannerComponent and any other consumer that just
+ *  reads ImpersonationService's own state rather than exercising its real
+ *  start()/stop() flow (see impersonation.service.spec.ts for the real
+ *  service's own dedicated tests, which need finer control over the
+ *  Supabase client than this shared fake is shaped for). `state: null`
+ *  mirrors "not currently impersonating anyone". */
+export function createFakeImpersonationService(state: {
+  targetLabel: string;
+  targetOrgLabel: string;
+  startedAt: string;
+} | null = null): ImpersonationService {
+  const fake = {
+    isImpersonating: signal(state !== null).asReadonly(),
+    targetLabel: signal(state?.targetLabel ?? null).asReadonly(),
+    targetOrgLabel: signal(state?.targetOrgLabel ?? null).asReadonly(),
+    startedAt: signal(state?.startedAt ?? null).asReadonly(),
+    start: async () => null,
+    stop: async () => {},
+  };
+  return fake as unknown as ImpersonationService;
 }
 
 export function createFakeActivatedRoute(queryParams: Record<string, string> = {}, pathParams: Record<string, string> = {}): ActivatedRoute {

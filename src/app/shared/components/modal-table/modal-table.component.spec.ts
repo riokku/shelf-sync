@@ -8,8 +8,10 @@ import { ModalTableComponent } from './modal-table.component';
 import { AuthService } from '../../../core/auth.service';
 import { SiteSettingsService } from '../../../core/site-settings.service';
 import { SupabaseService } from '../../../core/supabase.service';
+import { ImpersonationService } from '../../../core/impersonation.service';
 import {
   createFakeAuthService,
+  createFakeImpersonationService,
   createFakeMatDialogRef,
   createFakeProfile,
   createFakeQueryBuilder,
@@ -30,6 +32,7 @@ describe('ModalTableComponent', () => {
         provideNativeDateAdapter(),
         { provide: AuthService, useValue: createFakeAuthService() },
         { provide: SupabaseService, useValue: createFakeSupabaseService() },
+        { provide: ImpersonationService, useValue: createFakeImpersonationService() },
         { provide: MatDialogRef, useValue: createFakeMatDialogRef() },
         { provide: MAT_DIALOG_DATA, useValue: createTestInventoryItem() }
       ]
@@ -58,6 +61,7 @@ describe('ModalTableComponent', () => {
           provideNativeDateAdapter(),
           { provide: AuthService, useValue: createFakeAuthService() },
           { provide: SupabaseService, useValue: createFakeSupabaseService() },
+          { provide: ImpersonationService, useValue: createFakeImpersonationService() },
           { provide: MatDialogRef, useValue: createFakeMatDialogRef() },
           { provide: MAT_DIALOG_DATA, useValue: createTestInventoryItem({ barcode: 'UPC-12345' }) }
         ]
@@ -130,6 +134,7 @@ describe('ModalTableComponent', () => {
         providers: [
           { provide: AuthService, useValue: createFakeAuthService(profile) },
           { provide: SupabaseService, useValue: createFakeSupabaseService({ error: options.rpcError ?? null }) },
+          { provide: ImpersonationService, useValue: createFakeImpersonationService() },
           { provide: MatDialogRef, useValue: createFakeMatDialogRef() },
           { provide: MAT_DIALOG_DATA, useValue: createTestInventoryItem({ isLocked: options.isLocked ?? false }) }
         ]
@@ -191,6 +196,7 @@ describe('ModalTableComponent', () => {
           // point, would make every save below silently no-op.
           { provide: AuthService, useValue: createFakeAuthService(createFakeProfile()) },
           { provide: SupabaseService, useValue: createFakeSupabaseService() },
+          { provide: ImpersonationService, useValue: createFakeImpersonationService() },
           { provide: MatDialogRef, useValue: createFakeMatDialogRef() },
           { provide: MAT_DIALOG_DATA, useValue: createTestInventoryItem(item) }
         ]
@@ -248,6 +254,7 @@ describe('ModalTableComponent', () => {
         providers: [
           { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: options.role ?? 'staff' })) },
           { provide: SupabaseService, useValue: createFakeSupabaseService() },
+          { provide: ImpersonationService, useValue: createFakeImpersonationService() },
           { provide: MatDialogRef, useValue: createFakeMatDialogRef() },
           {
             provide: MAT_DIALOG_DATA,
@@ -376,6 +383,7 @@ describe('ModalTableComponent', () => {
         providers: [
           { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role })) },
           { provide: SupabaseService, useValue: createFakeSupabaseService() },
+          { provide: ImpersonationService, useValue: createFakeImpersonationService() },
           { provide: MatDialogRef, useValue: createFakeMatDialogRef() },
           { provide: MAT_DIALOG_DATA, useValue: createTestInventoryItem(overrides) }
         ]
@@ -427,6 +435,7 @@ describe('ModalTableComponent', () => {
         providers: [
           { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: 'staff' })) },
           { provide: SupabaseService, useValue: createFakeSupabaseService() },
+          { provide: ImpersonationService, useValue: createFakeImpersonationService() },
           { provide: MatDialogRef, useValue: createFakeMatDialogRef() },
           {
             provide: MAT_DIALOG_DATA,
@@ -459,6 +468,7 @@ describe('ModalTableComponent', () => {
             provide: SiteSettingsService,
             useValue: createFakeSiteSettingsService({ restrictPriceSupplierEdits: options.restrictPriceSupplierEdits })
           },
+          { provide: ImpersonationService, useValue: createFakeImpersonationService() },
           { provide: MatDialogRef, useValue: createFakeMatDialogRef() },
           { provide: MAT_DIALOG_DATA, useValue: createTestInventoryItem() }
         ]
@@ -546,6 +556,7 @@ describe('ModalTableComponent', () => {
             useValue: createFakeAuthService(profile, { hasSession: options.hasSession ?? true })
           },
           { provide: SupabaseService, useValue: fakeSupabase },
+          { provide: ImpersonationService, useValue: createFakeImpersonationService() },
           { provide: MatDialogRef, useValue: createFakeMatDialogRef() },
           {
             provide: MAT_DIALOG_DATA,

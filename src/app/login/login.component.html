@@ -10,6 +10,9 @@
         <app-brand-logo />
       </a>
       <h1>Welcome back!</h1>
+      @if (impersonationEnded) {
+        <p class="impersonation-ended-message">Impersonation ended — sign back in to continue as yourself.</p>
+      }
       <form [formGroup]="form" (ngSubmit)="attemptLogin()">
         <div class="login-fields">
           <mat-form-field appearance="outline">

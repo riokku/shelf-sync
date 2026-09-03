@@ -10,9 +10,12 @@ function toReleaseNote(row: ReleaseNoteRow): ReleaseNote {
     title: row.title,
     description: row.description,
     // The DB column is a plain checked text, not a real Postgres enum (see
-    // the migration's own doc comment) — same shape activity_log.entity_type/
-    // notifications.kind already have, so this cast is safe as long as the
-    // check constraint and ReleaseNoteSeverity's own union stay in sync.
+    // the migration's own doc comment) — same shape activity_log.entity_type
+    // still has (notifications.kind/notification_email_log.kind moved to a
+    // real shared enum, see unify_notification_kind_enum, so those two no
+    // longer need this same cast-and-hope-it-stays-in-sync treatment), so
+    // this cast is safe as long as the check constraint and
+    // ReleaseNoteSeverity's own union stay in sync.
     severity: row.severity as ReleaseNoteSeverity,
     postedAt: row.posted_at,
     createdById: row.created_by,

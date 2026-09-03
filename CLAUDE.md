@@ -2838,6 +2838,121 @@ fidelity), and any decode/encode failure anywhere along the way falls back to th
 rather than blocking the upload over a compression nicety — a broken image is exactly the kind of
 file that should still reach the caller's own existing upload error handling, not a new one here.
 
+A platform admin can impersonate another user's real account for troubleshooting — an "Impersonate"
+button in `StudioUserDetailComponent`'s "Platform actions" section (alongside the lock toggle),
+disabled once `canImpersonate` is false (the target is themselves a platform admin, or is the
+viewer's own account — no privilege to gain either way, and the former would be a way to chain
+impersonation). This is a genuine Auth session swap, not a client-side "view as" — the whole app
+(every page's queries, every guard, every RLS check, realtime subscriptions, the header's own
+badges) already reflects the target user correctly because it *is* their session, so nothing
+outside this feature's own new files needed to change: `AuthService`'s existing
+`onAuthStateChange` listener already reloads `profile`/`role`/`organizationId`/`organizationName`
+on any session change. Only the Auth Admin API (the `service_role` key) can mint a session for a
+*different* user — Postgres/RLS has no equivalent — so `ImpersonateUserModalComponent` (a
+mandatory-reason dialog copied from `LockUserAccountModalComponent`, same "consequential but
+reversible" shape and the same `FormsModule`/`NgForm` gotcha that component's own doc comment
+explains) hands off to a new `ImpersonationService.start()`, which calls a new `impersonate-user`
+Edge Function — this app's first one ever invoked directly from the browser
+(`supabase.functions.invoke()`, not only from a DB trigger/`pg_cron` the way `send-notification-
+email` always is), and so also the first one needing real CORS handling and a genuine caller-JWT
+check (`verify_jwt` stays at its default `true`). The function verifies the caller is a platform
+admin, verifies the target is eligible, calls `auth.admin.generateLink({ type: 'magiclink' })` to
+get a `hashed_token` with no email ever actually sent (`generateLink` only ever returns a token;
+sending is a separate, unused call), logs an `impersonation_sessions` audit row, and returns the
+token — which the client exchanges for a real session via `supabase.auth.verifyOtp()` on the app's
+one shared client, replacing the platform admin's own session with the target's, in place.
+`verifyOtp()` shipped with a real bug caught live on the very first attempt ("Token has expired or
+is invalid" on every single try): `auth-js`'s `VerifyOtpParams` has two distinct shapes —
+`{ email, token, type }` for a raw OTP code actually sent to that address, and
+`{ token_hash, type }` for a hashed token pulled straight out of a magic link, which is exactly
+what `generateLink()`'s own `hashed_token` is for — and the first version of `start()` passed
+`hashedToken` as `token` in the former shape. Feeding an already-hashed value through the server's
+own hashing step a second time can never match the stored record, so this failed unconditionally
+regardless of the token's actual validity. Fixed by switching to `{ token_hash: hashedToken, type:
+'magiclink' }`, which also means `email` — still returned by the Edge Function, now otherwise
+unused — was never actually needed on the client at all.
+
+Two deliberate calls shaped this: **full read/write access**, not a view-only mode — reproducing a
+support issue often means *doing* something, not just looking, and a real network-layer write-guard
+robust enough to cover every Save/Edit/Delete/Approve/Discard path in this app (cataloged at length
+throughout this file) would be a second, much larger feature of its own; every write while
+impersonating is genuinely attributed to the target's own account, indistinguishable from something
+they did themselves, with the impersonation window itself (who/whom/when/why) logged separately so
+it can be correlated afterward. And **ending by signing back in manually**, not a cached one-click
+return — no admin credentials are stashed anywhere for this feature; `ImpersonationService.stop()`
+RPCs `end_current_impersonation()` (closes the caller's own open audit row — has to run *while
+still authenticated as the target*, the only session that exists at that point), clears its own
+local flag, calls the existing `authService.signOut()` for real, and sends the platform admin to
+`/login?impersonationEnded=1`, which shows a small explanatory message rather than a bare "you've
+been signed out." A persistent `ImpersonationBannerComponent` (`app.component.html`, alongside the
+header, gated by the same `showChrome()` check) renders whenever `ImpersonationService.isImpersonating()`
+is true — a hardcoded, non-theme-derived `--app-warning-bg`/`-on-bg` bar (same "can't blend into the
+org's own branding" reasoning `StudioOrgDetailComponent`'s hardcoded "Retire" red already
+establishes) naming who/where/how-long-ago, with the Stop button right on it. Only a small,
+non-sensitive flag (target name/org/start time — never tokens) persists to `localStorage`, so the
+banner survives a refresh or a browser restart the same way the underlying Supabase session itself
+already does; a constructor `effect()` in `ImpersonationService` watches `authService.isAuthenticated()`
+and clears that flag if the session ends some other way than `stop()` (e.g. the ordinary header
+Logout button, which has no idea this flag exists) — otherwise the banner would incorrectly
+reappear the next time the platform admin signs back in normally as themselves. A session nobody
+explicitly stopped (a closed tab, a crashed browser) leaves its `impersonation_sessions` row open
+forever unless someone notices — `platform_end_impersonation_session()` (a second, admin-gated RPC)
+and a small "End session" action on `StudioUserDetailComponent`'s new "Recent impersonation" list
+(same accordion-row shape "Recent platform actions" one section up already established, sharing
+that same section's now-generalized `peopleNamesById` map rather than a second parallel
+actor-resolution query) is the cleanup path for that.
+
+Starting an impersonation session also notifies the org it touches — the impersonated person
+themselves, plus every other admin in that org, deduplicated when they're the same person (the
+same two-audience recipient shape `notify_overdue_checkouts()` already established for itself: the
+person directly affected, plus whoever's accountable for the org). Reuses the existing
+`call_notification_webhook()`/`send-notification-email` pipeline unchanged — a new
+`notify_on_impersonation_started` trigger (`add_impersonation_started_notification`, no `when (...)`
+clause, same as `feedback`'s own trigger — every insert here is worth notifying about) is all that
+was needed, plus a new `resultForImpersonationStarted()` handler in that Edge Function and a widened
+`notifications.kind`/`notification_email_log.kind` (both check constraints, per this schema's own
+"a new kind touches two, and only the second one's gap is silent" lesson). Deliberately **not**
+gated behind Settings > Workflow's per-org "Email notifications" toggles the way every other kind
+except `feedback` already is — this is a security/trust notice about an *external* party (a platform
+admin) accessing the org's own data, not an internal workflow convenience an org might reasonably
+want to mute; letting it be silenced would defeat the point of building it at all. The impersonated
+person's own display name in the notification/email comes from `impersonation_sessions.target_label`
+(the row's own point-in-time snapshot) rather than a fresh `profiles` lookup, since it's already
+sitting right there on the row and stays correct even if that person is later renamed or removed.
+
+A data change made *during* an impersonation session — an edit, a discard, a status change, any of
+the many writes that log to `activity_log`/`inventory_item_activity` — is now visibly tagged as such
+in both the org-wide Activity Log (`manage/activity`) and an item's own Activity Log tab
+(`ModalTableComponent`), closing a gap deliberately left open when impersonation first shipped (see
+that feature's own doc comment above): previously such a write read identically to the target's own
+normal activity, with no way to tell the two apart. A client-supplied signal (a header, a flag on the
+insert payload) was considered and rejected outright — nothing stops any authenticated caller from
+forging or suppressing that same signal on an ordinary write, and an audit trail that trusts client
+input for its own integrity isn't trustworthy. Instead this is computed entirely server-side
+(`tag_activity_via_impersonation`): a `before insert` trigger on each of the two log tables checks
+whether an *open* `impersonation_sessions` row exists for `new.actor_id`/`new.user_id` and sets a new
+`via_impersonation` column accordingly, always recomputed unconditionally rather than merely defaulted
+when null, so nothing a client sends for that column can matter either way. This works correctly for
+every existing call site with zero changes to any of them — `auth.uid()` inside a `SECURITY DEFINER`
+RPC still reflects the *real* calling session's own JWT-derived identity regardless of the elevated
+table privileges that keyword grants (SECURITY DEFINER changes what the function's *table access* can
+do, not what `auth.uid()` resolves to), so during an impersonation session it's genuinely the target's
+own id there too — one choke point per table, same shape `is_locked`'s own RLS check or
+`current_user_org_id()`'s fail-closed logic already are elsewhere in this schema, rather than needing
+to touch the many individual RPCs/`logActivity()`/`logInventoryItemActivity()` call sites that write
+to these two tables. Each trigger function needs its own `security definer` specifically to see
+`impersonation_sessions` at all despite that — its own SELECT policy is platform-admin-only, so an
+ordinary caller's (including the target's own, mid-session) RLS-restricted privileges would otherwise
+see zero rows there and silently compute `false` unconditionally. A one-time backfill in the same
+migration applies the identical correlation retroactively to rows that already existed, so the tag is
+accurate for history too, not just anything logged from here on. Both `ManageActivityComponent`'s row
+and `ModalTableComponent`'s own timeline entry show a small pill (`visibility` icon, "Via
+impersonation" — the same hardcoded, non-theme-derived `--app-warning-bg`/`-on-bg` tokens
+`ImpersonationBannerComponent` itself uses, for visual consistency across the whole feature) next to
+the timestamp when this is set; `ModalTableComponent`'s own optimistic local append after a successful
+edit (before a reload would otherwise pick it up) sets it from `ImpersonationService.isImpersonating()`
+directly, matching what the server-side trigger would compute for that identical write.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -2869,7 +2984,17 @@ file that should still reach the caller's own existing upload error handling, no
 - Dev server: `npm start` (or `ng serve`) — serves at `http://localhost:4200/`
 - Build: `npm run build` (or `ng build`) — output goes to `dist/inventory-app`
 - Watch build: `npm run watch`
-- Unit tests: `npm test` (or `ng test`) — runs Karma/Jasmine in Chrome
+- Unit tests: `npm test` — runs Karma/Jasmine, headless-or-not per whatever's passed through
+  (`npm test -- --watch=false --browsers=ChromeHeadless`, matching CI's own invocation). This goes
+  through `scripts/run-tests.js` rather than calling `ng test` directly — on a Windows machine with no
+  real Chrome install (Edge only), Karma's `ChromeHeadless`/`Chrome` launchers fail outright with
+  "Cannot find the binary... Please set env variable CHROME_BIN" instead of trying any other
+  Chromium browser, so this wrapper auto-detects and sets `CHROME_BIN` to Edge in that one case
+  (respecting an explicit `CHROME_BIN` already set, and never touching anything on a non-Windows
+  machine). CI (`.github/workflows/ci.yml`) calls `npx ng test` directly, bypassing this wrapper
+  entirely — its own `ubuntu-latest` runners ship Chrome preinstalled, so it never needed this fix
+  and isn't affected by it either way. `ng test` itself still works directly too, same as always,
+  for anyone who already has `CHROME_BIN` set or a real Chrome install.
 - Run a single test file: `ng test --include='**/inventory.component.spec.ts'`
 - Lint: `npm run lint` (or `ng lint`) — ESLint via `@angular-eslint`, config in `eslint.config.js`
 - Generate a component: `ng generate component <name>` (project schematic defaults to `scss`
@@ -2882,11 +3007,13 @@ file that should still reach the caller's own existing upload error handling, no
   - `npm run supabase:gen:types` — regenerate `src/app/shared/models/database.types.ts` from the
     linked project's schema
   - `npx supabase functions deploy <name>` — deploy an Edge Function under `supabase/functions/`
-    (currently just `send-notification-email`, see Project Overview above) to the linked project; no
-    `npm run` wrapper for this one yet since it's only been needed once so far. Function secrets
-    (`RESEND_API_KEY`, `WEBHOOK_SECRET`) are set via `npx supabase secrets set NAME=value` — not
-    committed anywhere, and not visible again afterward (`supabase secrets list` shows a digest, not
-    the value).
+    (`send-notification-email` or `impersonate-user`, see Project Overview above for both) to the
+    linked project; no `npm run` wrapper for this yet since it's only been needed a couple of times
+    so far. `send-notification-email`'s function secrets (`RESEND_API_KEY`, `WEBHOOK_SECRET`) are set
+    via `npx supabase secrets set NAME=value` — not committed anywhere, and not visible again
+    afterward (`supabase secrets list` shows a digest, not the value). `impersonate-user` needs no
+    secrets of its own — it only ever uses the `SUPABASE_URL`/`SUPABASE_ANON_KEY`/
+    `SUPABASE_SERVICE_ROLE_KEY` every Edge Function already gets injected automatically.
 - Supabase, local Docker workflow (optional, only if Docker Desktop is available):
   - `npm run supabase:start` / `npm run supabase:stop` — start/stop local Postgres, Studio, Auth
   - `npm run supabase:reset` — reapply all migrations + `supabase/seed.sql` from scratch locally
@@ -2978,6 +3105,7 @@ core/
   notification-center.service.ts # NotificationCenterService — HeaderComponent's bell dropdown; notifications signal + unreadCount, markAsRead()/markAllAsRead()
   command-palette.service.ts # CommandPaletteService — HeaderComponent's Ctrl/Cmd+K global search; lazily loads/caches searchable data, results(query) is a pure local filter
   confetti.service.ts     # ConfettiService — fires a hand-rolled confetti burst (shared/components/confetti-burst) for a genuine "just happened" celebration moment
+  impersonation.service.ts # ImpersonationService — platform-admin "impersonate as user" session swap; start()/stop(), isImpersonating signal backing ImpersonationBannerComponent
   guards/auth.guard.ts    # CanActivateFn — awaits authService.getSession() directly
   guards/manage.guard.ts  # admin OR manager
   guards/admin.guard.ts   # admin only (manage/settings, manage/billing, manage/danger-zone)
@@ -3030,6 +3158,8 @@ shared/
   components/reservation-calendar/ # hand-rolled CSS-grid month calendar (no calendar library) — backs manage/reservations' calendar view
   components/release-note-form-modal/ # self-contained title/description/severity/posted-date dialog backing studio/release-notes, create and edit alike
   components/confetti-burst/ # hand-rolled CSS confetti particles (no library) — created on demand by ConfettiService, never rendered from a template directly
+  components/impersonate-user-modal/ # mandatory-reason dialog backing StudioUserDetailComponent's "Impersonate" button
+  components/impersonation-banner/ # persistent, unmissable "you are impersonating someone" bar, rendered from AppComponent alongside the header
   models/inventory-item.model.ts   # InventoryItem class (constructor-based, no defaults)
   models/supplier.model.ts   # Supplier — a directory entry inventory_items.supplier_id can point at
   models/inventory-item-order.model.ts # InventoryItemOrder — one restock order against an item's linked supplier
@@ -3771,6 +3901,70 @@ yet on a hard refresh of `/inventory`.
   schema's other "diff against the previous version" lessons: qualifying a column doesn't help if
   it's qualified against the *wrong* table, and this class of bug produces no error anywhere, ever,
   short of someone actually hitting the policy.
+- `add_impersonation_sessions` — adds `impersonation_sessions` (`platform_admin_id`/`target_user_id`
+  both nullable FKs with `on delete set null`, plus `target_label`/`target_organization_label` point-
+  in-time snapshots — same "outlive what it references" shape `add_platform_action_log` established
+  for its own `target_label` — `target_organization_id`, `reason`, `started_at`/`ended_at`), backing
+  the impersonation feature described in Project Overview above. Same "service-role-only insert, no
+  `authenticated` INSERT policy at all" shape `add_notifications` established (the `impersonate-user`
+  Edge Function inserts this row using the `service_role` key every Edge Function already gets
+  automatically); SELECT is platform-admin-only (`is_platform_admin()`), same shape
+  `add_platform_action_log`'s own SELECT policy. Two `SECURITY DEFINER` RPCs:
+  `end_current_impersonation()` (no args, plain `authenticated` grant — closes the *caller's own*
+  open row, `where target_user_id = auth.uid()`, since this only ever runs while the caller is still
+  authenticated as the target) and `platform_end_impersonation_session(session_id)`
+  (`is_platform_admin()`-gated — the cleanup path for a session nobody explicitly stopped).
+- `add_impersonation_started_notification` — adds `notify_on_impersonation_started` (`after insert on
+  impersonation_sessions`, no `when (...)` clause, calling the existing `call_notification_webhook()`
+  unchanged — same shape `add_feedback`'s own trigger already established), backing the impersonation
+  transparency notification described in Project Overview above. Widens both `notifications.kind` and
+  `notification_email_log.kind`'s check constraints to add `'impersonation_started'` (drop + recreate,
+  same as every other kind widen in this schema) — both in the same migration, per
+  `add_notification_email_log_checkout_overdue_kind`'s own "a new kind touches two constraints, and
+  only the second one's gap is silent" lesson.
+- `unify_notification_kind_enum` — a structural fix for that exact lesson rather than another
+  instance of following it: `notifications.kind` and `notification_email_log.kind` both move from
+  two independent plain-`text`-plus-CHECK-constraint columns onto one shared real Postgres enum,
+  `notification_kind` (`create type ... as enum (...)`, then `alter column kind type
+  public.notification_kind using kind::public.notification_kind` on both tables — **constraint
+  dropped first, column altered second**, the reverse order the first push attempt used and a real
+  bug caught immediately: Postgres revalidates an existing CHECK constraint's expression against a
+  column's new type as part of `alter column ... type` itself, and there's no `=` defined between a
+  brand-new enum type and the constraint's own text literals at that point
+  (`operator does not exist: notification_kind = text`) — dropping the constraint first removes the
+  thing being revalidated rather than needing to fix the comparison. Going forward, a new kind is one
+  additive `alter type public.notification_kind add value 'x'` touching both tables at once, rather
+  than two coupled drop-and-recreate edits someone has to remember to make together — the exact
+  gap `add_notification_email_log_checkout_overdue_kind` already caught once, silently. Deliberate,
+  explicitly-documented tradeoff: the two tables' old constraints didn't actually list identical
+  values (`notifications` allows `'broadcast'` but not `'feedback'`; `notification_email_log` is the
+  reverse), so sharing one type technically loosens each column to accept the other table's own
+  edge-case kind too — accepted as safe since neither table has any INSERT grant for
+  `authenticated`/`anon` at all, every row on both comes from specific hardcoded call sites, never
+  generic/dynamic code that could plausibly conflate the two; the CHECK constraints were always a
+  typo backstop, not a real security boundary, and the enum type itself still catches a genuinely
+  invalid value. Bonus, not the point of the migration: `supabase gen types` represents a real
+  Postgres enum as a literal TypeScript union (unlike a plain checked `text` column, which it can't
+  introspect into one) — `NotificationKind` in `shared/models/notification.model.ts` gets real
+  compile-time narrowing for free as a result, where it previously just resolved to `string`. Worth
+  remembering for later: `alter type ... add value` can't be used in the same transaction that also
+  *uses* the new value (a long-standing Postgres enum restriction) — fine for the normal case of
+  widening the type and letting already-deployed application code reference it afterward, but a
+  migration that both adds a value and backfills rows using it in the same file would need to split
+  across two migrations instead.
+- `tag_activity_via_impersonation` — adds `activity_log.via_impersonation`/
+  `inventory_item_activity.via_impersonation` (`boolean not null default false`) plus a `before insert`
+  trigger on each (`mark_activity_log_via_impersonation()`/`mark_inventory_item_activity_via_impersonation()`,
+  both `security definer` — needed specifically to see `impersonation_sessions` at all, since that
+  table's own SELECT policy is platform-admin-only and would otherwise leave an ordinary caller's
+  subquery seeing zero rows) that sets the new column from whether an *open* `impersonation_sessions`
+  row exists for `new.actor_id`/`new.user_id`, backing the tagging feature described in Project
+  Overview above. A one-time backfill `update` (same correlation, applied retroactively via each
+  session's own recorded `started_at`/`ended_at` window) covers rows that already existed. No grant
+  changes needed on either table — neither has ever used column-scoped grants (see each table's own
+  original migration), so a new plain column rides along under the existing table-level grant with no
+  extra statement required, same reasoning every `site_settings` column added this way already relies
+  on elsewhere in this schema.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

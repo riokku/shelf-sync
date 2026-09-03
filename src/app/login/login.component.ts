@@ -92,4 +92,13 @@ export class LoginComponent {
     const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
     return returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//') ? returnUrl : null;
   }
+
+  /** ImpersonationService.stop() lands here with this query param — "sign
+   *  back in manually" was the deliberate design (see that service's own
+   *  doc comment: no admin session is cached anywhere for this feature), so
+   *  this just explains why a platform admin was suddenly signed out rather
+   *  than leaving them to wonder. */
+  get impersonationEnded(): boolean {
+    return this.route.snapshot.queryParamMap.get('impersonationEnded') === '1';
+  }
 }

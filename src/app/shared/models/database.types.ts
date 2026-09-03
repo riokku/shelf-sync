@@ -48,6 +48,7 @@ export type Database = {
           id: string
           message: string
           organization_id: string
+          via_impersonation: boolean
         }
         Insert: {
           actor_id?: string | null
@@ -57,6 +58,7 @@ export type Database = {
           id?: string
           message: string
           organization_id?: string
+          via_impersonation?: boolean
         }
         Update: {
           actor_id?: string | null
@@ -66,6 +68,7 @@ export type Database = {
           id?: string
           message?: string
           organization_id?: string
+          via_impersonation?: boolean
         }
         Relationships: [
           {
@@ -278,6 +281,64 @@ export type Database = {
           {
             foreignKeyName: "feedback_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      impersonation_sessions: {
+        Row: {
+          ended_at: string | null
+          id: string
+          platform_admin_id: string | null
+          reason: string
+          started_at: string
+          target_label: string
+          target_organization_id: string | null
+          target_organization_label: string
+          target_user_id: string | null
+        }
+        Insert: {
+          ended_at?: string | null
+          id?: string
+          platform_admin_id?: string | null
+          reason: string
+          started_at?: string
+          target_label: string
+          target_organization_id?: string | null
+          target_organization_label: string
+          target_user_id?: string | null
+        }
+        Update: {
+          ended_at?: string | null
+          id?: string
+          platform_admin_id?: string | null
+          reason?: string
+          started_at?: string
+          target_label?: string
+          target_organization_id?: string | null
+          target_organization_label?: string
+          target_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "impersonation_sessions_platform_admin_id_fkey"
+            columns: ["platform_admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "impersonation_sessions_target_organization_id_fkey"
+            columns: ["target_organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "impersonation_sessions_target_user_id_fkey"
+            columns: ["target_user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -566,6 +627,7 @@ export type Database = {
           item_id: string
           message: string
           user_id: string | null
+          via_impersonation: boolean
         }
         Insert: {
           created_at?: string
@@ -573,6 +635,7 @@ export type Database = {
           item_id: string
           message: string
           user_id?: string | null
+          via_impersonation?: boolean
         }
         Update: {
           created_at?: string
@@ -580,6 +643,7 @@ export type Database = {
           item_id?: string
           message?: string
           user_id?: string | null
+          via_impersonation?: boolean
         }
         Relationships: [
           {
@@ -1052,7 +1116,7 @@ export type Database = {
           created_at: string
           error_message: string | null
           id: string
-          kind: string
+          kind: Database["public"]["Enums"]["notification_kind"]
           organization_id: string | null
           recipient_email: string
           success: boolean
@@ -1061,7 +1125,7 @@ export type Database = {
           created_at?: string
           error_message?: string | null
           id?: string
-          kind: string
+          kind: Database["public"]["Enums"]["notification_kind"]
           organization_id?: string | null
           recipient_email: string
           success: boolean
@@ -1070,7 +1134,7 @@ export type Database = {
           created_at?: string
           error_message?: string | null
           id?: string
-          kind?: string
+          kind?: Database["public"]["Enums"]["notification_kind"]
           organization_id?: string | null
           recipient_email?: string
           success?: boolean
@@ -1089,7 +1153,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          kind: string
+          kind: Database["public"]["Enums"]["notification_kind"]
           link: string
           message: string
           organization_id: string
@@ -1099,7 +1163,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
-          kind: string
+          kind: Database["public"]["Enums"]["notification_kind"]
           link: string
           message: string
           organization_id: string
@@ -1109,7 +1173,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
-          kind?: string
+          kind?: Database["public"]["Enums"]["notification_kind"]
           link?: string
           message?: string
           organization_id?: string
@@ -1669,6 +1733,7 @@ export type Database = {
       }
       decline_item_retirement: { Args: { item_id: string }; Returns: undefined }
       decline_task_transfer: { Args: { task_id: string }; Returns: undefined }
+      end_current_impersonation: { Args: never; Returns: undefined }
       get_inventory_photo_storage_usage: { Args: never; Returns: number }
       get_item_upcoming_reservations: {
         Args: { p_item_id: string }
@@ -1718,6 +1783,10 @@ export type Database = {
         Returns: undefined
       }
       notify_overdue_checkouts: { Args: never; Returns: undefined }
+      platform_end_impersonation_session: {
+        Args: { session_id: string }
+        Returns: undefined
+      }
       platform_get_organization_usage: {
         Args: { p_organization_id?: string }
         Returns: {
@@ -1819,6 +1888,15 @@ export type Database = {
     }
     Enums: {
       membership_status: "pending" | "approved"
+      notification_kind:
+        | "task_assigned"
+        | "task_transfer"
+        | "retirement_request"
+        | "join_request"
+        | "broadcast"
+        | "checkout_overdue"
+        | "impersonation_started"
+        | "feedback"
       task_status: "todo" | "in_progress" | "done"
       user_role: "admin" | "manager" | "staff"
     }
@@ -1836,12 +1914,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1865,11 +1943,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1890,11 +1968,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1915,11 +1993,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1932,11 +2010,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1952,6 +2030,16 @@ export const Constants = {
   public: {
     Enums: {
       membership_status: ["pending", "approved"],
+      notification_kind: [
+        "task_assigned",
+        "task_transfer",
+        "retirement_request",
+        "join_request",
+        "broadcast",
+        "checkout_overdue",
+        "impersonation_started",
+        "feedback",
+      ],
       task_status: ["todo", "in_progress", "done"],
       user_role: ["admin", "manager", "staff"],
     },

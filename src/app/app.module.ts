@@ -6,6 +6,7 @@ import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { HeaderComponent } from './header/header.component';
 import { FooterComponent } from './footer/footer.component';
+import { ImpersonationBannerComponent } from './shared/components/impersonation-banner/impersonation-banner.component';
 import { GlobalErrorHandler } from './core/global-error-handler';
 
 @NgModule({
@@ -17,7 +18,8 @@ import { GlobalErrorHandler } from './core/global-error-handler';
     AppRoutingModule,
     BrowserAnimationsModule,
     HeaderComponent,
-    FooterComponent
+    FooterComponent,
+    ImpersonationBannerComponent
   ],
   providers: [
     provideNativeDateAdapter(),

@@ -702,6 +702,12 @@
                     <span class="activity-meta">
                       <app-user-avatar [avatarKey]="entry.userAvatarKey" size="sm" />
                       {{ entry.user }} &middot; {{ entry.timestamp | date: 'M/d/yy, h:mm a' }}
+                      @if (entry.viaImpersonation) {
+                        <span class="via-impersonation-badge">
+                          <mat-icon>visibility</mat-icon>
+                          Via impersonation
+                        </span>
+                      }
                     </span>
                   </div>
                 </li>

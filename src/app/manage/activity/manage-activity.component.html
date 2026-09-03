@@ -53,7 +53,15 @@
             <mat-icon class="activity-entity-icon" [attr.aria-label]="entry.entityType">{{ entityIcon(entry.entityType) }}</mat-icon>
             <div class="activity-details">
               <p class="activity-message"><strong>{{ entry.actor }}</strong> — {{ entry.message }}</p>
-              <span class="activity-time">{{ entry.timestamp | date: 'shortTime' }}</span>
+              <span class="activity-time">
+                {{ entry.timestamp | date: 'shortTime' }}
+                @if (entry.viaImpersonation) {
+                  <span class="via-impersonation-badge">
+                    <mat-icon>visibility</mat-icon>
+                    Via impersonation
+                  </span>
+                }
+              </span>
             </div>
           </div>
         }

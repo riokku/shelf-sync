@@ -116,3 +116,46 @@ describe('LoginComponent post-login redirect', () => {
     expect(navigateSpy).toHaveBeenCalledWith('/home');
   });
 });
+
+/** ImpersonationService.stop() lands here with ?impersonationEnded=1 (see
+ *  that service's own doc comment for why signing back in is manual rather
+ *  than a cached-session one-click return) — this covers the small info
+ *  message that explains why, without needing ImpersonationService itself
+ *  in the picture at all. */
+describe('LoginComponent impersonation-ended message', () => {
+  afterEach(() => {
+    delete window.turnstile;
+  });
+
+  async function createComponent(queryParams: Record<string, string>) {
+    installFakeTurnstile();
+
+    await TestBed.configureTestingModule({
+      imports: [LoginComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: ActivatedRoute, useValue: createFakeActivatedRoute(queryParams) }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(LoginComponent);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  it('shows the message when landing with ?impersonationEnded=1', async () => {
+    const fixture = await createComponent({ impersonationEnded: '1' });
+
+    expect(fixture.componentInstance.impersonationEnded).toBeTrue();
+    expect(fixture.nativeElement.querySelector('.impersonation-ended-message')?.textContent)
+      .toContain('Impersonation ended');
+  });
+
+  it('stays hidden on an ordinary visit', async () => {
+    const fixture = await createComponent({});
+
+    expect(fixture.componentInstance.impersonationEnded).toBeFalse();
+    expect(fixture.nativeElement.querySelector('.impersonation-ended-message')).toBeNull();
+  });
+});

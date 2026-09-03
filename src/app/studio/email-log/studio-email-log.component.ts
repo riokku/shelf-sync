@@ -15,15 +15,26 @@ import { Database } from '../../shared/models/database.types';
 
 type EmailLogRow = Database['public']['Tables']['notification_email_log']['Row'];
 
-/** Mirrors send-notification-email's own EmailToSend.kind union — a plain
- *  checked text column, not a real Postgres enum, same shape
- *  notifications.kind/activity_log.entity_type already use. */
+/** Mirrors send-notification-email's own EmailToSend.kind union — a real
+ *  Postgres enum shared with `notifications.kind`
+ *  (unify_notification_kind_enum), unlike activity_log.entity_type (still a
+ *  plain checked text column). `'broadcast'` has no entry here on purpose —
+ *  it's the one kind in the shared enum that never actually reaches this
+ *  table, since broadcasts are in-app only and never emailed (see
+ *  add_broadcasts' own doc comment). kindLabel()'s own `?? row.kind`
+ *  fallback below is what had been silently covering for this map missing
+ *  'checkout_overdue'/'impersonation_started' until now — real but purely
+ *  cosmetic gaps (a raw snake_case kind shown instead of a friendly label),
+ *  caught and closed alongside unify_notification_kind_enum rather than
+ *  left for a future pass. */
 const EMAIL_LOG_KIND_LABELS: Record<string, string> = {
   task_assigned: 'Task assigned',
   task_transfer: 'Task transfer offered',
   retirement_request: 'Retirement request',
   join_request: 'Join request',
-  feedback: 'Feedback submitted'
+  feedback: 'Feedback submitted',
+  checkout_overdue: 'Checkout overdue',
+  impersonation_started: 'Impersonation started'
 };
 
 /** Did send-notification-email's own Resend calls actually succeed? A

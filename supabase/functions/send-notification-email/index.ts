@@ -1,16 +1,18 @@
-// Called by five Database Webhook triggers (see the
-// add_notification_email_webhooks and add_feedback migrations) whenever a
-// row this app cares about changes in a way worth telling someone about: a
-// task gets directly assigned or a transfer gets offered, an item's
-// retirement request needs approval, someone's join request needs approval,
-// or a user submits feedback. Each trigger has its own `when (...)` clause
-// (feedback's own trigger has none — every insert there is worth emailing
-// about) scoping it to exactly that transition, so this function can mostly
-// trust that if it's been called, the payload is relevant — it still
-// re-checks defensively before sending anything. A sixth kind, an overdue
-// checkout, isn't triggered by a row change at all — see
-// notify_overdue_checkouts() (add_inventory_item_checkout_due_date), a daily
-// pg_cron sweep that calls this same function the identical way.
+// Called by six Database Webhook triggers (see the
+// add_notification_email_webhooks, add_feedback, and
+// add_impersonation_started_notification migrations) whenever a row this app
+// cares about changes in a way worth telling someone about: a task gets
+// directly assigned or a transfer gets offered, an item's retirement request
+// needs approval, someone's join request needs approval, a user submits
+// feedback, or a platform admin starts impersonating someone. Each trigger
+// has its own `when (...)` clause (feedback's and impersonation's own
+// triggers have none — every insert on either table is worth emailing about)
+// scoping it to exactly that transition, so this function can mostly trust
+// that if it's been called, the payload is relevant — it still re-checks
+// defensively before sending anything. A seventh kind, an overdue checkout,
+// isn't triggered by a row change at all — see notify_overdue_checkouts()
+// (add_inventory_item_checkout_due_date), a daily pg_cron sweep that calls
+// this same function the identical way.
 //
 // Two independent outputs per event: an email (gated by the org's own
 // Settings > Workflow "Email notifications" toggle, see
@@ -86,12 +88,13 @@ interface EmailToSend {
   to: string;
   subject: string;
   html: string;
-  kind: 'task_assigned' | 'task_transfer' | 'retirement_request' | 'join_request' | 'feedback' | 'checkout_overdue';
+  kind: 'task_assigned' | 'task_transfer' | 'retirement_request' | 'join_request' | 'feedback' | 'checkout_overdue' | 'impersonation_started';
   organizationId: string | null;
 }
 
 // Mirrors notifications.kind's check constraint (add_notifications, widened
-// by add_broadcasts and add_inventory_item_checkout_due_date) and
+// by add_broadcasts, add_inventory_item_checkout_due_date, and
+// add_impersonation_started_notification) and
 // notifications.organization_id/user_id/message/link's own columns —
 // read_at/created_at/id are left for Postgres to default. 'broadcast' isn't
 // listed here — those rows are inserted directly by create_broadcast()
@@ -99,7 +102,7 @@ interface EmailToSend {
 interface NotificationToInsert {
   organization_id: string;
   user_id: string;
-  kind: 'task_assigned' | 'task_transfer' | 'retirement_request' | 'join_request' | 'checkout_overdue';
+  kind: 'task_assigned' | 'task_transfer' | 'retirement_request' | 'join_request' | 'checkout_overdue' | 'impersonation_started';
   message: string;
   link: string;
 }
@@ -130,6 +133,8 @@ Deno.serve(async req => {
       result = await resultForJoinRequest(payload);
     } else if (payload.table === 'feedback') {
       result = await resultForFeedback(payload);
+    } else if (payload.table === 'impersonation_sessions') {
+      result = await resultForImpersonationStarted(payload);
     }
   } catch (error) {
     // A bug building the notification shouldn't turn into Supabase
@@ -526,4 +531,69 @@ async function resultForFeedback(payload: WebhookPayload): Promise<EventResult> 
     }],
     notifications: []
   };
+}
+
+/** Impersonation transparency (add_impersonation_started_notification) —
+ *  notifies the impersonated person plus every other admin in their org,
+ *  deduplicated when they're the same person, same two-audience shape
+ *  resultForOverdueCheckout() above already established for itself.
+ *  Deliberately skips isEmailNotificationEnabled() entirely — see that
+ *  migration's own doc comment for why this kind, alone among the ones that
+ *  do insert real notifications rows, can't be muted by the org. The
+ *  impersonated person's own display name comes from the row's own
+ *  target_label snapshot rather than a fresh profiles lookup — it reflects
+ *  what was true at the moment of impersonation, same "outlive what it
+ *  references" reasoning that snapshot column's own migration comment
+ *  already gives, and needs no separate query since it's already on the
+ *  row. */
+async function resultForImpersonationStarted(payload: WebhookPayload): Promise<EventResult> {
+  const record = payload.record as
+    { platform_admin_id: string | null; target_user_id: string | null; target_label: string; target_organization_id: string | null; reason: string } | null;
+  if (!record || payload.type !== 'INSERT' || !record.target_user_id || !record.target_organization_id) {
+    return EMPTY_RESULT;
+  }
+  const targetUserId = record.target_user_id;
+  const organizationId = record.target_organization_id;
+
+  const [admin, target, orgAdmins] = await Promise.all([
+    profileEmail(record.platform_admin_id),
+    profileEmail(targetUserId),
+    orgProfilesByRole(organizationId, ['admin'])
+  ]);
+  if (!target) {
+    return EMPTY_RESULT;
+  }
+
+  const adminLabel = admin?.label ?? 'A ShelfSync platform admin';
+  const recipients = [target, ...orgAdmins.filter(a => a.id !== targetUserId)];
+
+  const notifications: NotificationToInsert[] = recipients.map(recipient => ({
+    organization_id: organizationId,
+    user_id: recipient.id,
+    kind: 'impersonation_started',
+    message: recipient.id === targetUserId
+      ? `${adminLabel} (ShelfSync platform admin) signed in as your account — reason given: "${record.reason}"`
+      : `${adminLabel} (ShelfSync platform admin) signed in as ${record.target_label} — reason given: "${record.reason}"`,
+    link: '/account'
+  }));
+
+  const emails: EmailToSend[] = recipients.map(recipient => ({
+    to: recipient.email,
+    subject: 'A ShelfSync platform admin accessed an account in your organization',
+    html: emailShell(
+      'Account accessed for support',
+      recipient.id === targetUserId
+        ? `<strong>${escapeHtml(adminLabel)}</strong>, a ShelfSync platform admin, signed in as your account for ` +
+          `troubleshooting. Reason given: <em>${escapeHtml(record.reason)}</em>.`
+        : `<strong>${escapeHtml(adminLabel)}</strong>, a ShelfSync platform admin, signed in as ` +
+          `<strong>${escapeHtml(record.target_label)}</strong>'s account for troubleshooting. ` +
+          `Reason given: <em>${escapeHtml(record.reason)}</em>.`,
+      'View your account',
+      `${APP_URL}/account`
+    ),
+    kind: 'impersonation_started',
+    organizationId
+  }));
+
+  return { emails, notifications };
 }

@@ -20,6 +20,7 @@ import { CreateTaskModalComponent } from '../create-task-modal/create-task-modal
 import { RequestRetirementModalComponent, RequestRetirementModalResult } from '../request-retirement-modal/request-retirement-modal.component';
 import { DiscardModalComponent, DiscardModalResult } from '../discard-modal/discard-modal.component';
 import { AuthService, Profile } from '../../../core/auth.service';
+import { ImpersonationService } from '../../../core/impersonation.service';
 import { SupabaseService } from '../../../core/supabase.service';
 import { NotificationService } from '../../../core/notification.service';
 import { InventoryFieldOptionsService } from '../../../core/inventory-field-options.service';
@@ -153,6 +154,7 @@ export class ModalTableComponent implements OnInit {
   @Input() showBackButton = true;
   @Output() back = new EventEmitter<void>();
   protected authService = inject(AuthService);
+  private impersonationService = inject(ImpersonationService);
   protected inventoryFieldOptions = inject(InventoryFieldOptionsService);
   protected siteSettings = inject(SiteSettingsService);
   protected supplierService = inject(SupplierService);
@@ -1053,7 +1055,17 @@ export class ModalTableComponent implements OnInit {
       const logError = await logInventoryItemActivity(this.supabase, this.data.id, session.user.id, message);
       if (!logError) {
         this.data.activityLog = [
-          { timestamp: new Date().toISOString(), user: userLabel, userAvatarKey: profile?.avatar_key ?? null, message },
+          {
+            timestamp: new Date().toISOString(),
+            user: userLabel,
+            userAvatarKey: profile?.avatar_key ?? null,
+            message,
+            // Matches what the server-side trigger itself would compute for
+            // this same write (tag_activity_via_impersonation) — this is a
+            // local, optimistic append so a reload doesn't have to run for
+            // the "Via impersonation" badge to show up immediately.
+            viaImpersonation: this.impersonationService.isImpersonating()
+          },
           ...this.data.activityLog
         ];
       }

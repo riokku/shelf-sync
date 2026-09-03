@@ -81,7 +81,13 @@ describe('StudioEmailLogComponent', () => {
     });
 
     it('falls back to the raw kind for an unrecognized value', () => {
-      expect(component.kindLabel(createTestEmailRow({ kind: 'something_new' }))).toBe('something_new');
+      // kind is a real Postgres enum now (unify_notification_kind_enum), so
+      // this cast is necessary — the scenario itself is still real: a kind
+      // added to the enum before EMAIL_LOG_KIND_LABELS is updated to match
+      // (exactly what checkout_overdue/impersonation_started both briefly
+      // were), not just a type-system escape hatch.
+      const row = createTestEmailRow({ kind: 'something_new' as unknown as EmailLogRow['kind'] });
+      expect(component.kindLabel(row)).toBe('something_new');
     });
   });
 

@@ -11,6 +11,12 @@ export interface OrgActivityLogEntry {
   actorAvatarKey: string | null;
   entityType: ActivityEntityType;
   message: string;
+  /** Server-computed (tag_activity_via_impersonation), never client-set —
+   *  true when `actor` was, at the moment this row was written, a platform
+   *  admin impersonating someone rather than that person acting themselves.
+   *  See that migration's own doc comment for why this can't be a
+   *  client-supplied flag. */
+  viaImpersonation: boolean;
 }
 
 /** Loads every activity_log row for the caller's organization within
@@ -46,7 +52,8 @@ export async function loadActivityLog(
       actor: row.actor_id ? (resolveProfileName(row.actor_id, profiles) || 'Unknown user') : 'System',
       actorAvatarKey: row.actor_id ? resolveProfileAvatarKey(row.actor_id, profiles) : null,
       entityType: row.entity_type,
-      message: row.message
+      message: row.message,
+      viaImpersonation: row.via_impersonation
     })),
     error: null
   };

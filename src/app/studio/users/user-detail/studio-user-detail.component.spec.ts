@@ -8,16 +8,19 @@ import { StudioUserDetailComponent } from './studio-user-detail.component';
 import { SupabaseService } from '../../../core/supabase.service';
 import { AuthService, Profile } from '../../../core/auth.service';
 import { NotificationService } from '../../../core/notification.service';
+import { ImpersonationService } from '../../../core/impersonation.service';
 import { Database } from '../../../shared/models/database.types';
 import {
   createFakeActivatedRoute,
   createFakeAuthService,
+  createFakeImpersonationService,
   createFakeProfile,
   createFakeQueryBuilder
 } from '../../../testing/fakes';
 
 type OrganizationRow = Database['public']['Tables']['organizations']['Row'];
 type PlatformActionLogRow = Database['public']['Tables']['platform_action_log']['Row'];
+type ImpersonationSessionRow = Database['public']['Tables']['impersonation_sessions']['Row'];
 
 function createTestAction(overrides: Partial<PlatformActionLogRow> = {}): PlatformActionLogRow {
   return {
@@ -29,6 +32,21 @@ function createTestAction(overrides: Partial<PlatformActionLogRow> = {}): Platfo
     target_label: 'Alex Rivera',
     reason: 'Suspicious activity',
     created_at: '2026-02-01T00:00:00.000Z',
+    ...overrides,
+  };
+}
+
+function createTestImpersonationSession(overrides: Partial<ImpersonationSessionRow> = {}): ImpersonationSessionRow {
+  return {
+    id: 'impersonation-1',
+    platform_admin_id: 'admin-1',
+    target_user_id: 'user-1',
+    target_label: 'Alex Rivera',
+    target_organization_id: 'org-1',
+    target_organization_label: 'Acme Events',
+    reason: 'Investigating missing items',
+    started_at: '2026-02-01T00:00:00.000Z',
+    ended_at: null,
     ...overrides,
   };
 }
@@ -57,7 +75,12 @@ function createFakeSupabaseServiceForUserDetail(data: {
   organization?: OrganizationRow | null;
   locker?: Profile | null;
   platformActions?: PlatformActionLogRow[];
-  actionActors?: Profile[];
+  impersonations?: ImpersonationSessionRow[];
+  /** The combined actor/platform-admin name resolution query — renamed
+   *  from the pre-impersonation actionActors, since it now backs both
+   *  recentActions' and recentImpersonations' own name lookups from one
+   *  shared query. */
+  peopleNames?: Profile[];
   rpc?: jasmine.Spy;
 }): SupabaseService {
   let profilesCallCount = 0;
@@ -70,15 +93,20 @@ function createFakeSupabaseServiceForUserDetail(data: {
         if (table === 'platform_action_log') {
           return createFakeQueryBuilder({ data: data.platformActions ?? [], error: null });
         }
+        if (table === 'impersonation_sessions') {
+          return createFakeQueryBuilder({ data: data.impersonations ?? [], error: null });
+        }
         profilesCallCount += 1;
         if (profilesCallCount === 1) {
           return createFakeQueryBuilder({ data: data.profile ?? null, error: data.profileError ?? null });
         }
         // Second (and any later) profiles call is either the single locker
-        // lookup (.maybeSingle()) or the actor-name lookup (.in(), an
-        // array) — a given test scenario only ever exercises one of the two.
-        if (data.actionActors) {
-          return createFakeQueryBuilder({ data: data.actionActors, error: null });
+        // lookup (.maybeSingle()) or the combined actor/admin name lookup
+        // (.in(), an array) — a given test scenario only ever exercises one
+        // of the two, same simplification the pre-impersonation version of
+        // this fake already made.
+        if (data.peopleNames) {
+          return createFakeQueryBuilder({ data: data.peopleNames, error: null });
         }
         return createFakeQueryBuilder({ data: data.locker ?? null, error: null });
       },
@@ -95,7 +123,8 @@ describe('StudioUserDetailComponent', () => {
   async function setup(
     id: string | null,
     supabaseData: Parameters<typeof createFakeSupabaseServiceForUserDetail>[0] = {},
-    viewerId = 'platform-admin-1'
+    viewerId = 'platform-admin-1',
+    impersonationService: ImpersonationService = createFakeImpersonationService()
   ) {
     await TestBed.configureTestingModule({
       imports: [StudioUserDetailComponent],
@@ -106,7 +135,8 @@ describe('StudioUserDetailComponent', () => {
           provide: AuthService,
           useValue: createFakeAuthService(createFakeProfile({ id: viewerId, is_platform_admin: true }), { hasSession: true })
         },
-        { provide: ActivatedRoute, useValue: createFakeActivatedRoute({}, id ? { id } : {}) }
+        { provide: ActivatedRoute, useValue: createFakeActivatedRoute({}, id ? { id } : {}) },
+        { provide: ImpersonationService, useValue: impersonationService }
       ]
     }).compileComponents();
 
@@ -168,7 +198,7 @@ describe('StudioUserDetailComponent', () => {
       profile: createFakeProfile({ id: 'user-1' }),
       organization: createTestOrg(),
       platformActions: [createTestAction({ actor_id: 'admin-1' })],
-      actionActors: [createFakeProfile({ id: 'admin-1', full_name: 'Riley Platform' })]
+      peopleNames: [createFakeProfile({ id: 'admin-1', full_name: 'Riley Platform' })]
     });
 
     expect(component.recentActions.length).toBe(1);
@@ -296,6 +326,150 @@ describe('StudioUserDetailComponent', () => {
       expect(component.lockedByName).toBeNull();
       // Same explicit re-sync as the lock path above, in the other direction.
       expect(source.checked).toBeFalse();
+    });
+  });
+
+  describe('canImpersonate', () => {
+    it('is true for an ordinary, non-platform-admin target', async () => {
+      await setup('user-1', { profile: createFakeProfile({ id: 'user-1', is_platform_admin: false }), organization: createTestOrg() });
+      expect(component.canImpersonate).toBeTrue();
+    });
+
+    it('is false when the target is themselves a platform admin', async () => {
+      await setup('user-1', { profile: createFakeProfile({ id: 'user-1', is_platform_admin: true }), organization: createTestOrg() });
+      expect(component.canImpersonate).toBeFalse();
+    });
+
+    it('is false when viewing your own account', async () => {
+      await setup(
+        'platform-admin-1',
+        { profile: createFakeProfile({ id: 'platform-admin-1', is_platform_admin: true }), organization: createTestOrg() },
+        'platform-admin-1'
+      );
+      expect(component.canImpersonate).toBeFalse();
+    });
+  });
+
+  describe('impersonateUser()', () => {
+    it('opens the modal and hands the reason to ImpersonationService.start()', async () => {
+      const impersonationService = createFakeImpersonationService();
+      const startSpy = spyOn(impersonationService, 'start').and.resolveTo(null);
+      await setup(
+        'user-1',
+        { profile: createFakeProfile({ id: 'user-1', full_name: 'Alex Rivera' }), organization: createTestOrg({ name: 'Acme Events' }) },
+        'platform-admin-1',
+        impersonationService
+      );
+      const dialog = TestBed.inject(MatDialog);
+      spyOn(dialog, 'open').and.returnValue(createFakeDialogRef('Investigating missing items'));
+
+      component.impersonateUser();
+      await fixture.whenStable();
+
+      expect(startSpy).toHaveBeenCalledWith(component.profile!, 'Acme Events', 'Investigating missing items');
+      expect(component.impersonateError).toBeNull();
+    });
+
+    it('does nothing when the reason dialog is cancelled', async () => {
+      const impersonationService = createFakeImpersonationService();
+      const startSpy = spyOn(impersonationService, 'start');
+      await setup(
+        'user-1',
+        { profile: createFakeProfile({ id: 'user-1' }), organization: createTestOrg() },
+        'platform-admin-1',
+        impersonationService
+      );
+      const dialog = TestBed.inject(MatDialog);
+      spyOn(dialog, 'open').and.returnValue(createFakeDialogRef(undefined));
+
+      component.impersonateUser();
+      await fixture.whenStable();
+
+      expect(startSpy).not.toHaveBeenCalled();
+    });
+
+    it('surfaces a failure from ImpersonationService.start() inline', async () => {
+      const impersonationService = createFakeImpersonationService();
+      spyOn(impersonationService, 'start').and.resolveTo('Only platform admins can impersonate a user');
+      await setup(
+        'user-1',
+        { profile: createFakeProfile({ id: 'user-1' }), organization: createTestOrg() },
+        'platform-admin-1',
+        impersonationService
+      );
+      const dialog = TestBed.inject(MatDialog);
+      spyOn(dialog, 'open').and.returnValue(createFakeDialogRef('reason'));
+
+      component.impersonateUser();
+      await fixture.whenStable();
+
+      expect(component.impersonateError).toBe('Only platform admins can impersonate a user');
+    });
+
+    it('is a no-op when the target cannot be impersonated', async () => {
+      const impersonationService = createFakeImpersonationService();
+      const startSpy = spyOn(impersonationService, 'start');
+      await setup(
+        'user-1',
+        { profile: createFakeProfile({ id: 'user-1', is_platform_admin: true }), organization: createTestOrg() },
+        'platform-admin-1',
+        impersonationService
+      );
+      const dialog = TestBed.inject(MatDialog);
+      const openSpy = spyOn(dialog, 'open');
+
+      component.impersonateUser();
+
+      expect(openSpy).not.toHaveBeenCalled();
+      expect(startSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  it('loads recent impersonation sessions scoped to this person and resolves each admin\'s name', async () => {
+    await setup('user-1', {
+      profile: createFakeProfile({ id: 'user-1' }),
+      organization: createTestOrg(),
+      impersonations: [createTestImpersonationSession({ platform_admin_id: 'admin-1' })],
+      peopleNames: [createFakeProfile({ id: 'admin-1', full_name: 'Riley Platform' })]
+    });
+
+    expect(component.recentImpersonations.length).toBe(1);
+    expect(component.impersonationAdminName(component.recentImpersonations[0])).toBe('Riley Platform');
+  });
+
+  describe('endImpersonationSession()', () => {
+    it('marks the row ended locally on success', async () => {
+      const rpc = jasmine.createSpy('rpc').and.resolveTo({ error: null });
+      await setup('user-1', {
+        profile: createFakeProfile({ id: 'user-1' }),
+        organization: createTestOrg(),
+        impersonations: [createTestImpersonationSession({ id: 'impersonation-1', ended_at: null })],
+        rpc
+      });
+      const successSpy = spyOn(TestBed.inject(NotificationService), 'success');
+      const session = component.recentImpersonations[0];
+
+      await component.endImpersonationSession(session);
+
+      expect(rpc).toHaveBeenCalledWith('platform_end_impersonation_session', { session_id: 'impersonation-1' });
+      expect(session.ended_at).toEqual(jasmine.any(String));
+      expect(successSpy).toHaveBeenCalled();
+    });
+
+    it('surfaces an RPC error inline rather than mutating the row', async () => {
+      const rpc = jasmine.createSpy('rpc').and.resolveTo({ error: { message: 'only platform admins can end an impersonation session' } });
+      await setup('user-1', {
+        profile: createFakeProfile({ id: 'user-1' }),
+        organization: createTestOrg(),
+        impersonations: [createTestImpersonationSession({ id: 'impersonation-1', ended_at: null })],
+        rpc
+      });
+      const session = component.recentImpersonations[0];
+
+      await component.endImpersonationSession(session);
+
+      expect(component.endImpersonationError).toBe('only platform admins can end an impersonation session');
+      expect(session.ended_at).toBeNull();
     });
   });
 });

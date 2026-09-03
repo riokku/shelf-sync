@@ -36,8 +36,8 @@ describe('buildInventoryExportCsv', () => {
   it('folds every activity log entry for an item into one quoted, newline-joined cell', () => {
     const row = createTestInventoryItemRow({ name: 'Tracked Item' });
     const item = toInventoryItem(row, [], '', [
-      { timestamp: '2026-01-15T10:00:00.000Z', user: 'Jamie Lee', userAvatarKey: null, message: 'Created item' },
-      { timestamp: '2026-01-16T10:00:00.000Z', user: 'Sam Rivera', userAvatarKey: null, message: 'Updated Quantity remaining (80 → 25)' }
+      { timestamp: '2026-01-15T10:00:00.000Z', user: 'Jamie Lee', userAvatarKey: null, message: 'Created item', viaImpersonation: false },
+      { timestamp: '2026-01-16T10:00:00.000Z', user: 'Sam Rivera', userAvatarKey: null, message: 'Updated Quantity remaining (80 → 25)', viaImpersonation: false }
     ]);
 
     const csv = buildInventoryExportCsv([item]);

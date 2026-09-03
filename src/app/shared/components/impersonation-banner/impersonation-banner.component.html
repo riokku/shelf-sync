@@ -1,0 +1,14 @@
+@if (impersonationService.isImpersonating()) {
+  <div class="impersonation-banner" role="status">
+    <mat-icon>visibility</mat-icon>
+    <p>
+      Impersonating <span class="semibold">{{ impersonationService.targetLabel() }}</span>
+      at {{ impersonationService.targetOrgLabel() }}
+      <span class="elapsed">— {{ elapsedLabel }}</span>
+    </p>
+    <button mat-flat-button (click)="stop()">
+      <mat-icon>logout</mat-icon>
+      Stop impersonating
+    </button>
+  </div>
+}

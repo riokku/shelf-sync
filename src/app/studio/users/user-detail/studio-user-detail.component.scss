@@ -69,6 +69,19 @@
   }
 }
 
+.platform-actions{
+  .impersonate-button{
+    // mat-slide-toggle and a plain button are both inline-level by default,
+    // so without this they sat side by side on the same line whenever the
+    // column was wide enough — display: block forces the wrap regardless of
+    // available width; a button's own width stays content-sized even as a
+    // block-level element (same auto-width-on-form-controls behavior as
+    // <input>), so this doesn't also stretch it full-width.
+    display: block;
+    margin-top: 1rem;
+  }
+}
+
 .section-hint{
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.8125rem;
@@ -153,6 +166,10 @@
   flex-shrink: 0;
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.8125rem;
+}
+
+.action-list li button{
+  flex-shrink: 0;
 }
 
 .member-role-badge{

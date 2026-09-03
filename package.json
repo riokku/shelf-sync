@@ -6,7 +6,7 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test",
+    "test": "node scripts/run-tests.js",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:status": "supabase status",
@@ -15,7 +15,7 @@
     "supabase:link": "supabase link",
     "supabase:push": "supabase db push --linked",
     "supabase:gen:types": "supabase gen types typescript --linked > src/app/shared/models/database.types.ts",
-    "lint": "ng lint"
+    "lint": "ng lint && node scripts/check-form-submit.js"
   },
   "private": true,
   "dependencies": {

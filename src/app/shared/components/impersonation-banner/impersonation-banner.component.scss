@@ -1,0 +1,35 @@
+.impersonation-banner{
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1.25rem;
+  background: var(--app-warning-bg);
+  color: var(--app-warning-on-bg);
+
+  p{
+    margin: 0;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .semibold{
+    font-weight: 700;
+  }
+
+  .elapsed{
+    opacity: 0.8;
+  }
+
+  button{
+    // Hardcoded rather than theme-derived, same reasoning the banner's own
+    // background is — needs to read as a clear, contrasting action against
+    // --app-warning-bg regardless of which THEME_PRESETS primary color the
+    // org has picked.
+    --mat-button-filled-container-color: var(--app-warning-on-bg);
+    --mat-button-filled-label-text-color: var(--app-warning-bg);
+    flex-shrink: 0;
+  }
+}

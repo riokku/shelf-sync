@@ -109,13 +109,44 @@
           }
         </section>
 
+        <section class="user-section recent-actions-section">
+          <h3>Recent impersonation</h3>
+          @if (endImpersonationError) {
+            <p class="error-message" role="alert">{{ endImpersonationError }}</p>
+          }
+          @if (recentImpersonations.length === 0) {
+            <p class="section-hint">Nobody has impersonated this account.</p>
+          } @else {
+            <ul class="action-list">
+              @for (session of recentImpersonations; track session.id) {
+                <li>
+                  @if (session.ended_at) {
+                    <span class="status-badge status-badge-action">Ended</span>
+                  } @else {
+                    <span class="status-badge status-badge-pending">Still active</span>
+                  }
+                  <span class="action-actor">
+                    {{ impersonationAdminName(session) }} — {{ session.reason }}
+                  </span>
+                  <span class="action-timestamp">{{ session.started_at | date: 'M/d/yy, h:mm a' }}</span>
+                  @if (!session.ended_at) {
+                    <button mat-button type="button" (click)="endImpersonationSession(session)">End session</button>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </section>
+
         <section class="user-section platform-actions">
           <h3>Platform actions</h3>
           @if (actionError) {
             <p class="error-message" role="alert">{{ actionError }}</p>
           }
           @if (isViewingOwnAccount) {
-            <p class="section-hint">You can't lock your own account.</p>
+            <p class="section-hint">You can't lock your own account, or impersonate yourself.</p>
+          } @else if (profile.is_platform_admin) {
+            <p class="section-hint">Platform admins can't be impersonated.</p>
           }
           <mat-slide-toggle
               [checked]="isLocked"
@@ -124,6 +155,20 @@
             >
             Lock account
           </mat-slide-toggle>
+
+          @if (impersonateError) {
+            <p class="error-message" role="alert">{{ impersonateError }}</p>
+          }
+          <button
+              mat-stroked-button
+              type="button"
+              class="impersonate-button"
+              [disabled]="isImpersonatePending || !canImpersonate"
+              (click)="impersonateUser()"
+            >
+            <mat-icon>visibility</mat-icon>
+            Impersonate
+          </button>
         </section>
       </div>
     }

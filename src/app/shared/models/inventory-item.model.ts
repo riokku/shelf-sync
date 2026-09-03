@@ -7,6 +7,10 @@ export interface ActivityLogEntry {
   user: string;
   userAvatarKey: string | null;
   message: string;
+  /** Server-computed (tag_activity_via_impersonation), never client-set —
+   *  see OrgActivityLogEntry's own identical field for the full reasoning,
+   *  shared verbatim by this table's own trigger. */
+  viaImpersonation: boolean;
 }
 
 export function isLowStock(item: InventoryItem): boolean {
