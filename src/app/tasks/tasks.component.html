@@ -78,6 +78,7 @@
     <!-- Row-shaped placeholders mirroring .task-row's own 4-column grid
          (title / created-by / due date / status pill), rather than a bare
          spinner. -->
+    <app-loading-caption />
     <div class="task-rows" aria-hidden="true">
       @for (i of skeletonRows; track i) {
         <div class="task-row skeleton-task-row">
@@ -101,7 +102,7 @@
     }
 
     @if (tasks.length === 0) {
-      <app-empty-state icon="task_alt" message="You have no tasks assigned to you." />
+      <app-empty-state icon="task_alt" message="You have no tasks assigned to you." [playful]="true" />
     } @else {
       <section class="task-section">
         <h3>Not completed</h3>

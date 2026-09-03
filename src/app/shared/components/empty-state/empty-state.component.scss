@@ -37,6 +37,15 @@
     font-size: 0.9375rem;
   }
 
+  // Sits under the caller's own informative message — smaller and more
+  // muted so it reads as a wink rather than competing with the real
+  // "here's what's missing" text above it.
+  .empty-state-playful{
+    font-size: 0.8125rem;
+    font-style: italic;
+    opacity: 0.75;
+  }
+
   // Passed in via content projection (e.g. "Clear filters") — not every
   // usage has one, but when present it should sit with the rest of the
   // stack rather than needing its own margin at each call site.
