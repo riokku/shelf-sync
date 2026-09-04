@@ -4125,6 +4125,23 @@ yet on a hard refresh of `/inventory`.
   original migration), so a new plain column rides along under the existing table-level grant with no
   extra statement required, same reasoning every `site_settings` column added this way already relies
   on elsewhere in this schema.
+- `fix_platform_admin_lock_bypass` — a follow-up `/security-review` pass (not live abuse) caught that
+  `add_platform_account_lock`'s whole premise — locking out "a malicious individual" who happens to be
+  a platform admin — didn't actually work: `is_platform_admin()` never consulted
+  `account_locked_at`, only `current_user_org_id()` did, and that only gates ordinary org-scoped RLS,
+  not the Studio RPCs or the `impersonate-user` Edge Function that are actually gated by
+  `is_platform_admin()` directly. A locked platform admin therefore kept every platform-level
+  capability, including starting a brand-new impersonation session against anyone, and could even
+  self-unlock via `platform_unlock_user_account` (itself only gated by the same unqualified
+  `is_platform_admin()`). Fixed the same way `current_user_org_id()` itself already fails closed for a
+  deleted/suspended/locked caller: `account_locked_at is null` is now folded directly into
+  `is_platform_admin()`'s own lookup, so every platform RPC and RLS policy that calls it picks up the
+  fix for free. The `impersonate-user` Edge Function reads the `is_platform_admin` column directly via
+  its service-role client rather than calling this SQL function, so it needed its own matching
+  `account_locked_at` check added alongside it. A second, related gap fixed in the same migration:
+  `platform_lock_user_account` only ever refused *self*-locking, unlike `impersonate-user`'s own
+  explicit "cannot target another platform admin" guard — it now carries the identical guard, so
+  locking a peer platform admin is refused the same way impersonating one already was.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

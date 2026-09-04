@@ -72,11 +72,18 @@ Deno.serve(async req => {
 
   const { data: callerProfile } = await serviceClient
     .from('profiles')
-    .select('is_platform_admin')
+    .select('is_platform_admin, account_locked_at')
     .eq('id', caller.id)
     .maybeSingle();
   if (!callerProfile?.is_platform_admin) {
     return jsonResponse(403, { error: 'Only platform admins can impersonate a user' });
+  }
+  // This function checks the is_platform_admin column directly rather than
+  // calling the is_platform_admin() SQL helper, so it needs its own matching
+  // account-lock check — see 20260930120400_fix_platform_admin_lock_bypass.sql's
+  // own comment for why a locked platform admin must lose this capability too.
+  if (callerProfile.account_locked_at) {
+    return jsonResponse(403, { error: 'Your platform admin access has been locked' });
   }
 
   let body: ImpersonateRequestBody;
