@@ -43,6 +43,7 @@ import { logActivity } from '../shared/utils/activity-log';
 import { subscribeToTableChanges } from '../shared/utils/realtime';
 import { FlashTracker } from '../shared/utils/flash-tracker';
 import { AuthService, Profile } from '../core/auth.service';
+import { ItemEditPresenceService } from '../core/item-edit-presence.service';
 
 type StockLevel = 'out_of_stock' | 'low_stock' | 'sufficient_stock';
 type StatusFilter = 'active' | 'include_retired' | 'retired_only';
@@ -90,6 +91,10 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
   private inventoryFieldOptions = inject(InventoryFieldOptionsService);
   private notification = inject(NotificationService);
   private supplierService = inject(SupplierService);
+  /** Read directly from the template (editorFor(item.id)) to drive the
+   *  "someone's already editing this" card/row border — see
+   *  ItemEditPresenceService's own doc comment. */
+  protected itemEditPresence = inject(ItemEditPresenceService);
 
   inventoryList: InventoryItem[] = [];
   /** Set by showDetails() below — while non-null, the template swaps the

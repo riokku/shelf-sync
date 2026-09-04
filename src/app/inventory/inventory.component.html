@@ -310,7 +310,11 @@
               <div class="row inventory-gallery-wrapper">
                 @for (item of pagedInventoryList; track item.id; let i = $index) {
                   <div class="col-12 col-md-6 col-lg-4 inventory-card cascade-in" [style.animation-delay.ms]="staggerDelay(i)">
-                    <mat-card [class.realtime-flash]="isFlashing(item.id)">
+                    <mat-card
+                        [class.realtime-flash]="isFlashing(item.id)"
+                        [class.editing-now]="!!itemEditPresence.editorFor(item.id)"
+                        [matTooltip]="itemEditPresence.editorFor(item.id) ? (itemEditPresence.editorFor(item.id)!.name + ' is currently editing this item') : ''"
+                      >
                       @if (item.image) {
                         <img mat-card-image [alt]="item.name" [src]="item.image" [class.retired-image]="item.status === 'retired'" />
                       } @else {
@@ -541,6 +545,8 @@
                       *matRowDef="let row; columns: tableColumns;"
                       [class]="'table-row-status-' + statusSlug(row)"
                       [class.realtime-flash]="isFlashing(row.id)"
+                      [class.table-row-editing]="!!itemEditPresence.editorFor(row.id)"
+                      [matTooltip]="itemEditPresence.editorFor(row.id) ? (itemEditPresence.editorFor(row.id)!.name + ' is currently editing this item') : ''"
                     ></tr>
                 </table>
               </div>

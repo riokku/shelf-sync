@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output, inject } from '@angular/core';
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, inject } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialogContent, MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
@@ -21,6 +21,7 @@ import { RequestRetirementModalComponent, RequestRetirementModalResult } from '.
 import { DiscardModalComponent, DiscardModalResult } from '../discard-modal/discard-modal.component';
 import { AuthService, Profile } from '../../../core/auth.service';
 import { ImpersonationService } from '../../../core/impersonation.service';
+import { ItemEditPresenceService, ItemEditor } from '../../../core/item-edit-presence.service';
 import { SupabaseService } from '../../../core/supabase.service';
 import { NotificationService } from '../../../core/notification.service';
 import { InventoryFieldOptionsService } from '../../../core/inventory-field-options.service';
@@ -109,7 +110,7 @@ const FIELD_LABELS: Record<string, string> = {
     styleUrl: './modal-table.component.scss'
 })
 
-export class ModalTableComponent implements OnInit {
+export class ModalTableComponent implements OnInit, OnDestroy {
   // Both optional — every real caller now embeds this component inline with
   // a plain [data] binding (InventoryComponent, ManageInventoryComponent,
   // and TaskDetailModalComponent's own related-item view — see each's own
@@ -155,6 +156,7 @@ export class ModalTableComponent implements OnInit {
   @Output() back = new EventEmitter<void>();
   protected authService = inject(AuthService);
   private impersonationService = inject(ImpersonationService);
+  private itemEditPresence = inject(ItemEditPresenceService);
   protected inventoryFieldOptions = inject(InventoryFieldOptionsService);
   protected siteSettings = inject(SiteSettingsService);
   protected supplierService = inject(SupplierService);
@@ -236,6 +238,33 @@ export class ModalTableComponent implements OnInit {
     ]);
     this.existingContainers = existingContainers;
     this.upcomingReservations = await loadUpcomingReservationsForItem(this.supabase, this.data.id, profiles ?? []);
+  }
+
+  /** Only ever clears this viewer's own presence entry (see
+   *  ItemEditPresenceService.stopEditing()'s own doc comment) — a no-op
+   *  whenever this instance was never mid-edit in the first place, so it's
+   *  always safe to call unconditionally on destroy. Covers every way this
+   *  component stops being rendered mid-edit: the host page's own Back
+   *  button (after confirming unsaved changes), navigating away entirely,
+   *  or picking a different item — all of them destroy this component
+   *  instance rather than just swapping its [data] input (see
+   *  InventoryComponent.applyCloseDetails()'s own doc comment). A closed
+   *  tab or crashed browser never reaches this at all, which is fine —
+   *  Presence's own disconnect-based cleanup (see the service's own doc
+   *  comment) covers that case instead. */
+  ngOnDestroy(){
+    if (this.isEditing) {
+      this.itemEditPresence.stopEditing();
+    }
+  }
+
+  /** Someone else — never this viewer's own session, see
+   *  ItemEditPresenceService.editorFor()'s own self-filter — currently
+   *  mid-edit on this same item, from wherever else in the app they have it
+   *  open. Backs the "X is currently editing this item" banner below the
+   *  header. */
+  get editingByOther(): ItemEditor | null {
+    return this.itemEditPresence.editorFor(this.data.id);
   }
 
   containerSum(containers: { quantity: number }[]): number {
@@ -909,6 +938,7 @@ export class ModalTableComponent implements OnInit {
     this.existingImages = existingImages;
     this.orgProfiles = profiles ?? [];
     this.isEditing = true;
+    this.itemEditPresence.startEditing(this.data.id);
   }
 
   cancelEdit(){
@@ -918,6 +948,7 @@ export class ModalTableComponent implements OnInit {
     this.clearNewImages();
     this.editableContainers = [];
     this.removedContainerIds.clear();
+    this.itemEditPresence.stopEditing();
   }
 
   /** Real, would-actually-lose-data input sitting in the edit form right now
@@ -1148,6 +1179,7 @@ export class ModalTableComponent implements OnInit {
     }
 
     this.isEditing = false;
+    this.itemEditPresence.stopEditing();
   }
 
   private async saveImageChanges(): Promise<{ summary: string | null; error: string | null }> {

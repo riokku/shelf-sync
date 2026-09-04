@@ -398,6 +398,46 @@ mat-dialog-content.mat-mdc-dialog-content{
   }
 }
 
+// A live "someone else has this item open in Edit right now" signal — same
+// full-width banner slot .retired-notice above uses, but themed distinctly
+// (a primary tint, not the neutral surface-variant retired-notice/barcode-
+// row share) since this is transient, right-now information rather than a
+// permanent fact about the item, and paired with app-user-avatar so it
+// reads as *who*, not just *that* someone. Backed by
+// ItemEditPresenceService — Supabase Realtime Presence, not a DB row — so
+// it clears itself the instant that person's own edit session ends
+// (Save, Cancel, or closing the tab).
+.editing-now-notice{
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.5rem 1.5rem;
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+  font-size: 0.875rem;
+  font-weight: 600;
+
+  mat-icon{
+    flex-shrink: 0;
+    font-size: 1.125rem;
+    width: 1.125rem;
+    height: 1.125rem;
+    animation: editing-now-icon-pulse 2s ease-in-out infinite;
+  }
+}
+
+@keyframes editing-now-icon-pulse{
+  0%, 100%{ opacity: 1; }
+  50%{ opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .editing-now-notice mat-icon{
+    animation: none;
+  }
+}
+
 .low-stock-value{
   color: var(--app-warning-text);
 

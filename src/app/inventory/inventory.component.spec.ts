@@ -686,8 +686,22 @@ function createBulkReassignFakeSupabaseService(failingIds: Set<string> = new Set
     return b;
   }
 
+  // Self-returning inert channel stub — InventoryComponent's own ngOnInit()
+  // opens two realtime subscriptions (inventory_items, inventory_item_images)
+  // regardless of what this fake is built for, and (once a test here signs
+  // in via createFakeAuthService(createFakeProfile()) below) so does
+  // ItemEditPresenceService's own effect — same reasoning
+  // createFakeRealtimeChannel() in testing/fakes.ts already documents.
+  const channel: Record<string, unknown> = {
+    on: () => channel,
+    subscribe: () => channel,
+    track: async () => ({ status: 'ok' }),
+    untrack: async () => ({ status: 'ok' }),
+    presenceState: () => ({}),
+  };
+
   const service = {
-    client: { from: (table: string) => builder(table) }
+    client: { from: (table: string) => builder(table), channel: () => channel, removeChannel: async () => ({ status: 'ok' }) }
   } as unknown as SupabaseService;
 
   return { service, updateCalls, insertedTables };

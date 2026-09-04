@@ -543,7 +543,24 @@ describe('ModalTableComponent', () => {
             return defaultBuilder;
           },
           rpc: () => defaultBuilder,
-          channel: () => ({ on: () => ({}), subscribe: () => ({}) }),
+          // Self-returning (not a fresh {} per call) plus the Presence
+          // methods ItemEditPresenceService actually calls from
+          // startEdit()/cancelEdit() — this component embeds that service
+          // now, so its own .on(...).subscribe() chain (and .track()/
+          // .untrack(), once a discard test's own startEdit()-adjacent path
+          // runs) need to resolve to something real, same shape
+          // createFakeRealtimeChannel() in testing/fakes.ts already
+          // establishes for the shared fake.
+          channel: () => {
+            const stub: Record<string, unknown> = {
+              on: () => stub,
+              subscribe: () => stub,
+              track: async () => ({ status: 'ok' }),
+              untrack: async () => ({ status: 'ok' }),
+              presenceState: () => ({}),
+            };
+            return stub;
+          },
           removeChannel: async () => ({ status: 'ok' }),
         },
       } as unknown as SupabaseService;

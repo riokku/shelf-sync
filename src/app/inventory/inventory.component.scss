@@ -276,7 +276,26 @@ table[mat-table]{
     &.table-row-status-pending-retirement{ border-left-color: var(--app-warning-bg); }
     &.table-row-status-out-of-stock{ border-left-color: var(--app-danger-bg); }
     &.table-row-status-retired{ border-left-color: var(--mat-sys-outline); }
+
+    // A second, independent signal from the status left-rule above — *who's
+    // editing this right now*, not *what state it's in* — so it can't just
+    // reuse that same border-left the way a sixth status color would. An
+    // inset outline instead: it paints on top regardless of whatever status
+    // color/background the row already has, and (unlike a spreading
+    // box-shadow ring) stays entirely within the row's own bounds, so an
+    // adjacent row's own background can't clip it. See
+    // ItemEditPresenceService.
+    &.table-row-editing{
+      outline: 2px solid var(--mat-sys-primary);
+      outline-offset: -2px;
+      animation: table-row-editing-pulse 2s ease-in-out infinite;
+    }
   }
+}
+
+@keyframes table-row-editing-pulse{
+  0%, 100%{ outline-color: var(--mat-sys-primary); }
+  50%{ outline-color: color-mix(in srgb, var(--mat-sys-primary) 35%, transparent); }
 }
 
 // Same visual weight card view gives a retired item's image (dimmed) —
@@ -663,6 +682,33 @@ mat-card{
     line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+
+  // A live "someone else has this item's detail view open in Edit right
+  // now" signal — a colored border plus a soft pulsing ring, the same
+  // ring-pulse technique .online-dot (Manage > Team's own presence
+  // indicator) already established for this app's other "someone's active
+  // right now" signal, just applied to the whole card rather than a small
+  // dot. See ItemEditPresenceService.
+  &.editing-now{
+    border-color: var(--mat-sys-primary);
+    animation: card-editing-pulse 2s ease-in-out infinite;
+  }
+}
+
+@keyframes card-editing-pulse{
+  0%, 100%{ box-shadow: 0 0 0 0 color-mix(in srgb, var(--mat-sys-primary) 45%, transparent); }
+  50%{ box-shadow: 0 0 0 0.25rem transparent; }
+}
+
+// Both editing-presence pulses above keep their static color (a persistent
+// signal even without motion) and only lose the animation — same "animation:
+// none, not display: none" treatment .online-dot's own reduced-motion guard
+// already uses.
+@media (prefers-reduced-motion: reduce){
+  .editing-now,
+  .table-row-editing{
+    animation: none;
   }
 }
 

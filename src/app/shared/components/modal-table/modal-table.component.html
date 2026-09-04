@@ -131,6 +131,13 @@
     </button>
   </div>
 }
+@if (editingByOther; as editor) {
+  <div class="editing-now-notice" role="status">
+    <app-user-avatar [avatarKey]="editor.avatarKey" size="sm" />
+    <mat-icon aria-hidden="true">edit</mat-icon>
+    <span>{{ editor.name }} is currently editing this item</span>
+  </div>
+}
 @if (lockError) {
   <p class="error-message save-error" role="alert">{{ lockError }}</p>
 }

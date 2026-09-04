@@ -3084,6 +3084,32 @@ completing someone else's on their behalf — checked via a plain `tasks` count 
 (`assigned_to = auth.uid() and status = 'done'`, `count === 1`) run non-blocking alongside the modal's
 own close, so a slow/failed count never delays or breaks the actual save.
 
+`InventoryComponent`'s card/table view and `ModalTableComponent`'s own item detail popup now show a
+live "someone else has this open in Edit right now" signal — a pulsing colored border (card/table
+row) or a name-plus-avatar banner (the detail popup), backed by a new `ItemEditPresenceService`
+(`core/item-edit-presence.service.ts`). This is the first thing in the app built on Supabase Realtime
+*Presence* rather than the `postgres_changes` wrapper (`subscribeToTableChanges()`) every other
+realtime feature here uses — Presence is ephemeral, per-connection state with automatic cleanup on
+disconnect (a closed tab, a crash, a lost connection all clear themselves the instant the socket
+drops), which is exactly the shape "who's editing this right now" needs and a DB row would need its
+own heartbeat/staleness fallback to approximate (see `profiles.last_active_at`'s own heartbeat for
+that alternative). One channel per organization, not per item or per page — keyed by the viewer's own
+id (so a second tab/device for the same person collapses onto one entry) and root-provided/session-
+scoped like `NotificationCenterService`, so the same live state is visible from whichever of
+Inventory/Manage Inventory/the item popup happens to be mounted. `ModalTableComponent.startEdit()`/
+`cancelEdit()`/`saveEdit()`/`ngOnDestroy()` are the only call sites that ever track/untrack — entering
+Edit tracks the item id, leaving it (Save, Cancel, or the component being destroyed some other way,
+e.g. the host page's own Back button) untracks; a closed tab needs no explicit cleanup at all, Presence
+handles that on disconnect. `editorFor(itemId)` — read directly from templates — always excludes the
+caller's own session, same "no toast/flash for your own action" reasoning this app's other realtime
+features already follow. Deliberately visibility-only: nobody's blocked from clicking Edit while
+someone else already has an item open, this only makes that visible. Channel names aren't
+RLS-protected the way `postgres_changes` delivery is (no Realtime Authorization policies exist in this
+schema) — scoping by organization id in the channel name is a practical, not cryptographic, boundary,
+accepted here the same way this schema accepts a few other low-sensitivity tradeoffs elsewhere, since
+the only thing exposed to someone who guessed another org's id is who's editing what there, nothing
+about the item's own data.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -3238,6 +3264,7 @@ core/
   confetti.service.ts     # ConfettiService — fires a hand-rolled confetti burst (shared/components/confetti-burst) for a genuine "just happened" celebration moment
   party-mode.service.ts   # PartyModeService — Konami-code easter egg: temporary 'party' theme + a confetti drizzle, both self-reverting
   impersonation.service.ts # ImpersonationService — platform-admin "impersonate as user" session swap; start()/stop(), isImpersonating signal backing ImpersonationBannerComponent
+  item-edit-presence.service.ts # ItemEditPresenceService — Supabase Realtime Presence (not postgres_changes), who's mid-edit on which inventory item org-wide; backs Inventory's card/table border and ModalTableComponent's own "being edited" banner
   guards/auth.guard.ts    # CanActivateFn — awaits authService.getSession() directly
   guards/manage.guard.ts  # admin OR manager
   guards/admin.guard.ts   # admin only (manage/settings, manage/billing, manage/danger-zone)

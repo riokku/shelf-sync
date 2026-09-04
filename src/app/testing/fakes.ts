@@ -250,11 +250,21 @@ export function createFakeQueryBuilder(result: { data?: unknown; count?: number;
  *  event. A spec that needs a change event to actually fire builds its own
  *  narrower fake locally (see auth.service.spec.ts's emitAuthStateChange
  *  for the capture-the-callback pattern to mirror) rather than this one
- *  growing logic it otherwise wouldn't need. */
+ *  growing logic it otherwise wouldn't need.
+ *
+ *  Also covers Presence's own methods (track/untrack/presenceState) as the
+ *  same kind of inert no-op, for the identical reason — ItemEditPresenceService
+ *  calls these from ModalTableComponent's startEdit()/cancelEdit()/saveEdit(),
+ *  and plenty of existing specs for components that embed
+ *  ModalTableComponent call those methods directly against this same inert
+ *  fake, with no interest in presence behavior at all. */
 function createFakeRealtimeChannel() {
   const channel: Record<string, unknown> = {
     on: () => channel,
     subscribe: () => channel,
+    track: async () => ({ status: 'ok' }),
+    untrack: async () => ({ status: 'ok' }),
+    presenceState: () => ({}),
   };
   return channel;
 }
