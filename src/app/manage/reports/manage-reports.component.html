@@ -151,19 +151,19 @@
             <div class="stat-grid">
               <div class="stat-tile">
                 <span class="stat-label">Total value</span>
-                <span class="stat-value">{{ totalValue | currency }}</span>
+                <span class="stat-value" [appCountUp]="totalValue" [countUpFormat]="countUpCurrency"></span>
               </div>
               <div class="stat-tile">
                 <span class="stat-label">Active items</span>
-                <span class="stat-value">{{ activeItemCount | number }}</span>
+                <span class="stat-value" [appCountUp]="activeItemCount"></span>
               </div>
               <div class="stat-tile">
                 <span class="stat-label">Low stock</span>
-                <span class="stat-value">{{ lowStockCount | number }}</span>
+                <span class="stat-value" [appCountUp]="lowStockCount"></span>
               </div>
               <div class="stat-tile">
                 <span class="stat-label">Out of stock</span>
-                <span class="stat-value">{{ outOfStockCount | number }}</span>
+                <span class="stat-value" [appCountUp]="outOfStockCount"></span>
               </div>
             </div>
 
@@ -210,11 +210,11 @@
               <div class="stat-grid">
                 <div class="stat-tile">
                   <span class="stat-label">Units discarded</span>
-                  <span class="stat-value">{{ totalDiscardedUnits | number }}</span>
+                  <span class="stat-value" [appCountUp]="totalDiscardedUnits"></span>
                 </div>
                 <div class="stat-tile">
                   <span class="stat-label">Discard events</span>
-                  <span class="stat-value">{{ discardEventCount | number }}</span>
+                  <span class="stat-value" [appCountUp]="discardEventCount"></span>
                 </div>
               </div>
 
@@ -271,7 +271,7 @@
                   </div>
                   <div class="stat-tile">
                     <span class="stat-label">Overdue <span class="stat-note">(current)</span></span>
-                    <span class="stat-value">{{ overdueTaskCount | number }}</span>
+                    <span class="stat-value" [appCountUp]="overdueTaskCount"></span>
                   </div>
                   <div class="stat-tile">
                     <span class="stat-label">Avg. time to close</span>

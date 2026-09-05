@@ -3350,6 +3350,54 @@ Account page's own card rather than `/home`; or (b) requiring it platform-wide j
 version of this given what that flag alone already grants (Studio, impersonation) — neither is built
 yet, both are natural extensions of exactly the pieces already in place.
 
+Two more small "fun design tweaks," same spirit as the confetti/loading-caption/party-mode pass
+above but smaller in scope. First, the plain `.stat-value`/`.page-hero-pulse-value` tiles on
+`manage/reports` and Studio's own hero now count up from their previous value rather than just
+popping in, via a new shared `CountUpDirective` (`shared/directives/count-up.directive.ts` — this
+app's first directive; every hand-rolled visual before this was a component). It writes straight to
+the host element's `textContent` via `ElementRef` rather than through an Angular binding, so it never
+touches anything change-detection-bound — the underlying component property each tile still reads
+from is completely unaffected, which is why none of the existing specs for either page needed to
+change. Deliberately `OnChanges`, not a plain `@Input() set value()`: a caller binds both
+`[appCountUp]="value"` and `[countUpFormat]="someFormatter"` on the same element, and Angular applies
+a directive's bound inputs in the *template's own attribute order*, not by property declaration order
+in the class — a `value` setter reading `this.countUpFormat` synchronously could fire before
+`countUpFormat` itself had been assigned that same change-detection pass, silently formatting with
+the *previous* function for one render (caught exactly that way, via this directive's own spec).
+`ngOnChanges` runs once per pass, after every `@Input()` on the directive has already been assigned
+regardless of binding order, which is what actually fixes it. The rAF loop runs via
+`NgZone.runOutsideAngular()` and never re-enters — same reasoning `LoadingCaptionComponent`/
+`PartyModeService` already establish for their own timers, doubly true here since an in-zone rAF
+would trigger a full app-wide change-detection pass on every animation frame for a value nothing
+else is bound to — and skips straight to the final value under `prefers-reduced-motion`, same as
+every other ambient animation in this app. `shared/utils/count-up-format.ts`'s `countUpNumber`/
+`countUpCurrency` are the two formatters actually used (matching `| number`/`| currency`'s own
+default precision exactly, so switching a tile onto the directive changes only how it *arrives* at
+its resting value, not the value's own formatting); the directive's own default `countUpFormat` is
+`countUpNumber`, so most tiles don't pass one at all. Deliberately scoped to tiles that render a
+single plain figure — `manage/billing`'s own usage stats ("3 of 10", "42.3 of 500 MB") and Reports'
+own "Completion rate"/"Avg. time to close" tiles are composite labels, not a bare number, and
+Reports' donut/ring charts are a different (SVG, not text-node) rendering mechanism entirely — left
+alone rather than reshaping either to fit.
+
+Second, `HeaderComponent`'s light/dark toggle button — previously an instant swap between two
+unrelated Material icon glyphs (`light_mode`/`dark_mode`) — now morphs a single icon between a sun
+and a crescent moon, via a new `ThemeModeIconComponent` (`shared/components/theme-mode-icon`). Same
+"no new runtime dependency" convention `DonutChartComponent`/`RingStatComponent`/`TrendChartComponent`
+already establish for their own hand-rolled SVG — the crescent is the classic two-circle mask trick:
+a second, invisible "cutout" circle slides over the icon's own body circle through an SVG `<mask>`,
+parked far away and shrunk in light mode (no overlap, so the body renders as a full disc = sun) and
+close/full-size in dark mode (overlaps enough to bite a crescent out of the body = moon), while eight
+rays fade and shrink toward the center at the same time — driven entirely by a `.is-dark` class swap
+plus CSS `transform`/`opacity` transitions (universally animatable, unlike animating raw `cx`/`r`
+attributes directly), gated behind `prefers-reduced-motion` the same way as everything else. Each
+instance gets its own generated mask id (a plain incrementing counter, not `Math.random()` — this
+only ever needs to be unique within one page load) so two instances on the same page can't collide,
+even though today there's only the one usage. Scoped to just this button — Account page's own
+Appearance card is a `mat-button-toggle-group` of two separate, statically-iconed buttons (Light
+always shows a sun glyph, Dark always shows a moon glyph), not one icon flipping identity, so a morph
+doesn't apply there the same way.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -3583,6 +3631,8 @@ shared/
   components/impersonate-user-modal/ # mandatory-reason dialog backing StudioUserDetailComponent's "Impersonate" button
   components/impersonation-banner/ # persistent, unmissable "you are impersonating someone" bar, rendered from AppComponent alongside the header
   components/loading-caption/ # rotating witty caption shown next to Inventory/Tasks' skeleton loading placeholders
+  components/theme-mode-icon/ # hand-rolled SVG sun/moon-morph icon (no library) — backs HeaderComponent's light/dark toggle button
+  directives/count-up.directive.ts # CountUpDirective — animates a stat tile counting up to its value rather than popping in; backs manage/reports and Studio's own hero
   models/inventory-item.model.ts   # InventoryItem class (constructor-based, no defaults)
   models/supplier.model.ts   # Supplier — a directory entry inventory_items.supplier_id can point at
   models/inventory-item-order.model.ts # InventoryItemOrder — one restock order against an item's linked supplier
@@ -3601,6 +3651,7 @@ shared/
   models/broadcast.model.ts  # Broadcast / BroadcastReferencedMember / BroadcastReferencedItem — backs /broadcasts
   models/command-palette.ts  # CommandPaletteResult / COMMAND_PALETTE_DESTINATIONS — backs HeaderComponent's Ctrl/Cmd+K search
   models/database.types.ts   # generated via `npm run supabase:gen:types` — regenerate, don't hand-edit
+  utils/count-up-format.ts   # countUpNumber()/countUpCurrency() — CountUpDirective's own formatters, matching | number/| currency's default precision
   utils/inventory-item.mapper.ts   # toInventoryItem(row, images, checkedOutToLabel, activityLog?, ..., supplierLabel?) — DB row -> InventoryItem
   utils/inventory-item-name.ts     # isDuplicateItemName() — shared by the CSV importer and the manual "Create item" form's own duplicate-name check
   utils/inventory-item-images.ts   # loadInventoryImagesByItemId() / uploadInventoryItemImages() / deleteInventoryItemImage()

@@ -1,0 +1,22 @@
+<svg
+    class="theme-mode-icon"
+    [class.is-dark]="mode === 'dark'"
+    viewBox="0 0 24 24"
+    width="20"
+    height="20"
+    aria-hidden="true"
+    focusable="false"
+  >
+  <mask [attr.id]="maskId">
+    <rect x="0" y="0" width="24" height="24" fill="white" />
+    <circle class="theme-mode-icon-cutout" cx="12" cy="12" r="7" fill="black" />
+  </mask>
+
+  <g class="theme-mode-icon-rays">
+    @for (angle of rayAngles; track angle) {
+      <rect class="theme-mode-icon-ray" x="11" y="1" width="2" height="3.5" rx="1" [attr.transform]="'rotate(' + angle + ' 12 12)'" />
+    }
+  </g>
+
+  <circle class="theme-mode-icon-body" cx="12" cy="12" r="5" fill="currentColor" [attr.mask]="'url(#' + maskId + ')'" />
+</svg>

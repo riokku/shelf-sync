@@ -316,6 +316,14 @@
   mat-divider{
     margin: 0.375rem 0;
   }
+
+  // app-theme-mode-icon isn't a real mat-icon (see its own doc comment for
+  // why — it's a hand-rolled sun/moon-morph SVG), so it doesn't pick up
+  // Material's own .mat-icon spacing rule the way every sibling nav button's
+  // plain mat-icon does; this replaces it by hand for just this one button.
+  .theme-toggle-button app-theme-mode-icon{
+    margin-right: 0.5rem;
+  }
 }
 
 // Same click-to-dismiss backdrop technique as .nav-drawer-backdrop above,

@@ -8,6 +8,7 @@ import { SupabaseService } from '../core/supabase.service';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 import { EmptyStateComponent } from '../shared/components/empty-state/empty-state.component';
 import { TrendChartComponent, TrendPoint } from '../shared/components/trend-chart/trend-chart.component';
+import { CountUpDirective } from '../shared/directives/count-up.directive';
 import { bucketByWeek } from '../shared/utils/trend-buckets';
 import { getUnseenChangelogCount } from '../shared/utils/changelog';
 
@@ -29,7 +30,8 @@ import { getUnseenChangelogCount } from '../shared/utils/changelog';
     MatIconModule,
     BreadcrumbsComponent,
     EmptyStateComponent,
-    TrendChartComponent
+    TrendChartComponent,
+    CountUpDirective
   ],
   templateUrl: './studio.component.html',
   styleUrl: './studio.component.scss',

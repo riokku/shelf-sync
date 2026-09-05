@@ -1,0 +1,49 @@
+:host {
+  display: inline-flex;
+  color: currentColor;
+}
+
+.theme-mode-icon {
+  overflow: visible;
+}
+
+.theme-mode-icon-body {
+  color: inherit;
+}
+
+// Light mode (default): parked well clear of the body circle (cx=12 cy=12
+// r=5), so the mask cuts nothing away and the body renders as a full disc.
+.theme-mode-icon-cutout {
+  transform: translate(6px, -6px) scale(0.4);
+  transform-origin: 12px 12px;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+// Dark mode: slides in close enough to overlap the body circle, biting a
+// crescent out of it through the shared <mask>.
+.is-dark .theme-mode-icon-cutout {
+  transform: translate(3px, -3px) scale(1);
+}
+
+.theme-mode-icon-rays {
+  transform-origin: 12px 12px;
+  transform: scale(1) rotate(0deg);
+  opacity: 1;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease;
+}
+
+.is-dark .theme-mode-icon-rays {
+  transform: scale(0.4) rotate(-45deg);
+  opacity: 0;
+}
+
+.theme-mode-icon-ray {
+  fill: currentColor;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-mode-icon-cutout,
+  .theme-mode-icon-rays {
+    transition: none;
+  }
+}
