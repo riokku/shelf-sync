@@ -12,6 +12,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SupabaseService } from '../../core/supabase.service';
 import { NotificationService } from '../../core/notification.service';
@@ -44,6 +45,7 @@ import { BARCODE_FEATURE_ENABLED, parseItemQrValue } from '../../shared/utils/ba
 import { HasUnsavedChanges } from '../../core/guards/unsaved-changes.guard';
 import { subscribeToTableChanges } from '../../shared/utils/realtime';
 import { FlashTracker } from '../../shared/utils/flash-tracker';
+import { flashAndAnnounceChanges } from '../../shared/utils/realtime-announce';
 import { buildInventoryExportCsv, downloadCsv } from '../../shared/utils/inventory-export';
 
 type InventoryItemRow = Database['public']['Tables']['inventory_items']['Row'];
@@ -85,6 +87,7 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
+  private liveAnnouncer = inject(LiveAnnouncer);
 
   /** Whether an admin-optional field is shown on the "Create item" form
    *  below (Settings > Data's "Inventory data" section) — name and
@@ -356,14 +359,21 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
       if (!itemId) {
         return;
       }
-      // Flash only once the patched row is actually reflected — not on
-      // DELETE, since the row's about to disappear rather than update, and
-      // not from openInventoryDetail()'s own afterClosed() call below
-      // (that's this user's own edit, already visible to them without a
-      // flash to draw their eye to it).
+      // Flash (and announce, for screen reader users — see
+      // flashAndAnnounceChanges()'s own doc comment) only once the patched
+      // row is actually reflected — not on DELETE, since the row's about to
+      // disappear rather than update, and not from openInventoryDetail()'s
+      // own afterClosed() call below (that's this user's own edit, already
+      // visible to them without a flash to draw their eye to it).
       void this.refreshInventoryItem(itemId).then(() => {
         if (payload.eventType !== 'DELETE') {
-          this.flashTracker.flash(itemId);
+          flashAndAnnounceChanges(
+            [itemId],
+            this.flashTracker,
+            this.liveAnnouncer,
+            id => this.allInventoryItems.find(item => item.id === id)?.name ?? null,
+            name => `${name} updated`
+          );
         }
       });
     });
@@ -380,7 +390,13 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
         return;
       }
       void this.refreshInventoryItem(itemId).then(() => {
-        this.flashTracker.flash(itemId);
+        flashAndAnnounceChanges(
+          [itemId],
+          this.flashTracker,
+          this.liveAnnouncer,
+          id => this.allInventoryItems.find(item => item.id === id)?.name ?? null,
+          name => `${name} updated`
+        );
       });
     });
     this.destroyRef.onDestroy(() => {

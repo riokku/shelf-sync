@@ -3178,6 +3178,96 @@ directly. Rather than this component trying to work out "is TFilters at its defa
 already-existing `hasActiveFilters`/`hasActiveTaskFilters` getters — each page already had one, since
 both already drive that same page's own "Clear filters" button visibility.
 
+`AppComponent`'s own route-change focus move (see its own paragraph above) tags the heading it
+focuses with a `.route-focus-heading` class, and a new global `styles.scss` rule suppresses the
+browser's default focus outline on it — a `tabindex="-1"` element (what every such heading either
+already is or gets set to) can never be reached by a sighted keyboard user actually pressing
+Tab/Shift+Tab, so a focus ring appearing there on every navigation was purely a distracting side
+effect of the programmatic `.focus()` call, never a meaningful "here's where your Tab press landed"
+cue. Screen reader users are unaffected either way, since the focus move itself — not any visual
+styling — is what they rely on. Same "must be global, not component-scoped" reasoning
+`router-outlet + *`'s own fade-in rule already established for itself, for the identical structural
+reason: the heading belongs to whichever routed component just mounted, never `AppComponent`.
+
+Every realtime "someone else just changed this" update in the app now also gets spoken aloud to
+screen reader users, alongside the purely-visual `.realtime-flash` pulse `FlashTracker` already
+drives — a gap the `.realtime-flash` mechanism itself never closed, since a CSS animation is
+invisible to anyone not watching the screen. `shared/utils/realtime-announce.ts`'s
+`flashAndAnnounceChanges()` is the one shared entry point every realtime-flashing page now calls
+instead of looping `flashTracker.flash(id)` directly — it still flashes every id exactly as before,
+but for each one that resolves to a real label (a `labelFor` callback the caller supplies) it also
+calls Angular CDK's own `LiveAnnouncer` (already a transitive dependency via Angular Material/CDK,
+not a new one — this app's usual "hand-roll it" preference is about avoiding a *charting/calendar*
+dependency, not reimplementing an accessibility primitive CDK already ships) with a caller-formatted
+message (a `describe` callback). Wired into all nine realtime-flash consumers:
+`InventoryComponent`/`ManageInventoryComponent` call it inline at their own single-row-patch site
+(passing a one-element array rather than a whole pending set); `TasksComponent`/
+`ManageTasksComponent`/`ManageTeamComponent`/`ManageOrdersComponent`/`ManageReservationsComponent`/
+`BroadcastsComponent` call it from their own `reloadAndFlashChangedX()`, resolving each id's label
+by looking it up in whatever list that reload just refreshed (a task's title, an order/reservation's
+`itemName`, a broadcast's title); `ManageAuditsComponent`'s own `pendingFlashIds` mixes two different
+id spaces (an audit's own id, or — via the audit-schedules channel — a *schedule's* own id, which
+never appears in `audits` at all), so its `auditOrScheduleLabel()` checks both lists rather than
+just one. `ManageSuppliersComponent`'s own `FlashTracker` usage is deliberately untouched — it backs
+`?highlight=<id>` (the command palette's deep-link landing treatment), not a realtime update, a
+different semantic ("you just navigated here" vs. "something changed while you were watching") this
+feature doesn't apply to.
+
+Both a reservation's date range and a task's own due date can now be downloaded as a `.ics` file and
+added to a real calendar app (Google/Outlook/Apple) — this app's own dates otherwise only ever lived
+inside ShelfSync itself. `shared/utils/calendar-export.ts`'s `buildIcsFile()`/`downloadIcsFile()` are
+a hand-rolled, single-VEVENT iCalendar builder (same "no new runtime dependency" convention
+`DonutChartComponent`/`TrendChartComponent`/`ReservationCalendarComponent`/etc. already established
+for their own hand-rolled pieces — RFC 5545 is simple enough for the one-event-per-file shape this
+needs) plus the same plain `<a download>`-via-`Blob` technique `inventory-export.ts`'s own
+`downloadCsv()` already uses. Every event this builds is all-day (`DTSTART`/`DTEND` with
+`VALUE=DATE`, no time-of-day) since both of this app's own date fields already are — the one
+genuinely fiddly part of iCalendar files (timezone handling) simply doesn't arise. `DTEND` is
+computed as one day past the caller's own *inclusive* end date, since iCalendar's own all-day
+`DTEND` is exclusive; a reservation's own start/end map straight onto this, a task's due date passes
+only a `startDate` and gets a same-day-plus-one `DTEND` for free. `ManageReservationsComponent` gets
+an "Add to calendar" icon button next to the date range on both the single-reservation
+`#reservationCard` template and the multi-item `#reservationGroupCard` one (`downloadReservationIcs()`/
+`downloadReservationGroupIcs()`, the latter listing every item in the group in its own description
+rather than one file per line item, since a group already shares one date range) — available
+regardless of a reservation's status, even a cancelled/returned one's historical dates are harmless
+to export. `TaskDetailModalComponent` gets the same button beside its own due-date `<dd>`
+(`downloadDueDateIcs()`), pulled out of the overdue pill's own flex row into a sibling `<span>`
+(`.due-date-cell`) so the button doesn't end up rendered directly on the pill's solid
+`--app-danger-bg` fill, which would fight it for contrast.
+
+An inventory item's photos can now be reordered by dragging them, not just added/removed — the
+gallery only ever supported add/remove before this despite `inventory_item_images.position` already
+existing to support display order. Uses Angular CDK's own `DragDropModule`/`CdkDrag`/`CdkDropList`
+rather than a hand-rolled mouse-only implementation (again, not a new dependency — the same
+"CDK-shipped interaction primitive, not a charting/calendar library" reasoning `LiveAnnouncer` above
+already draws) on `ModalTableComponent`'s existing-images preview row specifically — a newly staged
+(not-yet-uploaded) photo stays out of scope for dragging and always appends after the existing ones
+(matching `uploadInventoryItemImages()`'s own `startPosition` param), so there's nothing to merge two
+different "kinds" of photo into one drag list for. `onExistingImageDrop()` reorders `existingImages`
+in place via CDK's `moveItemInArray()`; `imagesReordered` (folded into `hasUnsavedChanges()` and
+`startEdit()`'s own `originalImageOrder` snapshot) diffs the *current* order against the order the
+edit session started in, filtering `removedImageIds` out of both sides first so marking a photo for
+removal — which shifts every later index — never reads as a reorder on its own. `saveImageChanges()`
+writes new position values (a plain `0..n-1` per whatever's left in the current array order, dense
+values with no particular meaning beyond sort order — only the *relative* order any later
+`.order('position')` read cares about) for whichever surviving photos actually moved, skipping a
+photo whose index didn't change; this happens before the upload step, though the ordering between
+them is actually immaterial — a new upload's own position (computed from a plain remaining-count) is
+always numerically after every surviving existing photo regardless of what values the reorder step
+just wrote. A drag handle icon (`cdkDragHandle`) confines the actual drag gesture to its own small
+button rather than the whole thumbnail, so clicking the image or the remove button never accidentally
+starts a drag; CDK's own drag-drop already supports keyboard reordering out of the box (focus the
+handle, Space to pick up, arrow keys to move, Space to drop, with its own live-region announcements)
+with no extra work needed on top, a nice side benefit of reaching for CDK here rather than a
+mouse-only custom implementation. The actual `.cdk-drag-preview`/`.cdk-drag-placeholder` visual
+polish (a lifted shadow while dragging, a dashed empty slot left behind) lives in the global
+`styles.scss`, not `ModalTableComponent`'s own stylesheet — same "must be global" reasoning as
+`.route-focus-heading` and `router-outlet + *` above, but for a different mechanism: CDK clones the
+dragged element into a `.cdk-drag-preview` appended near the very end of `<body>`, and even the
+in-place `.cdk-drag-placeholder` it leaves behind is created by CDK itself, so neither one ever
+carries `ModalTableComponent`'s own emulated-encapsulation attribute for a scoped selector to match.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)

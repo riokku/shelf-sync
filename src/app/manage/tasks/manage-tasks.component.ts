@@ -13,6 +13,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialog } from '@angular/material/dialog';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SupabaseService } from '../../core/supabase.service';
 import { NotificationService } from '../../core/notification.service';
@@ -33,6 +34,7 @@ import { logActivity } from '../../shared/utils/activity-log';
 import { subscribeToTableChanges } from '../../shared/utils/realtime';
 import { debounce } from '../../shared/utils/debounce';
 import { FlashTracker } from '../../shared/utils/flash-tracker';
+import { flashAndAnnounceChanges } from '../../shared/utils/realtime-announce';
 import { HasUnsavedChanges } from '../../core/guards/unsaved-changes.guard';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
@@ -85,6 +87,7 @@ export class ManageTasksComponent implements OnInit, HasUnsavedChanges {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
+  private liveAnnouncer = inject(LiveAnnouncer);
 
   private currentUserId: string | null = null;
   assignableProfiles: Profile[] = [];
@@ -614,9 +617,13 @@ export class ManageTasksComponent implements OnInit, HasUnsavedChanges {
 
   private async reloadAndFlashChangedTasks() {
     await this.loadTasks();
-    for (const id of this.pendingFlashIds) {
-      this.flashTracker.flash(id);
-    }
+    flashAndAnnounceChanges(
+      this.pendingFlashIds,
+      this.flashTracker,
+      this.liveAnnouncer,
+      id => this.allTasks.find(task => task.id === id)?.title ?? null,
+      title => `${title} updated`
+    );
     this.pendingFlashIds.clear();
   }
 

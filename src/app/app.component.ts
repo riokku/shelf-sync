@@ -80,7 +80,17 @@ export class AppComponent {
    *  every other "moved focus here on purpose" spot in this app already
    *  uses. Deferred a tick: NavigationEnd fires once the route itself has
    *  resolved, but the routed component's own template — and its heading
-   *  — hasn't necessarily painted into the DOM yet at that exact moment. */
+   *  — hasn't necessarily painted into the DOM yet at that exact moment.
+   *
+   *  Also tags the heading with `.route-focus-heading`, a global styles.scss
+   *  rule that suppresses the browser's default focus outline on it (see
+   *  that rule's own comment) — a sighted keyboard user can never actually
+   *  Tab/Shift+Tab onto a `tabindex="-1"` element themselves, so a focus
+   *  ring appearing around the page title on every navigation would only
+   *  ever be a distracting side effect of this accessibility feature, never
+   *  a meaningful orientation cue the way a ring around something they
+   *  actually tabbed to is. Screen reader users are unaffected either way —
+   *  the focus move itself is what they rely on, not any visual styling. */
   private focusPageHeading() {
     setTimeout(() => {
       const heading = document.querySelector<HTMLElement>('#main-content h1, #main-content [role="heading"][aria-level="1"]');
@@ -90,6 +100,7 @@ export class AppComponent {
       if (!heading.hasAttribute('tabindex')) {
         heading.setAttribute('tabindex', '-1');
       }
+      heading.classList.add('route-focus-heading');
       heading.focus();
     });
   }

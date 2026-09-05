@@ -166,6 +166,16 @@
             </div>
             <div class="reservation-dates">
               {{ reservation.startDate | date: 'M/d/yy' }} – {{ reservation.endDate | date: 'M/d/yy' }}
+              <button
+                  mat-icon-button
+                  type="button"
+                  class="add-to-calendar-button"
+                  (click)="downloadReservationIcs(reservation)"
+                  aria-label="Add this reservation to your calendar"
+                  matTooltip="Add to calendar"
+                >
+                <mat-icon>event</mat-icon>
+              </button>
             </div>
             <div class="reservation-meta">
               Reserved by {{ reservation.reservedByLabel }} &middot; {{ reservation.reservedAt | date: 'M/d/yy, h:mm a' }}
@@ -231,6 +241,16 @@
             </span>
             <span class="reservation-group-dates">
               {{ group.items[0].startDate | date: 'M/d/yy' }} – {{ group.items[0].endDate | date: 'M/d/yy' }}
+              <button
+                  mat-icon-button
+                  type="button"
+                  class="add-to-calendar-button"
+                  (click)="downloadReservationGroupIcs(group)"
+                  aria-label="Add this reservation to your calendar"
+                  matTooltip="Add to calendar"
+                >
+                <mat-icon>event</mat-icon>
+              </button>
             </span>
           </div>
 

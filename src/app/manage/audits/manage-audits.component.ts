@@ -4,6 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { SupabaseService } from '../../core/supabase.service';
 import { AuthService, Profile } from '../../core/auth.service';
@@ -27,6 +28,7 @@ import { loadAuditSummaries } from '../../shared/utils/inventory-audits';
 import { loadAuditSchedules } from '../../shared/utils/inventory-audit-schedules';
 import { subscribeToTableChanges } from '../../shared/utils/realtime';
 import { FlashTracker } from '../../shared/utils/flash-tracker';
+import { flashAndAnnounceChanges } from '../../shared/utils/realtime-announce';
 import { debounce } from '../../shared/utils/debounce';
 
 /** manage/audits — org-wide list of every physical inventory audit
@@ -86,6 +88,7 @@ export class ManageAuditsComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
+  private liveAnnouncer = inject(LiveAnnouncer);
 
   isLoading = true;
   /** Set when loadAudits()'s own query fails — see InventoryComponent's
@@ -186,11 +189,32 @@ export class ManageAuditsComponent implements OnInit {
     return this.flashTracker.isFlashing(auditId);
   }
 
+  /** pendingFlashIds mixes two different id spaces (see ngOnInit's own
+   *  comment: an audit's own id, or — via the audit_counts channel's
+   *  auditId re-mapping — the same; but the schedules channel adds a
+   *  *schedule's* own id instead, which never appears in `audits` at all)
+   *  — so labelFor here has to check both lists rather than just one. */
+  private auditOrScheduleLabel(id: string): string | null {
+    const audit = this.audits.find(candidate => candidate.id === id);
+    if (audit) {
+      return audit.physicalLocation ? `Audit for ${audit.physicalLocation}` : 'Org-wide audit';
+    }
+    const schedule = this.schedules.find(candidate => candidate.id === id);
+    if (schedule) {
+      return schedule.physicalLocation ? `Recurring audit for ${schedule.physicalLocation}` : 'Recurring org-wide audit';
+    }
+    return null;
+  }
+
   private async reloadAndFlashChangedAudits() {
     await Promise.all([this.loadAudits(), this.loadSchedules()]);
-    for (const id of this.pendingFlashIds) {
-      this.flashTracker.flash(id);
-    }
+    flashAndAnnounceChanges(
+      this.pendingFlashIds,
+      this.flashTracker,
+      this.liveAnnouncer,
+      id => this.auditOrScheduleLabel(id),
+      label => `${label} updated`
+    );
     this.pendingFlashIds.clear();
   }
 

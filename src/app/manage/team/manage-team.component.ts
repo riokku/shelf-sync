@@ -10,6 +10,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { SupabaseService } from '../../core/supabase.service';
 import { NotificationService } from '../../core/notification.service';
 import { AuthService, Profile } from '../../core/auth.service';
@@ -31,6 +32,7 @@ import { formatLastSeen, isProfileOnline } from '../../shared/utils/presence';
 import { subscribeToTableChanges } from '../../shared/utils/realtime';
 import { debounce } from '../../shared/utils/debounce';
 import { FlashTracker } from '../../shared/utils/flash-tracker';
+import { flashAndAnnounceChanges } from '../../shared/utils/realtime-announce';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
 
@@ -74,6 +76,7 @@ export class ManageTeamComponent implements OnInit, HasUnsavedChanges {
   private notification = inject(NotificationService);
   private destroyRef = inject(DestroyRef);
   private route = inject(ActivatedRoute);
+  private liveAnnouncer = inject(LiveAnnouncer);
 
   protected currentUserId: string | null = null;
   /** Approved members only — pendingMembers (below) holds the rest, kept
@@ -267,9 +270,13 @@ export class ManageTeamComponent implements OnInit, HasUnsavedChanges {
 
   private async reloadAndFlashChangedTeamTasks() {
     await this.loadTeamTasks();
-    for (const id of this.pendingFlashIds) {
-      this.flashTracker.flash(id);
-    }
+    flashAndAnnounceChanges(
+      this.pendingFlashIds,
+      this.flashTracker,
+      this.liveAnnouncer,
+      id => this.teamMembers.flatMap(member => member.tasks).find(task => task.id === id)?.title ?? null,
+      title => `${title} updated`
+    );
     this.pendingFlashIds.clear();
   }
 

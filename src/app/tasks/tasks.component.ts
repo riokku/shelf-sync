@@ -3,6 +3,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { SupabaseService } from '../core/supabase.service';
 import { AuthService, Profile } from '../core/auth.service';
@@ -19,6 +20,7 @@ import { subscribeToTableChanges } from '../shared/utils/realtime';
 import { getTodayIsoDate } from '../shared/utils/date';
 import { debounce } from '../shared/utils/debounce';
 import { FlashTracker } from '../shared/utils/flash-tracker';
+import { flashAndAnnounceChanges } from '../shared/utils/realtime-announce';
 import { confirmLeaveWithoutSaving } from '../shared/utils/confirm-leave';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
@@ -39,6 +41,7 @@ export class TasksComponent implements OnInit, HasUnsavedChanges {
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
   private dialog = inject(MatDialog);
+  private liveAnnouncer = inject(LiveAnnouncer);
 
   private currentUserId: string | null = null;
   private orgProfiles: Profile[] = [];
@@ -241,9 +244,13 @@ export class TasksComponent implements OnInit, HasUnsavedChanges {
 
   private async reloadAndFlashChangedTasks() {
     await this.loadTasks();
-    for (const id of this.pendingFlashIds) {
-      this.flashTracker.flash(id);
-    }
+    flashAndAnnounceChanges(
+      this.pendingFlashIds,
+      this.flashTracker,
+      this.liveAnnouncer,
+      id => this.tasks.find(task => task.id === id)?.title ?? null,
+      title => `${title} updated`
+    );
     this.pendingFlashIds.clear();
   }
 

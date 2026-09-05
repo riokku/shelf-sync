@@ -17,6 +17,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { InventoryItem, isCheckoutOverdue, isLowStock, isOutOfStock } from '../shared/models/inventory-item.model';
 import { ModalTableComponent } from '../shared/components/modal-table/modal-table.component';
@@ -43,6 +44,7 @@ import { loadInventoryActivityByItemId, logInventoryItemActivity } from '../shar
 import { logActivity } from '../shared/utils/activity-log';
 import { subscribeToTableChanges } from '../shared/utils/realtime';
 import { FlashTracker } from '../shared/utils/flash-tracker';
+import { flashAndAnnounceChanges } from '../shared/utils/realtime-announce';
 import { AuthService, Profile } from '../core/auth.service';
 import { ItemEditPresenceService } from '../core/item-edit-presence.service';
 
@@ -107,6 +109,7 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
   private authService = inject(AuthService);
   private inventoryFieldOptions = inject(InventoryFieldOptionsService);
   private notification = inject(NotificationService);
+  private liveAnnouncer = inject(LiveAnnouncer);
   private supplierService = inject(SupplierService);
   /** Read directly from the template (editorFor(item.id)) to drive the
    *  "someone's already editing this" card/row border — see
@@ -548,11 +551,19 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
       if (!changedItemId) {
         return;
       }
-      // Flash only once the patched row is actually reflected — not on
-      // DELETE, since the row's about to disappear rather than update.
+      // Flash (and announce, for screen reader users — see
+      // flashAndAnnounceChanges()'s own doc comment) only once the patched
+      // row is actually reflected — not on DELETE, since the row's about to
+      // disappear rather than update.
       void this.refreshInventoryListItem(changedItemId).then(() => {
         if (payload.eventType !== 'DELETE') {
-          this.flashTracker.flash(changedItemId);
+          flashAndAnnounceChanges(
+            [changedItemId],
+            this.flashTracker,
+            this.liveAnnouncer,
+            id => this.inventoryList.find(item => item.id === id)?.name ?? null,
+            name => `${name} updated`
+          );
         }
       });
     });
@@ -571,7 +582,13 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
         return;
       }
       void this.refreshInventoryListItem(changedItemId).then(() => {
-        this.flashTracker.flash(changedItemId);
+        flashAndAnnounceChanges(
+          [changedItemId],
+          this.flashTracker,
+          this.liveAnnouncer,
+          id => this.inventoryList.find(item => item.id === id)?.name ?? null,
+          name => `${name} updated`
+        );
       });
     });
     this.destroyRef.onDestroy(() => {

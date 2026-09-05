@@ -119,6 +119,11 @@ describe('AppComponent route-change focus management', () => {
 
     expect(document.activeElement).toBe(heading);
     expect(heading.getAttribute('tabindex')).toBe('-1');
+    // Suppresses the browser's default focus outline (see .route-focus-heading's
+    // own styles.scss comment) — a sighted keyboard user can never actually
+    // Tab onto a tabindex="-1" element, so a ring there would only ever be a
+    // distracting side effect of this programmatic .focus() call.
+    expect(heading.classList.contains('route-focus-heading')).toBe(true);
   }));
 
   it('falls back to a role="heading"/aria-level="1" element — PageHeaderComponent\'s own <h1> override — when there is no literal <h1>', fakeAsync(() => {

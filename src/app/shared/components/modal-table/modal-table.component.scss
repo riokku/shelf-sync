@@ -303,6 +303,22 @@ mat-dialog-content.mat-mdc-dialog-content{
   margin-top: 0.75rem;
 }
 
+// The drag-and-drop scope (existingImages only — see onExistingImageDrop()'s
+// own doc comment for why newly-staged photos stay out of it) — same flex
+// layout as .image-preview-row itself so nesting one inside the other reads
+// as one continuous row rather than two visually distinct groups.
+.existing-images-drop-list{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.drag-reorder-hint{
+  margin: 0.5rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
 .image-preview-thumb{
   position: relative;
   width: 6rem;
@@ -333,16 +349,29 @@ mat-dialog-content.mat-mdc-dialog-content{
     }
   }
 
+  // The one button positioned opposite the remove/undo toggle (top-right,
+  // the shared `button` rule above) rather than sharing its corner.
+  .drag-handle-button{
+    top: 0.125rem;
+    right: auto;
+    left: 0.125rem;
+    cursor: grab;
+  }
+
   &.marked-for-removal{
     img{
       opacity: 0.35;
     }
 
-    button{
+    .remove-toggle-button{
       background: var(--app-danger-bg);
     }
   }
 }
+
+// The .cdk-drag-preview/.cdk-drag-placeholder/.cdk-drop-list-dragging visual
+// polish for this drag list lives in the global styles.scss, not here — see
+// that file's own comment for why a component-scoped rule can't reach them.
 
 // Reaches the full width of .tab-panel (mat-dialog-content itself carries no
 // side padding — see that rule's own comment above) so the header band
