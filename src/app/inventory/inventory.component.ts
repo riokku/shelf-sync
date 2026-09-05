@@ -26,6 +26,7 @@ import { BulkActionToolbarComponent } from '../shared/components/bulk-action-too
 import { PageIntroComponent } from '../shared/components/page-intro/page-intro.component';
 import { LoadingCaptionComponent } from '../shared/components/loading-caption/loading-caption.component';
 import { BulkReassignModalComponent, BulkReassignModalResult } from '../shared/components/bulk-reassign-modal/bulk-reassign-modal.component';
+import { SavedViewsBarComponent } from '../shared/components/saved-views-bar/saved-views-bar.component';
 import { HasUnsavedChanges } from '../core/guards/unsaved-changes.guard';
 import { confirmLeaveWithoutSaving } from '../shared/utils/confirm-leave';
 import { SupabaseService } from '../core/supabase.service';
@@ -47,6 +48,21 @@ import { ItemEditPresenceService } from '../core/item-edit-presence.service';
 
 type StockLevel = 'out_of_stock' | 'low_stock' | 'sufficient_stock';
 type StatusFilter = 'active' | 'include_retired' | 'retired_only';
+
+/** The whole reproducible "view" a saved view captures — every filter plus
+ *  sort/card-vs-table, so re-applying one puts the page back exactly how it
+ *  looked when it was saved, not just which items match. Plain and
+ *  JSON-serializable, per SavedViewsBarComponent's own TFilters contract. */
+interface InventorySavedView {
+  searchTerm: string;
+  statusFilter: StatusFilter;
+  selectedStockLevels: StockLevel[];
+  selectedCategories: string[];
+  selectedPhysicalLocations: string[];
+  viewMode: 'card' | 'table';
+  sortActive: string;
+  sortDirection: '' | 'asc' | 'desc';
+}
 
 @Component({
     selector: 'app-inventory',
@@ -74,6 +90,7 @@ type StatusFilter = 'active' | 'include_retired' | 'retired_only';
         BulkActionToolbarComponent,
         PageIntroComponent,
         LoadingCaptionComponent,
+        SavedViewsBarComponent,
         ModalTableComponent
     ],
     templateUrl: './inventory.component.html',
@@ -452,6 +469,42 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
     this.physicalLocationOptionSearch = '';
     this.searchTerm = '';
     this.statusFilter = 'active';
+    this.pageIndex = 0;
+    this.clearSelection();
+  }
+
+  /** Bound to SavedViewsBarComponent's own `currentFilters` input — a plain
+   *  getter-style method (not a cached field) re-evaluated on every
+   *  template pass, same as this page's other filtered-list getters, so
+   *  the bar's "is this saved view the one currently applied" highlight
+   *  always reflects whatever's actually selected right now. */
+  captureCurrentView(): InventorySavedView {
+    return {
+      searchTerm: this.searchTerm,
+      statusFilter: this.statusFilter,
+      selectedStockLevels: [...this.selectedStockLevels],
+      selectedCategories: [...this.selectedCategories],
+      selectedPhysicalLocations: [...this.selectedPhysicalLocations],
+      viewMode: this.viewMode,
+      sortActive: this.sortActive,
+      sortDirection: this.sortDirection,
+    };
+  }
+
+  /** The saved-view counterpart to clearFilters() above — same
+   *  pageIndex-reset/clearSelection() side effects every other
+   *  filter-changing method on this page already has, since re-applying a
+   *  saved view changes *which* items are in scope exactly the same way
+   *  picking those filters by hand would. */
+  applySavedView(view: InventorySavedView) {
+    this.searchTerm = view.searchTerm;
+    this.statusFilter = view.statusFilter;
+    this.selectedStockLevels = [...view.selectedStockLevels];
+    this.selectedCategories = [...view.selectedCategories];
+    this.selectedPhysicalLocations = [...view.selectedPhysicalLocations];
+    this.viewMode = view.viewMode;
+    this.sortActive = view.sortActive;
+    this.sortDirection = view.sortDirection;
     this.pageIndex = 0;
     this.clearSelection();
   }

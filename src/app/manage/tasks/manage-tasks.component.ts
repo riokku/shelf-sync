@@ -22,11 +22,12 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
 import { UserAvatarComponent } from '../../shared/components/user-avatar/user-avatar.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { BulkActionToolbarComponent } from '../../shared/components/bulk-action-toolbar/bulk-action-toolbar.component';
+import { SavedViewsBarComponent } from '../../shared/components/saved-views-bar/saved-views-bar.component';
 import { TaskDetailModalComponent } from '../../shared/components/task-detail-modal/task-detail-modal.component';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { Database } from '../../shared/models/database.types';
 import { TASK_STATUSES, TASK_STATUS_LABELS, TaskStatus } from '../../shared/models/task-status';
-import { toIsoDateString, getTodayIsoDate } from '../../shared/utils/date';
+import { toIsoDateString, getTodayIsoDate, parseIsoDate } from '../../shared/utils/date';
 import { profileDisplayName, resolveProfileAvatarKey, resolveProfileName } from '../../shared/utils/profile-label';
 import { logActivity } from '../../shared/utils/activity-log';
 import { subscribeToTableChanges } from '../../shared/utils/realtime';
@@ -36,6 +37,17 @@ import { HasUnsavedChanges } from '../../core/guards/unsaved-changes.guard';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
 type RelatedItemOption = Pick<Database['public']['Tables']['inventory_items']['Row'], 'id' | 'name'>;
+
+/** SavedViewsBarComponent's TFilters for "All tasks" — plain and
+ *  JSON-serializable (see captureTaskFilters()' own doc comment for why
+ *  taskFilterDueBefore is a 'YYYY-MM-DD' string here, not the Date it
+ *  actually is on the component). */
+interface ManageTasksSavedView {
+  taskFilterSearch: string;
+  taskFilterAssignee: string | null;
+  taskFilterStatus: TaskStatus | null;
+  taskFilterDueBefore: string | null;
+}
 
 @Component({
   selector: 'app-manage-tasks',
@@ -59,6 +71,7 @@ type RelatedItemOption = Pick<Database['public']['Tables']['inventory_items']['R
     UserAvatarComponent,
     EmptyStateComponent,
     BulkActionToolbarComponent,
+    SavedViewsBarComponent,
     TaskDetailModalComponent
   ],
   templateUrl: './manage-tasks.component.html',
@@ -691,6 +704,31 @@ export class ManageTasksComponent implements OnInit, HasUnsavedChanges {
     this.taskFilterAssignee = null;
     this.taskFilterStatus = null;
     this.taskFilterDueBefore = null;
+  }
+
+  /** Bound to SavedViewsBarComponent's own `currentFilters` input — see
+   *  InventoryComponent's own captureCurrentView() for the same shape on
+   *  that page. taskFilterDueBefore is stored as a plain 'YYYY-MM-DD'
+   *  string, not the raw Date object it lives as on this component — a
+   *  Date round-trips through JSON.stringify() fine (into an ISO string)
+   *  but JSON.parse() never converts it back, so a saved view's stored
+   *  value would come back as a plain string, not a Date, the one time it
+   *  actually mattered (applyTaskSavedView() re-assigning it to a
+   *  matDatepicker-bound field, which expects a real Date). */
+  captureTaskFilters(): ManageTasksSavedView {
+    return {
+      taskFilterSearch: this.taskFilterSearch,
+      taskFilterAssignee: this.taskFilterAssignee,
+      taskFilterStatus: this.taskFilterStatus,
+      taskFilterDueBefore: toIsoDateString(this.taskFilterDueBefore),
+    };
+  }
+
+  applyTaskSavedView(view: ManageTasksSavedView) {
+    this.taskFilterSearch = view.taskFilterSearch;
+    this.taskFilterAssignee = view.taskFilterAssignee;
+    this.taskFilterStatus = view.taskFilterStatus;
+    this.taskFilterDueBefore = parseIsoDate(view.taskFilterDueBefore);
   }
 
   /** Swaps the tab strip/content out for this task's detail view inline

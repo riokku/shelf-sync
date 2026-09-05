@@ -63,6 +63,14 @@
     background: var(--mat-sys-surface-container-high);
   }
 
+  // Same ring treatment the command palette's own search input uses —
+  // the roving-tabindex model means only one cell is ever a native Tab
+  // stop at a time, so this needs to be unambiguous.
+  &:focus-visible{
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+
   &.outside-month{
     opacity: 0.45;
   }

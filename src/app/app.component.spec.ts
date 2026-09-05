@@ -1,5 +1,6 @@
-import { TestBed } from '@angular/core/testing';
-import { Router, RouterOutlet } from '@angular/router';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { Subject } from 'rxjs';
 import { AppComponent } from './app.component';
 import { AuthService } from './core/auth.service';
 import { SiteSettingsService } from './core/site-settings.service';
@@ -9,11 +10,14 @@ describe('AppComponent', () => {
   // A plain mutable object rather than provideRouter([]) — showChrome() only
   // ever reads router.url as a string, and driving that directly is simpler
   // and more deterministic than relying on real navigation against an empty
-  // route config actually updating router.url as expected.
-  const fakeRouter = { url: '/' };
+  // route config actually updating router.url as expected. `events` is a
+  // real Subject (rather than e.g. rxjs' EMPTY) so the focus-management
+  // tests below can drive real NavigationEnd events through it.
+  const fakeRouter = { url: '/', events: new Subject<NavigationEnd>() };
 
   beforeEach(async () => {
     fakeRouter.url = '/';
+    fakeRouter.events = new Subject<NavigationEnd>();
 
     await TestBed.configureTestingModule({
       declarations: [AppComponent],
@@ -74,4 +78,87 @@ describe('AppComponent', () => {
     fakeRouter.url = '/inventory?item=abc-123';
     expect(app.showChrome()).toBe(true);
   });
+});
+
+describe('AppComponent route-change focus management', () => {
+  const fakeRouter = { url: '/', events: new Subject<NavigationEnd>() };
+
+  beforeEach(async () => {
+    fakeRouter.url = '/';
+    fakeRouter.events = new Subject<NavigationEnd>();
+
+    await TestBed.configureTestingModule({
+      declarations: [AppComponent],
+      imports: [RouterOutlet],
+      providers: [
+        { provide: Router, useValue: fakeRouter },
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: SiteSettingsService, useValue: { load: async () => {} } }
+      ]
+    }).compileComponents();
+  });
+
+  /** Simulates the routed page having already rendered its own heading by
+   *  the time NavigationEnd's deferred focus call goes looking for one —
+   *  AppComponent's own template has no real routed content behind its
+   *  bare <router-outlet>, so nothing renders a heading on its own here. */
+  function createFixtureWithHeading(): { fixture: ComponentFixture<AppComponent>; heading: HTMLElement } {
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    const heading = document.createElement('h1');
+    heading.textContent = 'Inventory';
+    fixture.nativeElement.querySelector('#main-content')!.appendChild(heading);
+    return { fixture, heading };
+  }
+
+  it('moves focus to the new page\'s real <h1> after a real navigation', fakeAsync(() => {
+    const { heading } = createFixtureWithHeading();
+
+    fakeRouter.events.next(new NavigationEnd(1, '/inventory', '/inventory'));
+    tick();
+
+    expect(document.activeElement).toBe(heading);
+    expect(heading.getAttribute('tabindex')).toBe('-1');
+  }));
+
+  it('falls back to a role="heading"/aria-level="1" element — PageHeaderComponent\'s own <h1> override — when there is no literal <h1>', fakeAsync(() => {
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    const heading = document.createElement('h2');
+    heading.setAttribute('role', 'heading');
+    heading.setAttribute('aria-level', '1');
+    fixture.nativeElement.querySelector('#main-content')!.appendChild(heading);
+
+    fakeRouter.events.next(new NavigationEnd(1, '/manage/suppliers', '/manage/suppliers'));
+    tick();
+
+    expect(document.activeElement).toBe(heading);
+  }));
+
+  it('does not re-focus the heading for a same-page, query-param-only navigation (a tab switch or deep link)', fakeAsync(() => {
+    const { heading } = createFixtureWithHeading();
+
+    fakeRouter.events.next(new NavigationEnd(1, '/manage/settings', '/manage/settings'));
+    tick();
+    expect(document.activeElement).toBe(heading); // sanity: the real navigation above did move focus
+
+    const unrelatedButton = document.createElement('button');
+    document.body.appendChild(unrelatedButton);
+    unrelatedButton.focus();
+
+    fakeRouter.events.next(new NavigationEnd(2, '/manage/settings?tab=workflow', '/manage/settings?tab=workflow'));
+    tick();
+
+    expect(document.activeElement).toBe(unrelatedButton);
+    document.body.removeChild(unrelatedButton);
+  }));
+
+  it('ignores router events other than NavigationEnd', fakeAsync(() => {
+    const { heading } = createFixtureWithHeading();
+
+    fakeRouter.events.next({ id: 1 } as unknown as NavigationEnd);
+    tick();
+
+    expect(document.activeElement).not.toBe(heading);
+  }));
 });

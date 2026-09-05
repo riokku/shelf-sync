@@ -92,6 +92,12 @@
           <input matInput placeholder="Search by name or ID" [ngModel]="searchTerm" (ngModelChange)="onSearchChange($event)" />
         </mat-form-field>
       </div>
+      <app-saved-views-bar
+          pageKey="inventory"
+          [currentFilters]="captureCurrentView()"
+          [hasActiveFilters]="hasActiveFilters"
+          (applyView)="applySavedView($event)"
+        />
     </div>
   </div>
   <div class="row">

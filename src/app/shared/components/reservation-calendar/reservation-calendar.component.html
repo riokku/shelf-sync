@@ -2,7 +2,7 @@
   <button mat-icon-button type="button" (click)="previousMonth()" aria-label="Previous month">
     <mat-icon>chevron_left</mat-icon>
   </button>
-  <h3 class="calendar-month-label">{{ monthLabel }}</h3>
+  <h3 class="calendar-month-label" aria-live="polite">{{ monthLabel }}</h3>
   <button mat-icon-button type="button" (click)="nextMonth()" aria-label="Next month">
     <mat-icon>chevron_right</mat-icon>
   </button>
@@ -26,7 +26,12 @@
             [class.outside-month]="!day.inCurrentMonth"
             [class.is-today]="day.isToday"
             [class.is-selected]="day.iso === selectedIso"
+            [attr.data-iso]="day.iso"
+            [attr.tabindex]="day.iso === focusedIso ? 0 : -1"
+            [attr.aria-selected]="day.iso === selectedIso"
+            [attr.aria-label]="dayAriaLabel(day)"
             (click)="selectDay(day.iso)"
+            (keydown)="onDayKeydown($event, day.iso)"
           >
           <span class="calendar-day-number">{{ day.dayOfMonth }}</span>
           <span class="calendar-day-chips">

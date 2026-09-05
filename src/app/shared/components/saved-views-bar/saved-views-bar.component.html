@@ -1,0 +1,47 @@
+<div class="saved-views-bar">
+  @if (views.length > 0) {
+    <span class="saved-views-label">Saved views:</span>
+    @for (view of views; track view.id) {
+      <span class="saved-view-chip" [class.is-active]="isActive(view)">
+        <button type="button" class="saved-view-chip-apply" (click)="applyView.emit(view.filters)">{{ view.name }}</button>
+        <button
+            type="button"
+            class="saved-view-chip-remove"
+            (click)="removeView(view)"
+            [attr.aria-label]="'Delete saved view ' + view.name"
+          >
+          <mat-icon>close</mat-icon>
+        </button>
+      </span>
+    }
+  }
+
+  @if (isNaming) {
+    <form class="saved-view-name-form" (ngSubmit)="confirmSave()">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="saved-view-name-field">
+        <input #nameInput matInput [formControl]="nameControl" placeholder="View name" maxlength="40" (input)="duplicateNameError = false" />
+        @if (duplicateNameError) {
+          <mat-error>A saved view with that name already exists.</mat-error>
+        }
+      </mat-form-field>
+      <button mat-icon-button type="submit" [disabled]="!nameControl.value.trim()" aria-label="Save view">
+        <mat-icon>check</mat-icon>
+      </button>
+      <button mat-icon-button type="button" (click)="cancelNaming()" aria-label="Cancel saving view">
+        <mat-icon>close</mat-icon>
+      </button>
+    </form>
+  } @else {
+    <button
+        mat-stroked-button
+        type="button"
+        class="saved-view-add-button"
+        [disabled]="!hasActiveFilters"
+        [matTooltip]="hasActiveFilters ? '' : 'Search or apply a filter first'"
+        (click)="startNaming()"
+      >
+      <mat-icon>add</mat-icon>
+      Save current view
+    </button>
+  }
+</div>

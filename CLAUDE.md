@@ -3110,6 +3110,74 @@ accepted here the same way this schema accepts a few other low-sensitivity trade
 the only thing exposed to someone who guessed another org's id is who's editing what there, nothing
 about the item's own data.
 
+A round of accessibility fixes found via a targeted pass rather than a live report. `manage/reservations`'
+calendar view (`ReservationCalendarComponent`) had `role="grid"`/`role="gridcell"` markup already in
+place, but every day cell was its own native `<button>` with no `tabindex` management at all — basic
+Enter/Space activation already worked for free from being a real `<button>`, but tabbing *through* a
+month took up to 42 presses, and arrow keys (what a screen reader's own grid navigation mode expects
+given the `role="grid"` markup already there) did nothing. Fixed with the standard WAI-ARIA APG
+roving-tabindex pattern: exactly one cell (`focusedIso`) carries `tabindex="0"` at a time, everything
+else is `-1`; Arrow keys move it a day/week, Home/End jump to the start/end of the focused day's own
+week. `selectDay()` (called by both a click and native button activation) keeps the roving stop in
+sync with whatever was just actually chosen, so the very next Tab press doesn't skip past the grid
+entirely. Arrowing past the currently-rendered 6-week window shifts the displayed month first (same
+as clicking Previous/Next), deferring the actual `.focus()` call via `setTimeout` until that new
+month's grid has actually rendered. Each cell also gained a proper `aria-label` (`dayAriaLabel()` —
+full date plus Today/Selected/reservation-count flags, since the visible content alone — a bare day
+number plus whatever chips happen to be showing — doesn't say which month/year a screen reader user
+is on) and `aria-selected`, and the month `<h3>` gained `aria-live="polite"` so a screen reader user
+hears the month change on Previous/Next even if they're not focused on it.
+
+Separately, Angular's router never moves focus on navigation the way a full page load naturally would
+— a screen reader or keyboard-only user navigating via the drawer/command palette/quick menu got no
+signal a navigation even happened. `AppComponent`'s constructor now subscribes to `router.events`
+directly (a plain `.subscribe()`, no RxJS operators, matching this app's usual convention) and, on
+every `NavigationEnd` whose *path* actually changed (comparing `path.split('?')[0]`, the same
+convention `showChrome()` itself already uses — so a same-page query-only navigation, a Settings tab
+switch or an `?item=`/`?task=` deep link, never re-triggers this), moves focus to the new page's own
+heading via `focusPageHeading()`. That method looks for a real `<h1>` first, falling back to
+`PageHeaderComponent`'s own `role="heading"`/`aria-level="1"` override (see that component's own
+`headingLevel` doc comment for why some pages' "h1" isn't a literal `<h1>` tag) — scoped to
+`#main-content` so it can never land on the header/footer's own chrome — and gives it a `tabindex="-1"`
+if it doesn't already have one (left in place afterward, same "harmless to leave set" convention this
+app's other one-off focus targets already use). Deferred one tick via `setTimeout`, since
+`NavigationEnd` fires once the route itself resolves but the routed component's own template hasn't
+necessarily painted its heading into the DOM yet at that exact moment.
+
+Inventory and Manage Tasks' "All tasks" tab both get a **Saved views** row — a chip per named
+filter/search/sort combo, click to re-apply, a small trailing × to delete — via a new shared,
+page-agnostic `SavedViewsBarComponent` (`shared/components/saved-views-bar`). The component has no
+idea what a "view" actually contains for either page (Inventory's is search/status/stock-level/
+category/physical-location/sort/card-vs-table; Manage Tasks' is search/assignee/status/due-before) —
+`TFilters` is a generic, opaque, JSON-serializable object the host constructs (`captureCurrentView()`/
+`captureTaskFilters()`) and reads back (`applySavedView()`/`applyTaskSavedView()`), the same "dumb,
+host owns the actual meaning" shape `BulkActionToolbarComponent` already established for its own
+page-agnostic "N selected" chrome — except this one is self-contained (unlike that toolbar), owning
+its own `localStorage` read/write via `shared/utils/saved-views.ts`'s `loadSavedViews()`/
+`addSavedView()`/`removeSavedView()`, same reasoning `PageIntroComponent` already gives for owning its
+own dismissal storage rather than making every host duplicate it. Keyed
+`shelf-sync:saved-views:<userId>:<pageKey>` — per user (not org-wide) and browser-local only, not
+synced across devices, the same documented tradeoff `PageIntroComponent`'s own dismissal state and
+`HomeComponent`'s Getting-Started dismissal already accept, for the same reason: cheap, no schema
+change, and the worst case (a different device just doesn't have this saved view yet) is mild. A
+saved view whose stored filters deep-equal (`JSON.stringify` comparison) the host's current filter
+state renders with a highlighted chip (`isActive()`), so it's visible when the page is currently
+showing exactly one of them. Saving rejects a case-insensitive duplicate name rather than silently
+creating a second entry with the same label, the same "likely accidental duplicate" reasoning
+`isDuplicateItemName()` already established for inventory item names elsewhere in this app.
+Manage Tasks' own `taskFilterDueBefore` is a `Date` on the component but stored/round-tripped through
+this as a plain `'YYYY-MM-DD'` string (`toIsoDateString()`/`parseIsoDate()`) — a `Date` survives
+`JSON.stringify()` fine but never comes back as one from `JSON.parse()`, which would have broken
+re-applying a saved view onto that field's own `matDatepicker` binding, which expects a real `Date`.
+"Save current view" itself only ever makes sense once something's actually been searched/filtered —
+saving the untouched default would just be a named view that looks exactly like having no view
+applied at all — so `SavedViewsBarComponent` takes a third required input, `hasActiveFilters`, that
+disables the button (with a `matTooltip` explaining why) and no-ops `startNaming()` even if called
+directly. Rather than this component trying to work out "is TFilters at its default" generically
+(which it has no way to do for an opaque, page-defined shape), both hosts just pass their own
+already-existing `hasActiveFilters`/`hasActiveTaskFilters` getters — each page already had one, since
+both already drive that same page's own "Clear filters" button visibility.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
