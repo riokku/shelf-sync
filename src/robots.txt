@@ -1,0 +1,16 @@
+# Every route below "/" other than the public ones listed here requires an
+# authenticated + approved session (see app-routing.module.ts's guards) —
+# an anonymous crawler hitting them gets bounced to /login client-side after
+# the JS boots, so there's nothing worth indexing there anyway. Disallowing
+# them explicitly just saves crawl budget rather than closing any real
+# access gap (that's RLS's job, not this file's).
+User-agent: *
+Allow: /$
+Allow: /pricing
+Allow: /login
+Allow: /register
+Allow: /privacy
+Allow: /terms
+Disallow: /
+
+Sitemap: https://shelf-sync.chrisistinson.workers.dev/sitemap.xml

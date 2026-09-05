@@ -1,0 +1,44 @@
+# Cloudflare Workers static-assets response headers — same mechanism classic
+# Cloudflare Pages uses (_headers at the root of the served directory), still
+# honored by the Workers assets product per Cloudflare's own docs even though
+# this product's _redirects support has its own quirks (see wrangler.jsonc's
+# own comment on the "infinite loop" rejection there — unrelated to this file,
+# which only sets headers, never redirects). Verify these actually land on a
+# real response (curl -I) after the first deploy that ships this file.
+#
+# Content-Security-Policy is scoped to what this app genuinely loads at
+# runtime (checked directly against src/environments/*.ts and every external
+# script/host referenced anywhere in src/ at the time this was written):
+#   - 'self'                        this app's own bundle/assets
+#   - challenges.cloudflare.com     Turnstile's script (auth forms) + its
+#                                    widget iframe (script-src/frame-src)
+#   - fonts.googleapis.com          the Google Fonts stylesheet link
+#   - fonts.gstatic.com             the actual font files that stylesheet pulls
+#   - <supabase-url>                Postgres/Auth/Storage/Realtime/Edge
+#                                    Functions all live on this one project
+#                                    host — https for REST/Storage, wss for
+#                                    Realtime
+# style-src needs 'unsafe-inline': Angular injects each component's own
+# styles as inline <style> tags at runtime (ViewEncapsulation), and Angular
+# Material/CDK do the same for overlays/theming — there's no per-request
+# nonce to hand out on a pure static deploy with no server-side templating,
+# so a strict style-src isn't achievable here without a much bigger
+# architecture change (SSR). script-src has no such exception and stays
+# strict — that's the directive that actually matters for stopping arbitrary
+# code execution.
+# img-src allows any https: source in addition to the supabase host — item
+# photos/logos are same-host today, but this is deliberately a hair looser
+# in case that ever isn't true, since a wrong image host is a broken photo,
+# not a security hole, unlike a wrong script-src.
+#
+# Known gap: worker-src isn't declared (falls back to default-src 'none'),
+# which would block the barcode scanner's camera-decoding library if
+# BARCODE_FEATURE_ENABLED is ever flipped back on (see shared/utils/barcode.ts)
+# — add `worker-src 'self' blob:` at that point.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=(), usb=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  Content-Security-Policy: default-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://ailqjqjrzhzspofoslpa.supabase.co wss://ailqjqjrzhzspofoslpa.supabase.co; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'

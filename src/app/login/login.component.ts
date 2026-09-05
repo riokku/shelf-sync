@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AuthService } from '../core/auth.service';
+import { MfaService } from '../core/mfa.service';
 import { BrandLogoComponent } from '../shared/components/brand-logo/brand-logo.component';
 import { TurnstileWidgetComponent } from '../shared/components/turnstile-widget/turnstile-widget.component';
 
@@ -28,6 +29,7 @@ import { TurnstileWidgetComponent } from '../shared/components/turnstile-widget/
 })
 export class LoginComponent {
   private authService = inject(AuthService);
+  private mfaService = inject(MfaService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
 
@@ -80,7 +82,17 @@ export class LoginComponent {
       return;
     }
 
-    this.router.navigateByUrl(this.safeReturnUrl() ?? '/home');
+    // approvedGuard would catch this on the very next navigation regardless
+    // (see its own doc comment) — checking here too just avoids a visible
+    // flash of whichever destination this would otherwise land on before
+    // being bounced back out.
+    const returnUrl = this.safeReturnUrl();
+    if (await this.mfaService.isVerificationPending()) {
+      this.router.navigate(['/mfa-verify'], returnUrl ? { queryParams: { returnUrl } } : {});
+      return;
+    }
+
+    this.router.navigateByUrl(returnUrl ?? '/home');
   }
 
   /** Only follow returnUrl if it's a same-app relative path — it comes from

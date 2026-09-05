@@ -12,12 +12,15 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { AuthService, Profile } from '../core/auth.service';
+import { MfaService } from '../core/mfa.service';
 import { NotificationService } from '../core/notification.service';
 import { SupabaseService } from '../core/supabase.service';
 import { ThemeModeService } from '../core/theme-mode.service';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 import { ChangePasswordModalComponent } from '../shared/components/change-password-modal/change-password-modal.component';
+import { ConfirmDialogComponent } from '../shared/components/confirm-dialog/confirm-dialog.component';
 import { HelpTooltipComponent } from '../shared/components/help-tooltip/help-tooltip.component';
+import { TwoFactorSetupModalComponent } from '../shared/components/two-factor-setup-modal/two-factor-setup-modal.component';
 import { UserAvatarComponent } from '../shared/components/user-avatar/user-avatar.component';
 import { AVATAR_PRESETS } from '../shared/models/avatar-preset';
 import { MAX_QUICK_MENU_ITEMS, QUICK_MENU_OPTIONS } from '../shared/models/quick-menu';
@@ -45,6 +48,7 @@ import { MAX_QUICK_MENU_ITEMS, QUICK_MENU_OPTIONS } from '../shared/models/quick
 })
 export class AccountComponent implements OnInit {
   protected authService = inject(AuthService);
+  private mfaService = inject(MfaService);
   private supabase = inject(SupabaseService).client;
   private notification = inject(NotificationService);
   private dialog = inject(MatDialog);
@@ -109,6 +113,14 @@ export class AccountComponent implements OnInit {
   isSavingQuickMenu = false;
   quickMenuError: string | null = null;
 
+  /** Independent of isLoading/profile — MfaService talks to the Auth API
+   *  directly, not the profiles table, so there's no reason to block the
+   *  rest of the page's own load on it. */
+  isLoadingMfaStatus = true;
+  isMfaEnabled = false;
+  isTogglingMfa = false;
+  mfaError: string | null = null;
+
   async ngOnInit() {
     this.profile = await this.authService.getProfile();
 
@@ -125,6 +137,9 @@ export class AccountComponent implements OnInit {
     }
 
     this.isLoading = false;
+
+    this.isMfaEnabled = await this.mfaService.isEnrolled();
+    this.isLoadingMfaStatus = false;
   }
 
   /** Order-independent comparison against the persisted values, same shape
@@ -281,6 +296,74 @@ export class AccountComponent implements OnInit {
       if (changed) {
         this.notification.success('Password updated');
       }
+    });
+  }
+
+  /** TwoFactorSetupModalComponent is self-contained — it does the actual
+   *  enroll()/challengeAndVerify() calls itself (see its own doc comment) —
+   *  so this just opens it and updates the status line on a truthy close,
+   *  same shape openChangePassword() just above already establishes for a
+   *  self-contained modal. */
+  openTwoFactorSetup() {
+    const dialogRef = this.dialog.open(TwoFactorSetupModalComponent, {
+      width: 'clamp(24rem, 40vw, 28rem)',
+      maxWidth: '90vw'
+    });
+
+    dialogRef.afterClosed().subscribe((enabled: boolean | undefined) => {
+      if (enabled) {
+        this.isMfaEnabled = true;
+        this.notification.success('Two-factor authentication is on');
+      }
+    });
+  }
+
+  /** Confirmed first (danger: false — unlike deleting something, turning
+   *  this off is fully reversible, just worth a beat before weakening the
+   *  account's own login security) via ConfirmDialogComponent, mirroring
+   *  every other consequential-but-reversible action in this app. */
+  disableTwoFactor() {
+    if (this.isTogglingMfa) {
+      return;
+    }
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Turn off two-factor authentication?',
+        message: 'You can turn it back on anytime from this page.',
+        confirmLabel: 'Turn off'
+      },
+      width: 'clamp(75%, 25rem, 60%)'
+    });
+
+    dialogRef.afterClosed().subscribe(async confirmed => {
+      if (!confirmed) {
+        return;
+      }
+
+      this.isTogglingMfa = true;
+      this.mfaError = null;
+
+      const factor = await this.mfaService.getVerifiedTotpFactor();
+      if (!factor) {
+        // Already off somehow (another tab, a previous attempt that
+        // actually succeeded despite an error surfacing) — just reflect
+        // that rather than erroring over nothing left to do.
+        this.isTogglingMfa = false;
+        this.isMfaEnabled = false;
+        return;
+      }
+
+      const error = await this.mfaService.unenroll(factor.id);
+      this.isTogglingMfa = false;
+
+      if (error) {
+        this.mfaError = error;
+        return;
+      }
+
+      this.isMfaEnabled = false;
+      this.notification.success('Two-factor authentication turned off');
     });
   }
 

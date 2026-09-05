@@ -50,36 +50,10 @@
        precision. -->
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-  <script>
-    // Browsers natively try to restore a page's previous scroll offset on
-    // reload/back-forward (history.scrollRestoration defaults to 'auto'),
-    // independent of and *before* Angular Router's own
-    // scrollPositionRestoration handling (app-routing.module.ts) even
-    // boots — most visible as a hard reload or direct URL load (e.g.
-    // /privacy from a bookmark) briefly landing scrolled down, sometimes
-    // with a visible snap back to top once Angular catches up. Set as
-    // early as possible, before first paint, so the browser never attempts
-    // its own restoration in the first place; Angular's Router still
-    // handles scroll behavior for in-app navigations from here.
-    history.scrollRestoration = 'manual';
-
-    // Applies the saved light/dark mode before Angular boots (and before
-    // first paint), so light-mode users don't see a flash of the dark
-    // default while the app loads. Kept in sync with the storage key and
-    // fallback in ThemeModeService (core/theme-mode.service.ts) — update
-    // both together if either changes.
-    (function () {
-      try {
-        var mode = localStorage.getItem('shelfsync-theme-mode');
-        if (mode === 'light' || mode === 'dark') {
-          document.documentElement.setAttribute('data-mode', mode);
-        }
-      } catch (e) {
-        // localStorage unavailable (private browsing, disabled storage) —
-        // fall back to the default dark mode compiled into styles.scss.
-      }
-    })();
-  </script>
+  <!-- Scroll-restoration + pre-boot theme application — moved to an external
+       file (assets/theme-init.js) so the site's CSP script-src can stay
+       'self'-only with no 'unsafe-inline'; see that file's own doc comment. -->
+  <script src="assets/theme-init.js"></script>
 </head>
 <body>
   <app-root></app-root>

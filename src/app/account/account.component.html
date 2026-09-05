@@ -144,6 +144,47 @@
       </mat-card-content>
     </mat-card>
 
+    <mat-card class="mfa-card">
+      <mat-card-content>
+        <h3>Two-factor authentication</h3>
+        <p class="section-hint">
+          Add an extra step when signing in, using an authenticator app on your phone.
+        </p>
+
+        @if (isLoadingMfaStatus) {
+          <div class="skeleton-line skeleton-account-hint"></div>
+        } @else if (isMfaEnabled) {
+          <p class="mfa-status mfa-status-on">
+            <mat-icon>check_circle</mat-icon>
+            Two-factor authentication is on.
+          </p>
+          <button mat-stroked-button type="button" [disabled]="isTogglingMfa" (click)="disableTwoFactor()">
+            @if (isTogglingMfa) {
+              <mat-spinner diameter="20"></mat-spinner>
+            } @else {
+              <ng-container>
+                <mat-icon>remove_moderator</mat-icon>
+                Turn off
+              </ng-container>
+            }
+          </button>
+        } @else {
+          <p class="mfa-status">
+            <mat-icon>gpp_maybe</mat-icon>
+            Two-factor authentication is off.
+          </p>
+          <button mat-stroked-button type="button" (click)="openTwoFactorSetup()">
+            <mat-icon>add_moderator</mat-icon>
+            Enable two-factor authentication
+          </button>
+        }
+
+        @if (mfaError) {
+          <p class="error-message" role="alert">{{ mfaError }}</p>
+        }
+      </mat-card-content>
+    </mat-card>
+
     <mat-card class="avatar-card">
       <mat-card-content>
         <h3>Avatar</h3>

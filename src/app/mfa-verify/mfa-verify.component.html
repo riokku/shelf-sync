@@ -1,0 +1,68 @@
+<div class="mfa-verify-wrapper">
+  <div class="container">
+    <div class="page-toolbar">
+      <app-breadcrumbs />
+    </div>
+
+    @if (isLoading) {
+      <div class="status-card" aria-hidden="true">
+        <mat-spinner diameter="32"></mat-spinner>
+      </div>
+    } @else if (!factorId) {
+      <div class="status-card">
+        <mat-icon class="status-icon">error_outline</mat-icon>
+        <h1>Something went wrong</h1>
+        <p>{{ errorMessage }}</p>
+        <button mat-stroked-button type="button" (click)="logout()">
+          <mat-icon>logout</mat-icon>
+          Sign out
+        </button>
+      </div>
+    } @else {
+      <div class="status-card">
+        <mat-icon class="status-icon">verified_user</mat-icon>
+        <h1>Enter your two-factor code</h1>
+        <p>Open your authenticator app and enter the 6-digit code it shows you.</p>
+
+        <mat-form-field appearance="outline" class="code-field">
+          <mat-label>6-digit code</mat-label>
+          <mat-icon matPrefix>pin</mat-icon>
+          <input
+            matInput
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            maxlength="6"
+            [formControl]="codeControl"
+            (keydown.enter)="confirm()"
+          />
+          @if (codeControl.hasError('required') && codeControl.touched) {
+            <mat-error>Enter the 6-digit code from your authenticator app.</mat-error>
+          } @else if (codeControl.hasError('pattern') && codeControl.touched) {
+            <mat-error>That doesn't look like a 6-digit code.</mat-error>
+          }
+        </mat-form-field>
+
+        @if (errorMessage) {
+          <p class="error-message" role="alert">{{ errorMessage }}</p>
+        }
+
+        <div class="action-row">
+          <button mat-flat-button color="primary" type="button" (click)="confirm()" [disabled]="isSubmitting">
+            @if (isSubmitting) {
+              <mat-spinner diameter="20"></mat-spinner>
+            } @else {
+              <ng-container>
+                <mat-icon>check</mat-icon>
+                Verify
+              </ng-container>
+            }
+          </button>
+          <button mat-button type="button" (click)="logout()">
+            <mat-icon>logout</mat-icon>
+            Sign out
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</div>

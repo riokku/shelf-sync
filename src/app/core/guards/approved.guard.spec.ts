@@ -2,14 +2,16 @@ import { TestBed } from '@angular/core/testing';
 import { Router, UrlTree, provideRouter } from '@angular/router';
 import { approvedGuard } from './approved.guard';
 import { AuthService } from '../auth.service';
-import { createFakeAuthService, createFakeProfile } from '../../testing/fakes';
+import { MfaService } from '../mfa.service';
+import { createFakeAuthService, createFakeMfaService, createFakeProfile } from '../../testing/fakes';
 
 describe('approvedGuard', () => {
-  function configure(authService: AuthService) {
+  function configure(authService: AuthService, mfaService: MfaService = createFakeMfaService()) {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
-        { provide: AuthService, useValue: authService }
+        { provide: AuthService, useValue: authService },
+        { provide: MfaService, useValue: mfaService }
       ]
     });
   }
@@ -58,5 +60,27 @@ describe('approvedGuard', () => {
     const result = await runGuard();
     expect(result).not.toBe(true);
     expect(serialize(result as UrlTree)).toContain('/pending-approval');
+  });
+
+  it('redirects to /mfa-verify when this session still owes a two-factor challenge', async () => {
+    configure(
+      createFakeAuthService(createFakeProfile({ membership_status: 'approved' }), { hasSession: true }),
+      createFakeMfaService({ isVerificationPending: true })
+    );
+    const result = await runGuard();
+    expect(result).not.toBe(true);
+    expect(serialize(result as UrlTree)).toContain('/mfa-verify');
+  });
+
+  it('checks the MFA challenge before the membership status, ahead of /pending-approval', async () => {
+    // Deliberately combines "still owes a challenge" with "not yet
+    // approved" — /mfa-verify should still win, per approvedGuard's own
+    // doc comment on why that check runs first.
+    configure(
+      createFakeAuthService(createFakeProfile({ membership_status: 'pending' }), { hasSession: true }),
+      createFakeMfaService({ isVerificationPending: true })
+    );
+    const result = await runGuard();
+    expect(serialize(result as UrlTree)).toContain('/mfa-verify');
   });
 });

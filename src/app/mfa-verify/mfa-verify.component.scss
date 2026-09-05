@@ -1,0 +1,61 @@
+@use '../shared/styles/page-toolbar';
+
+.mfa-verify-wrapper{
+  color: var(--mat-sys-on-surface);
+  padding: 3rem 1.5rem;
+  max-width: 100%;
+
+  .container{
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+// Same card treatment PendingApprovalComponent's own .status-card already
+// establishes for this exact "authenticated but not all the way in yet"
+// shape — see that component's own stylesheet comment.
+.status-card{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 28rem;
+  margin: 2rem auto;
+  padding: 2.5rem 2rem;
+  border-radius: 0.75rem;
+  background: var(--mat-sys-surface-container-low);
+  text-align: center;
+
+  .status-icon{
+    font-size: 1.75rem;
+    width: 1.75rem;
+    height: 1.75rem;
+    color: var(--mat-sys-primary);
+  }
+
+  h1{
+    margin: 0;
+  }
+
+  p{
+    margin: 0 0 0.5rem;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  .code-field{
+    width: 100%;
+    max-width: 14rem;
+  }
+
+  .action-row{
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+  }
+}
+
+.error-message{
+  color: var(--app-error-text);
+  margin: 0 0 0.5rem;
+}

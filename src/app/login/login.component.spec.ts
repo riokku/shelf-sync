@@ -3,7 +3,8 @@ import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 
 import { LoginComponent } from './login.component';
 import { AuthService } from '../core/auth.service';
-import { createFakeActivatedRoute, createFakeAuthService, installFakeTurnstile } from '../testing/fakes';
+import { MfaService } from '../core/mfa.service';
+import { createFakeActivatedRoute, createFakeAuthService, createFakeMfaService, installFakeTurnstile } from '../testing/fakes';
 
 describe('LoginComponent', () => {
   let component: LoginComponent;
@@ -16,7 +17,8 @@ describe('LoginComponent', () => {
       imports: [LoginComponent],
       providers: [
         provideRouter([]),
-        { provide: AuthService, useValue: createFakeAuthService() }
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: MfaService, useValue: createFakeMfaService() }
       ]
     })
     .compileComponents();
@@ -85,6 +87,7 @@ describe('LoginComponent post-login redirect', () => {
       providers: [
         provideRouter([]),
         { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: MfaService, useValue: createFakeMfaService() },
         { provide: ActivatedRoute, useValue: createFakeActivatedRoute(returnUrl ? { returnUrl } : {}) }
       ]
     }).compileComponents();
@@ -117,6 +120,51 @@ describe('LoginComponent post-login redirect', () => {
   });
 });
 
+/** approvedGuard would catch this on the very next navigation regardless
+ *  (see its own doc comment) — this covers attemptLogin()'s own shortcut so
+ *  a two-factor account doesn't briefly flash /home (or a deep-linked
+ *  returnUrl) before being bounced back out to /mfa-verify. */
+describe('LoginComponent MFA redirect', () => {
+  afterEach(() => {
+    delete window.turnstile;
+  });
+
+  async function attemptLoginWithMfaPending(returnUrl: string | null): Promise<jasmine.Spy> {
+    installFakeTurnstile();
+
+    await TestBed.configureTestingModule({
+      imports: [LoginComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: MfaService, useValue: createFakeMfaService({ isVerificationPending: true }) },
+        { provide: ActivatedRoute, useValue: createFakeActivatedRoute(returnUrl ? { returnUrl } : {}) }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(LoginComponent);
+    const component = fixture.componentInstance;
+    const router = TestBed.inject(Router);
+    const navigateSpy = spyOn(router, 'navigate');
+
+    component.form.setValue({ email: 'test@example.com', password: 'password123' });
+    component.captchaToken = 'a-real-token';
+    await component.attemptLogin();
+
+    return navigateSpy;
+  }
+
+  it('goes to /mfa-verify instead of /home when this session still owes a challenge', async () => {
+    const navigateSpy = await attemptLoginWithMfaPending(null);
+    expect(navigateSpy).toHaveBeenCalledWith(['/mfa-verify'], {});
+  });
+
+  it('carries a returnUrl through to /mfa-verify so it can finish the trip afterward', async () => {
+    const navigateSpy = await attemptLoginWithMfaPending('/inventory?item=abc-123');
+    expect(navigateSpy).toHaveBeenCalledWith(['/mfa-verify'], { queryParams: { returnUrl: '/inventory?item=abc-123' } });
+  });
+});
+
 /** ImpersonationService.stop() lands here with ?impersonationEnded=1 (see
  *  that service's own doc comment for why signing back in is manual rather
  *  than a cached-session one-click return) — this covers the small info
@@ -135,6 +183,7 @@ describe('LoginComponent impersonation-ended message', () => {
       providers: [
         provideRouter([]),
         { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: MfaService, useValue: createFakeMfaService() },
         { provide: ActivatedRoute, useValue: createFakeActivatedRoute(queryParams) }
       ]
     }).compileComponents();

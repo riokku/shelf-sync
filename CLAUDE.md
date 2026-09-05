@@ -3268,6 +3268,88 @@ dragged element into a `.cdk-drag-preview` appended near the very end of `<body>
 in-place `.cdk-drag-placeholder` it leaves behind is created by CDK itself, so neither one ever
 carries `ModalTableComponent`'s own emulated-encapsulation attribute for a scoped selector to match.
 
+Any user can turn on optional two-factor authentication (TOTP) for their own account from the
+Account page's new "Two-factor authentication" card — self-service and opt-in, not an org-wide
+mandate (see below for the "make it mandatory" tradeoffs this deliberately leaves open). Backed
+entirely by Supabase Auth's own native MFA support (`supabase.auth.mfa.*` against `auth.mfa_factors`
+— a table this schema doesn't own or migrate) rather than a bespoke table/columns; TOTP specifically
+(not Supabase's phone or WebAuthn/passkey factor types) since it needs no SMS provider bill and every
+authenticator app already speaks it. `core/mfa.service.ts`'s `MfaService` (root-provided, same shape
+`SupplierService`/`ImpersonationService` already establish for a cohesive pulled-out concern) wraps
+the whole lifecycle: `enrollTotp()` (clears any stale `unverified` factor left over from an abandoned
+attempt first, then starts a fresh one), `confirmEnrollment()`/`unenroll()`, and `isVerificationPending()`
+(true when this specific *session* — not just the account — still owes a challenge: a verified factor
+exists but the JWT's own `aal` claim isn't `aal2` yet, the common case being a fresh sign-in).
+`disableTwoFactor()` on the Account page confirms first via `ConfirmDialogComponent` (`danger: false`
+— fully reversible, just worth a beat before weakening the account's own login security), mirroring
+the same "consequential but reversible" gate this schema already applies to org suspension.
+
+`enrollTotp()` deliberately hands the caller `data.totp.uri` (the raw `otpauth://` URI) rather than
+Supabase's own pre-rendered `qr_code` SVG string, and `TwoFactorSetupModalComponent` renders its own
+QR image from that URI via the `qrcode` package's `QRCode.toDataURL()` — the exact same library and
+technique `QrLabelModalComponent` already uses successfully elsewhere in this app for its own printable
+item labels, producing a plain `data:image/png;base64,...` string that needs no `DomSanitizer` bypass
+at all to bind to `<img src>`. This isn't the first thing that was tried: two earlier attempts at using
+Supabase's own `qr_code` SVG string directly as a `data:image/svg+xml,...` URL (first raw, then
+percent-encoded via `encodeURIComponent` to escape a literal `#` the SVG's own `fill="#000000"`
+attributes would otherwise have a URL parser misread as a fragment separator) both rendered nothing in
+a real browser, for a reason that was never conclusively identified — a `DomSanitizer.bypassSecurityTrustUrl`
+theory (versus `...TrustResourceUrl`, on the reasoning that `<img src>` is registered under
+`SecurityContext.URL` in Angular's own DOM security schema, not `RESOURCE_URL`) was tried and confirmed,
+via reading Angular's own sanitizer source directly, to be a dead end too — Angular explicitly permits a
+`ResourceUrl`-trusted value in a `URL` context as a documented compatibility carve-out, so that trust-type
+mismatch was never actually the bug. Rather than continue debugging an unfamiliar third-party string
+format blind, generating the QR ourselves via a library this codebase already trusts sidesteps the whole
+class of doubt — worth remembering if a future "why won't this image render" bug looks similar: verify
+the actual sanitizer/URL mechanics against Angular's own source before trusting a plausible-sounding
+theory, and prefer a codebase's own already-proven rendering path over a third party's undocumented
+string format when one's available.
+
+A new `/mfa-verify` route (`MfaVerifyComponent`, plain `authGuard` — same reasoning
+`/pending-approval` already gives for not guarding itself with the very check it exists to satisfy)
+is where a two-factor account actually enters its code post-login. `approvedGuard` is the real
+enforcement point on the client: it now checks `mfaService.isVerificationPending()` *before* even
+looking at membership status, redirecting to `/mfa-verify?returnUrl=...` first — proving it's really
+this person comes before telling them anything about their org access. `LoginComponent.attemptLogin()`
+mirrors the same check right after a successful sign-in purely for UX (skips a flash of `/home` before
+being bounced back out); `approvedGuard` would catch it regardless. Same chrome treatment as
+`/pending-approval` — not added to `AppComponent.showChrome()`'s hide-list, since this is a real
+already-authenticated session, not a pre-login page.
+
+None of this is enforced only client-side, though — a locked-out attacker with a stolen password and
+a raw API client (no browser, no guards) would sail straight past both of the checks above. The real
+enforcement is a small addition to the same two choke-point functions every other fail-closed check in
+this schema already funnels through (`add_mfa_enforcement` migration): `current_user_org_id()` now
+also requires `auth.jwt() ->> 'aal' = 'aal2'` for any account with a verified TOTP factor (falling
+through to its existing checks unchanged for an account that's never enrolled — this is genuinely
+opt-in, zero behavior change until someone turns it on for themselves), and `is_platform_admin()` gets
+the identical clause — a second, explicit gate rather than relying on `current_user_org_id()` alone,
+since Studio's own RPCs (including the impersonation Edge Function) are gated by `is_platform_admin()`
+directly with no dependency on the other function at all. Verified directly against the hosted
+project before writing the migration (a rolled-back `begin`/`rollback` transaction via
+`supabase db query -f`, not just reviewed for syntax) — both that reading `auth.mfa_factors` from a
+`security definer` function works the same way this schema's existing `storage.objects` reads already
+do (see `get_inventory_photo_storage_usage`), and that the two rewritten functions still resolve
+correctly with zero factors enrolled anywhere, per this repo's own "a function compiling isn't enough,
+run it for real" lesson.
+
+Two things worth calling out before this goes further than one admin's own account. First, a real,
+deliberately unsolved gap: Supabase's own TOTP factors have no backup/recovery-code mechanism, so
+losing the authenticator device with no other platform admin around means recovery is a manual
+`auth.mfa_factors` delete run directly against the hosted project — the same "real sensitive one-off,
+not app-mediated" category `is_platform_admin` itself already sits in, not anything self-service.
+Fine for a single-admin app today; worth a real answer (backup codes, or simply a second platform
+admin as a recovery path) before this is ever *required* rather than opt-in. Second, making it
+mandatory rather than opt-in has no single obvious lever yet — the natural next steps, roughly in
+order of how much this app's own conventions already anticipate them, are: (a) an org-wide
+`site_settings.require_mfa_for_admins` (or `_for_all`) toggle in Settings > Workflow, mirroring every
+other per-org policy switch already there, checked at sign-in/`approvedGuard` time to route an
+unenrolled-but-required account to a "you must set up two-factor before continuing" version of the
+Account page's own card rather than `/home`; or (b) requiring it platform-wide just for
+`is_platform_admin` accounts specifically, which is arguably the single highest-value, lowest-effort
+version of this given what that flag alone already grants (Studio, impersonation) — neither is built
+yet, both are natural extensions of exactly the pieces already in place.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -3356,6 +3438,29 @@ a way classic Pages never did, so `not_found_handling` is the only SPA-fallback 
 here; don't reintroduce a `_redirects` file. `environment.prod.ts`'s Supabase URL/anon key stay
 build-time constants (see Architecture below) — no host-side environment variable injection
 needed for the current single-production-project setup.
+
+`src/_headers` sets response headers on every route (Workers static-assets honors the same
+`_headers`-at-the-root convention classic Pages does — this is a different mechanism than
+`_redirects`, plain header injection rather than a redirect rule, so it wasn't affected by that
+product's own redirect-loop rejection above): `X-Content-Type-Options`/`X-Frame-Options`/
+`Referrer-Policy`/`Permissions-Policy`/`Strict-Transport-Security`, plus a real
+`Content-Security-Policy` — see that file's own comment for the exact host allowlist (Supabase's
+project host, Cloudflare Turnstile, Google Fonts) and why `style-src` alone still needs
+`'unsafe-inline'` (Angular's per-component `ViewEncapsulation` styles and Material/CDK's own
+overlay styles are both injected as runtime `<style>` tags, and a nonce-based CSP needs
+per-request server templating this pure-static deploy doesn't have). Getting `script-src` down to
+`'self'` plus just Turnstile's own host (no `'unsafe-inline'`/hash-pinning needed there) meant
+moving `index.html`'s two inline `<head>` scripts (pre-boot theme + `scrollRestoration`) out to a
+real external file, `assets/theme-init.js` — a plain `<script src="...">` with no `async`/`defer`
+still blocks parsing and runs immediately in document order, so this changes nothing about when it
+actually runs. `src/robots.txt`/`src/sitemap.xml` cover the handful of routes that are actually
+public (`/`, `/pricing`, `/login`, `/register`, `/privacy`, `/terms` — see
+`app-routing.module.ts`'s own unguarded allowlist) and disallow everything else, since an anonymous
+crawler hitting a guarded route just gets bounced to `/login` client-side once the JS boots anyway
+— this is a crawl-budget courtesy, not a security boundary (RLS already owns that). All three
+files are wired into `angular.json`'s `assets` array as bare root-level entries (same shorthand
+`src/favicon.ico` already used) rather than living under `src/assets/`, since `_headers`/
+`robots.txt`/`sitemap.xml` all have to land at the dist root to be read at all.
 
 ## Architecture
 

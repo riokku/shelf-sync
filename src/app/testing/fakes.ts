@@ -3,6 +3,7 @@ import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { of } from 'rxjs';
 import { AuthService, Profile } from '../core/auth.service';
 import { InventoryFieldName, InventoryFieldOptionsService } from '../core/inventory-field-options.service';
+import { MfaService } from '../core/mfa.service';
 import { SiteSettingsService } from '../core/site-settings.service';
 import { SupabaseService } from '../core/supabase.service';
 import { SupplierService } from '../core/supplier.service';
@@ -84,6 +85,34 @@ export function createFakeAuthService(
     updatePassword: async () => null,
   };
   return fake as unknown as AuthService;
+}
+
+/** MfaService's real constructor is harmless on its own (just grabs the
+ *  Supabase client, same as any other core service), but any of its methods
+ *  actually calling `supabase.auth.mfa.*` against the real client is real
+ *  network activity — same reasoning createFakeAuthService above gives for
+ *  itself. `isVerificationPending`/`isEnrolled` default to the common "no
+ *  two-factor involved at all" case so a spec that doesn't care about MFA
+ *  can provide this without having to think about it. */
+export function createFakeMfaService(overrides: {
+  isVerificationPending?: boolean;
+  isEnrolled?: boolean;
+  factorIdToVerify?: string | null;
+  verifiedFactorId?: string | null;
+  unenrollError?: string | null;
+} = {}): MfaService {
+  const fake = {
+    isEnrolled: async () => overrides.isEnrolled ?? false,
+    getVerifiedTotpFactor: async () =>
+      overrides.verifiedFactorId ? { id: overrides.verifiedFactorId, factor_type: 'totp', status: 'verified' } : null,
+    isVerificationPending: async () => overrides.isVerificationPending ?? false,
+    getFactorIdToVerify: async () => overrides.factorIdToVerify ?? null,
+    enrollTotp: async () => ({ enrollment: null, error: null }),
+    confirmEnrollment: async () => null,
+    verifyLogin: async () => null,
+    unenroll: async () => overrides.unenrollError ?? null,
+  };
+  return fake as unknown as MfaService;
 }
 
 /** SiteSettingsService.load() (and its underlying real AuthService, which
