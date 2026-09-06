@@ -151,6 +151,14 @@
           Add an extra step when signing in, using an authenticator app on your phone.
         </p>
 
+        @if (!isLoadingMfaStatus && mfaRequiredByOrg && !isMfaEnabled) {
+          <p class="error-message" role="alert">
+            <mat-icon>gpp_bad</mat-icon>
+            Your organization requires two-factor authentication. Set it up below to continue
+            using ShelfSync.
+          </p>
+        }
+
         @if (isLoadingMfaStatus) {
           <div class="skeleton-line skeleton-account-hint"></div>
         } @else if (isMfaEnabled) {

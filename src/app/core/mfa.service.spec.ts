@@ -11,6 +11,7 @@ describe('MfaService', () => {
     listFactors: jasmine.Spy;
     getAuthenticatorAssuranceLevel: jasmine.Spy;
   };
+  let rpc: jasmine.Spy;
 
   function configure() {
     mfa = {
@@ -20,12 +21,13 @@ describe('MfaService', () => {
       listFactors: jasmine.createSpy('listFactors'),
       getAuthenticatorAssuranceLevel: jasmine.createSpy('getAuthenticatorAssuranceLevel')
     };
+    rpc = jasmine.createSpy('rpc');
 
     TestBed.configureTestingModule({
       providers: [
         {
           provide: SupabaseService,
-          useValue: { client: { auth: { mfa } } }
+          useValue: { client: { auth: { mfa }, rpc } }
         }
       ]
     });
@@ -177,6 +179,27 @@ describe('MfaService', () => {
       await service.verifyLogin('factor-1', '123456');
 
       expect(mfa.challengeAndVerify).toHaveBeenCalledWith({ factorId: 'factor-1', code: '123456' });
+    });
+  });
+
+  describe('isRequiredOrgWide()', () => {
+    it('is true when the RPC returns true', async () => {
+      rpc.and.returnValue(Promise.resolve({ data: true, error: null }));
+
+      expect(await service.isRequiredOrgWide()).toBeTrue();
+      expect(rpc).toHaveBeenCalledWith('current_org_requires_mfa');
+    });
+
+    it('is false when the RPC returns false', async () => {
+      rpc.and.returnValue(Promise.resolve({ data: false, error: null }));
+
+      expect(await service.isRequiredOrgWide()).toBeFalse();
+    });
+
+    it('fails closed to false on an RPC error', async () => {
+      rpc.and.returnValue(Promise.resolve({ data: null, error: { message: 'nope' } }));
+
+      expect(await service.isRequiredOrgWide()).toBeFalse();
     });
   });
 

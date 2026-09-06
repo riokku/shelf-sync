@@ -121,6 +121,16 @@ export class AccountComponent implements OnInit {
   isTogglingMfa = false;
   mfaError: string | null = null;
 
+  /** True when this org has Settings > Workflow's "Require two-factor
+   *  authentication" toggle on and this account hasn't enrolled yet — drives
+   *  a banner on the two-factor card explaining why approvedGuard/
+   *  LoginComponent sent them here instead of wherever they were headed
+   *  (see both of those own doc comments). Computed live from
+   *  MfaService.isRequiredOrgWide() rather than a query param carried
+   *  through the redirect, so it stays correct even on a direct refresh of
+   *  this page (a query param wouldn't survive that). */
+  mfaRequiredByOrg = false;
+
   async ngOnInit() {
     this.profile = await this.authService.getProfile();
 
@@ -138,7 +148,10 @@ export class AccountComponent implements OnInit {
 
     this.isLoading = false;
 
-    this.isMfaEnabled = await this.mfaService.isEnrolled();
+    [this.isMfaEnabled, this.mfaRequiredByOrg] = await Promise.all([
+      this.mfaService.isEnrolled(),
+      this.mfaService.isRequiredOrgWide()
+    ]);
     this.isLoadingMfaStatus = false;
   }
 

@@ -16,9 +16,9 @@ describe('approvedGuard', () => {
     });
   }
 
-  function runGuard() {
+  function runGuard(url = '/inventory') {
     return TestBed.runInInjectionContext(() =>
-      approvedGuard({} as never, { url: '/inventory' } as never)
+      approvedGuard({} as never, { url } as never)
     );
   }
 
@@ -82,5 +82,50 @@ describe('approvedGuard', () => {
     );
     const result = await runGuard();
     expect(serialize(result as UrlTree)).toContain('/mfa-verify');
+  });
+
+  describe('org-wide "require two-factor" (never enrolled at all)', () => {
+    it('redirects to /account when the org requires it and this account has no factor', async () => {
+      configure(
+        createFakeAuthService(createFakeProfile({ membership_status: 'approved' }), { hasSession: true }),
+        createFakeMfaService({ isRequiredOrgWide: true, isEnrolled: false })
+      );
+      const result = await runGuard();
+      expect(result).not.toBe(true);
+      expect(serialize(result as UrlTree)).toContain('/account');
+    });
+
+    it('allows navigation straight to /account itself, so the person can actually comply', async () => {
+      configure(
+        createFakeAuthService(createFakeProfile({ membership_status: 'approved' }), { hasSession: true }),
+        createFakeMfaService({ isRequiredOrgWide: true, isEnrolled: false })
+      );
+      expect(await runGuard('/account')).toBe(true);
+    });
+
+    it('does not redirect when the org requires it but this account is already enrolled', async () => {
+      configure(
+        createFakeAuthService(createFakeProfile({ membership_status: 'approved' }), { hasSession: true }),
+        createFakeMfaService({ isRequiredOrgWide: true, isEnrolled: true })
+      );
+      expect(await runGuard()).toBe(true);
+    });
+
+    it('does not redirect when the org does not require it, even with nothing enrolled', async () => {
+      configure(
+        createFakeAuthService(createFakeProfile({ membership_status: 'approved' }), { hasSession: true }),
+        createFakeMfaService({ isRequiredOrgWide: false, isEnrolled: false })
+      );
+      expect(await runGuard()).toBe(true);
+    });
+
+    it('/mfa-verify still wins over the org-requirement redirect when this session owes a challenge', async () => {
+      configure(
+        createFakeAuthService(createFakeProfile({ membership_status: 'approved' }), { hasSession: true }),
+        createFakeMfaService({ isVerificationPending: true, isRequiredOrgWide: true, isEnrolled: false })
+      );
+      const result = await runGuard();
+      expect(serialize(result as UrlTree)).toContain('/mfa-verify');
+    });
   });
 });

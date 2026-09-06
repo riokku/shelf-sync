@@ -1479,6 +1479,7 @@ export type Database = {
           notify_task_assigned: boolean
           notify_task_transfer: boolean
           organization_id: string
+          require_mfa_for_all: boolean
           require_retirement_approval: boolean
           restrict_price_supplier_edits: boolean
           theme: string
@@ -1497,6 +1498,7 @@ export type Database = {
           notify_task_assigned?: boolean
           notify_task_transfer?: boolean
           organization_id: string
+          require_mfa_for_all?: boolean
           require_retirement_approval?: boolean
           restrict_price_supplier_edits?: boolean
           theme?: string
@@ -1515,6 +1517,7 @@ export type Database = {
           notify_task_assigned?: boolean
           notify_task_transfer?: boolean
           organization_id?: string
+          require_mfa_for_all?: boolean
           require_retirement_approval?: boolean
           restrict_price_supplier_edits?: boolean
           theme?: string
@@ -1726,6 +1729,7 @@ export type Database = {
         }
         Returns: string
       }
+      current_org_requires_mfa: { Args: never; Returns: boolean }
       current_user_org_id: { Args: never; Returns: string }
       current_user_role: {
         Args: never

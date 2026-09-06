@@ -92,6 +92,15 @@ export class LoginComponent {
       return;
     }
 
+    // Same shortcut, for the "this org requires two-factor and this account
+    // has never enrolled at all" case approvedGuard also redirects to
+    // /account for (see that guard's own doc comment) — there's no factor
+    // yet to send this to /mfa-verify against.
+    if (await this.mfaService.isRequiredOrgWide() && !(await this.mfaService.isEnrolled())) {
+      this.router.navigateByUrl('/account');
+      return;
+    }
+
     this.router.navigateByUrl(returnUrl ?? '/home');
   }
 

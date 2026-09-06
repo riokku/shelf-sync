@@ -91,12 +91,14 @@ export function createFakeAuthService(
  *  Supabase client, same as any other core service), but any of its methods
  *  actually calling `supabase.auth.mfa.*` against the real client is real
  *  network activity — same reasoning createFakeAuthService above gives for
- *  itself. `isVerificationPending`/`isEnrolled` default to the common "no
- *  two-factor involved at all" case so a spec that doesn't care about MFA
- *  can provide this without having to think about it. */
+ *  itself. `isVerificationPending`/`isEnrolled`/`isRequiredOrgWide` default
+ *  to the common "no two-factor involved at all" case so a spec that
+ *  doesn't care about MFA can provide this without having to think about
+ *  it. */
 export function createFakeMfaService(overrides: {
   isVerificationPending?: boolean;
   isEnrolled?: boolean;
+  isRequiredOrgWide?: boolean;
   factorIdToVerify?: string | null;
   verifiedFactorId?: string | null;
   unenrollError?: string | null;
@@ -106,6 +108,7 @@ export function createFakeMfaService(overrides: {
     getVerifiedTotpFactor: async () =>
       overrides.verifiedFactorId ? { id: overrides.verifiedFactorId, factor_type: 'totp', status: 'verified' } : null,
     isVerificationPending: async () => overrides.isVerificationPending ?? false,
+    isRequiredOrgWide: async () => overrides.isRequiredOrgWide ?? false,
     getFactorIdToVerify: async () => overrides.factorIdToVerify ?? null,
     enrollTotp: async () => ({ enrollment: null, error: null }),
     confirmEnrollment: async () => null,
@@ -126,6 +129,7 @@ export function createFakeSiteSettingsService(overrides: Partial<{
   inventoryTableColumns: InventoryTableColumnKey[];
   inventoryFormFields: InventoryFormFieldKey[];
   requireRetirementApproval: boolean;
+  requireMfaForAll: boolean;
   bulkEditFeatureEnabled: boolean;
   restrictPriceSupplierEdits: boolean;
   notifyTaskAssigned: boolean;
@@ -140,6 +144,7 @@ export function createFakeSiteSettingsService(overrides: Partial<{
     inventoryTableColumns: signal(overrides.inventoryTableColumns ?? DEFAULT_INVENTORY_TABLE_COLUMNS).asReadonly(),
     inventoryFormFields: signal(overrides.inventoryFormFields ?? DEFAULT_INVENTORY_FORM_FIELDS).asReadonly(),
     requireRetirementApproval: signal(overrides.requireRetirementApproval ?? true).asReadonly(),
+    requireMfaForAll: signal(overrides.requireMfaForAll ?? false).asReadonly(),
     bulkEditFeatureEnabled: signal(overrides.bulkEditFeatureEnabled ?? true).asReadonly(),
     restrictPriceSupplierEdits: signal(overrides.restrictPriceSupplierEdits ?? false).asReadonly(),
     notifyTaskAssigned: signal(overrides.notifyTaskAssigned ?? true).asReadonly(),
@@ -155,6 +160,7 @@ export function createFakeSiteSettingsService(overrides: Partial<{
     updateInventoryTableColumns: async () => null,
     updateInventoryFormFields: async () => null,
     updateRequireRetirementApproval: async () => null,
+    updateRequireMfaForAll: async () => null,
     updateBulkEditFeatureEnabled: async () => null,
     updateRestrictPriceSupplierEdits: async () => null,
     updateEmailNotifications: async () => null,

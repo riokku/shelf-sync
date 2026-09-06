@@ -338,6 +338,45 @@
 
           <div class="settings-card">
             <section class="settings-section">
+              <h3>Security</h3>
+              <p class="section-hint">
+                When on, every approved member of your organization must set up two-factor
+                authentication before they can use ShelfSync — anyone who hasn't will be sent to
+                their Account page to set it up first. Off by default, so two-factor stays purely
+                opt-in per account until you turn this on.
+              </p>
+              <mat-slide-toggle
+                  [checked]="selectedRequireMfaForAll"
+                  (change)="toggleRequireMfaForAll($event.checked)"
+                >
+                Require two-factor authentication for everyone
+              </mat-slide-toggle>
+              @if (requireMfaForAllError) {
+                <p class="error-message" role="alert">{{ requireMfaForAllError }}</p>
+              }
+              @if (requireMfaForAllChanged) {
+                <button
+                    mat-flat-button
+                    color="primary"
+                    type="button"
+                    (click)="saveRequireMfaForAll()"
+                    [disabled]="isSavingRequireMfaForAll"
+                  >
+                  @if (isSavingRequireMfaForAll) {
+                    <mat-spinner diameter="20"></mat-spinner>
+                  } @else {
+                    <ng-container>
+                      <mat-icon>check</mat-icon>
+                      Save
+                    </ng-container>
+                  }
+                </button>
+              }
+            </section>
+          </div>
+
+          <div class="settings-card">
+            <section class="settings-section">
               <h3>Email notifications</h3>
               <p class="section-hint">
                 Which events also send an email, on top of always showing up in-app. Turn any of

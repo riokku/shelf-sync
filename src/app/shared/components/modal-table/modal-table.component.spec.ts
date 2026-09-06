@@ -50,12 +50,12 @@ describe('ModalTableComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  // Barcode/QR isn't fully set up to function yet — see
-  // BARCODE_FEATURE_ENABLED's own doc comment — so the QR label button, the
-  // barcode display row, and (once editing) the barcode field/scan button
-  // all stay hidden regardless of whether the item actually has a barcode.
-  describe('barcode UI (BARCODE_FEATURE_ENABLED is currently false)', () => {
-    it('hides the QR label button and the barcode display row even when the item has a barcode', async () => {
+  // Barcode/QR is live — see BARCODE_FEATURE_ENABLED's own doc comment — so
+  // the QR label button, the barcode display row, and (once editing) the
+  // barcode field/scan button all render whenever the item actually has a
+  // barcode (or, for the QR label button, regardless — it works either way).
+  describe('barcode UI (BARCODE_FEATURE_ENABLED is on)', () => {
+    it('shows the QR label button and the barcode display row when the item has a barcode', async () => {
       TestBed.resetTestingModule();
       await TestBed.configureTestingModule({
         imports: [ModalTableComponent],
@@ -72,18 +72,17 @@ describe('ModalTableComponent', () => {
       const barcodeFixture = TestBed.createComponent(ModalTableComponent);
       barcodeFixture.detectChanges();
 
-      expect(barcodeFixture.componentInstance.barcodeFeatureEnabled).toBeFalse();
-      expect(barcodeFixture.nativeElement.textContent).not.toContain('barcode_reader');
-      expect(barcodeFixture.nativeElement.textContent).not.toContain('qr_code_2');
-      expect(barcodeFixture.nativeElement.textContent).not.toContain('UPC-12345');
+      expect(barcodeFixture.componentInstance.barcodeFeatureEnabled).toBeTrue();
+      expect(barcodeFixture.nativeElement.textContent).toContain('qr_code_2');
+      expect(barcodeFixture.nativeElement.textContent).toContain('UPC-12345');
     });
 
-    it('hides the barcode field and scan button in edit mode', async () => {
+    it('shows the barcode field and scan button in edit mode', async () => {
       await component.startEdit();
       fixture.detectChanges();
 
-      expect(fixture.nativeElement.textContent).not.toContain('qr_code_scanner');
-      expect(fixture.nativeElement.querySelector('.barcode-edit-row')).toBeNull();
+      expect(fixture.nativeElement.textContent).toContain('qr_code_scanner');
+      expect(fixture.nativeElement.querySelector('.barcode-edit-row')).not.toBeNull();
     });
   });
 

@@ -407,6 +407,25 @@ describe('AccountComponent two-factor authentication', () => {
     expect(fixture.nativeElement.textContent).toContain('Two-factor authentication is off');
   });
 
+  it('shows a "your organization requires this" banner when required org-wide and unenrolled', async () => {
+    const fixture = await setup(createFakeMfaService({ isRequiredOrgWide: true, isEnrolled: false }));
+
+    expect(fixture.componentInstance.mfaRequiredByOrg).toBeTrue();
+    expect(fixture.nativeElement.textContent).toContain('Your organization requires two-factor authentication');
+  });
+
+  it('does not show the banner when the org does not require two-factor', async () => {
+    const fixture = await setup(createFakeMfaService({ isRequiredOrgWide: false, isEnrolled: false }));
+
+    expect(fixture.nativeElement.textContent).not.toContain('Your organization requires two-factor authentication');
+  });
+
+  it('does not show the banner once already enrolled, even if the org requires it', async () => {
+    const fixture = await setup(createFakeMfaService({ isRequiredOrgWide: true, isEnrolled: true }));
+
+    expect(fixture.nativeElement.textContent).not.toContain('Your organization requires two-factor authentication');
+  });
+
   it('openTwoFactorSetup() opens TwoFactorSetupModalComponent and flips the status on a truthy close', async () => {
     const fixture = await setup(createFakeMfaService({ isEnrolled: false }));
     const dialog = TestBed.inject(MatDialog);

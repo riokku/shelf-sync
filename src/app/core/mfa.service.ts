@@ -131,4 +131,26 @@ export class MfaService {
     const { error } = await this.supabase.auth.mfa.unenroll({ factorId });
     return error?.message ?? null;
   }
+
+  /** Whether the caller's own organization has turned on Settings >
+   *  Workflow's "Require two-factor authentication" toggle
+   *  (site_settings.require_mfa_for_all) — read via the
+   *  current_org_requires_mfa() SECURITY DEFINER RPC rather than a plain
+   *  site_settings select, since that table's own SELECT policy is itself
+   *  gated by current_user_org_id(), which this very setting can cause to
+   *  fail for a caller who hasn't enrolled yet (see the
+   *  add_site_settings_require_mfa_for_all migration's own doc comment for
+   *  the chicken-and-egg reasoning) — this has to be answerable
+   *  independently of whether the enforcement it drives has already kicked
+   *  in for the asker. Used by approvedGuard/LoginComponent (redirect an
+   *  unenrolled account to /account instead of wherever it was headed) and
+   *  AccountComponent (explain why it's showing a "your organization
+   *  requires this" banner). Fails closed to "not required" on an RPC error
+   *  — same reasoning isEnrolled()/isVerificationPending() already use for
+   *  their own error branches, since the real enforcement lives at the
+   *  database layer regardless of what this client-side check reports. */
+  async isRequiredOrgWide(): Promise<boolean> {
+    const { data, error } = await this.supabase.rpc('current_org_requires_mfa');
+    return !error && data === true;
+  }
 }

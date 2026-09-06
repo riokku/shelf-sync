@@ -437,19 +437,23 @@ non-match prefills the new item's barcode field. `ModalTableComponent`'s edit fl
 existing item's barcode the same way. The shared `QrLabelModalComponent` (QR rendered client-side
 via the `qrcode` package) generates a printable/downloadable label encoding an item's id for
 assets with no manufacturer barcode — scanning that label later resolves straight back to the item.
-**Currently hidden from the UI** via `shared/utils/barcode.ts`'s `BARCODE_FEATURE_ENABLED` (`false`)
-— the feature isn't fully set up to function yet, so every entry point checks this flag and renders
-nothing while it's off: `ManageInventoryComponent`'s create-form field/scan button,
-`ModalTableComponent`'s QR label button/barcode display row/edit field/scan button, and the
-"Barcode" checkbox in both of Settings > Data's grouped-field sections (excluded from
-`INVENTORY_FORM_FIELD_GROUPS`/`INVENTORY_TABLE_COLUMN_GROUPS` while the flag is false, so an admin
-can't toggle on a field that would render as nothing anyway). Deliberately a UI-only kill switch,
-not a removal — the column, migration, models, and both modal components stay fully in place so
-this can be re-enabled later by flipping the one flag back to `true`; nothing else should need to
-change. Checked directly in each rendering site rather than folded into `fieldEnabled()`/
+Live in the UI via `shared/utils/barcode.ts`'s `BARCODE_FEATURE_ENABLED` (`true`) — every entry
+point checks this flag and renders normally while it's on: `ManageInventoryComponent`'s create-form
+field/scan button, `ModalTableComponent`'s QR label button/barcode display row/edit field/scan
+button, and the "Barcode" checkbox in both of Settings > Data's grouped-field sections (included in
+`INVENTORY_FORM_FIELD_GROUPS`/`INVENTORY_TABLE_COLUMN_GROUPS` while the flag is true). This started
+as a temporary kill switch (the feature wasn't fully set up to function yet at the time) and was
+flipped on once `BarcodeScannerModalComponent`/`QrLabelModalComponent` were verified to be fully
+wired — real `@zxing/browser`/`qrcode` implementations, no stubs, `_headers`' own
+`Permissions-Policy: camera=(self)` already anticipating the camera grant — so turning it on really
+was the one-line change its own doc comment had always promised. Kept as a real constant rather than
+deleted now that it's on, purely as a fast kill switch: flipping it back to `false` hides every one
+of those entry points again instantly, with the underlying code (this file, both modal components,
+the `inventory_items.barcode` column/migration, the `InventoryItem` field itself) left fully in
+place either way. Checked directly in each rendering site rather than folded into `fieldEnabled()`/
 `tableColumns`, since an org whose stored `site_settings.inventory_form_fields`/
-`inventory_table_columns` already included `'barcode'` (the default before this flag existed) still
-needs it hidden regardless of what's stored.
+`inventory_table_columns` predates this flag's introduction needs the exact same behavior regardless
+of what's stored.
 
 Retirement requests can either always need a second approver (today's original behavior) or
 retire immediately, an admin's choice via a per-org `site_settings.require_retirement_approval`
@@ -3340,15 +3344,59 @@ losing the authenticator device with no other platform admin around means recove
 not app-mediated" category `is_platform_admin` itself already sits in, not anything self-service.
 Fine for a single-admin app today; worth a real answer (backup codes, or simply a second platform
 admin as a recovery path) before this is ever *required* rather than opt-in. Second, making it
-mandatory rather than opt-in has no single obvious lever yet — the natural next steps, roughly in
-order of how much this app's own conventions already anticipate them, are: (a) an org-wide
-`site_settings.require_mfa_for_admins` (or `_for_all`) toggle in Settings > Workflow, mirroring every
-other per-org policy switch already there, checked at sign-in/`approvedGuard` time to route an
-unenrolled-but-required account to a "you must set up two-factor before continuing" version of the
-Account page's own card rather than `/home`; or (b) requiring it platform-wide just for
+mandatory rather than opt-in had no single obvious lever yet at the time — the natural next steps,
+roughly in order of how much this app's own conventions already anticipated them, were: (a) an
+org-wide `site_settings.require_mfa_for_admins` (or `_for_all`) toggle in Settings > Workflow,
+mirroring every other per-org policy switch already there, checked at sign-in/`approvedGuard` time to
+route an unenrolled-but-required account to a "you must set up two-factor before continuing" version
+of the Account page's own card rather than `/home`; or (b) requiring it platform-wide just for
 `is_platform_admin` accounts specifically, which is arguably the single highest-value, lowest-effort
-version of this given what that flag alone already grants (Studio, impersonation) — neither is built
-yet, both are natural extensions of exactly the pieces already in place.
+version of this given what that flag alone already grants (Studio, impersonation) — (b) remains
+unbuilt, a natural extension of the same pieces already in place, but (a) has since shipped, as
+described next.
+
+An admin can now actually turn (a) on — `site_settings.require_mfa_for_all`
+(`add_site_settings_require_mfa_for_all` migration), a new "Security" card on Settings > Workflow
+alongside Retirement approval/Bulk edit/Price & supplier edits and Email notifications, same
+local-selection/save-button/error pattern every other toggle on that tab already uses. Off by
+default, so every existing org keeps two-factor purely opt-in per account until an admin turns this
+on; once on, it applies to *every* approved member regardless of role, not just admins/managers — the
+simpler, more literal reading of "org-wide" for a first pass, rather than a role-scoped variant.
+Enforcement is the identical choke point `add_mfa_enforcement` already established:
+`current_user_org_id()`'s existing "aal2, or no verified factor exists" escape hatch is narrowed to
+also require the org not to have opted into this, so an unenrolled account in a requiring org fails
+every org-scoped RLS check schema-wide, the same fail-closed shape `deleted_at`/`suspended_at`/
+`account_locked_at` already have there. Deliberately does *not* touch `is_platform_admin()` — that
+gate is for Studio's cross-org surface, which isn't scoped to any one org's `site_settings` row, so no
+per-org toggle should reach it either way.
+
+The one real wrinkle: `current_user_org_id()` is exactly what `site_settings`' own SELECT policy is
+scoped by, so if the new check read that table directly, an org turning this on would make its own
+`site_settings` row instantly unreadable to every member who hasn't enrolled yet — including the
+person trying to find out *why*, the moment the toggle flips. `current_org_requires_mfa()`, a second,
+narrower `SECURITY DEFINER` function added alongside, sidesteps this the same way
+`current_user_role()`/`is_platform_admin()` already bypass RLS for their own controlled lookups — it
+looks up the caller's own profile's org and `site_settings` row directly, independent of whether the
+enforcement it feeds into has already kicked in for that same caller. The client calls it as a plain
+RPC (`MfaService.isRequiredOrgWide()`) for the identical reason: a plain `site_settings.select()` on
+the client would hit the same chicken-and-egg RLS wall. `SiteSettingsService`'s own
+`requireMfaForAll` signal (loaded the normal way, alongside every other setting) is only safe for an
+admin who's already past the gate, editing the setting itself on the Settings page — it is
+deliberately *not* what any of the enforcement-adjacent checks below read.
+
+Three client-side call sites read `isRequiredOrgWide()` (always paired with `isEnrolled()`, and
+always short-circuited so the RPC only fires when actually needed): `approvedGuard` — right after its
+existing `isVerificationPending()`/`/mfa-verify` check, since "never enrolled at all" is a different
+case from "this session still owes a challenge against an already-verified factor" and has nowhere to
+challenge against — redirects to `/account` instead, with an explicit exemption for navigation to
+`/account` itself (otherwise the person could never reach the one page that lets them comply).
+`LoginComponent.attemptLogin()` mirrors the identical check purely for UX, same "avoid a visible flash
+of the wrong destination" reasoning its own `/mfa-verify` mirror already has — `approvedGuard` would
+catch it regardless on the very next navigation. And `AccountComponent` itself, which shows a
+prominent inline `error-message` banner on its two-factor card ("Your organization requires two-factor
+authentication...") whenever this account is unenrolled and required — computed live from the same
+RPC in `ngOnInit()` rather than a query param carried through the redirect, so it stays correct even
+on a direct refresh of `/account` (a query param wouldn't survive that).
 
 Two more small "fun design tweaks," same spirit as the confetti/loading-caption/party-mode pass
 above but smaller in scope. First, the plain `.stat-value`/`.page-hero-pulse-value` tiles on
@@ -4456,6 +4504,25 @@ yet on a hard refresh of `/inventory`.
   `platform_lock_user_account` only ever refused *self*-locking, unlike `impersonate-user`'s own
   explicit "cannot target another platform admin" guard — it now carries the identical guard, so
   locking a peer platform admin is refused the same way impersonating one already was.
+- `add_mfa_enforcement` — optional, self-enrolled two-factor authentication (TOTP), enforced by
+  folding an "aal2, or no verified factor exists" clause into both `current_user_org_id()` and
+  `is_platform_admin()` (diffed against each one's own latest version at the time). Opt-in per
+  account, zero behavior change for anyone who's never enrolled — see the Project Overview section
+  above for the full feature, the client-side pieces (`MfaService`, `/mfa-verify`,
+  `TwoFactorSetupModalComponent`), and the real `QRCode.toDataURL()`-vs-Supabase's-own-`qr_code`-string
+  debugging story in `MfaService.enrollTotp()`'s own doc comment.
+- `add_site_settings_require_mfa_for_all` — the org-wide "require two-factor for everyone" toggle
+  `add_mfa_enforcement`'s own doc comment had flagged as a natural next step (see the Project
+  Overview section above for the full feature and its own "site_settings is gated by the very
+  function this toggle changes" chicken-and-egg reasoning). Adds
+  `site_settings.require_mfa_for_all` (default `false`) and a new `current_org_requires_mfa()`
+  `SECURITY DEFINER` function — a narrower, RLS-bypassing lookup the client also calls directly as
+  an RPC (`MfaService.isRequiredOrgWide()`), separate from reading `site_settings` the normal way,
+  specifically so an org that turns this on doesn't simultaneously make its own settings row
+  unreadable to the very members it needs to explain the requirement to. Diffs `current_user_org_id()`
+  against `add_mfa_enforcement`'s version (the latest at the time) to narrow its existing escape
+  hatch; deliberately leaves `is_platform_admin()` untouched, since Studio's cross-org surface isn't
+  scoped to any one org's `site_settings` row.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

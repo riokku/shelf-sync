@@ -165,6 +165,48 @@ describe('LoginComponent MFA redirect', () => {
   });
 });
 
+/** Same "avoid a visible flash before approvedGuard would bounce it back out
+ *  anyway" reasoning as the /mfa-verify block above, for the sibling case:
+ *  an org that requires two-factor for everyone, hit by an account that's
+ *  never enrolled at all — there's no factor yet to send to /mfa-verify
+ *  against, so this goes to /account instead (see approvedGuard's own doc
+ *  comment on the identical redirect). */
+describe('LoginComponent org-wide "require two-factor" redirect', () => {
+  afterEach(() => {
+    delete window.turnstile;
+  });
+
+  async function attemptLoginWhenMfaRequiredButUnenrolled(): Promise<jasmine.Spy> {
+    installFakeTurnstile();
+
+    await TestBed.configureTestingModule({
+      imports: [LoginComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: MfaService, useValue: createFakeMfaService({ isRequiredOrgWide: true, isEnrolled: false }) },
+        { provide: ActivatedRoute, useValue: createFakeActivatedRoute() }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(LoginComponent);
+    const component = fixture.componentInstance;
+    const router = TestBed.inject(Router);
+    const navigateByUrlSpy = spyOn(router, 'navigateByUrl');
+
+    component.form.setValue({ email: 'test@example.com', password: 'password123' });
+    component.captchaToken = 'a-real-token';
+    await component.attemptLogin();
+
+    return navigateByUrlSpy;
+  }
+
+  it('goes to /account instead of /home when the org requires two-factor and nothing is enrolled', async () => {
+    const navigateByUrlSpy = await attemptLoginWhenMfaRequiredButUnenrolled();
+    expect(navigateByUrlSpy).toHaveBeenCalledWith('/account');
+  });
+});
+
 /** ImpersonationService.stop() lands here with ?impersonationEnded=1 (see
  *  that service's own doc comment for why signing back in is manual rather
  *  than a cached-session one-click return) — this covers the small info
