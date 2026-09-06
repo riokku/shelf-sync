@@ -39,8 +39,8 @@ const STRIPE_WEBHOOK_SECRET = Deno.env.get('STRIPE_WEBHOOK_SECRET')!;
 // own metadata.tier is somehow missing, by reverse-looking-up the tier from
 // whichever Price is actually on the subscription.
 const STRIPE_PRICE_IDS: Record<'basic' | 'pro', string> = {
-  basic: 'price_REPLACE_WITH_BASIC_PRICE_ID',
-  pro: 'price_REPLACE_WITH_PRO_PRICE_ID'
+  basic: 'price_1UCXDKBM2MsifrvqjzggiRrM', // $19.99/mo
+  pro: 'price_1UCXEMBM2Msifrvqf3PX9Dhq' // $49.99/mo
 };
 
 const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2026-08-26.dahlia' });

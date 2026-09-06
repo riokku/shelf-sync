@@ -46,8 +46,8 @@ const APP_URL = 'https://shelf-sync.chrisistinson.workers.dev';
 // Product — Checkout/invoice line items only ever show the Product name, so
 // two tiers sharing one Product would be indistinguishable on a receipt.
 const STRIPE_PRICE_IDS: Record<'basic' | 'pro', string> = {
-  basic: 'price_REPLACE_WITH_BASIC_PRICE_ID',
-  pro: 'price_REPLACE_WITH_PRO_PRICE_ID'
+  basic: 'price_1UCXDKBM2MsifrvqjzggiRrM', // $19.99/mo
+  pro: 'price_1UCXEMBM2Msifrvqf3PX9Dhq' // $49.99/mo
 };
 
 const CORS_HEADERS = {
@@ -150,9 +150,21 @@ Deno.serve(async req => {
       metadata: { organization_id: organizationId, tier },
       subscription_data: { metadata: { organization_id: organizationId, tier } },
       success_url: `${APP_URL}/manage/billing?checkout=success`,
-      cancel_url: `${APP_URL}/manage/billing?checkout=cancelled`
+      cancel_url: `${APP_URL}/manage/billing?checkout=cancelled`,
       // No payment_method_types — see this file's own doc comment.
-    });
+      //
+      // Managed Payments (Stripe acting as merchant of record, handling tax
+      // globally) is on by default for this account and requires every
+      // Product to carry a tax_code — caught live, the first real checkout
+      // attempt failed with "the product tax code is missing" rather than
+      // anything about this app's own code. Explicitly opted out here
+      // rather than assigning tax codes to Basic/Pro, since real tax
+      // handling (Stripe Tax, automatic_tax, a registration) is already
+      // deliberately out of scope for this pass — see this repo's own
+      // CLAUDE.md note on that. Revisit both together before any real,
+      // non-test charge.
+      managed_payments: { enabled: false }
+    } as Stripe.Checkout.SessionCreateParams);
 
     if (!session.url) {
       console.error('Checkout session created with no url:', session.id);
