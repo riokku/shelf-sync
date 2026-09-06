@@ -8,10 +8,17 @@
         <span class="brand-name">ShelfSync</span>
       </a>
       <nav class="pricing-nav-actions">
-        <a mat-button routerLink="/login">Log in</a>
-        <a mat-flat-button color="primary" routerLink="/register">
-          Get started free
-        </a>
+        @if (authService.isAuthenticated()) {
+          <button mat-button type="button" (click)="logout()">
+            Logout
+          </button>
+          <a mat-flat-button color="primary" routerLink="/home">Dashboard</a>
+        } @else {
+          <a mat-button routerLink="/login">Log in</a>
+          <a mat-flat-button color="primary" routerLink="/register">
+            Get started free
+          </a>
+        }
       </nav>
     </header>
 
@@ -28,8 +35,20 @@
   <section class="pricing-tiers">
     <div class="pricing-grid">
       @for (tier of tiers; track tier.key) {
-        <div class="tier-card" [class.tier-highlighted]="tier.highlighted">
-          @if (tier.highlighted) {
+        @let cta = ctaFor(tier);
+        <div class="tier-card" [class.tier-highlighted]="tier.highlighted && cta.kind !== 'current'" [class.tier-current]="cta.kind === 'current'">
+          @if (cta.kind === 'current') {
+            <span class="tier-badge tier-badge-current">
+              <mat-icon>check_circle</mat-icon>
+              Current plan
+            </span>
+          } @else if (tier.highlighted && cta.kind === 'register') {
+            <!-- 'register' is exactly the signed-out, no-org-yet branch (see
+                 ctaFor()'s own doc comment) — once a viewer has an
+                 established subscription (any other cta kind, including a
+                 tier that isn't this one), the "most popular" marketing
+                 nudge is for prospective signups, not existing customers,
+                 so it's dropped entirely rather than just off this card. -->
             <span class="tier-badge">
               <mat-icon>star</mat-icon>
               Most popular
@@ -41,43 +60,6 @@
             <span class="tier-price-amount">{{ tier.price }}</span>
             <span class="tier-price-note">{{ tier.priceNote }}</span>
           </p>
-          @switch (ctaFor(tier).kind) {
-            @case ('register') {
-              <a
-                  mat-flat-button
-                  [color]="tier.highlighted ? 'primary' : undefined"
-                  [class.tier-cta-outline]="!tier.highlighted"
-                  routerLink="/register"
-                >
-                {{ tier.ctaLabel }}
-              </a>
-            }
-            @case ('checkout') {
-              <button
-                  mat-flat-button
-                  type="button"
-                  [color]="tier.highlighted ? 'primary' : undefined"
-                  [class.tier-cta-outline]="!tier.highlighted"
-                  [disabled]="!!isRedirecting"
-                  (click)="chooseTier(tier)"
-                >
-                @if (isRedirecting === tier.key) {
-                  <mat-spinner diameter="20"></mat-spinner>
-                } @else {
-                  {{ tier.ctaLabel }}
-                }
-              </button>
-            }
-            @case ('manage-billing') {
-              <a mat-stroked-button class="tier-cta-outline" routerLink="/manage/billing">Manage billing</a>
-            }
-            @case ('current') {
-              <button mat-stroked-button type="button" class="tier-cta-outline" disabled>Current plan</button>
-            }
-            @case ('contact-admin') {
-              <button mat-stroked-button type="button" class="tier-cta-outline" disabled>Contact your admin</button>
-            }
-          }
           <ul class="tier-features">
             @for (feature of tier.features; track feature) {
               @if (feature.startsWith('Everything in')) {
@@ -90,6 +72,34 @@
               }
             }
           </ul>
+          <!-- A CTA only ever renders for an anonymous visitor now ('register'
+               is exactly that branch — see ctaFor()'s own doc comment).
+               Once a viewer has an established plan (their org's own
+               current tier, or any other), there's nothing left to pick
+               from here at all — manage/billing already owns every actual
+               plan change (its own "Upgrade to Pro/Basic"/"Manage billing"
+               buttons), so a signed-in viewer sees every card as pure
+               reference/comparison, with the current one further called out
+               by the badge/border above. chooseTier()/checkoutError below
+               are kept fully working (same "kill switch, logic stays
+               intact" convention BARCODE_FEATURE_ENABLED already
+               establishes) even though nothing here can trigger them
+               anymore — the 'checkout'/'manage-billing'/'contact-admin'
+               PricingCta variants ctaFor() still returns are what
+               manage/billing's own "current tier" comparisons and this
+               page's tests key off, not just this template. -->
+          @if (cta.kind === 'register') {
+            <div class="tier-cta">
+              <a
+                  mat-flat-button
+                  [color]="tier.highlighted ? 'primary' : undefined"
+                  [class.tier-cta-outline]="!tier.highlighted"
+                  routerLink="/register"
+                >
+                {{ tier.ctaLabel }}
+              </a>
+            </div>
+          }
         </div>
       }
     </div>

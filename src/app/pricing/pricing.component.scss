@@ -115,14 +115,15 @@
 .pricing-grid{
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  // Explicit even though it's the grid default — stated here because it's
+  // load-bearing: .tier-card (already display:flex/flex-direction:column)
+  // relies on being stretched to the row's own tallest card, rather than
+  // sized to its own content, so Free (6 features) doesn't end up visibly
+  // shorter than Pro (8 features). The shorter feature lists just leave
+  // more whitespace at the bottom of their card, which is the normal look
+  // for a pricing grid, not a bug.
+  align-items: stretch;
   gap: 1.5rem;
-  // Grid's own default (stretch) rather than the align-items: start this
-  // used to have — that sized each card to its own content, so Free (6
-  // features) ended up visibly shorter than Pro (8 features). Stretching
-  // means .tier-card (already display:flex/flex-direction:column) fills
-  // the tallest card's height in the row; the shorter feature lists just
-  // leave more whitespace at the bottom of their card, which is the
-  // normal look for a pricing grid, not a bug.
 
   @media (max-width: 900px){
     grid-template-columns: 1fr;
@@ -135,14 +136,14 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  // Belt-and-braces alongside .pricing-grid's own align-items: stretch —
+  // makes the equal-height contract explicit rather than only implicit in
+  // the grid's default stretch behavior.
+  height: 100%;
   padding: 2rem 1.75rem;
   border: 1px solid var(--mat-sys-outline-variant);
   border-radius: 1rem;
   background: var(--mat-sys-surface-container-low);
-
-  a[mat-flat-button]{
-    margin: 1.25rem 0 1.75rem;
-  }
 
   // A plain mat-flat-button's own default already carries the filled
   // primary treatment — this only needs to visually recede for the two
@@ -154,16 +155,56 @@
   }
 }
 
+.tier-cta{
+  display: flex;
+  flex-direction: column;
+  padding-top: 1.5rem;
+  // Belt-and-braces: .tier-features growing to fill the card (above) is
+  // what does most of the work, but an auto top margin still pins this to
+  // the bottom even on a card whose feature list alone doesn't consume all
+  // the stretched height (e.g. a future tier with very few features).
+  margin-top: auto;
+}
+
+// Deliberately no translateY "raised" treatment here (a common pricing-page
+// convention this used to have, for both .tier-highlighted and .tier-current)
+// — it doesn't change either card's actual box height, only where it paints,
+// so it left the row's top/bottom edges visibly out of line with its two
+// neighbors despite every .tier-card already being the same height via
+// .pricing-grid's stretch. The badge/border/glow treatments alone already
+// carry the "this one's different" signal without misaligning the row.
 .tier-highlighted{
   border-color: var(--mat-sys-primary);
-  // Slightly raised over its neighbors — a common pricing-page convention
-  // for the plan being nudged, reinforced by .tier-badge above it.
-  transform: translateY(-0.5rem);
   box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, 0.12);
+}
 
-  @media (max-width: 900px){
-    transform: none;
+// A card that's already the viewer's org's current plan is this page's own
+// "you are here" — deliberately the most visually rich thing on the page,
+// same "the one action/state worth noticing should actually stand out"
+// spirit ManageBillingComponent's own .upgrade-pro-button establishes: the
+// same primary/tertiary gradient formula this app's page-hero backdrops and
+// nav icon chips already use, as a real gradient *ring* rather than a flat
+// border-color (the standard double-background trick — a transparent
+// border painted over two background layers, an opaque one clipped to the
+// padding box and the gradient clipped to the border box — since a plain
+// `border-color` can't take a gradient), plus a slow-breathing glow instead
+// of a static shadow.
+.tier-current{
+  border: 2px solid transparent;
+  background:
+    linear-gradient(var(--mat-sys-surface-container-low), var(--mat-sys-surface-container-low)) padding-box,
+    linear-gradient(135deg, var(--mat-sys-primary), var(--mat-sys-tertiary)) border-box;
+  animation: tier-current-glow 3s ease-in-out infinite;
+
+  @media (prefers-reduced-motion: reduce){
+    animation: none;
+    box-shadow: 0 0.5rem 2rem color-mix(in srgb, var(--mat-sys-tertiary) 35%, transparent);
   }
+}
+
+@keyframes tier-current-glow{
+  0%, 100%{ box-shadow: 0 0.5rem 2rem color-mix(in srgb, var(--mat-sys-tertiary) 30%, transparent); }
+  50%{ box-shadow: 0 0.75rem 2.75rem color-mix(in srgb, var(--mat-sys-tertiary) 55%, transparent); }
 }
 
 .tier-badge{
@@ -190,6 +231,42 @@
   }
 }
 
+// Same ribbon shape/position as the plain .tier-badge above, but dressed up
+// to match .tier-current's own gradient-ring treatment: the identical
+// primary/tertiary gradient plus a soft glow, and the same diagonal shine
+// sweep .upgrade-pro-button uses (own keyframe name — Angular doesn't scope
+// @keyframes the way it scopes selectors, so a shared name across
+// components could otherwise collide). overflow: hidden clips the sweep to
+// the pill's own rounded shape rather than the sweep just floating past it.
+.tier-badge-current{
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--mat-sys-primary), var(--mat-sys-tertiary));
+  color: var(--mat-sys-on-primary);
+  box-shadow: 0 0.25rem 1rem color-mix(in srgb, var(--mat-sys-tertiary) 45%, transparent);
+
+  &::after{
+    content: '';
+    position: absolute;
+    inset: 0;
+    left: -60%;
+    width: 40%;
+    background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+    transform: skewX(-20deg);
+    animation: tier-badge-shine 3.5s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    &::after{
+      display: none;
+    }
+  }
+}
+
+@keyframes tier-badge-shine{
+  0%, 45%{ left: -60%; }
+  100%{ left: 130%; }
+}
+
 .tier-card h2{
   margin: 0 0 0.375rem;
   font-size: 1.375rem;
@@ -206,7 +283,7 @@
   display: flex;
   align-items: baseline;
   gap: 0.375rem;
-  margin: 1.25rem 0 0;
+  margin: 1.25rem 0 1.75rem;
 }
 
 .tier-price-amount{
@@ -220,9 +297,16 @@
   font-size: 0.875rem;
 }
 
+// Also the one thing that actually varies in length between tiers (6-8
+// items) — flex: 1 1 auto lets it grow to fill whatever extra height
+// .pricing-grid's row-stretch gives a shorter card (rather than growing/
+// positioning .tier-cta itself), which is what pushes the CTA down to the
+// bottom of every card uniformly, regardless of how many features that
+// tier lists.
 .tier-features{
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
   gap: 0.75rem;
   margin: 0;
   padding: 0;

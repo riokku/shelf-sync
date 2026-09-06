@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 
 import { PricingComponent } from './pricing.component';
 import { AuthService } from '../core/auth.service';
@@ -45,6 +45,21 @@ describe('PricingComponent', () => {
     expect(highlighted.length).toBe(1);
     expect(highlighted[0].textContent).toContain('Basic');
   });
+
+  // Scoped to .pricing-nav-actions specifically — the hero/tier CTAs
+  // further down the page always route signed-out visitors to /register
+  // regardless of session, same reasoning LandingComponent's own nav-scoped
+  // assertion gives for itself.
+  function navText(): string {
+    return (fixture.nativeElement as HTMLElement).querySelector('.pricing-nav-actions')?.textContent ?? '';
+  }
+
+  it('shows the signed-out nav (Log in/Get started free) when there is no session', () => {
+    const nav = navText();
+    expect(nav).toContain('Log in');
+    expect(nav).toContain('Get started free');
+    expect(nav).not.toContain('Dashboard');
+  });
 });
 
 describe('PricingComponent CTA behavior', () => {
@@ -77,6 +92,32 @@ describe('PricingComponent CTA behavior', () => {
     }
   });
 
+  it('ngOnInit still loads billing even if the isAuthenticated() signal is still stale (the race a hard refresh on this unguarded route can hit)', async () => {
+    const authService = createFakeAuthService(createFakeProfile({ role: 'admin' }));
+    // Simulates AuthService.session not having caught up yet, even though
+    // getSession() itself already resolves with a real session — see
+    // PricingComponent.ngOnInit()'s own doc comment for why it has to await
+    // getSession() directly rather than trust this signal.
+    spyOn(authService, 'isAuthenticated').and.returnValue(false);
+    const billingService = createFakeBillingService({ tier: 'pro', status: 'active', currentPeriodEnd: null, cancelAtPeriodEnd: false });
+    const loadSpy = spyOn(billingService, 'load').and.callThrough();
+
+    await TestBed.resetTestingModule().configureTestingModule({
+      imports: [PricingComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: authService },
+        { provide: BillingService, useValue: billingService }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(PricingComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(loadSpy).toHaveBeenCalled();
+  });
+
   it('signed-in admin on Free: Free shows Current plan, Basic/Pro show a real checkout CTA', async () => {
     const fixture = await createComponent(createFakeProfile({ role: 'admin' }), null);
     const { componentInstance: component } = fixture;
@@ -98,14 +139,72 @@ describe('PricingComponent CTA behavior', () => {
     expect(component.ctaFor(PRO_TIER).kind).toBe('checkout');
   });
 
-  it('signed-in non-admin: every non-current tier shows Contact your admin', async () => {
+  it('signed-in non-admin: ctaFor() still resolves "contact-admin", but no card renders a CTA at all', async () => {
     const fixture = await createComponent(createFakeProfile({ role: 'staff' }), null);
     const { componentInstance: component } = fixture;
 
     expect(component.ctaFor(FREE_TIER).kind).toBe('current'); // nothing to do either way
     expect(component.ctaFor(BASIC_TIER).kind).toBe('contact-admin');
     expect(component.ctaFor(PRO_TIER).kind).toBe('contact-admin');
-    expect(fixture.nativeElement.textContent).toContain('Contact your admin');
+    // A signed-in viewer never gets a selectable CTA at all anymore, admin
+    // or not — manage/billing is the one place plan changes happen now.
+    expect((fixture.nativeElement as HTMLElement).querySelectorAll('.tier-cta').length).toBe(0);
+  });
+
+  it('shows the signed-in nav (Dashboard/Logout) once a session exists', async () => {
+    const fixture = await createComponent(createFakeProfile({ role: 'admin' }), null);
+    const nav = (fixture.nativeElement as HTMLElement).querySelector('.pricing-nav-actions')?.textContent ?? '';
+
+    expect(nav).toContain('Dashboard');
+    expect(nav).toContain('Logout');
+    expect(nav).not.toContain('Log in');
+  });
+
+  it('logout() signs out and navigates back to pricing', async () => {
+    const fixture = await createComponent(createFakeProfile({ role: 'admin' }), null);
+    const { componentInstance: component } = fixture;
+    const signOutSpy = spyOn(TestBed.inject(AuthService), 'signOut').and.returnValue(Promise.resolve());
+    const navigateSpy = spyOn(TestBed.inject(Router), 'navigate');
+
+    await component.logout();
+
+    expect(signOutSpy).toHaveBeenCalled();
+    expect(navigateSpy).toHaveBeenCalledWith(['/pricing']);
+  });
+
+  it('drops the "most popular" ribbon entirely once a subscription is established, even on a card that isn\'t the current plan', async () => {
+    // Signed-in admin already on Free — Basic is the "most popular" tier
+    // but isn't this org's current plan, so the old per-card rule alone
+    // would still show its ribbon here; the new rule hides it on every
+    // card the moment the viewer has any established plan at all.
+    const fixture = await createComponent(createFakeProfile({ role: 'admin' }), null);
+    const nativeElement = fixture.nativeElement as HTMLElement;
+
+    expect(nativeElement.querySelectorAll('.tier-badge').length).toBe(1);
+    expect(nativeElement.textContent).not.toContain('Most popular');
+    expect(nativeElement.textContent).toContain('Current plan');
+  });
+
+  it('the org\'s current-plan card is highlighted, and no card (current or otherwise) shows a select-plan button', async () => {
+    const fixture = await createComponent(
+      createFakeProfile({ role: 'admin' }),
+      { tier: 'basic', status: 'active', currentPeriodEnd: null, cancelAtPeriodEnd: false }
+    );
+    const nativeElement = fixture.nativeElement as HTMLElement;
+    const cards = Array.from(nativeElement.querySelectorAll('.tier-card'));
+    const basicCard = cards.find(card => card.textContent?.includes('Basic'));
+
+    expect(basicCard?.classList).toContain('tier-current');
+    expect(basicCard?.textContent).toContain('Current plan');
+    expect(basicCard?.querySelector('.tier-cta')).toBeNull();
+    // A card that's both "most popular" and the current plan shows only the
+    // current-plan badge, not both.
+    expect(basicCard?.classList).not.toContain('tier-highlighted');
+
+    // Once the org has an established plan, no other card gets a CTA
+    // either — manage/billing's own "Upgrade to Pro"/"Manage billing"
+    // buttons are the only way to actually change it now.
+    expect(nativeElement.querySelectorAll('.tier-cta').length).toBe(0);
   });
 
   it('chooseTier() calls startCheckout with the tier key and leaves the button pending when it redirects', async () => {
