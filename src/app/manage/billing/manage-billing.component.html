@@ -73,10 +73,6 @@
                 <span class="plan-price-note">{{ billingService.currentTier().priceNote }}</span>
               </span>
             </div>
-            <a mat-stroked-button routerLink="/pricing">
-              <mat-icon>open_in_new</mat-icon>
-              View plans
-            </a>
           </div>
 
           @if (billingService.subscription()?.status === 'past_due') {
@@ -95,34 +91,46 @@
           }
 
           <div class="plan-actions">
-            @if (billingService.currentTier().key === 'free') {
+            @if (billingService.currentTier().key !== 'pro') {
+              @if (billingService.currentTier().key === 'free') {
+                <button
+                    mat-flat-button
+                    color="primary"
+                    type="button"
+                    [disabled]="!!isRedirectingToBilling"
+                    (click)="upgrade('basic')"
+                  >
+                  @if (isRedirectingToBilling === 'basic') {
+                    <mat-spinner diameter="20"></mat-spinner>
+                  } @else {
+                    Upgrade to Basic
+                  }
+                </button>
+              }
+              <!-- Always offered once there's a tier above the current one
+                   to reach — including from Basic, not just Free — see
+                   BillingService.startCheckout()'s own doc comment for how
+                   an already-paying org's plan changes in place rather than
+                   creating a second subscription. Deliberately the most
+                   visually prominent action on this whole card: Pro is the
+                   plan worth nudging every non-Pro org toward. -->
               <button
-                  mat-flat-button
-                  color="primary"
                   type="button"
-                  [disabled]="!!isRedirectingToBilling"
-                  (click)="upgrade('basic')"
-                >
-                @if (isRedirectingToBilling === 'basic') {
-                  <mat-spinner diameter="20"></mat-spinner>
-                } @else {
-                  Upgrade to Basic
-                }
-              </button>
-              <button
-                  mat-flat-button
-                  color="primary"
-                  type="button"
+                  class="upgrade-pro-button"
                   [disabled]="!!isRedirectingToBilling"
                   (click)="upgrade('pro')"
                 >
                 @if (isRedirectingToBilling === 'pro') {
                   <mat-spinner diameter="20"></mat-spinner>
                 } @else {
-                  Upgrade to Pro
+                  <ng-container>
+                    <mat-icon>auto_awesome</mat-icon>
+                    Upgrade to Pro
+                  </ng-container>
                 }
               </button>
-            } @else {
+            }
+            @if (billingService.currentTier().key !== 'free') {
               <button
                   mat-stroked-button
                   type="button"
@@ -133,12 +141,21 @@
                   <mat-spinner diameter="20"></mat-spinner>
                 } @else {
                   <ng-container>
-                    <mat-icon>credit_card</mat-icon>
+                    <mat-icon class="button-icon-gap">credit_card</mat-icon>
                     Manage billing
                   </ng-container>
                 }
               </button>
             }
+            <!-- Kept next to Manage billing rather than up in the plan-
+                 summary header — the two read as a pair (compare plans /
+                 manage the one you're on), and this stays visible on every
+                 tier, including Free, where Manage billing itself doesn't
+                 render yet. -->
+            <a mat-stroked-button routerLink="/pricing">
+              <mat-icon class="button-icon-gap">open_in_new</mat-icon>
+              View plans
+            </a>
           </div>
         </section>
       </div>

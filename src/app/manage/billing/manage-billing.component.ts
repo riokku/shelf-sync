@@ -7,6 +7,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { BillingService } from '../../core/billing.service';
+import { NotificationService } from '../../core/notification.service';
 import { SupabaseService } from '../../core/supabase.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
@@ -47,6 +48,7 @@ import { EmptyStateComponent } from '../../shared/components/empty-state/empty-s
 export class ManageBillingComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
   private authService = inject(AuthService);
+  private notification = inject(NotificationService);
   protected billingService = inject(BillingService);
 
   isLoading = true;
@@ -145,10 +147,13 @@ export class ManageBillingComponent implements OnInit {
       : `${this.storageUsedMb}MB of ${limit}MB`;
   }
 
-  /** Redirects to a real Stripe Checkout page for `tier` — see
-   *  BillingService.startCheckout()'s own doc comment for why a successful
-   *  call leaves isRedirectingToBilling set rather than clearing it (the
-   *  page is about to navigate away entirely). */
+  /** Moves the org onto `tier` — either a real Stripe Checkout redirect
+   *  (nothing on Free yet) or an immediate in-place plan change (already on
+   *  a different paid tier) — see BillingService.startCheckout()'s own doc
+   *  comment. Only the redirect case leaves isRedirectingToBilling set; the
+   *  immediate case has nothing left to wait on, so it clears the pending
+   *  state itself and toasts the same way every other brief confirmation in
+   *  this app does. */
   async upgrade(tier: 'basic' | 'pro') {
     if (this.isRedirectingToBilling) {
       return;
@@ -156,10 +161,15 @@ export class ManageBillingComponent implements OnInit {
     this.isRedirectingToBilling = tier;
     this.billingActionError = null;
 
-    const error = await this.billingService.startCheckout(tier);
-    if (error) {
-      this.billingActionError = error;
+    const result = await this.billingService.startCheckout(tier);
+    if (result.error) {
+      this.billingActionError = result.error;
       this.isRedirectingToBilling = null;
+      return;
+    }
+    if (!result.redirected) {
+      this.isRedirectingToBilling = null;
+      this.notification.success(`You're now on the ${tier === 'pro' ? 'Pro' : 'Basic'} plan.`);
     }
   }
 

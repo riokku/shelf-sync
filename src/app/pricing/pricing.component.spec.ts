@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 import { PricingComponent } from './pricing.component';
 import { AuthService } from '../core/auth.service';
 import { BillingService } from '../core/billing.service';
+import { NotificationService } from '../core/notification.service';
 import { PRICING_TIERS, pricingTierByKey } from '../shared/models/pricing-tier';
 import { OrgSubscription } from '../shared/models/subscription.model';
 import { createFakeAuthService, createFakeBillingService, createFakeProfile } from '../testing/fakes';
@@ -107,10 +108,11 @@ describe('PricingComponent CTA behavior', () => {
     expect(fixture.nativeElement.textContent).toContain('Contact your admin');
   });
 
-  it('chooseTier() calls startCheckout with the tier key and leaves the button pending on success', async () => {
+  it('chooseTier() calls startCheckout with the tier key and leaves the button pending when it redirects', async () => {
     const fixture = await createComponent(createFakeProfile({ role: 'admin' }), null);
     const { componentInstance: component } = fixture;
-    const startCheckoutSpy = spyOn(TestBed.inject(BillingService), 'startCheckout').and.returnValue(Promise.resolve(null));
+    const startCheckoutSpy = spyOn(TestBed.inject(BillingService), 'startCheckout')
+      .and.returnValue(Promise.resolve({ error: null, redirected: true }));
 
     await component.chooseTier(BASIC_TIER);
 
@@ -118,10 +120,22 @@ describe('PricingComponent CTA behavior', () => {
     expect(component.isRedirecting).toBe('basic');
   });
 
+  it('chooseTier() clears the pending state and toasts when the plan changes immediately (no redirect)', async () => {
+    const fixture = await createComponent(createFakeProfile({ role: 'admin' }), null);
+    const { componentInstance: component } = fixture;
+    spyOn(TestBed.inject(BillingService), 'startCheckout').and.returnValue(Promise.resolve({ error: null, redirected: false }));
+    const notificationSuccessSpy = spyOn((component as unknown as { notification: NotificationService }).notification, 'success');
+
+    await component.chooseTier(BASIC_TIER);
+
+    expect(component.isRedirecting).toBeNull();
+    expect(notificationSuccessSpy).toHaveBeenCalledWith("You're now on the Basic plan.");
+  });
+
   it('chooseTier() surfaces an error and clears the pending state on failure', async () => {
     const fixture = await createComponent(createFakeProfile({ role: 'admin' }), null);
     const { componentInstance: component } = fixture;
-    spyOn(TestBed.inject(BillingService), 'startCheckout').and.returnValue(Promise.resolve('boom'));
+    spyOn(TestBed.inject(BillingService), 'startCheckout').and.returnValue(Promise.resolve({ error: 'boom', redirected: false }));
 
     await component.chooseTier(BASIC_TIER);
 

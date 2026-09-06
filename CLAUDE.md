@@ -353,20 +353,35 @@ team member count, inventory item count, and photo storage usage are still real,
 queried numbers exactly as before (storage usage from `get_inventory_photo_storage_usage()`, an
 admin-only `SECURITY DEFINER` RPC summing `storage.objects` sizes via `inventory_item_images` ->
 `inventory_items`, since `storage.objects` isn't exposed to PostgREST directly) — only the plan/
-billing-date/payment-method section changed. On Free, two "Upgrade to Basic"/"Upgrade to Pro"
-buttons each start a real Stripe Checkout session; on Basic/Pro, one "Manage billing" button opens
-the Stripe Customer Portal instead — no custom upgrade/downgrade/cancel/payment-method UI was built
-anywhere in this app, per Stripe's own guidance that the Portal should own all of that. A `past_due`
-subscription shows a payment-failed warning; a `cancelAtPeriodEnd` subscription notes when it reverts
-to Free. `BillingService` (`core/billing.service.ts`) is the shared root-provided service both pages
+billing-date/payment-method section changed. "Upgrade to Pro" is offered whenever the org isn't
+already on Pro — on Free *and* on Basic alike, not just from Free — deliberately the single most
+visually prominent action on the card (`.upgrade-pro-button`: a hand-styled primary/tertiary gradient
+button with a soft glow, a diagonal shine sweep every few seconds, `auto_awesome` icon, and its own
+`:hover`/`:focus-visible`/`prefers-reduced-motion` handling, since Material's own button theming API
+only covers a solid `--mat-button-filled-container-color`, not a gradient — Pro is the plan worth
+nudging every non-Pro org toward). "Upgrade to Basic" only shows from Free. Once on any paid tier, a
+"Manage billing" button opens the Stripe Customer Portal for cancellation/payment-method updates — no
+custom cancel/payment-method UI was built anywhere in this app, per Stripe's own guidance that the
+Portal should own that — sitting next to a "View plans" link back to `/pricing` (kept out of the plan
+summary header specifically so the two read as a pair, and visible on every tier including Free, where
+Manage billing itself doesn't render yet). A `past_due` subscription shows a payment-failed warning; a
+`cancelAtPeriodEnd` subscription notes when it reverts to Free. `BillingService` (`core/billing.service.ts`)
+is the shared root-provided service both pages
 read from — a signal-backed `subscription`/`currentTier` pair (`currentTier` derived via
 `pricingTierByKey(subscription()?.tier ?? 'free')`, the same "missing row means the default"
 convention `SiteSettingsService`'s own signals already use) plus `startCheckout(tier)`/
-`openBillingPortal()`, which call an Edge Function and redirect the browser to the URL it returns
-(`window.location.href = data.url`) rather than writing any table directly — mirrors
+`openBillingPortal()`, which call an Edge Function rather than writing any table directly — mirrors
 `ImpersonationService.start()`'s own `functions.invoke()` + `extractFunctionErrorMessage()` shape,
 since neither this service nor any client code has a write grant on `subscriptions` at all (see that
-table's own migration note below).
+table's own migration note below). `startCheckout()` returns a `{ error, redirected }` pair rather
+than just an error string, because it has two genuinely different outcomes (see
+`create-checkout-session`'s own paragraph below for why): `redirected: true` means the browser is
+mid-navigation to a real Stripe Checkout page (`window.location.href = data.url`) and the caller
+should leave its own pending/spinner state alone; `redirected: false` means an existing paid
+subscription's price changed in place with no redirect at all — `startCheckout()` itself reloads
+`subscription()`/`currentTier()` before resolving, so the caller just clears its pending state and
+shows its own "done" toast (`NotificationService.success()`, same as every other brief confirmation
+in this app) since there's no page navigation to otherwise signal it.
 
 Real Stripe subscription state lives in a new `subscriptions` table — one row per org (missing row =
 implicit Free, same convention as above), `tier`/`status` columns, Stripe customer/subscription/price
@@ -401,6 +416,35 @@ Stripe Price ids for Basic/Pro are a hardcoded constant map inside `create-check
 convention as `send-notification-email`'s own `FROM_ADDRESS`/`APP_URL`) — two tiers, never read by
 Angular, not worth a table — duplicated into the webhook function as a defensive fallback for tier
 resolution when a subscription's own metadata is somehow missing.
+
+The Checkout-Session path above only ever applies when the org has no currently-billing subscription
+(Free, or a past cancellation) — a real gap caught before it could double-bill anyone: an org already
+on Basic clicking "Upgrade to Pro" would, if this just reused the same Checkout flow, get a brand-new,
+*second* Subscription object on the same Stripe Customer rather than changing the existing one, since
+Checkout Sessions only ever create new subscriptions. `create-checkout-session` instead checks the
+org's `subscriptions` row first — if `stripe_subscription_id` is set and `status` is
+`active`/`trialing`/`past_due` (a real, currently-billing subscription, not `canceled` or similar), it
+calls `stripe.subscriptions.update()` directly instead, swapping the subscription's existing item onto
+the new tier's Price with proration (`proration_behavior: 'create_prorations'`, Stripe's own default,
+made explicit) and returns `{ updated: true }` — no Checkout URL, since there's nothing to redirect
+to, the change is immediate. That `update()` call is itself what triggers a real
+`customer.subscription.updated` webhook event, so the actual `subscriptions` row write still goes
+through `stripe-webhook` exactly the same as every other path; this function only ever *performs* the
+plan change, never writes the row itself. A request for the tier the org is already on is rejected
+outright (400) rather than calling Stripe over nothing.
+
+Shipped with a real bug caught on the very first live checkout attempt, not from a test: Stripe's
+"Managed Payments" feature (Stripe acting as merchant of record, handling tax globally) is on by
+default for this account and requires every Product to carry a `tax_code` — the first attempt failed
+with "the product tax code is missing" before ever reaching this app's own code. Diagnosed by
+reproducing the exact same `checkout.sessions.create()` call directly against Stripe's raw API (`curl`
+itself turned out to segfault on this machine specifically when Stripe returns a 4xx from `api.stripe.com`
+regardless of auth method — Node's `fetch` was the working substitute) rather than by trial-and-error
+against this app's own code. Fixed by passing `managed_payments: { enabled: false }` on the session
+(cast through `as Stripe.Checkout.SessionCreateParams`, since this is new enough that the installed
+`stripe` npm package's own TS types may not yet know the field) rather than assigning tax codes to
+Basic/Pro — real tax handling is already its own deliberately-deferred item below, and this is the
+same category of thing. Revisit both together before any real, non-test charge.
 
 `supabase/functions/stripe-webhook` is the *only* place any `subscriptions` row is ever written,
 called directly by Stripe rather than the browser (mirrors `send-notification-email`'s shape instead

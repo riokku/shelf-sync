@@ -258,7 +258,7 @@ export function createFakeBillingService(
     currentTier: computed(() => pricingTierByKey(subscription?.tier ?? 'free')),
     loadError: signal(loadError).asReadonly(),
     load: async () => {},
-    startCheckout: async () => null,
+    startCheckout: async () => ({ error: null, redirected: true }),
     openBillingPortal: async () => null,
   };
   return fake as unknown as BillingService;

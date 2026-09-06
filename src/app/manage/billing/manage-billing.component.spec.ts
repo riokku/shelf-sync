@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 import { ManageBillingComponent } from './manage-billing.component';
 import { AuthService } from '../../core/auth.service';
 import { BillingService } from '../../core/billing.service';
+import { NotificationService } from '../../core/notification.service';
 import { SupabaseService } from '../../core/supabase.service';
 import {
   createFakeAuthService,
@@ -191,9 +192,19 @@ describe('ManageBillingComponent Stripe actions', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Manage billing');
   });
 
-  it('shows a Manage billing button and no Upgrade buttons once on a paid tier', async () => {
+  it('shows both Manage billing and Upgrade to Pro while on Basic — upgrading further is still an option', async () => {
     const fixture = await createComponent(
       createFakeBillingService({ tier: 'basic', status: 'active', currentPeriodEnd: '2026-11-01T00:00:00.000Z', cancelAtPeriodEnd: false })
+    );
+
+    expect(fixture.nativeElement.textContent).toContain('Manage billing');
+    expect(fixture.nativeElement.textContent).toContain('Upgrade to Pro');
+    expect(fixture.nativeElement.textContent).not.toContain('Upgrade to Basic');
+  });
+
+  it('shows only Manage billing once on Pro — nothing left to upgrade to', async () => {
+    const fixture = await createComponent(
+      createFakeBillingService({ tier: 'pro', status: 'active', currentPeriodEnd: '2026-11-01T00:00:00.000Z', cancelAtPeriodEnd: false })
     );
 
     expect(fixture.nativeElement.textContent).toContain('Manage billing');
@@ -217,9 +228,10 @@ describe('ManageBillingComponent Stripe actions', () => {
     expect(fixture.nativeElement.textContent).toContain('will move to Free');
   });
 
-  it('upgrade() calls startCheckout with the chosen tier and leaves the button pending on success', async () => {
+  it('upgrade() calls startCheckout with the chosen tier and leaves the button pending when it redirects', async () => {
     const billingService = createFakeBillingService(null);
-    const startCheckoutSpy = spyOn(billingService, 'startCheckout').and.returnValue(Promise.resolve(null));
+    const startCheckoutSpy = spyOn(billingService, 'startCheckout')
+      .and.returnValue(Promise.resolve({ error: null, redirected: true }));
     const fixture = await createComponent(billingService);
 
     await fixture.componentInstance.upgrade('pro');
@@ -229,9 +241,21 @@ describe('ManageBillingComponent Stripe actions', () => {
     expect(fixture.componentInstance.billingActionError).toBeNull();
   });
 
+  it('upgrade() clears the pending state and toasts when the plan changes immediately (no redirect)', async () => {
+    const billingService = createFakeBillingService(null);
+    spyOn(billingService, 'startCheckout').and.returnValue(Promise.resolve({ error: null, redirected: false }));
+    const fixture = await createComponent(billingService);
+    const notificationSuccessSpy = spyOn((fixture.componentInstance as unknown as { notification: NotificationService }).notification, 'success');
+
+    await fixture.componentInstance.upgrade('pro');
+
+    expect(fixture.componentInstance.isRedirectingToBilling).toBeNull();
+    expect(notificationSuccessSpy).toHaveBeenCalledWith("You're now on the Pro plan.");
+  });
+
   it('upgrade() surfaces an error and clears the pending state on failure', async () => {
     const billingService = createFakeBillingService(null);
-    spyOn(billingService, 'startCheckout').and.returnValue(Promise.resolve('boom'));
+    spyOn(billingService, 'startCheckout').and.returnValue(Promise.resolve({ error: 'boom', redirected: false }));
     const fixture = await createComponent(billingService);
 
     await fixture.componentInstance.upgrade('basic');
@@ -242,7 +266,8 @@ describe('ManageBillingComponent Stripe actions', () => {
 
   it('upgrade() is a no-op while another billing action is already pending', async () => {
     const billingService = createFakeBillingService(null);
-    const startCheckoutSpy = spyOn(billingService, 'startCheckout').and.returnValue(Promise.resolve(null));
+    const startCheckoutSpy = spyOn(billingService, 'startCheckout')
+      .and.returnValue(Promise.resolve({ error: null, redirected: true }));
     const fixture = await createComponent(billingService);
     fixture.componentInstance.isRedirectingToBilling = 'portal';
 

@@ -5,6 +5,19 @@ import { AuthService } from './auth.service';
 import { OrgSubscription } from '../shared/models/subscription.model';
 import { PricingTier, pricingTierByKey } from '../shared/models/pricing-tier';
 
+/** startCheckout()'s result — `error` is null on success either way, but
+ *  callers need `redirected` to know which kind of success happened:
+ *  `true` means the browser is already navigating to Stripe Checkout (leave
+ *  any pending/spinner UI alone, the page is about to unload); `false`
+ *  means an existing paid subscription's price changed in place with no
+ *  redirect at all — `subscription()`/`currentTier()` are already refreshed
+ *  by the time this resolves, so the caller should clear its own pending
+ *  state and show its own "done" feedback. */
+export interface CheckoutResult {
+  error: string | null;
+  redirected: boolean;
+}
+
 /** The org's real Stripe subscription state — backs manage/billing's plan
  *  summary/upgrade-or-manage buttons and /pricing's per-tier CTAs. Same
  *  signal-plus-loadError shape SupplierService/ReservationKitService already
@@ -69,24 +82,36 @@ export class BillingService {
     );
   }
 
-  /** Redirects the browser to a real Stripe Checkout page for `tier` on
-   *  success — there's nothing left for the caller to update locally, the
-   *  page is about to navigate away entirely. Returns an error message on
-   *  failure instead. Admin-only in practice (the create-checkout-session
-   *  function itself enforces this — see its own doc comment — this is
-   *  just where every caller in this app happens to reach it from). */
-  async startCheckout(tier: 'basic' | 'pro'): Promise<string | null> {
-    const { data, error } = await this.supabase.functions.invoke<{ url: string }>('create-checkout-session', {
-      body: { tier }
-    });
+  /** Moves the org onto `tier` — either by redirecting to a real Stripe
+   *  Checkout page (an org with no existing paid subscription) or, for an
+   *  org already on a *different* paid tier, by changing that subscription's
+   *  price in place with no redirect at all (see create-checkout-session's
+   *  own doc comment for why a Checkout Session can't be reused for that
+   *  case — it would create a second, separate subscription rather than
+   *  changing the existing one). Either way this app's own `subscriptions`
+   *  row is only ever written by stripe-webhook, never here. Admin-only in
+   *  practice (the Edge Function itself enforces this — this is just where
+   *  every caller in this app happens to reach it from). */
+  async startCheckout(tier: 'basic' | 'pro'): Promise<CheckoutResult> {
+    const { data, error } = await this.supabase.functions.invoke<{ url?: string; updated?: boolean }>(
+      'create-checkout-session',
+      { body: { tier } }
+    );
     if (error) {
-      return await this.extractFunctionErrorMessage(error, 'Failed to start checkout.');
+      return { error: await this.extractFunctionErrorMessage(error, 'Failed to start checkout.'), redirected: false };
+    }
+    if (data?.updated) {
+      // Applied immediately — reload so subscription()/currentTier()
+      // reflect the new tier right away, since there's no page navigation
+      // to otherwise trigger a refresh.
+      await this.load();
+      return { error: null, redirected: false };
     }
     if (!data?.url) {
-      return 'Failed to start checkout.';
+      return { error: 'Failed to start checkout.', redirected: false };
     }
     window.location.href = data.url;
-    return null;
+    return { error: null, redirected: true };
   }
 
   /** Same shape as startCheckout() — redirects to a real Stripe Customer

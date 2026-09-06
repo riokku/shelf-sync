@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../core/auth.service';
 import { BillingService } from '../core/billing.service';
+import { NotificationService } from '../core/notification.service';
 import { FooterComponent } from '../footer/footer.component';
 import { PRICING_TIERS, PricingTier } from '../shared/models/pricing-tier';
 
@@ -62,6 +63,7 @@ export class PricingComponent implements OnInit {
 
   protected authService = inject(AuthService);
   protected billingService = inject(BillingService);
+  private notification = inject(NotificationService);
 
   /** Which tier's checkout is currently redirecting the browser, if any —
    *  disables every checkout button while set, same
@@ -100,10 +102,21 @@ export class PricingComponent implements OnInit {
     this.isRedirecting = checkoutTier;
     this.checkoutError = null;
 
-    const error = await this.billingService.startCheckout(checkoutTier);
-    if (error) {
-      this.checkoutError = error;
+    const result = await this.billingService.startCheckout(checkoutTier);
+    if (result.error) {
+      this.checkoutError = result.error;
       this.isRedirecting = null;
+      return;
+    }
+    if (!result.redirected) {
+      // Applied immediately (already on a different paid tier — see
+      // BillingService.startCheckout()'s own doc comment) rather than
+      // redirecting to Checkout. ctaFor() already reflects the new tier as
+      // 'current' the moment currentTier() updates; the toast is just the
+      // same brief "it worked" confirmation every other action in this app
+      // gets.
+      this.isRedirecting = null;
+      this.notification.success(`You're now on the ${tier.name} plan.`);
     }
   }
 }

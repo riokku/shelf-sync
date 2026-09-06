@@ -8,12 +8,29 @@
 // non-2xx response.
 //
 // Every table write this app makes for a subscription happens inside
-// stripe-webhook instead, never here — this function only ever creates a
-// Checkout Session and hands back its URL. The org's Stripe Customer is
-// found-or-created by Checkout itself (via `customer` when one already
-// exists, `customer_email` otherwise), not by this function calling
-// stripe.customers.create() directly, so there's exactly one place
-// (stripe-webhook) that ever writes the `subscriptions` row.
+// stripe-webhook instead, never here. This function has two distinct
+// outcomes depending on the org's current billing state:
+//
+// - No existing paid subscription (Free, or a past cancellation): creates a
+//   real Checkout Session and hands back its URL to redirect to — the org's
+//   Stripe Customer is found-or-created by Checkout itself (via `customer`
+//   when one already exists, `customer_email` otherwise), not by this
+//   function calling stripe.customers.create() directly.
+// - An existing active/trialing/past_due subscription for a *different*
+//   tier (e.g. Basic -> Pro): a Checkout Session would create a brand-new,
+//   second Subscription object for the same customer rather than changing
+//   the existing one — silently double-billing the org. Instead this calls
+//   stripe.subscriptions.update() directly, swapping the subscription's
+//   existing item onto the new tier's Price with proration, and returns
+//   `{ updated: true }` (no URL — there's nothing to redirect to; the
+//   change is immediate). That update call itself is what triggers a real
+//   `customer.subscription.updated` webhook event, so the actual
+//   `subscriptions` row write still goes through stripe-webhook exactly the
+//   same as every other path — this function performs the plan change, it
+//   never writes the row itself.
+//
+// Either way, there's exactly one place (stripe-webhook) that ever writes
+// the `subscriptions` row.
 //
 // Session-level `metadata`/`client_reference_id` is only ever visible on
 // `checkout.session.*` webhook events — a later `customer.subscription.*`
@@ -129,15 +146,52 @@ Deno.serve(async req => {
   }
   const tier = body.tier;
   const organizationId = callerProfile.organization_id;
+  const requestedPriceId = STRIPE_PRICE_IDS[tier];
 
-  // Find-or-create customer: reuse the org's existing Stripe Customer (set
-  // by stripe-webhook on a previous checkout) rather than letting Checkout
-  // create a second one for the same org on a resubscribe.
   const { data: existingSubscription } = await serviceClient
     .from('subscriptions')
-    .select('stripe_customer_id')
+    .select('stripe_customer_id, stripe_subscription_id, stripe_price_id, status')
     .eq('organization_id', organizationId)
     .maybeSingle();
+
+  // A real, currently-billing subscription exists — switch its price in
+  // place instead of creating a second one. `canceled`/`incomplete_expired`
+  // etc. fall through to the Checkout branch below instead, same as an org
+  // that's never subscribed at all.
+  const hasModifiableSubscription = !!existingSubscription?.stripe_subscription_id
+    && (existingSubscription.status === 'active' || existingSubscription.status === 'trialing' || existingSubscription.status === 'past_due');
+
+  if (hasModifiableSubscription) {
+    if (existingSubscription!.stripe_price_id === requestedPriceId) {
+      return jsonResponse(400, { error: "You're already on this plan." });
+    }
+
+    try {
+      const subscription = await stripe.subscriptions.retrieve(existingSubscription!.stripe_subscription_id!);
+      const currentItem = subscription.items.data[0];
+      if (!currentItem) {
+        console.error('Subscription has no line items to update:', subscription.id);
+        return jsonResponse(500, { error: 'Failed to change your plan.' });
+      }
+
+      await stripe.subscriptions.update(subscription.id, {
+        items: [{ id: currentItem.id, price: requestedPriceId }],
+        proration_behavior: 'create_prorations',
+        // Kept in sync in case it was ever missing — stripe-webhook reads
+        // this to resolve the org on every customer.subscription.* event.
+        metadata: { organization_id: organizationId, tier }
+      });
+
+      return jsonResponse(200, { updated: true });
+    } catch (error) {
+      console.error('Failed to update existing subscription:', error);
+      return jsonResponse(500, { error: 'Failed to change your plan.' });
+    }
+  }
+
+  // No modifiable subscription — reuse the org's existing Stripe Customer
+  // (set by stripe-webhook on a previous, since-cancelled subscription) if
+  // one exists, rather than letting Checkout create a second one.
   const existingCustomerId = existingSubscription?.stripe_customer_id ?? null;
 
   try {
