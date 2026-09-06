@@ -403,6 +403,14 @@ deno_version = 2
 [functions.send-notification-email]
 verify_jwt = false
 
+# Called directly by Stripe, never by a signed-in user — there's no
+# Supabase-issued JWT to verify in that context either. Authenticated
+# instead by Stripe's own webhook signature (see the function's own doc
+# comment) rather than a shared secret, since Stripe's SDK already provides
+# a real, purpose-built verification mechanism for this.
+[functions.stripe-webhook]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

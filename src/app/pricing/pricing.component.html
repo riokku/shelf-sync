@@ -41,14 +41,43 @@
             <span class="tier-price-amount">{{ tier.price }}</span>
             <span class="tier-price-note">{{ tier.priceNote }}</span>
           </p>
-          <a
-              mat-flat-button
-              [color]="tier.highlighted ? 'primary' : undefined"
-              [class.tier-cta-outline]="!tier.highlighted"
-              routerLink="/register"
-            >
-            {{ tier.ctaLabel }}
-          </a>
+          @switch (ctaFor(tier).kind) {
+            @case ('register') {
+              <a
+                  mat-flat-button
+                  [color]="tier.highlighted ? 'primary' : undefined"
+                  [class.tier-cta-outline]="!tier.highlighted"
+                  routerLink="/register"
+                >
+                {{ tier.ctaLabel }}
+              </a>
+            }
+            @case ('checkout') {
+              <button
+                  mat-flat-button
+                  type="button"
+                  [color]="tier.highlighted ? 'primary' : undefined"
+                  [class.tier-cta-outline]="!tier.highlighted"
+                  [disabled]="!!isRedirecting"
+                  (click)="chooseTier(tier)"
+                >
+                @if (isRedirecting === tier.key) {
+                  <mat-spinner diameter="20"></mat-spinner>
+                } @else {
+                  {{ tier.ctaLabel }}
+                }
+              </button>
+            }
+            @case ('manage-billing') {
+              <a mat-stroked-button class="tier-cta-outline" routerLink="/manage/billing">Manage billing</a>
+            }
+            @case ('current') {
+              <button mat-stroked-button type="button" class="tier-cta-outline" disabled>Current plan</button>
+            }
+            @case ('contact-admin') {
+              <button mat-stroked-button type="button" class="tier-cta-outline" disabled>Contact your admin</button>
+            }
+          }
           <ul class="tier-features">
             @for (feature of tier.features; track feature) {
               @if (feature.startsWith('Everything in')) {
@@ -65,9 +94,13 @@
       }
     </div>
 
+    @if (checkoutError) {
+      <p class="error-message" role="alert">{{ checkoutError }}</p>
+    }
+
     <p class="pricing-footnote">
-      Billing isn't live yet — every plan above signs up through the same free flow today.
-      Prices shown are what each tier is expected to cost once billing launches.
+      Prices shown are billed monthly. Signing up is always free to start — upgrade any time from
+      Manage &gt; Billing.
     </p>
   </section>
 

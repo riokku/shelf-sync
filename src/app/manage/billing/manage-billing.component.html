@@ -10,17 +10,8 @@
       </button>
     </div>
     <app-page-header title="Billing" zone="admin" headingLevel="h1">
-      <app-ring-stat headerFigure [percent]="usagePercent(storageUsedMb, currentTier.limits.storageLimitMb)" label="Storage used" />
+      <app-ring-stat headerFigure [percent]="usagePercent(storageUsedMb, billingService.currentTier().limits.storageLimitMb)" label="Storage used" />
     </app-page-header>
-
-    <div class="preview-banner">
-      <mat-icon>info</mat-icon>
-      <p>
-        Billing isn't connected yet — this is a preview of what this page will show once it is.
-        Account created, team members, inventory items, and photo storage below are all real;
-        only the billing date is a placeholder.
-      </p>
-    </div>
 
     @if (isLoading) {
       <!-- Real card shells mirroring the plan-summary/usage-grid/billing-
@@ -76,16 +67,78 @@
           <h3>Current plan</h3>
           <div class="plan-summary">
             <div class="plan-summary-info">
-              <span class="plan-name">{{ currentTier.name }}</span>
+              <span class="plan-name">{{ billingService.currentTier().name }}</span>
               <span class="plan-price">
-                {{ currentTier.price }}
-                <span class="plan-price-note">{{ currentTier.priceNote }}</span>
+                {{ billingService.currentTier().price }}
+                <span class="plan-price-note">{{ billingService.currentTier().priceNote }}</span>
               </span>
             </div>
             <a mat-stroked-button routerLink="/pricing">
               <mat-icon>open_in_new</mat-icon>
               View plans
             </a>
+          </div>
+
+          @if (billingService.subscription()?.status === 'past_due') {
+            <p class="error-message" role="alert">
+              <mat-icon>error</mat-icon>
+              Your last payment failed. Update your payment method to keep this plan active.
+            </p>
+          }
+          @if (billingService.subscription()?.cancelAtPeriodEnd) {
+            <p class="section-hint">
+              This plan will move to Free on {{ billingService.subscription()?.currentPeriodEnd | date: 'MMMM d, y' }}.
+            </p>
+          }
+          @if (billingActionError) {
+            <p class="error-message" role="alert">{{ billingActionError }}</p>
+          }
+
+          <div class="plan-actions">
+            @if (billingService.currentTier().key === 'free') {
+              <button
+                  mat-flat-button
+                  color="primary"
+                  type="button"
+                  [disabled]="!!isRedirectingToBilling"
+                  (click)="upgrade('basic')"
+                >
+                @if (isRedirectingToBilling === 'basic') {
+                  <mat-spinner diameter="20"></mat-spinner>
+                } @else {
+                  Upgrade to Basic
+                }
+              </button>
+              <button
+                  mat-flat-button
+                  color="primary"
+                  type="button"
+                  [disabled]="!!isRedirectingToBilling"
+                  (click)="upgrade('pro')"
+                >
+                @if (isRedirectingToBilling === 'pro') {
+                  <mat-spinner diameter="20"></mat-spinner>
+                } @else {
+                  Upgrade to Pro
+                }
+              </button>
+            } @else {
+              <button
+                  mat-stroked-button
+                  type="button"
+                  [disabled]="!!isRedirectingToBilling"
+                  (click)="manageBilling()"
+                >
+                @if (isRedirectingToBilling === 'portal') {
+                  <mat-spinner diameter="20"></mat-spinner>
+                } @else {
+                  <ng-container>
+                    <mat-icon>credit_card</mat-icon>
+                    Manage billing
+                  </ng-container>
+                }
+              </button>
+            }
           </div>
         </section>
       </div>
@@ -102,23 +155,23 @@
             </div>
             <div class="usage-stat">
               <span class="usage-stat-label">Team members</span>
-              <span class="usage-stat-value mono">{{ usageLabel(teamMemberCount, currentTier.limits.maxTeamMembers) }}</span>
-              @if (currentTier.limits.maxTeamMembers) {
-                <mat-progress-bar mode="determinate" [value]="usagePercent(teamMemberCount, currentTier.limits.maxTeamMembers)" />
+              <span class="usage-stat-value mono">{{ usageLabel(teamMemberCount, billingService.currentTier().limits.maxTeamMembers) }}</span>
+              @if (billingService.currentTier().limits.maxTeamMembers) {
+                <mat-progress-bar mode="determinate" [value]="usagePercent(teamMemberCount, billingService.currentTier().limits.maxTeamMembers)" />
               }
             </div>
             <div class="usage-stat">
               <span class="usage-stat-label">Inventory items</span>
-              <span class="usage-stat-value mono">{{ usageLabel(inventoryItemCount, currentTier.limits.maxInventoryItems) }}</span>
-              @if (currentTier.limits.maxInventoryItems) {
-                <mat-progress-bar mode="determinate" [value]="usagePercent(inventoryItemCount, currentTier.limits.maxInventoryItems)" />
+              <span class="usage-stat-value mono">{{ usageLabel(inventoryItemCount, billingService.currentTier().limits.maxInventoryItems) }}</span>
+              @if (billingService.currentTier().limits.maxInventoryItems) {
+                <mat-progress-bar mode="determinate" [value]="usagePercent(inventoryItemCount, billingService.currentTier().limits.maxInventoryItems)" />
               }
             </div>
             <div class="usage-stat">
               <span class="usage-stat-label">Photo storage</span>
               <span class="usage-stat-value mono">{{ storageUsageLabel() }}</span>
-              @if (currentTier.limits.storageLimitMb) {
-                <mat-progress-bar mode="determinate" [value]="usagePercent(storageUsedMb, currentTier.limits.storageLimitMb)" />
+              @if (billingService.currentTier().limits.storageLimitMb) {
+                <mat-progress-bar mode="determinate" [value]="usagePercent(storageUsedMb, billingService.currentTier().limits.storageLimitMb)" />
               }
             </div>
           </div>
@@ -127,15 +180,16 @@
 
       <div class="billing-card">
         <section class="billing-section">
-          <h3>
-            Billing details
-            <span class="placeholder-tag">Preview</span>
-          </h3>
+          <h3>Billing details</h3>
           <dl class="billing-details">
             <dt>Next billing date</dt>
-            <dd>{{ placeholderNextBillingDate | date: 'MMMM d, y' }}</dd>
+            <dd>
+              {{ billingService.subscription()?.currentPeriodEnd
+                  ? (billingService.subscription()?.currentPeriodEnd | date: 'MMMM d, y')
+                  : '—' }}
+            </dd>
             <dt>Payment method</dt>
-            <dd>None on file</dd>
+            <dd>{{ billingService.currentTier().key === 'free' ? 'None on file' : 'Managed in the billing portal' }}</dd>
           </dl>
         </section>
       </div>

@@ -9,9 +9,12 @@ import { SupabaseService } from '../core/supabase.service';
 import { SupplierService } from '../core/supplier.service';
 import { ReservationKitService } from '../core/reservation-kit.service';
 import { ImpersonationService } from '../core/impersonation.service';
+import { BillingService } from '../core/billing.service';
 import { InventoryItem, InventoryItemStatus } from '../shared/models/inventory-item.model';
 import { Supplier } from '../shared/models/supplier.model';
 import { ReservationKit } from '../shared/models/reservation-kit.model';
+import { OrgSubscription } from '../shared/models/subscription.model';
+import { pricingTierByKey } from '../shared/models/pricing-tier';
 import { DEFAULT_INVENTORY_TABLE_COLUMNS, InventoryTableColumnKey } from '../shared/models/inventory-table-column';
 import { DEFAULT_INVENTORY_FORM_FIELDS, InventoryFormFieldKey } from '../shared/models/inventory-form-field';
 import { Database } from '../shared/models/database.types';
@@ -239,6 +242,26 @@ export function createFakeImpersonationService(state: {
     stop: async () => {},
   };
   return fake as unknown as ImpersonationService;
+}
+
+/** Mirrors createFakeSupplierService's shape above — a signal-backed
+ *  subscription (null = implicit Free, matching BillingService's own
+ *  convention) plus a loadError signal and no-op startCheckout()/
+ *  openBillingPortal(), for any component that injects BillingService
+ *  (ManageBillingComponent, PricingComponent). */
+export function createFakeBillingService(
+  subscription: OrgSubscription | null = null,
+  loadError: string | null = null
+): BillingService {
+  const fake = {
+    subscription: signal(subscription).asReadonly(),
+    currentTier: computed(() => pricingTierByKey(subscription?.tier ?? 'free')),
+    loadError: signal(loadError).asReadonly(),
+    load: async () => {},
+    startCheckout: async () => null,
+    openBillingPortal: async () => null,
+  };
+  return fake as unknown as BillingService;
 }
 
 export function createFakeActivatedRoute(queryParams: Record<string, string> = {}, pathParams: Record<string, string> = {}): ActivatedRoute {

@@ -316,35 +316,125 @@ changes.
 
 `/pricing` (`PricingComponent`) is a public three-tier pricing page (Free/Basic/Pro, Basic marked
 "Most popular"), same unguarded/chrome-hidden/own-nav-and-footer treatment as landing — linked from
-both the landing page's nav and `FooterComponent`. **No billing is wired up yet** — every tier's
-call to action goes to the same real `/register` flow (a page footnote says so explicitly), since
-signing up today gives full access regardless of which card was clicked; Stripe integration is
-separate, later work. The three tiers' caps and feature splits are a first pass at what *should*
-differentiate them once enforcement exists, chosen around what actually drives Supabase hosting
-cost for this app: item photos are by far the biggest lever (both storage *and* the repeated
-bandwidth/egress cost of browsing them, since Supabase bills egress separately from storage),
-team size is a moderate, predictable lever (Auth bills by monthly active users), and inventory/task
-row counts are minor unless an org reaches tens of thousands of items. Core inventory/task
-functionality is deliberately available on every tier rather than paywalled — differentiation is
-by *scale* (item/team/photo-storage caps) and *admin polish* (custom branding, data export, error
-log access — all Pro-only), not gating the product's basic value proposition this early on. See
-`PricingComponent`'s own doc comment for the full per-tier breakdown. The three tiers themselves
-live in `shared/models/pricing-tier.ts` (`PRICING_TIERS`, each with a `limits` object —
+both the landing page's nav and `FooterComponent`. The three tiers' caps and feature splits are a
+first pass at what *should* differentiate them once real usage-cap enforcement exists (still not
+built — see below), chosen around what actually drives Supabase hosting cost for this app: item
+photos are by far the biggest lever (both storage *and* the repeated bandwidth/egress cost of
+browsing them, since Supabase bills egress separately from storage), team size is a moderate,
+predictable lever (Auth bills by monthly active users), and inventory/task row counts are minor
+unless an org reaches tens of thousands of items. Core inventory/task functionality is deliberately
+available on every tier rather than paywalled — differentiation is by *scale* (item/team/photo-
+storage caps) and *admin polish* (custom branding, data export, error log access — all Pro-only),
+not gating the product's basic value proposition this early on. See `PricingComponent`'s own doc
+comment for the full per-tier breakdown. The three tiers themselves live in
+`shared/models/pricing-tier.ts` (`PRICING_TIERS`, each with a `limits` object —
 `maxTeamMembers`/`maxInventoryItems`/`storageLimitMb`, `null` meaning unlimited) rather than being
 inlined in `PricingComponent`, so the numbers a prospective customer sees on `/pricing` and the caps
 `manage/billing` measures an existing org against can't drift apart.
 
-`manage/billing` (`ManageBillingComponent`) is an admin-only (`adminGuard` — billing is financial
-information, same audience as Danger Zone, not the broader admin-or-manager audience the rest of
-Manage's sub-pages use) preview of what this page will show once Stripe billing exists. Every org is
-hardcoded onto the Free tier (`pricingTierByKey('free')`) since there's no `subscriptions` table
-yet; a banner at the top says the page isn't connected to real billing. Account creation date, team
-member count, inventory item count, and photo storage usage are all real, queried numbers — storage
-usage comes from `get_inventory_photo_storage_usage()`, an admin-only `SECURITY DEFINER` RPC that
-sums `storage.objects` sizes for the org's inventory photos (joined via `inventory_item_images` ->
-`inventory_items` for org scoping, not by parsing storage paths), since `storage.objects` (Supabase
-Storage's own backing table) isn't exposed to PostgREST directly. Only the billing-cycle date is
-still a plausible-looking placeholder, pending real Stripe billing.
+Each tier's own call-to-action button now does something real, resolved per viewer/tier by
+`PricingComponent.ctaFor()` rather than templated inline logic — see that method's own doc comment
+for the full decision table. Signed out, every tier still routes to `/register` exactly as before
+Stripe existed (checkout-during-signup is deliberately out of scope — an anonymous visitor needs an
+org to attach a subscription to first). Signed in as the org's admin, the current tier shows a
+disabled "Current plan" label, a non-current Basic/Pro card shows a real button that starts Stripe
+Checkout, and the Free card (when the org is actually on a paid tier) routes to `manage/billing`
+instead of calling Stripe — "downgrading" to Free is a cancellation, handled entirely by the Stripe
+Customer Portal, never a Checkout call. Signed in as anyone else (staff/manager), every non-current
+tier shows a disabled "Contact your admin" — mirrors `adminGuard`'s own "billing is admin-only"
+boundary (`manage/billing` uses `adminGuard`, not the broader admin-or-manager `canManage()` most of
+Manage's other sub-pages use), enforced for real by `create-checkout-session` itself (see below), not
+just this button being hidden.
+
+`manage/billing` (`ManageBillingComponent`, `adminGuard` — billing is financial information, same
+audience as Danger Zone) shows an org's real Stripe subscription state via `BillingService` — no
+more permanent "not connected yet" preview banner or hardcoded Free tier. Account creation date,
+team member count, inventory item count, and photo storage usage are still real, independently
+queried numbers exactly as before (storage usage from `get_inventory_photo_storage_usage()`, an
+admin-only `SECURITY DEFINER` RPC summing `storage.objects` sizes via `inventory_item_images` ->
+`inventory_items`, since `storage.objects` isn't exposed to PostgREST directly) — only the plan/
+billing-date/payment-method section changed. On Free, two "Upgrade to Basic"/"Upgrade to Pro"
+buttons each start a real Stripe Checkout session; on Basic/Pro, one "Manage billing" button opens
+the Stripe Customer Portal instead — no custom upgrade/downgrade/cancel/payment-method UI was built
+anywhere in this app, per Stripe's own guidance that the Portal should own all of that. A `past_due`
+subscription shows a payment-failed warning; a `cancelAtPeriodEnd` subscription notes when it reverts
+to Free. `BillingService` (`core/billing.service.ts`) is the shared root-provided service both pages
+read from — a signal-backed `subscription`/`currentTier` pair (`currentTier` derived via
+`pricingTierByKey(subscription()?.tier ?? 'free')`, the same "missing row means the default"
+convention `SiteSettingsService`'s own signals already use) plus `startCheckout(tier)`/
+`openBillingPortal()`, which call an Edge Function and redirect the browser to the URL it returns
+(`window.location.href = data.url`) rather than writing any table directly — mirrors
+`ImpersonationService.start()`'s own `functions.invoke()` + `extractFunctionErrorMessage()` shape,
+since neither this service nor any client code has a write grant on `subscriptions` at all (see that
+table's own migration note below).
+
+Real Stripe subscription state lives in a new `subscriptions` table — one row per org (missing row =
+implicit Free, same convention as above), `tier`/`status` columns, Stripe customer/subscription/price
+ids, `current_period_end`, `cancel_at_period_end`. Any approved org member can read their own org's
+row (tier isn't sensitive the way payment details are); there is **no insert/update/delete grant for
+`authenticated`/`anon` at all** — every write happens through three new Edge Functions'
+`service_role` clients, the only thing that can ever move an org between tiers. Backed by official
+Stripe integration guidance (fetched live via `npx skills add https://docs.stripe.com` into
+`.agents/skills/stripe-*` — Checkout Sessions in `mode: 'subscription'` + the Billing APIs, which
+auto-generate Invoices per cycle with no separate Invoicing integration needed; the Customer Portal
+for every self-service plan change; a webhook handler for the subscription lifecycle described as
+never optional; one Stripe Product per tier, never multiple tiers' prices on one Product; a
+restricted API key rather than a full secret key; never passing `payment_method_types`, letting
+Stripe's own dynamic payment methods apply).
+
+`supabase/functions/create-checkout-session` and `create-billing-portal-session` are browser-invoked
+(`supabase.functions.invoke()`), mirroring `impersonate-user`'s own shape exactly: real CORS
+handling, a module-level `service_role` client alongside a per-request caller-identifying client (the
+caller's own forwarded `Authorization` header against the anon key, used only for `.auth.getUser()`),
+a flat `{ error: string }` JSON body on every non-2xx response. Both re-check the caller is an admin
+of their own org server-side (mirroring `adminGuard`'s own check) rather than trusting the client.
+`create-checkout-session` finds-or-creates the org's Stripe Customer by reading (never writing)
+`subscriptions.stripe_customer_id` — passing `customer_email` instead the first time and letting
+Checkout create the Customer itself, since every actual table write for this feature stays inside the
+webhook — then creates the session with both `client_reference_id` *and*
+`subscription_data.metadata` set to the organization id (session-level metadata is only ever visible
+on `checkout.session.*` events; a later Portal-driven upgrade or plain renewal has no idea which
+Checkout Session originally created it, so the Subscription object's own metadata is what lets the
+webhook re-correlate those events back to an org). `create-billing-portal-session` needs an existing
+`stripe_customer_id` (400 — "choose a plan first" — if none yet) and just mints a portal session URL.
+Stripe Price ids for Basic/Pro are a hardcoded constant map inside `create-checkout-session` (same
+convention as `send-notification-email`'s own `FROM_ADDRESS`/`APP_URL`) — two tiers, never read by
+Angular, not worth a table — duplicated into the webhook function as a defensive fallback for tier
+resolution when a subscription's own metadata is somehow missing.
+
+`supabase/functions/stripe-webhook` is the *only* place any `subscriptions` row is ever written,
+called directly by Stripe rather than the browser (mirrors `send-notification-email`'s shape instead
+— a single `service_role` client, no CORS) and authenticated by Stripe's own webhook signature
+(`stripe.webhooks.constructEventAsync()` — the async variant, since Deno's crypto has no sync
+verifier — against the raw request body, the `Stripe-Signature` header, and `STRIPE_WEBHOOK_SECRET`)
+rather than this app's own `x-webhook-secret` shared-secret scheme, which is specific to the
+Postgres-trigger-originated calls that function otherwise handles; `[functions.stripe-webhook]` in
+`config.toml` sets `verify_jwt = false` for the identical "Stripe's caller has no Supabase JWT
+either" reason that block already exists for `send-notification-email`. Handles exactly the six
+events Stripe's own guidance calls mandatory: `checkout.session.completed`/
+`checkout.session.async_payment_succeeded` (gated on `payment_status === 'paid'` for the former) each
+re-`retrieve()` the real Subscription (a Checkout Session itself carries no status/period-end) and
+upsert the row (`onConflict: 'organization_id'`); `customer.subscription.updated` (Portal-driven
+upgrade/downgrade, plain renewals) reads the org id from the Subscription object's own metadata (it
+has no `client_reference_id` — only a Checkout Session ever does) and does the same upsert;
+`customer.subscription.deleted` flips the row to `tier: 'free'`, `status: 'canceled'` while keeping
+the Stripe ids for a future resubscribe; `invoice.paid` re-syncs the row on every renewal;
+`invoice.payment_failed` sets `status: 'past_due'` with no forced downgrade — Stripe's own dunning
+retries own the grace period, the Portal is where the customer actually fixes their payment method.
+Response codes deliberately depart from `send-notification-email`'s "always 200, best-effort"
+philosophy: a signature failure is a genuine `400`, and a database write failure inside a handler is
+a logged `500` — an inaccurate subscription row is worth Stripe's own automatic retry, unlike a
+missed notification email.
+
+Deliberately out of scope for this first pass: real usage-cap enforcement against
+`PRICING_TIERS.limits` (an org can still exceed its own tier's caps today — this only changed
+whether the org can actually *pay*, not whether anything is gated by payment); annual billing or
+multiple prices per product; Stripe Tax (their own guidance's own mandatory reminder: before any
+real, non-test charge, revisit `automatic_tax` plus an active Stripe Tax registration — without one
+Stripe silently collects zero tax); any invoice/payment-history UI or table (`invoice.paid`/
+`invoice.payment_failed` only ever refresh `subscriptions.status`/`current_period_end`, nothing is
+persisted per-invoice); trials; and a `_shared/` Edge Function directory (the small `STRIPE_PRICE_IDS`/
+`APP_URL` config stays duplicated per-function, matching every existing Edge Function in this app).
 
 The Inventory page has a card/table view toggle (`InventoryComponent.viewMode`, a
 `mat-button-toggle-group` above the item list) — card view is the original gallery layout; table
@@ -3500,13 +3590,21 @@ doesn't apply there the same way.
   - `npm run supabase:gen:types` — regenerate `src/app/shared/models/database.types.ts` from the
     linked project's schema
   - `npx supabase functions deploy <name>` — deploy an Edge Function under `supabase/functions/`
-    (`send-notification-email` or `impersonate-user`, see Project Overview above for both) to the
-    linked project; no `npm run` wrapper for this yet since it's only been needed a couple of times
-    so far. `send-notification-email`'s function secrets (`RESEND_API_KEY`, `WEBHOOK_SECRET`) are set
-    via `npx supabase secrets set NAME=value` — not committed anywhere, and not visible again
+    (`send-notification-email`, `impersonate-user`, `create-checkout-session`,
+    `create-billing-portal-session`, or `stripe-webhook` — see Project Overview above for all five)
+    to the linked project; no `npm run` wrapper for this yet since it's only been needed a handful of
+    times so far. `send-notification-email`'s function secrets (`RESEND_API_KEY`, `WEBHOOK_SECRET`)
+    are set via `npx supabase secrets set NAME=value` — not committed anywhere, and not visible again
     afterward (`supabase secrets list` shows a digest, not the value). `impersonate-user` needs no
     secrets of its own — it only ever uses the `SUPABASE_URL`/`SUPABASE_ANON_KEY`/
     `SUPABASE_SERVICE_ROLE_KEY` every Edge Function already gets injected automatically.
+    `create-checkout-session`/`create-billing-portal-session`/`stripe-webhook` all need
+    `STRIPE_SECRET_KEY` (a **restricted** API key — Checkout Sessions/Customers/Billing-portal
+    sessions: Write, Subscriptions: Read — never a full secret key); `stripe-webhook` additionally
+    needs `STRIPE_WEBHOOK_SECRET`, obtained only after that function is deployed and a webhook
+    endpoint registered against its real URL in the Stripe Dashboard (the same
+    deploy-then-register-then-set-the-secret sequencing `send-notification-email`'s own
+    `WEBHOOK_SECRET` history already established). Neither is ever committed.
 - Supabase, local Docker workflow (optional, only if Docker Desktop is available):
   - `npm run supabase:start` / `npm run supabase:stop` — start/stop local Postgres, Studio, Auth
   - `npm run supabase:reset` — reapply all migrations + `supabase/seed.sql` from scratch locally
@@ -3617,6 +3715,7 @@ core/
   auth.service.ts        # session signal (isAuthenticated), signIn/signUp/signOut/getSession
   site-settings.service.ts # theme/logo signals; load() on app start, updateTheme()/uploadLogo()/removeLogo()
   supplier.service.ts     # SupplierService — org's supplier directory; load()/create()/update()/remove()
+  billing.service.ts     # BillingService — org's real Stripe subscription state; load(), startCheckout()/openBillingPortal() (call an Edge Function, redirect to the returned url)
   reservation-kit.service.ts # ReservationKitService — org's saved reservation-kit directory; load(itemNamesById)/create()/update()/remove()
   notification-center.service.ts # NotificationCenterService — HeaderComponent's bell dropdown; notifications signal + unreadCount, markAsRead()/markAllAsRead()
   command-palette.service.ts # CommandPaletteService — HeaderComponent's Ctrl/Cmd+K global search; lazily loads/caches searchable data, results(query) is a pure local filter
@@ -3632,7 +3731,7 @@ core/
 header/, footer/                                           # standalone layout components; header has the logout button
 login/                                                      # standalone login screen, real Supabase auth
 register/                                                   # standalone signup screen, real Supabase auth
-pricing/                                                    # standalone public pricing page, no billing wired up yet (see Project Overview above)
+pricing/                                                    # standalone public pricing page, real Stripe checkout for a signed-in admin (see Project Overview above)
 privacy/, terms/                                            # standalone legal pages, no session required (see Project Overview above)
 home/                                                        # post-login landing hub: cards linking to the pages below
 inventory/                                                  # standalone inventory page: filters, item table, opens modal
@@ -3645,7 +3744,7 @@ manage/                                                     # card hub (ManageCo
   release-notes/                                            # admin/manager only: "What's new" list, see Project Overview above
   error-log/                                                # admin/manager only: client_error_log viewer, see Supabase Schema section
   reports/                                                  # admin/manager only: inventory value/stock health, stock movement/loss, task throughput
-  billing/                                                  # admin only: pre-Stripe preview of the org's plan/usage, see Project Overview above
+  billing/                                                  # admin only: real Stripe subscription state + upgrade/manage-billing actions, see Project Overview above
   danger-zone/                                              # admin only: org data export + soft-delete (organizations.deleted_at)
   settings/                                                # admin-only: theme picker + logo upload (site_settings) — see Project Overview above
 account/                                                    # profile info, avatar picker, light/dark mode toggle, quick-menu picker
@@ -3691,6 +3790,7 @@ shared/
   models/theme-preset.ts     # THEME_PRESETS — key must match a [data-theme] block in styles.scss
   models/inventory-table-column.ts # optional Inventory table-view columns admin can show/hide (Settings > Data)
   models/pricing-tier.ts     # PRICING_TIERS — shared by PricingComponent (/pricing) and ManageBillingComponent
+  models/subscription.model.ts # OrgSubscription — an org's real Stripe subscription state, backs BillingService
   models/notification.model.ts # UserNotification / NotificationKind / notificationIcon() — backs HeaderComponent's bell dropdown
   models/release-note.model.ts # ReleaseNote / ReleaseNoteSeverity / RELEASE_NOTE_SEVERITY_LABELS — backs manage/release-notes and studio/release-notes
   models/help-faq.ts         # HELP_FAQ_SECTIONS — question/answer/links data backing the searchable Help page
@@ -4523,6 +4623,20 @@ yet on a hard refresh of `/inventory`.
   against `add_mfa_enforcement`'s version (the latest at the time) to narrow its existing escape
   hatch; deliberately leaves `is_platform_admin()` untouched, since Studio's cross-org surface isn't
   scoped to any one org's `site_settings` row.
+- `add_subscriptions` — real Stripe subscription billing (see the Project Overview section above for
+  the full feature). Adds `subscriptions` (one row per org — `unique (organization_id)`, same
+  upsert-friendly shape `site_settings` already uses — `tier`/`status` checked columns, Stripe
+  customer/subscription/price ids, `current_period_end`, `cancel_at_period_end`). SELECT is any
+  approved org member (`organization_id = current_user_org_id()`, plain `grant select`); **no
+  insert/update/delete grant for `authenticated`/`anon` at all** — every write comes from the new
+  `stripe-webhook` Edge Function's `service_role` client, the same "service-role-only insert" shape
+  `add_notifications`/`add_notification_email_log` already establish, just extended to updates too
+  here since a subscription's row is mutated repeatedly over its lifetime rather than only ever
+  inserted once. No seed row anywhere (not even `handle_new_user()`) — a missing row is treated by
+  the app as the implicit Free tier, purely additive to signup. `status`'s check constraint values
+  (`active`/`trialing`/`past_due`/`canceled`/`incomplete`/`incomplete_expired`/`unpaid`/`paused`)
+  mirror Stripe's own `Subscription.status` enum verbatim so the webhook can pass it straight
+  through with no translation table of its own.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

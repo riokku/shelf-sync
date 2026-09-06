@@ -12,28 +12,6 @@
   }
 }
 
-.preview-banner{
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  max-width: 40rem;
-  margin-bottom: 2rem;
-  padding: 1rem 1.25rem;
-  border-radius: 0.75rem;
-  background: var(--mat-sys-tertiary-container);
-  color: var(--mat-sys-on-tertiary-container);
-
-  mat-icon{
-    flex-shrink: 0;
-    margin-top: 0.125rem;
-  }
-
-  p{
-    margin: 0;
-    font-size: 0.9375rem;
-  }
-}
-
 .billing-card{
   max-width: 40rem;
   margin-bottom: 1.5rem;
@@ -52,30 +30,6 @@
     gap: 0.5rem;
     color: var(--mat-sys-primary);
     margin-bottom: 1.25rem;
-  }
-}
-
-.placeholder-tag{
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  background: var(--mat-sys-surface-container-high);
-  color: var(--mat-sys-on-surface-variant);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-
-  // Only inside .usage-stat-label (Photo storage's "Estimated") — see that
-  // rule's own comment. The "Preview" tag next to the Billing details <h3>
-  // reuses this same class but sits in normal inline flow there, no
-  // sibling column to misalign with.
-  .usage-stat-label &{
-    position: absolute;
-    left: 100%;
-    top: 50%;
-    transform: translateY(-50%);
-    margin-left: 0.5rem;
-    white-space: nowrap;
   }
 }
 
@@ -105,6 +59,21 @@
 
 .plan-price-note{
   color: var(--mat-sys-on-surface-variant);
+}
+
+.plan-actions{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+
+  button{
+    min-width: 8rem;
+  }
+
+  mat-spinner{
+    margin: 0 auto;
+  }
 }
 
 .usage-grid{

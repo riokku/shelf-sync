@@ -40,3 +40,9 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+# Claude Code local state — .agents/skills is the portable, committed copy
+# of any installed skill packs (see `npx skills add`); this is just
+# symlinks into it plus local runtime state (e.g. scheduled_tasks.lock),
+# neither of which is portable across machines.
+.claude/

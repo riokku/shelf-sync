@@ -3,8 +3,15 @@ import { provideRouter } from '@angular/router';
 
 import { ManageBillingComponent } from './manage-billing.component';
 import { AuthService } from '../../core/auth.service';
+import { BillingService } from '../../core/billing.service';
 import { SupabaseService } from '../../core/supabase.service';
-import { createFakeAuthService, createFakeProfile, createFakeQueryBuilder, createFakeSupabaseService } from '../../testing/fakes';
+import {
+  createFakeAuthService,
+  createFakeBillingService,
+  createFakeProfile,
+  createFakeQueryBuilder,
+  createFakeSupabaseService
+} from '../../testing/fakes';
 
 describe('ManageBillingComponent', () => {
   let component: ManageBillingComponent;
@@ -30,7 +37,8 @@ describe('ManageBillingComponent', () => {
       providers: [
         provideRouter([]),
         { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: 'admin' })) },
-        { provide: SupabaseService, useValue: fakeSupabaseService }
+        { provide: SupabaseService, useValue: fakeSupabaseService },
+        { provide: BillingService, useValue: createFakeBillingService() }
       ]
     })
     .compileComponents();
@@ -45,8 +53,8 @@ describe('ManageBillingComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('hardcodes every org onto the Free tier — no subscriptions table exists yet', () => {
-    expect(component.currentTier.key).toBe('free');
+  it('reflects the implicit Free tier when no subscriptions row exists', () => {
+    expect(TestBed.inject(BillingService).currentTier().key).toBe('free');
   });
 
   describe('usagePercent', () => {
@@ -113,7 +121,8 @@ describe('ManageBillingComponent load errors', () => {
       providers: [
         provideRouter([]),
         { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: 'admin' })) },
-        { provide: SupabaseService, useValue: createFakeSupabaseServiceFailingProfilesOnce() }
+        { provide: SupabaseService, useValue: createFakeSupabaseServiceFailingProfilesOnce() },
+        { provide: BillingService, useValue: createFakeBillingService() }
       ]
     }).compileComponents();
 
@@ -144,5 +153,123 @@ describe('ManageBillingComponent load errors', () => {
 
     expect(component.loadError).toBeNull();
     expect(component.teamMemberCount).toBe(5);
+  });
+});
+
+describe('ManageBillingComponent Stripe actions', () => {
+  async function createComponent(billingService: BillingService) {
+    const baseFake = createFakeSupabaseService({ data: { created_at: '2026-01-15T00:00:00.000Z' }, count: 3 });
+    const fakeSupabaseService = {
+      client: {
+        ...baseFake.client,
+        rpc: () => Promise.resolve({ data: 0, error: null })
+      }
+    } as unknown as SupabaseService;
+
+    await TestBed.resetTestingModule().configureTestingModule({
+      imports: [ManageBillingComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: 'admin' })) },
+        { provide: SupabaseService, useValue: fakeSupabaseService },
+        { provide: BillingService, useValue: billingService }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ManageBillingComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  it('shows Upgrade buttons and no Manage billing button while on Free', async () => {
+    const fixture = await createComponent(createFakeBillingService(null));
+
+    expect(fixture.nativeElement.textContent).toContain('Upgrade to Basic');
+    expect(fixture.nativeElement.textContent).toContain('Upgrade to Pro');
+    expect(fixture.nativeElement.textContent).not.toContain('Manage billing');
+  });
+
+  it('shows a Manage billing button and no Upgrade buttons once on a paid tier', async () => {
+    const fixture = await createComponent(
+      createFakeBillingService({ tier: 'basic', status: 'active', currentPeriodEnd: '2026-11-01T00:00:00.000Z', cancelAtPeriodEnd: false })
+    );
+
+    expect(fixture.nativeElement.textContent).toContain('Manage billing');
+    expect(fixture.nativeElement.textContent).not.toContain('Upgrade to Basic');
+    expect(fixture.nativeElement.textContent).not.toContain('Upgrade to Pro');
+  });
+
+  it('shows a payment-failed banner when the subscription is past_due', async () => {
+    const fixture = await createComponent(
+      createFakeBillingService({ tier: 'basic', status: 'past_due', currentPeriodEnd: '2026-11-01T00:00:00.000Z', cancelAtPeriodEnd: false })
+    );
+
+    expect(fixture.nativeElement.textContent).toContain('Your last payment failed');
+  });
+
+  it('shows a cancellation note when cancelAtPeriodEnd is set', async () => {
+    const fixture = await createComponent(
+      createFakeBillingService({ tier: 'pro', status: 'active', currentPeriodEnd: '2026-11-01T00:00:00.000Z', cancelAtPeriodEnd: true })
+    );
+
+    expect(fixture.nativeElement.textContent).toContain('will move to Free');
+  });
+
+  it('upgrade() calls startCheckout with the chosen tier and leaves the button pending on success', async () => {
+    const billingService = createFakeBillingService(null);
+    const startCheckoutSpy = spyOn(billingService, 'startCheckout').and.returnValue(Promise.resolve(null));
+    const fixture = await createComponent(billingService);
+
+    await fixture.componentInstance.upgrade('pro');
+
+    expect(startCheckoutSpy).toHaveBeenCalledWith('pro');
+    expect(fixture.componentInstance.isRedirectingToBilling).toBe('pro');
+    expect(fixture.componentInstance.billingActionError).toBeNull();
+  });
+
+  it('upgrade() surfaces an error and clears the pending state on failure', async () => {
+    const billingService = createFakeBillingService(null);
+    spyOn(billingService, 'startCheckout').and.returnValue(Promise.resolve('boom'));
+    const fixture = await createComponent(billingService);
+
+    await fixture.componentInstance.upgrade('basic');
+
+    expect(fixture.componentInstance.billingActionError).toBe('boom');
+    expect(fixture.componentInstance.isRedirectingToBilling).toBeNull();
+  });
+
+  it('upgrade() is a no-op while another billing action is already pending', async () => {
+    const billingService = createFakeBillingService(null);
+    const startCheckoutSpy = spyOn(billingService, 'startCheckout').and.returnValue(Promise.resolve(null));
+    const fixture = await createComponent(billingService);
+    fixture.componentInstance.isRedirectingToBilling = 'portal';
+
+    await fixture.componentInstance.upgrade('basic');
+
+    expect(startCheckoutSpy).not.toHaveBeenCalled();
+  });
+
+  it('manageBilling() calls openBillingPortal and leaves the button pending on success', async () => {
+    const billingService = createFakeBillingService({ tier: 'basic', status: 'active', currentPeriodEnd: null, cancelAtPeriodEnd: false });
+    const openPortalSpy = spyOn(billingService, 'openBillingPortal').and.returnValue(Promise.resolve(null));
+    const fixture = await createComponent(billingService);
+
+    await fixture.componentInstance.manageBilling();
+
+    expect(openPortalSpy).toHaveBeenCalled();
+    expect(fixture.componentInstance.isRedirectingToBilling).toBe('portal');
+  });
+
+  it('manageBilling() surfaces an error and clears the pending state on failure', async () => {
+    const billingService = createFakeBillingService({ tier: 'basic', status: 'active', currentPeriodEnd: null, cancelAtPeriodEnd: false });
+    spyOn(billingService, 'openBillingPortal').and.returnValue(Promise.resolve('No billing account yet.'));
+    const fixture = await createComponent(billingService);
+
+    await fixture.componentInstance.manageBilling();
+
+    expect(fixture.componentInstance.billingActionError).toBe('No billing account yet.');
+    expect(fixture.componentInstance.isRedirectingToBilling).toBeNull();
   });
 });

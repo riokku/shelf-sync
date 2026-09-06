@@ -3,31 +3,30 @@ import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
+import { BillingService } from '../../core/billing.service';
 import { SupabaseService } from '../../core/supabase.service';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { RingStatComponent } from '../../shared/components/ring-stat/ring-stat.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
-import { PricingTier, pricingTierByKey } from '../../shared/models/pricing-tier';
 
-/** Admin-only preview of what the Billing page will show once Stripe is
- *  wired up (see PricingComponent's own doc comment — that's separate,
- *  later work). adminGuard rather than manageGuard: billing is financial
- *  information, same audience as Danger Zone, not the broader admin-or-
- *  manager audience the rest of Manage's sub-pages use.
+/** Admin-only billing page — real Stripe subscription state via
+ *  BillingService, replacing what used to be a permanent preview hardcoded
+ *  onto the Free tier. adminGuard rather than manageGuard: billing is
+ *  financial information, same audience as Danger Zone, not the broader
+ *  admin-or-manager audience the rest of Manage's sub-pages use.
  *
- *  Every org is hardcoded onto the Free tier below — there's no
- *  subscriptions table yet, so nothing is actually read to determine a
- *  "current plan". Account creation date, team member count, inventory item
- *  count, and photo storage usage are all real, queried numbers — storage
- *  usage comes from the `get_inventory_photo_storage_usage()` RPC (reads
+ *  Account creation date, team member count, inventory item count, and
+ *  photo storage usage are all real, queried numbers — storage usage comes
+ *  from the `get_inventory_photo_storage_usage()` RPC (reads
  *  storage.objects, Supabase Storage's own backing table, which isn't
  *  exposed to PostgREST directly, hence the RPC rather than a plain query).
- *  Only the billing-cycle date below is still a plausible-looking
- *  placeholder — there's no real subscription to read a renewal date from
- *  until Stripe is wired up. */
+ *  `currentTier`/`subscription` now come from BillingService (a real
+ *  `subscriptions` row, or the implicit Free default when none exists) —
+ *  no more hardcoded/placeholder plan or billing date. */
 @Component({
   selector: 'app-manage-billing',
   imports: [
@@ -35,6 +34,7 @@ import { PricingTier, pricingTierByKey } from '../../shared/models/pricing-tier'
     MatButtonModule,
     MatIconModule,
     MatProgressBarModule,
+    MatProgressSpinnerModule,
     RouterLink,
     BreadcrumbsComponent,
     PageHeaderComponent,
@@ -47,6 +47,7 @@ import { PricingTier, pricingTierByKey } from '../../shared/models/pricing-tier'
 export class ManageBillingComponent implements OnInit {
   private supabase = inject(SupabaseService).client;
   private authService = inject(AuthService);
+  protected billingService = inject(BillingService);
 
   isLoading = true;
   /** Fixed at 3 — the real .usage-grid below always renders exactly this
@@ -58,15 +59,19 @@ export class ManageBillingComponent implements OnInit {
    *  genuinely-fresh, all-zero org). */
   loadError: string | null = null;
 
-  readonly currentTier: PricingTier = pricingTierByKey('free');
-
   organizationCreatedAt: string | null = null;
   teamMemberCount = 0;
   inventoryItemCount = 0;
   storageUsedMb = 0;
 
-  /** Placeholder — no real subscription exists to read a renewal date from. */
-  readonly placeholderNextBillingDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  /** Tracks which billing action (if any) is currently redirecting the
+   *  browser away to Stripe — disables every action button while set, and
+   *  which spinner shows. Deliberately left set after a *successful*
+   *  startCheckout()/openBillingPortal() call (rather than reset) since the
+   *  page is genuinely about to navigate away; only reset on failure, so
+   *  the buttons become usable again to retry. */
+  isRedirectingToBilling: 'basic' | 'pro' | 'portal' | null = null;
+  billingActionError: string | null = null;
 
   /** Re-runs ngOnInit()'s own loads after a failed one — the Retry button's
    *  handler (see the template's own loadError branch). */
@@ -95,11 +100,12 @@ export class ManageBillingComponent implements OnInit {
         .eq('organization_id', profile.organization_id)
         .eq('membership_status', 'approved'),
       this.supabase.from('inventory_items').select('id', { count: 'exact', head: true }),
-      this.supabase.rpc('get_inventory_photo_storage_usage')
+      this.supabase.rpc('get_inventory_photo_storage_usage'),
+      this.billingService.load()
     ]);
 
     const error = orgResult.error?.message ?? memberCountResult.error?.message
-      ?? itemCountResult.error?.message ?? storageResult.error?.message ?? null;
+      ?? itemCountResult.error?.message ?? storageResult.error?.message ?? this.billingService.loadError() ?? null;
     if (error) {
       this.loadError = error;
       this.isLoading = false;
@@ -133,9 +139,43 @@ export class ManageBillingComponent implements OnInit {
    *  each number rather than appended once at the end — "142MB ·
    *  Unlimited" reads correctly where "142 · UnlimitedMB" wouldn't. */
   storageUsageLabel(): string {
-    const limit = this.currentTier.limits.storageLimitMb;
+    const limit = this.billingService.currentTier().limits.storageLimitMb;
     return limit === null
       ? `${this.storageUsedMb}MB · Unlimited`
       : `${this.storageUsedMb}MB of ${limit}MB`;
+  }
+
+  /** Redirects to a real Stripe Checkout page for `tier` — see
+   *  BillingService.startCheckout()'s own doc comment for why a successful
+   *  call leaves isRedirectingToBilling set rather than clearing it (the
+   *  page is about to navigate away entirely). */
+  async upgrade(tier: 'basic' | 'pro') {
+    if (this.isRedirectingToBilling) {
+      return;
+    }
+    this.isRedirectingToBilling = tier;
+    this.billingActionError = null;
+
+    const error = await this.billingService.startCheckout(tier);
+    if (error) {
+      this.billingActionError = error;
+      this.isRedirectingToBilling = null;
+    }
+  }
+
+  /** Redirects to a real Stripe Customer Portal session — same
+   *  leave-it-set-on-success shape as upgrade() above. */
+  async manageBilling() {
+    if (this.isRedirectingToBilling) {
+      return;
+    }
+    this.isRedirectingToBilling = 'portal';
+    this.billingActionError = null;
+
+    const error = await this.billingService.openBillingPortal();
+    if (error) {
+      this.billingActionError = error;
+      this.isRedirectingToBilling = null;
+    }
   }
 }
