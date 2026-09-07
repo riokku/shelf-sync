@@ -133,10 +133,18 @@ export class StudioFeedbackComponent implements OnInit {
     this.isLoading = true;
     this.loadError = null;
 
+    // platform_list_feedback()/platform_list_profiles() — see
+    // add_platform_cross_org_read_rpcs' own doc comment for why every
+    // cross-org read of these tables in Studio goes through a SECURITY
+    // DEFINER RPC now rather than a plain `.from(table).select()` relying
+    // on a blanket permissive policy. The write below (updating a row's own
+    // review status) is unaffected — that's a plain, already-narrowly-
+    // scoped is_platform_admin()-gated UPDATE policy, not part of the
+    // additive-SELECT-policy issue this migration closes.
     const [{ data: rows, error }, { data: orgs }, { data: profiles }] = await Promise.all([
-      this.supabase.from('feedback').select('*').order('created_at', { ascending: false }),
+      this.supabase.rpc('platform_list_feedback'),
       this.supabase.from('organizations').select('id, name'),
-      this.supabase.from('profiles').select('*')
+      this.supabase.rpc('platform_list_profiles')
     ]);
 
     if (error) {

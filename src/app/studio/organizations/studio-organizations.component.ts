@@ -91,9 +91,13 @@ export class StudioOrganizationsComponent implements OnInit {
     this.isLoading = true;
     this.loadError = null;
 
+    // platform_list_profiles() — see add_platform_cross_org_read_rpcs' own
+    // doc comment for why every cross-org profiles read in Studio goes
+    // through a SECURITY DEFINER RPC now rather than a plain
+    // `.from('profiles').select()` relying on a blanket permissive policy.
     const [{ data: orgs, error }, { data: profiles }, { data: usage }] = await Promise.all([
       this.supabase.from('organizations').select('*').order('created_at', { ascending: false }),
-      this.supabase.from('profiles').select('organization_id, last_active_at'),
+      this.supabase.rpc('platform_list_profiles'),
       this.supabase.rpc('platform_get_organization_usage')
     ]);
 

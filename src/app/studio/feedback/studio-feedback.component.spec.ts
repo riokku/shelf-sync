@@ -33,11 +33,13 @@ function createTestFeedbackRow(overrides: Partial<FakeFeedbackRow> = {}): FakeFe
   };
 }
 
-/** Table-aware — 'feedback' needs two different responses depending on
- *  call order: the first call is loadFeedback()'s own select (returns
- *  every row, or a load error), every call after that is a markStatus()
- *  update (returns success or an update error). 'organizations'/'profiles'
- *  each only need one canned response, queried alongside the initial load. */
+/** loadFeedback()'s own select and its profiles name-resolution query both
+ *  moved onto platform_list_feedback()/platform_list_profiles() — see
+ *  add_platform_cross_org_read_rpcs' own doc comment — so the only thing
+ *  left going through from('feedback') at all is markStatus()'s own
+ *  UPDATE, which never collides with the RPC-based load anymore (no more
+ *  call-order discrimination needed on that table). 'organizations' still
+ *  only needs one canned response, queried alongside the initial load. */
 function createFakeSupabaseServiceForFeedback(data: {
   feedback?: FakeFeedbackRow[];
   organizations?: { id: string; name: string }[];
@@ -45,23 +47,20 @@ function createFakeSupabaseServiceForFeedback(data: {
   loadError?: { message: string } | null;
   updateError?: { message: string } | null;
 }): SupabaseService {
-  let feedbackCallCount = 0;
-
   const fake = {
     client: {
       from: (table: string) => {
         if (table === 'organizations') {
           return createFakeQueryBuilder({ data: data.organizations ?? [], error: null });
         }
-        if (table === 'profiles') {
-          return createFakeQueryBuilder({ data: data.profiles ?? [], error: null });
-        }
-        feedbackCallCount++;
-        if (feedbackCallCount === 1) {
-          return createFakeQueryBuilder({ data: data.feedback ?? [], error: data.loadError ?? null });
-        }
         return createFakeQueryBuilder({ data: null, error: data.updateError ?? null });
-      }
+      },
+      rpc: jasmine.createSpy('rpc').and.callFake((fn: string) => {
+        if (fn === 'platform_list_feedback') {
+          return Promise.resolve({ data: data.feedback ?? [], error: data.loadError ?? null });
+        }
+        return Promise.resolve({ data: data.profiles ?? [], error: null });
+      })
     }
   };
   return fake as unknown as SupabaseService;

@@ -2639,15 +2639,34 @@ already have one — roughly twenty call sites across `AppComponent`'s header, H
 Broadcasts, and most of `manage/*`/`shared/components/*`. A handful of components
 (`ManageOrdersComponent`/`ManageActivityComponent`/`ManageErrorLogComponent`/`ManageReportsComponent`)
 didn't inject `AuthService` at all before this and needed it added. Deliberately *not* fixed at the
-RLS layer (e.g. dropping the blanket policies in favor of routing Studio's own cross-org reads through
-dedicated `SECURITY DEFINER` RPCs the way `platform_get_organization_usage()` already does) — that's
-the more architecturally correct long-term fix, but a materially bigger, more security-sensitive
-change touching several already-working Studio pages, considered and deliberately deferred in favor of
-the narrower, lower-risk fix at each affected call site. A few `.from('profiles')` call sites were
-deliberately left alone: single-row lookups already scoped by `.eq('id', ...)` (a person editing their
-own profile, `AuthService`'s own session-derived profile fetch), profile `DELETE`s already scoped by
-id (safe regardless, per the write-side finding above), and every Studio page's own intentionally
-cross-org reads.
+RLS layer at the time (e.g. dropping the blanket policies in favor of routing Studio's own cross-org
+reads through dedicated `SECURITY DEFINER` RPCs the way `platform_get_organization_usage()` already
+does) — that was judged the more architecturally correct long-term fix, but a materially bigger, more
+security-sensitive change touching several already-working Studio pages, so it was deferred in favor of
+the narrower, lower-risk fix at each affected call site first. A few `.from('profiles')` call sites were
+deliberately left alone at the time: single-row lookups already scoped by `.eq('id', ...)` (a person
+editing their own profile, `AuthService`'s own session-derived profile fetch) and profile `DELETE`s
+already scoped by id (safe regardless, per the write-side finding above).
+
+The deferred half landed in a follow-up `/security-review` pass: `add_platform_cross_org_read_rpcs`
+adds `platform_list_profiles(p_ids, p_organization_id)`/`platform_list_feedback(p_organization_id,
+p_status)`/`platform_list_client_errors(p_organization_id, p_since, p_limit)` — three `SECURITY
+DEFINER` RPCs, each gated by `is_platform_admin()` with the same `raise exception`-not-a-silent-empty-
+result style `platform_get_organization_usage()` already established, covering every shape Studio's own
+call sites actually needed (a full-table read, one row by id, several rows by an id list, one org's
+rows, a status filter, a since-timestamp, an optional row cap). Every Studio page that used to read
+`profiles`/`feedback`/`client_error_log` directly (`StudioComponent`, `StudioUsersComponent`,
+`StudioOrganizationsComponent`, `StudioOrgDetailComponent`, `StudioUserDetailComponent`,
+`StudioAuditLogComponent`, `StudioErrorLogComponent`, `StudioFeedbackComponent`) now calls the matching
+RPC instead — `feedback`'s own review-status `UPDATE` was left untouched, since that write path was
+never part of the additive-SELECT-policy problem to begin with (no other permissive `UPDATE` policy
+exists on that table for the platform-admin one to collide with). A second, immediately-following
+migration (`remove_blanket_platform_admin_select_policies`) then drops the three original "Platform
+admins can view all X" permissive `SELECT` policies entirely — deliberately split into two migrations
+rather than one, so the new RPCs exist and the rebuilt frontend has a real chance to deploy and start
+using them before the old (leaky, but until that moment still relied-on) policies disappear from under
+it. `platform_action_log`'s own policy was untouched throughout — it never had a sibling org-scoped
+policy to leak through in the first place, so it was never part of this issue.
 
 A global command palette — Ctrl+K on Windows/Linux, Cmd+K on Mac — lets any authenticated user jump
 straight to a page or search across inventory items, tasks, reservations, audits, and broadcasts (every
@@ -3570,6 +3589,53 @@ authentication...") whenever this account is unenrolled and required — compute
 RPC in `ngOnInit()` rather than a query param carried through the redirect, so it stays correct even
 on a direct refresh of `/account` (a query param wouldn't survive that).
 
+The "real, deliberately unsolved gap" `add_mfa_enforcement`'s own doc comment flagged above — no
+backup/recovery-code mechanism, recovery meaning a manual `auth.mfa_factors` delete run by hand — was
+closed in a follow-up pass. Recovery codes are this app's own addition on top of Supabase Auth's MFA,
+not something GoTrue provides: there's no "verify via backup code" API, and the `aal2` claim RLS gates
+on is only ever set by GoTrue's own real MFA verify flow, so a custom code can never forge it directly.
+Instead, redeeming a valid code removes the account's lost TOTP factor via the Auth Admin API
+(`auth.admin.mfa.deleteFactor()`, called from a new `mfa-recover` Edge Function — the only thing that
+can, since only a `service_role` client can act on another session's factors at all) — which is what
+actually lets `current_user_org_id()`/`current_org_requires_mfa()`'s existing "aal2, or no verified
+factor exists" escape hatch fall through again on the very next query, no session/JWT refresh needed
+(that check re-queries `auth.mfa_factors` live, not a cached claim). Deleting a *verified* factor is
+also Supabase's own documented trigger for signing the account out of every active session, including
+the one making the redeem request — `MfaService.redeemRecoveryCode()`'s one caller
+(`MfaVerifyComponent`'s new "Lost your device?" link, revealing a recovery-code field in place of the
+6-digit one) signs out for real and sends the user to `/login?mfaRecovered=1` afterward, the same
+"explain why you're suddenly back at login" shape `/login?impersonationEnded=1` already established
+(both now share one `.login-notice-message` style rather than a second identical rule, and the
+component's own getter is named to match).
+
+`generate_mfa_recovery_codes()` (a `SECURITY DEFINER` RPC) issues a fresh set of 10 codes — regenerating
+replaces the whole set, so a partially-used or leaked batch can be fully retired in one action — each 8
+random bytes (`pgcrypto`'s `gen_random_bytes()`, a real CSPRNG) hex-encoded and stored only as a SHA-256
+hash (`mfa_recovery_codes`, no `SELECT`/`INSERT`/`UPDATE`/`DELETE` grant for `authenticated` at all —
+every access goes through this RPC plus `get_mfa_recovery_code_count()`/`redeem_mfa_recovery_code()`
+below); a fast hash is a deliberate, accepted choice here specifically because these are server-
+generated 64-bit-entropy codes, not user-chosen low-entropy secrets, so the slow-hash rationale
+passwords need doesn't apply. `redeem_mfa_recovery_code(p_code)` strips anything that isn't a hex digit
+and lowercases before hashing, so a code typed back with or without its display dashes (or in any case)
+still matches, and marks a match used in one atomic `update ... where ... and used_at is null returning
+id` so two concurrent redemption attempts with the same code can't both succeed. No attempt-counter/
+lockout on redemption — same "rate limiting is out of scope" line this app's own security-review passes
+already draw elsewhere, and the code space makes online guessing impractical regardless. The one place
+a code is ever shown in plaintext is a new shared `RecoveryCodesModalComponent` (self-contained — it
+calls `generateRecoveryCodes()` itself in `ngOnInit()`) — opened with no data from two call sites:
+`AccountComponent.openTwoFactorSetup()`'s own `afterClosed()`, immediately after
+`TwoFactorSetupModalComponent`'s TOTP setup dialog closes successfully (reads as one continuous "set up
+two-factor, then save your recovery codes" flow without `TwoFactorSetupModalComponent` itself needing a
+second internal step), and a new "Regenerate recovery codes" button on the Account page's own two-factor
+card (confirmed first, `danger: false`, same "consequential but reversible" reasoning
+`disableTwoFactor()`'s own confirm already uses) that also shows "N codes remaining"
+(`get_mfa_recovery_code_count()`) so someone burning through their set has a visible nudge to
+regenerate before they're actually stuck with none left. Closing the modal is gated on an explicit
+"I've saved these codes somewhere safe" checkbox rather than a plain Close button — the same one-time-
+reveal friction GitHub/Google/AWS's own recovery-code UIs already use, worth it here specifically
+because there's no way back in to see the same codes again short of regenerating (which invalidates
+them).
+
 Two more small "fun design tweaks," same spirit as the confetti/loading-caption/party-mode pass
 above but smaller in scope. First, the plain `.stat-value`/`.page-hero-pulse-value` tiles on
 `manage/reports` and Studio's own hero now count up from their previous value rather than just
@@ -3672,13 +3738,13 @@ doesn't apply there the same way.
   - `npm run supabase:gen:types` — regenerate `src/app/shared/models/database.types.ts` from the
     linked project's schema
   - `npx supabase functions deploy <name>` — deploy an Edge Function under `supabase/functions/`
-    (`send-notification-email`, `impersonate-user`, `create-checkout-session`,
-    `create-billing-portal-session`, or `stripe-webhook` — see Project Overview above for all five)
+    (`send-notification-email`, `impersonate-user`, `mfa-recover`, `create-checkout-session`,
+    `create-billing-portal-session`, or `stripe-webhook` — see Project Overview above for all six)
     to the linked project; no `npm run` wrapper for this yet since it's only been needed a handful of
     times so far. `send-notification-email`'s function secrets (`RESEND_API_KEY`, `WEBHOOK_SECRET`)
     are set via `npx supabase secrets set NAME=value` — not committed anywhere, and not visible again
-    afterward (`supabase secrets list` shows a digest, not the value). `impersonate-user` needs no
-    secrets of its own — it only ever uses the `SUPABASE_URL`/`SUPABASE_ANON_KEY`/
+    afterward (`supabase secrets list` shows a digest, not the value). `impersonate-user`/`mfa-recover`
+    need no secrets of their own — each only ever uses the `SUPABASE_URL`/`SUPABASE_ANON_KEY`/
     `SUPABASE_SERVICE_ROLE_KEY` every Edge Function already gets injected automatically.
     `create-checkout-session`/`create-billing-portal-session`/`stripe-webhook` all need
     `STRIPE_SECRET_KEY` (a **restricted** API key — Checkout Sessions/Customers/Billing-portal
@@ -4765,6 +4831,33 @@ yet on a hard refresh of `/inventory`.
   caller's own RLS for a foreign org's id — this is specifically a risk of being the one trigger that
   bypasses RLS to see across organizations at all, worth remembering for any future `security
   definer` trigger keyed off a client-suppliable foreign key rather than the caller's own identity.
+- `add_mfa_recovery_codes` — closes the "known gap, deliberately not solved" `add_mfa_enforcement`'s
+  own doc comment flagged (see the Project Overview section above for the full feature). Adds
+  `mfa_recovery_codes` (`user_id` references `auth.users`, `code_hash`, `used_at`) with no grant for
+  `authenticated`/`anon` at all, and three `SECURITY DEFINER` RPCs:
+  `generate_mfa_recovery_codes()` (replaces the whole set, returns the 10 plaintext codes exactly
+  once), `get_mfa_recovery_code_count()` (unused-count only), and `redeem_mfa_recovery_code(p_code)`
+  (normalizes, hashes via `pgcrypto`'s `digest(..., 'sha256')` — confirmed live in the `extensions`
+  schema before writing this, per this repo's own "run it for real" rule — and atomically marks a
+  match used). The actual account-recovery step (removing the lost TOTP factor via
+  `auth.admin.mfa.deleteFactor()`) can only happen in a `service_role`-backed Edge Function, not a
+  plain RPC — see the new `mfa-recover` function's own doc comment, called via `callerClient` (the
+  user's own forwarded JWT) so `redeem_mfa_recovery_code()`'s `auth.uid()` resolves to the real
+  caller, then `serviceClient` for the Admin API call once that RPC confirms a genuine match.
+- `add_platform_cross_org_read_rpcs` / `remove_blanket_platform_admin_select_policies` — the
+  deferred half of the cross-org leak `add_platform_admin` first introduced and
+  `fix_org_isolation_bugs`-era patches partially mitigated (see the Project Overview section above
+  for the full story and why it's split across two migrations rather than one). The first adds
+  `platform_list_profiles(p_ids, p_organization_id)` / `platform_list_feedback(p_organization_id,
+  p_status)` / `platform_list_client_errors(p_organization_id, p_since, p_limit)` — three `SECURITY
+  DEFINER` RPCs, `is_platform_admin()`-gated with the same `raise exception` style
+  `platform_get_organization_usage()` already established, covering every shape Studio's own call
+  sites needed. The second, pushed only once every Studio page had actually switched to calling
+  them, drops the three original "Platform admins can view all X" permissive `SELECT` policies on
+  `profiles`/`feedback`/`client_error_log` entirely — `feedback`'s own review-status `UPDATE` policy
+  was untouched throughout, since that write was never part of the additive-`SELECT`-policy problem,
+  and `platform_action_log`'s own policy was never affected either, having no org-scoped sibling
+  policy to leak through in the first place.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

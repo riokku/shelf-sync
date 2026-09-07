@@ -137,8 +137,12 @@ export class StudioUsersComponent implements OnInit {
     this.isLoading = true;
     this.loadError = null;
 
+    // platform_list_profiles() — see add_platform_cross_org_read_rpcs' own
+    // doc comment for why every cross-org profiles read in Studio goes
+    // through a SECURITY DEFINER RPC now rather than a plain
+    // `.from('profiles').select()` relying on a blanket permissive policy.
     const [{ data: profiles, error }, { data: organizations }] = await Promise.all([
-      this.supabase.from('profiles').select('*'),
+      this.supabase.rpc('platform_list_profiles'),
       this.supabase.from('organizations').select('*')
     ]);
 

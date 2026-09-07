@@ -83,6 +83,11 @@ function createFakeSupabaseServiceForUserDetail(data: {
   peopleNames?: Profile[];
   rpc?: jasmine.Spy;
 }): SupabaseService {
+  // The primary profile fetch plus the locker/peopleNames follow-up lookups
+  // all moved from `.from('profiles')` onto platform_list_profiles() — see
+  // add_platform_cross_org_read_rpcs' own doc comment — so the fake rpc()
+  // below discriminates by call order the same way the pre-RPC version of
+  // this fake already discriminated by from('profiles') call order.
   let profilesCallCount = 0;
   const fake = {
     client: {
@@ -93,24 +98,36 @@ function createFakeSupabaseServiceForUserDetail(data: {
         if (table === 'platform_action_log') {
           return createFakeQueryBuilder({ data: data.platformActions ?? [], error: null });
         }
-        if (table === 'impersonation_sessions') {
-          return createFakeQueryBuilder({ data: data.impersonations ?? [], error: null });
-        }
-        profilesCallCount += 1;
-        if (profilesCallCount === 1) {
-          return createFakeQueryBuilder({ data: data.profile ?? null, error: data.profileError ?? null });
-        }
-        // Second (and any later) profiles call is either the single locker
-        // lookup (.maybeSingle()) or the combined actor/admin name lookup
-        // (.in(), an array) — a given test scenario only ever exercises one
-        // of the two, same simplification the pre-impersonation version of
-        // this fake already made.
-        if (data.peopleNames) {
-          return createFakeQueryBuilder({ data: data.peopleNames, error: null });
-        }
-        return createFakeQueryBuilder({ data: data.locker ?? null, error: null });
+        return createFakeQueryBuilder({ data: data.impersonations ?? [], error: null });
       },
-      rpc: data.rpc ?? jasmine.createSpy('rpc').and.resolveTo({ error: null })
+      // platform_list_profiles() is always answered internally, regardless
+      // of a test-supplied `data.rpc` — that spy exists to assert against
+      // the *action* RPCs (platform_lock_user_account and friends), not to
+      // re-implement profile loading; forwarding only the calls it doesn't
+      // itself know about keeps loadUser() working the same in every test
+      // while still letting `data.rpc` see (and be asserted against) every
+      // other call, exactly as if it were the only handler.
+      rpc: jasmine.createSpy('rpc').and.callFake((fn: string, args?: Record<string, unknown>) => {
+        if (fn === 'platform_list_profiles') {
+          profilesCallCount += 1;
+          if (profilesCallCount === 1) {
+            return Promise.resolve({ data: data.profile ? [data.profile] : [], error: data.profileError ?? null });
+          }
+          // Second (and any later) profiles call is either the single
+          // locker lookup or the combined actor/admin name lookup (both by
+          // id list) — a given test scenario only ever exercises one of
+          // the two, same simplification the pre-RPC version of this fake
+          // already made.
+          if (data.peopleNames) {
+            return Promise.resolve({ data: data.peopleNames, error: null });
+          }
+          return Promise.resolve({ data: data.locker ? [data.locker] : [], error: null });
+        }
+        if (data.rpc) {
+          return data.rpc(fn, args);
+        }
+        return Promise.resolve({ error: null });
+      })
     }
   };
   return fake as unknown as SupabaseService;

@@ -1111,6 +1111,30 @@ export type Database = {
           },
         ]
       }
+      mfa_recovery_codes: {
+        Row: {
+          code_hash: string
+          created_at: string
+          id: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          code_hash: string
+          created_at?: string
+          id?: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          code_hash?: string
+          created_at?: string
+          id?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       notification_email_log: {
         Row: {
           created_at: string
@@ -1788,6 +1812,7 @@ export type Database = {
       decline_item_retirement: { Args: { item_id: string }; Returns: undefined }
       decline_task_transfer: { Args: { task_id: string }; Returns: undefined }
       end_current_impersonation: { Args: never; Returns: undefined }
+      generate_mfa_recovery_codes: { Args: never; Returns: string[] }
       get_inventory_photo_storage_usage: { Args: never; Returns: number }
       get_item_upcoming_reservations: {
         Args: { p_item_id: string }
@@ -1817,6 +1842,8 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_mfa_recovery_code_count: { Args: never; Returns: number }
+      get_organization_tier: { Args: { p_org_id: string }; Returns: string }
       is_platform_admin: { Args: never; Returns: boolean }
       log_client_error: {
         Args: {
@@ -1856,6 +1883,74 @@ export type Database = {
           task_count: number
         }[]
       }
+      platform_list_client_errors: {
+        Args: { p_limit?: number; p_organization_id?: string; p_since?: string }
+        Returns: {
+          app_env: string | null
+          created_at: string
+          id: string
+          message: string
+          organization_id: string | null
+          stack: string | null
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "client_error_log"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      platform_list_feedback: {
+        Args: { p_organization_id?: string; p_status?: string }
+        Returns: {
+          created_at: string
+          id: string
+          message: string
+          organization_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          type: string
+          user_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "feedback"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      platform_list_profiles: {
+        Args: { p_ids?: string[]; p_organization_id?: string }
+        Returns: {
+          account_locked_at: string | null
+          account_locked_by: string | null
+          account_locked_reason: string | null
+          avatar_key: string | null
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          is_platform_admin: boolean
+          last_active_at: string | null
+          membership_status: Database["public"]["Enums"]["membership_status"]
+          nickname: string | null
+          organization_id: string
+          quick_menu_enabled: boolean
+          quick_menu_items: string[]
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "profiles"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       platform_lock_user_account: {
         Args: { reason?: string; target_id: string }
         Returns: undefined
@@ -1880,12 +1975,21 @@ export type Database = {
         Args: { org_id: string }
         Returns: undefined
       }
+      pricing_tier_limits: {
+        Args: { p_tier: string }
+        Returns: {
+          max_items: number
+          max_members: number
+          storage_limit_mb: number
+        }[]
+      }
       profile_display_name: { Args: { target_id: string }; Returns: string }
       purge_expired_organizations: { Args: never; Returns: undefined }
       receive_inventory_item_order: {
         Args: { order_id: string }
         Returns: undefined
       }
+      redeem_mfa_recovery_code: { Args: { p_code: string }; Returns: boolean }
       request_item_retirement: {
         Args: { item_id: string; note?: string }
         Returns: undefined

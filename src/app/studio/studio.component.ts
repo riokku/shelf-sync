@@ -129,11 +129,13 @@ export class StudioComponent implements OnInit {
   }
 
   private async loadPendingBadge() {
-    const { count } = await this.supabase
-      .from('feedback')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'new');
-    this.newFeedbackCount = count ?? 0;
+    // platform_list_feedback() — see add_platform_cross_org_read_rpcs' own
+    // doc comment for why this (and every other cross-org profiles/
+    // feedback/client_error_log read on this page) goes through a
+    // SECURITY DEFINER RPC now rather than a plain `.from(table).select()`
+    // that relied on a blanket permissive RLS policy.
+    const { data } = await this.supabase.rpc('platform_list_feedback', { p_status: 'new' });
+    this.newFeedbackCount = data?.length ?? 0;
   }
 
   /** Re-runs loadStats() after a failed one — the Retry button's handler
@@ -152,9 +154,9 @@ export class StudioComponent implements OnInit {
     const [orgCountResult, newOrgCountResult, errorsResult, orgCreatedAtResult, profileCreatedAtResult] = await Promise.all([
       this.supabase.from('organizations').select('id', { count: 'exact', head: true }).is('deleted_at', null),
       this.supabase.from('organizations').select('id', { count: 'exact', head: true }).gte('created_at', weekAgoIso),
-      this.supabase.from('client_error_log').select('app_env').gte('created_at', dayAgoIso),
+      this.supabase.rpc('platform_list_client_errors', { p_since: dayAgoIso }),
       this.supabase.from('organizations').select('created_at'),
-      this.supabase.from('profiles').select('created_at')
+      this.supabase.rpc('platform_list_profiles')
     ]);
 
     const error = orgCountResult.error?.message ?? newOrgCountResult.error?.message
