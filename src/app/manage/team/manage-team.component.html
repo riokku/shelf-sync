@@ -46,6 +46,16 @@
       @if (authService.role() === 'admin' && pendingMembers.length > 0) {
         <div class="pending-members-section">
           <h3>Pending join requests</h3>
+          @if (isAtTeamMemberLimit) {
+            <p class="plan-limit-notice">
+              <mat-icon>lock_clock</mat-icon>
+              <span>
+                Your organization has reached its plan's team member limit
+                ({{ billingService.currentTier().limits.maxTeamMembers }}).
+                <a routerLink="/manage/billing">Upgrade your plan</a> to approve more.
+              </span>
+            </p>
+          }
           <app-bulk-action-toolbar
               [selectedCount]="selectedPendingMemberIds.size"
               [totalCount]="pendingMembers.length"
@@ -56,7 +66,7 @@
               <mat-icon>close</mat-icon>
               Deny
             </button>
-            <button mat-flat-button type="button" color="primary" [disabled]="isProcessingMembership" (click)="applyBulkApprove()">
+            <button mat-flat-button type="button" color="primary" [disabled]="isProcessingMembership || isAtTeamMemberLimit" (click)="applyBulkApprove()">
               <mat-icon>check</mat-icon>
               Approve
             </button>
@@ -95,7 +105,7 @@
                       mat-flat-button
                       type="button"
                       color="primary"
-                      [disabled]="isProcessingMembership"
+                      [disabled]="isProcessingMembership || isAtTeamMemberLimit"
                       (click)="approveMember(profile)"
                     >
                     @if (isProcessingMembership) {

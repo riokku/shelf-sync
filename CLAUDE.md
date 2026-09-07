@@ -470,15 +470,49 @@ philosophy: a signature failure is a genuine `400`, and a database write failure
 a logged `500` — an inaccurate subscription row is worth Stripe's own automatic retry, unlike a
 missed notification email.
 
-Deliberately out of scope for this first pass: real usage-cap enforcement against
-`PRICING_TIERS.limits` (an org can still exceed its own tier's caps today — this only changed
-whether the org can actually *pay*, not whether anything is gated by payment); annual billing or
-multiple prices per product; Stripe Tax (their own guidance's own mandatory reminder: before any
-real, non-test charge, revisit `automatic_tax` plus an active Stripe Tax registration — without one
-Stripe silently collects zero tax); any invoice/payment-history UI or table (`invoice.paid`/
-`invoice.payment_failed` only ever refresh `subscriptions.status`/`current_period_end`, nothing is
-persisted per-invoice); trials; and a `_shared/` Edge Function directory (the small `STRIPE_PRICE_IDS`/
-`APP_URL` config stays duplicated per-function, matching every existing Edge Function in this app).
+Deliberately out of scope for this first pass: annual billing or multiple prices per product; Stripe
+Tax (their own guidance's own mandatory reminder: before any real, non-test charge, revisit
+`automatic_tax` plus an active Stripe Tax registration — without one Stripe silently collects zero
+tax); any invoice/payment-history UI or table (`invoice.paid`/`invoice.payment_failed` only ever
+refresh `subscriptions.status`/`current_period_end`, nothing is persisted per-invoice); trials; and a
+`_shared/` Edge Function directory (the small `STRIPE_PRICE_IDS`/`APP_URL` config stays duplicated
+per-function, matching every existing Edge Function in this app).
+
+Real usage-cap enforcement against `PRICING_TIERS.limits` — the one gap the paragraph above used to
+flag (an org could exceed its own tier's caps regardless of whether it could actually pay) — closed
+in a follow-up pass, in the same two-layer shape this schema always uses for a client-checkable-but-
+server-enforced boundary (`is_locked`, the per-item 10-photo cap, etc.): `ManageInventoryComponent`'s
+create form and `ManageTeamComponent`'s pending-join-requests section each show a `.plan-limit-notice`
+banner (same shape `ModalTableComponent`'s own `.retired-notice` established, just warning-toned) and
+disable their own Create/Approve button once the org's own already-loaded count
+(`allInventoryItems.length` / `teamMembers.length`, the exact same counts `ManageBillingComponent`
+already measures the org against) reaches its plan's limit — but the real enforcement is server-side,
+since neither of those client checks can see a concurrent write from another tab or a direct API call.
+Three new triggers/RPCs (`add_pricing_tier_usage_limits` migration, see below) are the actual
+backstop: `inventory_items`/`inventory_item_images` inserts and `admin_approve_member()` all raise a
+plain exception once their org would exceed its plan's item/photo-storage/team-member cap, which
+surfaces to the user for free through each of those write paths' own pre-existing `error.message`
+handling — no new client-side error-surfacing plumbing needed for the "it actually got rejected" case,
+only the proactive banner/disabled-button pair above it. Team-member enforcement lives at
+`admin_approve_member()` specifically, not at signup/join-request time — a pending join request
+doesn't count against an org's own seat usage (`ManageBillingComponent`'s own `teamMemberCount` query
+already only counts `membership_status = 'approved'`), so the queue can still grow freely; only
+actually admitting someone is what the cap blocks. Photo storage enforcement reuses
+`get_inventory_photo_storage_usage()`'s own org-scoped `storage.objects` join, evaluated inside a
+`before insert` trigger on `inventory_item_images` at the moment each new photo's own row would be
+inserted (the file itself is already uploaded to Storage by then — see
+`uploadInventoryItemImages()` — so the trigger can see and sum its size directly). None of the three
+caps' numbers live in the database — `pricing_tier_limits()` hardcodes the same figures
+`PRICING_TIERS` itself defines, deliberately duplicated rather than shared, the same
+duplicate-a-small-constant-map-across-layers tradeoff `stripe-webhook`'s own `STRIPE_PRICE_IDS` copy
+already accepts elsewhere in this app — if the tiers' own numbers ever change, this function needs
+updating by hand to match. A few edge cases are deliberately left as accepted, documented tradeoffs
+rather than engineered away: a bulk CSV import or a bulk member-approval can each land slightly over
+a cap under real concurrency (several rows/approvals reading the same "current count" before any of
+them commit — no RPC in this schema accepts an array of ids, so this is the same tolerance every
+other bulk action here already has for a partial-failure outcome); and a photo upload rejected right
+at the storage cap leaves that one file orphaned in the `inventory-images` bucket (uploaded before
+the row insert that would have referenced it was rejected) rather than being cleaned up automatically.
 
 The Inventory page has a card/table view toggle (`InventoryComponent.viewMode`, a
 `mat-button-toggle-group` above the item list) — card view is the original gallery layout; table
@@ -4681,6 +4715,32 @@ yet on a hard refresh of `/inventory`.
   (`active`/`trialing`/`past_due`/`canceled`/`incomplete`/`incomplete_expired`/`unpaid`/`paused`)
   mirror Stripe's own `Subscription.status` enum verbatim so the webhook can pass it straight
   through with no translation table of its own.
+- `add_pricing_tier_usage_limits` — real usage-cap enforcement against `PRICING_TIERS.limits` (see
+  the Project Overview section above for the full feature and its own client-side counterpart).
+  Adds `pricing_tier_limits(p_tier text)` (a plain `language sql immutable` function returning
+  `max_items`/`max_members`/`storage_limit_mb` for a tier — hardcoded, deliberately duplicating
+  `PRICING_TIERS`' own numbers rather than sharing them, the same tradeoff `stripe-webhook`'s own
+  `STRIPE_PRICE_IDS` copy already accepts) and `get_organization_tier(p_org_id)` (mirrors
+  `BillingService.currentTier`'s own "missing row = free" fallback exactly). Three enforcement
+  points, none of them `security definer` except where touching `storage.objects` requires it (same
+  reasoning `get_inventory_photo_storage_usage()` already established): a new `before insert`
+  trigger on `inventory_items` (`enforce_inventory_item_org_limit`, same shape
+  `enforce_inventory_item_image_limit` already established for the per-item 10-photo cap, just
+  counting an org's own item rows instead); a new `before insert` trigger on
+  `inventory_item_images` (`enforce_inventory_item_image_org_storage_limit`, `security definer` —
+  sums `storage.objects` the same way `get_inventory_photo_storage_usage()` already does, plus the
+  new object's own just-uploaded size, since `uploadInventoryItemImages()` uploads to Storage before
+  inserting this row); and a `create or replace` on `admin_approve_member()` (diffed against its
+  `add_activity_log` version, the latest at the time) rejecting an approval that would push an org's
+  approved-member count past its plan's cap — checked here rather than at signup/join-request time,
+  since a pending request doesn't count against `ManageBillingComponent`'s own approved-only
+  `teamMemberCount` query either. Each of these three raises a plain exception with no new client-side
+  error handling needed — it surfaces through whichever write path's own pre-existing
+  `error.message` plumbing already existed (the create-item form, the photo upload flow, the
+  approve-member action). Known, accepted races (a bulk CSV import or bulk member-approval landing
+  slightly over a cap under real concurrency) and one accepted edge case (a photo rejected right at
+  the storage cap leaves its already-uploaded file orphaned in the bucket) are both documented
+  directly in the migration's own comments rather than engineered away — see that file.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

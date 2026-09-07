@@ -13,13 +13,14 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { SupabaseService } from '../../core/supabase.service';
 import { NotificationService } from '../../core/notification.service';
 import { AuthService, Profile } from '../../core/auth.service';
 import { InventoryFieldOptionsService } from '../../core/inventory-field-options.service';
 import { SiteSettingsService } from '../../core/site-settings.service';
 import { SupplierService } from '../../core/supplier.service';
+import { BillingService } from '../../core/billing.service';
 import { InventoryFormFieldKey } from '../../shared/models/inventory-form-field';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
@@ -66,6 +67,7 @@ type InventoryItemRow = Database['public']['Tables']['inventory_items']['Row'];
     MatDatepickerModule,
     MatTooltipModule,
     MatCheckboxModule,
+    RouterLink,
     BreadcrumbsComponent,
     PageHeaderComponent,
     EmptyStateComponent,
@@ -82,6 +84,7 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
   protected inventoryFieldOptions = inject(InventoryFieldOptionsService);
   protected siteSettings = inject(SiteSettingsService);
   protected supplierService = inject(SupplierService);
+  protected billingService = inject(BillingService);
   private dialog = inject(MatDialog);
   private notification = inject(NotificationService);
   private route = inject(ActivatedRoute);
@@ -204,6 +207,17 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
   // of which need every item, not just the ones with a pending request.
   allInventoryItems: InventoryItemRow[] = [];
   isLoadingInventoryList = true;
+
+  /** True once this org has as many inventory items (any status — matches
+   *  ManageBillingComponent's own unfiltered inventoryItemCount query, and
+   *  the identical count add_pricing_tier_usage_limits' own server-side
+   *  trigger backstop uses) as its plan allows. Drives the create form's own
+   *  banner/disabled-submit-button pair below; the trigger is what actually
+   *  enforces this if a stale render or a direct API call gets past it. */
+  get isAtItemLimit(): boolean {
+    const max = this.billingService.currentTier().limits.maxInventoryItems;
+    return max !== null && this.allInventoryItems.length >= max;
+  }
   /** Repeat-count for the Requests tab's loading-state skeleton rows — see
    *  InventoryComponent.skeletonCards' own identical doc comment. */
   readonly skeletonRetirementRows = [1, 2, 3];
@@ -330,7 +344,8 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
     await Promise.all([
       this.loadProfiles(),
       this.inventoryFieldOptions.load(),
-      this.supplierService.load()
+      this.supplierService.load(),
+      this.billingService.load()
     ]);
     await this.loadInventoryItems();
 
@@ -870,6 +885,15 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
 
   async submitInventoryItem() {
     if (this.isSavingItem) {
+      return;
+    }
+    // Defense in depth alongside the disabled submit button (see
+    // isAtItemLimit's own doc comment) — a stale render or a direct call to
+    // this method shouldn't sail past the same check the button already
+    // shows; enforce_inventory_item_org_limit is what actually protects this
+    // regardless of what the client does either way.
+    if (this.isAtItemLimit) {
+      this.itemError = `Your organization has reached its plan's inventory item limit. Upgrade your plan to add more.`;
       return;
     }
     if (this.inventoryForm.invalid) {

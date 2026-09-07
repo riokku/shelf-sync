@@ -55,6 +55,16 @@
     </mat-button-toggle-group>
 
     @if (viewMode === 'create') {
+      @if (isAtItemLimit) {
+        <p class="plan-limit-notice">
+          <mat-icon>lock_clock</mat-icon>
+          <span>
+            Your organization has reached its plan's inventory item limit
+            ({{ billingService.currentTier().limits.maxInventoryItems }}).
+            <a routerLink="/manage/billing">Upgrade your plan</a> to add more.
+          </span>
+        </p>
+      }
       <form [formGroup]="inventoryForm" #inventoryFormDirective="ngForm" (ngSubmit)="submitInventoryItem()" class="manage-form">
         <div class="form-section">
           <h3>Item information</h3>
@@ -333,7 +343,7 @@
           <p class="error-message" role="alert">{{ itemError }}</p>
         }
 
-        <button mat-flat-button color="primary" type="submit" [disabled]="isSavingItem">
+        <button mat-flat-button color="primary" type="submit" [disabled]="isSavingItem || isAtItemLimit">
           @if (isSavingItem) {
             <mat-spinner diameter="20"></mat-spinner>
           } @else {

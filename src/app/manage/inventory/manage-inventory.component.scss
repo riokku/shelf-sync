@@ -115,6 +115,32 @@
   margin: -0.5rem 0 1rem;
 }
 
+// Same full-width icon+text banner shape ModalTableComponent's own
+// .retired-notice established, themed with the warning tokens
+// ImpersonationBannerComponent's own bar uses — this is a real boundary
+// blocking the form below it, not a neutral fact about the page.
+.plan-limit-notice{
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: var(--app-warning-bg);
+  color: var(--app-warning-on-bg);
+  font-size: 0.875rem;
+  font-weight: 600;
+
+  mat-icon{
+    flex-shrink: 0;
+  }
+
+  a{
+    color: inherit;
+    text-decoration: underline;
+  }
+}
+
 .task-rows{
   display: flex;
   flex-direction: column;

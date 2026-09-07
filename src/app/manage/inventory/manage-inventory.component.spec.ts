@@ -8,7 +8,8 @@ import { AuthService } from '../../core/auth.service';
 import { SupabaseService } from '../../core/supabase.service';
 import { SiteSettingsService } from '../../core/site-settings.service';
 import { NotificationService } from '../../core/notification.service';
-import { createFakeActivatedRoute, createFakeAuthService, createFakeProfile, createFakeSiteSettingsService, createFakeSupabaseService, createTestInventoryItemRow } from '../../testing/fakes';
+import { BillingService } from '../../core/billing.service';
+import { createFakeActivatedRoute, createFakeAuthService, createFakeBillingService, createFakeProfile, createFakeSiteSettingsService, createFakeSupabaseService, createTestInventoryItemRow } from '../../testing/fakes';
 
 describe('ManageInventoryComponent', () => {
   let component: ManageInventoryComponent;
@@ -170,6 +171,41 @@ describe('ManageInventoryComponent', () => {
       await component.submitInventoryItem();
 
       expect(component.itemError).not.toBe('An item with this name already exists');
+    });
+  });
+
+  describe('submitInventoryItem() plan item limit', () => {
+    function setTier(tier: 'free' | 'basic' | 'pro') {
+      (component as unknown as { billingService: BillingService }).billingService = createFakeBillingService({
+        tier, status: 'active', currentPeriodEnd: null, cancelAtPeriodEnd: false
+      });
+    }
+
+    it('blocks creating an item once the org is at its Free-plan item limit (100), without attempting an insert', async () => {
+      setTier('free');
+      component.allInventoryItems = Array.from({ length: 100 }, (_, i) => createTestInventoryItemRow({ id: `item-${i}` }));
+      const notificationSuccessSpy = spyOn((component as unknown as { notification: NotificationService }).notification, 'success');
+      component.inventoryForm.controls.name.setValue('One More Chair');
+      component.inventoryForm.controls.quantityTotal.setValue(10);
+
+      await component.submitInventoryItem();
+
+      expect(component.isAtItemLimit).toBeTrue();
+      expect(component.itemError).toContain('inventory item limit');
+      expect(component.isSavingItem).toBeFalse();
+      expect(notificationSuccessSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not block creation below the limit', () => {
+      setTier('free');
+      component.allInventoryItems = Array.from({ length: 99 }, (_, i) => createTestInventoryItemRow({ id: `item-${i}` }));
+      expect(component.isAtItemLimit).toBeFalse();
+    });
+
+    it('never reports at-limit on an unlimited (Pro) plan, regardless of item count', () => {
+      setTier('pro');
+      component.allInventoryItems = Array.from({ length: 5000 }, (_, i) => createTestInventoryItemRow({ id: `item-${i}` }));
+      expect(component.isAtItemLimit).toBeFalse();
     });
   });
 

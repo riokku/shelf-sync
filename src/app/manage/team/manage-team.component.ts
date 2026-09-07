@@ -1,6 +1,6 @@
 import { Component, DestroyRef, HostListener, OnInit, ViewChild, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -14,6 +14,7 @@ import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { SupabaseService } from '../../core/supabase.service';
 import { NotificationService } from '../../core/notification.service';
 import { AuthService, Profile } from '../../core/auth.service';
+import { BillingService } from '../../core/billing.service';
 import { HasUnsavedChanges } from '../../core/guards/unsaved-changes.guard';
 import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
@@ -57,6 +58,7 @@ interface TeamMember {
     MatExpansionModule,
     MatSlideToggleModule,
     MatCheckboxModule,
+    RouterLink,
     BreadcrumbsComponent,
     PageHeaderComponent,
     RingStatComponent,
@@ -72,6 +74,7 @@ interface TeamMember {
 export class ManageTeamComponent implements OnInit, HasUnsavedChanges {
   private supabase = inject(SupabaseService).client;
   protected authService = inject(AuthService);
+  protected billingService = inject(BillingService);
   private dialog = inject(MatDialog);
   private notification = inject(NotificationService);
   private destroyRef = inject(DestroyRef);
@@ -230,7 +233,8 @@ export class ManageTeamComponent implements OnInit, HasUnsavedChanges {
     await this.loadProfiles();
     await Promise.all([
       this.loadTeamTasks(),
-      this.loadInviteLink()
+      this.loadInviteLink(),
+      this.billingService.load()
     ]);
 
     // Keeps "online now"/"last seen" current while this page stays open —
@@ -322,6 +326,18 @@ export class ManageTeamComponent implements OnInit, HasUnsavedChanges {
     }
     const onlineCount = this.teamMembers.filter(member => this.isOnline(member.profile)).length;
     return (onlineCount / this.teamMembers.length) * 100;
+  }
+
+  /** True once this org has as many approved members (teamMembers itself —
+   *  see its own doc comment above for why that's already just the
+   *  approved population) as its plan allows. Drives the pending-requests
+   *  section's own banner/disabled-Approve-button pair below;
+   *  admin_approve_member()'s own server-side check is what actually
+   *  enforces this (see add_pricing_tier_usage_limits' own doc comment for
+   *  why this is checked at approval, not at join-request, time). */
+  get isAtTeamMemberLimit(): boolean {
+    const max = this.billingService.currentTier().limits.maxTeamMembers;
+    return max !== null && this.teamMembers.length >= max;
   }
 
   lastSeenLabel(profile: Profile): string {
@@ -519,6 +535,13 @@ export class ManageTeamComponent implements OnInit, HasUnsavedChanges {
     if (this.isProcessingMembership) {
       return;
     }
+    // Defense in depth alongside the disabled Approve button (see
+    // isAtTeamMemberLimit's own doc comment) — admin_approve_member() is
+    // what actually enforces this regardless of what the client does.
+    if (this.isAtTeamMemberLimit) {
+      this.membershipError = `Your organization has reached its plan's team member limit. Upgrade your plan before approving more members.`;
+      return;
+    }
 
     this.isProcessingMembership = true;
     this.membershipError = null;
@@ -574,6 +597,10 @@ export class ManageTeamComponent implements OnInit, HasUnsavedChanges {
     }
     const ids = [...this.selectedPendingMemberIds];
     if (ids.length === 0) {
+      return;
+    }
+    if (this.isAtTeamMemberLimit) {
+      this.membershipError = `Your organization has reached its plan's team member limit. Upgrade your plan before approving more members.`;
       return;
     }
 
