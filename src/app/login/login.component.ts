@@ -122,4 +122,14 @@ export class LoginComponent {
   get impersonationEnded(): boolean {
     return this.route.snapshot.queryParamMap.get('impersonationEnded') === '1';
   }
+
+  /** MfaVerifyComponent.recoverWithCode() lands here after a successful
+   *  recovery-code redemption — that removes the account's TOTP factor and
+   *  signs it out everywhere (see that method's own doc comment), so this
+   *  explains why they're suddenly back at login and nudges them to set
+   *  two-factor up again, same "explain the surprise sign-out" shape
+   *  impersonationEnded just above already establishes. */
+  get mfaRecovered(): boolean {
+    return this.route.snapshot.queryParamMap.get('mfaRecovered') === '1';
+  }
 }

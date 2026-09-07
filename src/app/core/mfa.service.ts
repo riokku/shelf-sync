@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { SupabaseService } from './supabase.service';
 
 export interface TotpEnrollment {
@@ -152,5 +153,69 @@ export class MfaService {
   async isRequiredOrgWide(): Promise<boolean> {
     const { data, error } = await this.supabase.rpc('current_org_requires_mfa');
     return !error && data === true;
+  }
+
+  /** Generates a fresh set of 10 one-time recovery codes, replacing whatever
+   *  set already existed — see add_mfa_recovery_codes' own doc comment for
+   *  why this exists at all (GoTrue's own TOTP factors have no backup-code
+   *  mechanism) and why regenerating invalidates the old set rather than
+   *  appending to it. Returns the plaintext codes exactly once; only
+   *  RecoveryCodesModalComponent (the one caller) ever sees them — nothing
+   *  is persisted anywhere client-side, and the server only ever stores each
+   *  code's hash. */
+  async generateRecoveryCodes(): Promise<{ codes: string[] | null; error: string | null }> {
+    const { data, error } = await this.supabase.rpc('generate_mfa_recovery_codes');
+    if (error || !data) {
+      return { codes: null, error: error?.message ?? 'Could not generate recovery codes.' };
+    }
+    return { codes: data, error: null };
+  }
+
+  /** How many of the account's own recovery codes are still unused — backs
+   *  AccountComponent's own "N codes remaining" line. Fails closed to 0
+   *  rather than throwing, matching this service's other read methods'
+   *  error handling (isEnrolled()/isVerificationPending() etc.) — a stale
+   *  "0 remaining" just nudges toward regenerating, it doesn't block anything.
+   */
+  async getRecoveryCodeCount(): Promise<number> {
+    const { data, error } = await this.supabase.rpc('get_mfa_recovery_code_count');
+    return !error && typeof data === 'number' ? data : 0;
+  }
+
+  /** The /mfa-verify "lost your device" path — redeems a recovery code via
+   *  the mfa-recover Edge Function rather than a plain RPC, since a valid
+   *  code has to actually remove the account's lost TOTP factor through the
+   *  Auth Admin API (auth.admin.mfa.deleteFactor()) to unblock
+   *  current_user_org_id()'s own "aal2, or no verified factor exists" RLS
+   *  check — no client-side call can do that, only a service_role-backed
+   *  Edge Function can (see that function's own doc comment). Deleting a
+   *  verified factor signs the account out of every active session
+   *  (Supabase's own documented behavior), including this one — the caller
+   *  is expected to sign out and send the user back to /login right after a
+   *  successful call here, not try to keep using the now-invalidated
+   *  session. */
+  async redeemRecoveryCode(code: string): Promise<string | null> {
+    const { error } = await this.supabase.functions.invoke('mfa-recover', { body: { code } });
+    if (!error) {
+      return null;
+    }
+    return this.extractFunctionErrorMessage(error, 'That recovery code is invalid or has already been used.');
+  }
+
+  /** Copy of BillingService/ImpersonationService's own — see either's doc
+   *  comment for why FunctionsHttpError.message alone isn't the real reason
+   *  and error.context has to be read (and JSON-parsed) separately. */
+  private async extractFunctionErrorMessage(error: unknown, fallback: string): Promise<string> {
+    if (error instanceof FunctionsHttpError) {
+      try {
+        const body = await error.context.json();
+        if (typeof body?.error === 'string') {
+          return body.error;
+        }
+      } catch {
+        // Fall through to the generic message below.
+      }
+    }
+    return error instanceof Error ? error.message : fallback;
   }
 }

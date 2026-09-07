@@ -18,7 +18,7 @@
           Sign out
         </button>
       </div>
-    } @else {
+    } @else if (!showRecoveryForm) {
       <div class="status-card">
         <mat-icon class="status-icon">verified_user</mat-icon>
         <h1>Enter your two-factor code</h1>
@@ -62,6 +62,59 @@
             Sign out
           </button>
         </div>
+
+        <button mat-button type="button" class="recovery-toggle" (click)="toggleRecoveryForm()">
+          Lost your device? Use a recovery code instead
+        </button>
+      </div>
+    } @else {
+      <div class="status-card">
+        <mat-icon class="status-icon">key</mat-icon>
+        <h1>Use a recovery code</h1>
+        <p>
+          Enter one of the one-time recovery codes you saved when you set up two-factor
+          authentication. This removes two-factor from your account — you'll be signed out
+          everywhere and can set it up again once you're back in.
+        </p>
+
+        <mat-form-field appearance="outline" class="code-field recovery-code-field">
+          <mat-label>Recovery code</mat-label>
+          <mat-icon matPrefix>key</mat-icon>
+          <input
+            matInput
+            autocomplete="off"
+            [formControl]="recoveryCodeControl"
+            (keydown.enter)="recoverWithCode()"
+          />
+          @if (recoveryCodeControl.hasError('required') && recoveryCodeControl.touched) {
+            <mat-error>Enter one of your recovery codes.</mat-error>
+          }
+        </mat-form-field>
+
+        @if (recoveryError) {
+          <p class="error-message" role="alert">{{ recoveryError }}</p>
+        }
+
+        <div class="action-row">
+          <button mat-flat-button color="primary" type="button" (click)="recoverWithCode()" [disabled]="isRecovering">
+            @if (isRecovering) {
+              <mat-spinner diameter="20"></mat-spinner>
+            } @else {
+              <ng-container>
+                <mat-icon>lock_open</mat-icon>
+                Recover account
+              </ng-container>
+            }
+          </button>
+          <button mat-button type="button" (click)="logout()">
+            <mat-icon>logout</mat-icon>
+            Sign out
+          </button>
+        </div>
+
+        <button mat-button type="button" class="recovery-toggle" (click)="toggleRecoveryForm()">
+          Back to entering a 6-digit code
+        </button>
       </div>
     }
   </div>

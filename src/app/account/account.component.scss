@@ -75,6 +75,20 @@ mat-card{
   }
 }
 
+.recovery-codes-row{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+
+  .section-hint{
+    margin: 0;
+  }
+}
+
 // Sits right under the profile dl's own Role row, rather than a separate
 // tile — dl has no bottom margin of its own to lean on for this spacing.
 // Holds Edit/Change password in view mode, Save/Cancel while editing — see

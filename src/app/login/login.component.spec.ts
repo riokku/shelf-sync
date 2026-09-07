@@ -209,10 +209,11 @@ describe('LoginComponent org-wide "require two-factor" redirect', () => {
 
 /** ImpersonationService.stop() lands here with ?impersonationEnded=1 (see
  *  that service's own doc comment for why signing back in is manual rather
- *  than a cached-session one-click return) — this covers the small info
- *  message that explains why, without needing ImpersonationService itself
- *  in the picture at all. */
-describe('LoginComponent impersonation-ended message', () => {
+ *  than a cached-session one-click return), and MfaVerifyComponent.recoverWithCode()
+ *  lands here with ?mfaRecovered=1 (see that method's own doc comment) —
+ *  this covers the small info messages that explain why, without needing
+ *  either service/component itself in the picture at all. */
+describe('LoginComponent login-notice messages', () => {
   afterEach(() => {
     delete window.turnstile;
   });
@@ -239,14 +240,23 @@ describe('LoginComponent impersonation-ended message', () => {
     const fixture = await createComponent({ impersonationEnded: '1' });
 
     expect(fixture.componentInstance.impersonationEnded).toBeTrue();
-    expect(fixture.nativeElement.querySelector('.impersonation-ended-message')?.textContent)
+    expect(fixture.nativeElement.querySelector('.login-notice-message')?.textContent)
       .toContain('Impersonation ended');
+  });
+
+  it('shows the message when landing with ?mfaRecovered=1', async () => {
+    const fixture = await createComponent({ mfaRecovered: '1' });
+
+    expect(fixture.componentInstance.mfaRecovered).toBeTrue();
+    expect(fixture.nativeElement.querySelector('.login-notice-message')?.textContent)
+      .toContain('Two-factor authentication was removed');
   });
 
   it('stays hidden on an ordinary visit', async () => {
     const fixture = await createComponent({});
 
     expect(fixture.componentInstance.impersonationEnded).toBeFalse();
-    expect(fixture.nativeElement.querySelector('.impersonation-ended-message')).toBeNull();
+    expect(fixture.componentInstance.mfaRecovered).toBeFalse();
+    expect(fixture.nativeElement.querySelector('.login-notice-message')).toBeNull();
   });
 });

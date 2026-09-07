@@ -20,6 +20,7 @@ import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrum
 import { ChangePasswordModalComponent } from '../shared/components/change-password-modal/change-password-modal.component';
 import { ConfirmDialogComponent } from '../shared/components/confirm-dialog/confirm-dialog.component';
 import { HelpTooltipComponent } from '../shared/components/help-tooltip/help-tooltip.component';
+import { RecoveryCodesModalComponent } from '../shared/components/recovery-codes-modal/recovery-codes-modal.component';
 import { TwoFactorSetupModalComponent } from '../shared/components/two-factor-setup-modal/two-factor-setup-modal.component';
 import { UserAvatarComponent } from '../shared/components/user-avatar/user-avatar.component';
 import { AVATAR_PRESETS } from '../shared/models/avatar-preset';
@@ -131,6 +132,15 @@ export class AccountComponent implements OnInit {
    *  this page (a query param wouldn't survive that). */
   mfaRequiredByOrg = false;
 
+  /** How many of the account's own recovery codes are still unused —
+   *  null while isMfaEnabled is false or this hasn't loaded yet, since
+   *  "0 remaining" and "not applicable" read very differently in the
+   *  template. Loaded alongside isMfaEnabled/mfaRequiredByOrg above, and
+   *  refreshed after openTwoFactorSetup()'s own follow-up
+   *  RecoveryCodesModalComponent closes and after regenerateRecoveryCodes(). */
+  recoveryCodeCount: number | null = null;
+  isRegeneratingRecoveryCodes = false;
+
   async ngOnInit() {
     this.profile = await this.authService.getProfile();
 
@@ -153,6 +163,10 @@ export class AccountComponent implements OnInit {
       this.mfaService.isRequiredOrgWide()
     ]);
     this.isLoadingMfaStatus = false;
+
+    if (this.isMfaEnabled) {
+      this.recoveryCodeCount = await this.mfaService.getRecoveryCodeCount();
+    }
   }
 
   /** Order-independent comparison against the persisted values, same shape
@@ -316,7 +330,11 @@ export class AccountComponent implements OnInit {
    *  enroll()/challengeAndVerify() calls itself (see its own doc comment) —
    *  so this just opens it and updates the status line on a truthy close,
    *  same shape openChangePassword() just above already establishes for a
-   *  self-contained modal. */
+   *  self-contained modal. A successful close is immediately followed by
+   *  RecoveryCodesModalComponent — reads as one continuous "set up two-
+   *  factor" flow (finish the TOTP step, then save your recovery codes)
+   *  without needing TwoFactorSetupModalComponent itself to grow a second
+   *  internal step for it. */
   openTwoFactorSetup() {
     const dialogRef = this.dialog.open(TwoFactorSetupModalComponent, {
       width: 'clamp(24rem, 40vw, 28rem)',
@@ -324,10 +342,59 @@ export class AccountComponent implements OnInit {
     });
 
     dialogRef.afterClosed().subscribe((enabled: boolean | undefined) => {
-      if (enabled) {
-        this.isMfaEnabled = true;
-        this.notification.success('Two-factor authentication is on');
+      if (!enabled) {
+        return;
       }
+      this.isMfaEnabled = true;
+      this.notification.success('Two-factor authentication is on');
+      this.showRecoveryCodes().subscribe(async () => {
+        this.recoveryCodeCount = await this.mfaService.getRecoveryCodeCount();
+      });
+    });
+  }
+
+  /** Opens RecoveryCodesModalComponent (self-contained — it generates the
+   *  codes itself) and hands back its own afterClosed() observable so each
+   *  caller can layer its own follow-up on top, same shape openTwoFactorSetup()
+   *  itself already establishes one level up. disableClose since this is a
+   *  one-time reveal with no way to recover the same codes afterward —
+   *  dismissing via the backdrop/Escape shouldn't be able to skip past that. */
+  private showRecoveryCodes() {
+    return this.dialog.open(RecoveryCodesModalComponent, {
+      width: 'clamp(24rem, 40vw, 32rem)',
+      maxWidth: '90vw',
+      disableClose: true
+    }).afterClosed();
+  }
+
+  /** Regenerating replaces the whole set — confirmed first (danger: false,
+   *  same "consequential but reversible" reasoning disableTwoFactor()'s own
+   *  confirm already uses) since it makes any still-unused codes from the
+   *  old set stop working immediately. */
+  regenerateRecoveryCodes() {
+    if (this.isRegeneratingRecoveryCodes) {
+      return;
+    }
+    this.isRegeneratingRecoveryCodes = true;
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Regenerate recovery codes?',
+        message: 'Your existing recovery codes will stop working immediately, replaced by a new set.',
+        confirmLabel: 'Regenerate'
+      },
+      width: 'clamp(75%, 25rem, 60%)'
+    });
+
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (!confirmed) {
+        this.isRegeneratingRecoveryCodes = false;
+        return;
+      }
+      this.showRecoveryCodes().subscribe(async () => {
+        this.recoveryCodeCount = await this.mfaService.getRecoveryCodeCount();
+        this.isRegeneratingRecoveryCodes = false;
+      });
     });
   }
 

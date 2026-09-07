@@ -10,6 +10,7 @@ import { NotificationService } from '../core/notification.service';
 import { SupabaseService } from '../core/supabase.service';
 import { ChangePasswordModalComponent } from '../shared/components/change-password-modal/change-password-modal.component';
 import { ConfirmDialogComponent } from '../shared/components/confirm-dialog/confirm-dialog.component';
+import { RecoveryCodesModalComponent } from '../shared/components/recovery-codes-modal/recovery-codes-modal.component';
 import { TwoFactorSetupModalComponent } from '../shared/components/two-factor-setup-modal/two-factor-setup-modal.component';
 import { createFakeAuthService, createFakeMfaService, createFakeProfile } from '../testing/fakes';
 import { MAX_QUICK_MENU_ITEMS } from '../shared/models/quick-menu';
@@ -506,5 +507,51 @@ describe('AccountComponent two-factor authentication', () => {
 
     expect(fixture.componentInstance.mfaError).toBe('Something went wrong.');
     expect(fixture.componentInstance.isMfaEnabled).toBeTrue();
+  });
+
+  it('loads and shows the remaining recovery-code count once enrolled', async () => {
+    const fixture = await setup(createFakeMfaService({ isEnrolled: true, recoveryCodeCount: 7 }));
+
+    expect(fixture.componentInstance.recoveryCodeCount).toBe(7);
+    expect(fixture.nativeElement.textContent).toContain('7');
+    expect(fixture.nativeElement.textContent).toContain('recovery codes remaining');
+  });
+
+  it('does not load a recovery-code count when unenrolled', async () => {
+    const fixture = await setup(createFakeMfaService({ isEnrolled: false }));
+
+    expect(fixture.componentInstance.recoveryCodeCount).toBeNull();
+  });
+
+  it('regenerateRecoveryCodes() confirms first, then opens RecoveryCodesModalComponent and refreshes the count', async () => {
+    const mfaService = createFakeMfaService({ isEnrolled: true, recoveryCodeCount: 10 });
+    const fixture = await setup(mfaService);
+    const dialog = TestBed.inject(MatDialog);
+    const openSpy = spyOn(dialog, 'open').and.callFake(
+      component => component === ConfirmDialogComponent ? createFakeDialogRef(true) : createFakeDialogRef(undefined)
+    );
+    // Refreshed once RecoveryCodesModalComponent closes.
+    const countSpy = spyOn(mfaService, 'getRecoveryCodeCount').and.resolveTo(10);
+
+    fixture.componentInstance.regenerateRecoveryCodes();
+    await fixture.whenStable();
+    await fixture.whenStable();
+
+    expect(openSpy).toHaveBeenCalledWith(ConfirmDialogComponent, jasmine.anything());
+    expect(openSpy).toHaveBeenCalledWith(RecoveryCodesModalComponent, jasmine.objectContaining({ disableClose: true }));
+    expect(countSpy).toHaveBeenCalled();
+    expect(fixture.componentInstance.isRegeneratingRecoveryCodes).toBeFalse();
+  });
+
+  it('does not open RecoveryCodesModalComponent when regeneration is not confirmed', async () => {
+    const fixture = await setup(createFakeMfaService({ isEnrolled: true }));
+    const dialog = TestBed.inject(MatDialog);
+    const openSpy = spyOn(dialog, 'open').and.returnValue(createFakeDialogRef(false));
+
+    fixture.componentInstance.regenerateRecoveryCodes();
+    await fixture.whenStable();
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(fixture.componentInstance.isRegeneratingRecoveryCodes).toBeFalse();
   });
 });

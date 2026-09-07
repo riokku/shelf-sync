@@ -50,6 +50,21 @@ export class MfaVerifyComponent implements OnInit {
     validators: [Validators.required, Validators.pattern(/^\d{6}$/)]
   });
 
+  /** "Lost your device?" toggles this on, revealing a recovery-code field
+   *  in place of the normal 6-digit one — see recoverWithCode()'s own doc
+   *  comment for what a valid code actually does. */
+  showRecoveryForm = false;
+  isRecovering = false;
+  recoveryError: string | null = null;
+  recoveryCodeControl = new FormControl('', { nonNullable: true, validators: [Validators.required] });
+
+  toggleRecoveryForm() {
+    this.showRecoveryForm = !this.showRecoveryForm;
+    this.errorMessage = null;
+    this.recoveryError = null;
+    this.recoveryCodeControl.reset();
+  }
+
   async ngOnInit() {
     const pending = await this.mfaService.isVerificationPending();
     if (!pending) {
@@ -92,6 +107,38 @@ export class MfaVerifyComponent implements OnInit {
     }
 
     this.router.navigateByUrl(this.safeReturnUrl() ?? '/home');
+  }
+
+  /** Redeeming a valid code removes the account's TOTP factor server-side
+   *  (see MfaService.redeemRecoveryCode()'s own doc comment) — which signs
+   *  this session out along with every other active one, so there's no
+   *  session left here to navigate onward with. signOut() clears this
+   *  client's own local state to match, and /login?mfaRecovered=1 is where
+   *  they land to sign back in and, once there, set up two-factor again
+   *  from the Account page — the same "explain why you're back at login"
+   *  shape /login?impersonationEnded=1 already establishes. */
+  async recoverWithCode() {
+    if (this.isRecovering) {
+      return;
+    }
+    if (this.recoveryCodeControl.invalid) {
+      this.recoveryCodeControl.markAsTouched();
+      return;
+    }
+
+    this.isRecovering = true;
+    this.recoveryError = null;
+
+    const error = await this.mfaService.redeemRecoveryCode(this.recoveryCodeControl.value);
+
+    if (error) {
+      this.isRecovering = false;
+      this.recoveryError = error;
+      return;
+    }
+
+    await this.authService.signOut();
+    this.router.navigate(['/login'], { queryParams: { mfaRecovered: '1' } });
   }
 
   /** Same relative-path-only check LoginComponent's own safeReturnUrl()

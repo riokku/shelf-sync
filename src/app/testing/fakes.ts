@@ -105,6 +105,10 @@ export function createFakeMfaService(overrides: {
   factorIdToVerify?: string | null;
   verifiedFactorId?: string | null;
   unenrollError?: string | null;
+  recoveryCodes?: string[] | null;
+  generateRecoveryCodesError?: string | null;
+  recoveryCodeCount?: number;
+  redeemRecoveryCodeError?: string | null;
 } = {}): MfaService {
   const fake = {
     isEnrolled: async () => overrides.isEnrolled ?? false,
@@ -117,6 +121,12 @@ export function createFakeMfaService(overrides: {
     confirmEnrollment: async () => null,
     verifyLogin: async () => null,
     unenroll: async () => overrides.unenrollError ?? null,
+    generateRecoveryCodes: async () => ({
+      codes: overrides.recoveryCodes ?? ['aaaaaaaaaaaaaaaa', 'bbbbbbbbbbbbbbbb'],
+      error: overrides.generateRecoveryCodesError ?? null
+    }),
+    getRecoveryCodeCount: async () => overrides.recoveryCodeCount ?? 10,
+    redeemRecoveryCode: async () => overrides.redeemRecoveryCodeError ?? null,
   };
   return fake as unknown as MfaService;
 }

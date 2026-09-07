@@ -45,6 +45,13 @@
   .code-field{
     width: 100%;
     max-width: 14rem;
+
+    // Recovery codes run longer than a 6-digit code — the shared
+    // .code-field's own cap would squeeze one down to a couple visible
+    // characters at a time.
+    &.recovery-code-field{
+      max-width: 20rem;
+    }
   }
 
   .action-row{
@@ -52,6 +59,11 @@
     align-items: center;
     gap: 0.5rem;
     margin-top: 0.25rem;
+  }
+
+  .recovery-toggle{
+    margin-top: 0.5rem;
+    color: var(--mat-sys-on-surface-variant);
   }
 }
 

@@ -100,4 +100,87 @@ describe('MfaVerifyComponent', () => {
 
     expect(verifySpy).not.toHaveBeenCalled();
   });
+
+  describe('recovery code ("lost your device") path', () => {
+    it('toggleRecoveryForm() reveals the recovery-code field in place of the 6-digit one', async () => {
+      await createComponent(createFakeMfaService({ isVerificationPending: true, factorIdToVerify: 'factor-1' }));
+
+      expect(fixture.nativeElement.querySelector('input[inputmode="numeric"]')).not.toBeNull();
+
+      component.toggleRecoveryForm();
+      fixture.detectChanges();
+
+      expect(component.showRecoveryForm).toBeTrue();
+      expect(fixture.nativeElement.querySelector('input[inputmode="numeric"]')).toBeNull();
+    });
+
+    it('recoverWithCode() is a no-op with an empty code', async () => {
+      const mfaService = createFakeMfaService({ isVerificationPending: true, factorIdToVerify: 'factor-1' });
+      const redeemSpy = spyOn(mfaService, 'redeemRecoveryCode');
+      await createComponent(mfaService);
+
+      await component.recoverWithCode();
+
+      expect(redeemSpy).not.toHaveBeenCalled();
+    });
+
+    it('signs out and lands on /login?mfaRecovered=1 once a code is redeemed', async () => {
+      const mfaService = createFakeMfaService({
+        isVerificationPending: true,
+        factorIdToVerify: 'factor-1',
+        redeemRecoveryCodeError: null
+      });
+      const redeemSpy = spyOn(mfaService, 'redeemRecoveryCode').and.callThrough();
+      const authService = createFakeAuthService();
+      const signOutSpy = spyOn(authService, 'signOut').and.callThrough();
+      await TestBed.configureTestingModule({
+        imports: [MfaVerifyComponent],
+        providers: [
+          provideRouter([]),
+          { provide: AuthService, useValue: authService },
+          { provide: MfaService, useValue: mfaService },
+          { provide: ActivatedRoute, useValue: createFakeActivatedRoute() }
+        ]
+      }).compileComponents();
+      const localFixture = TestBed.createComponent(MfaVerifyComponent);
+      const navigateSpy = spyOn(TestBed.inject(Router), 'navigate');
+      localFixture.detectChanges();
+      await localFixture.whenStable();
+
+      localFixture.componentInstance.recoveryCodeControl.setValue('a1b2-c3d4-e5f6-a7b8');
+      await localFixture.componentInstance.recoverWithCode();
+
+      expect(redeemSpy).toHaveBeenCalledWith('a1b2-c3d4-e5f6-a7b8');
+      expect(signOutSpy).toHaveBeenCalled();
+      expect(navigateSpy).toHaveBeenCalledWith(['/login'], { queryParams: { mfaRecovered: '1' } });
+    });
+
+    it('surfaces an invalid-code error without signing out', async () => {
+      const mfaService = createFakeMfaService({
+        isVerificationPending: true,
+        factorIdToVerify: 'factor-1',
+        redeemRecoveryCodeError: 'That recovery code is invalid or has already been used.'
+      });
+      const authService = createFakeAuthService();
+      const signOutSpy = spyOn(authService, 'signOut');
+      await TestBed.configureTestingModule({
+        imports: [MfaVerifyComponent],
+        providers: [
+          provideRouter([]),
+          { provide: AuthService, useValue: authService },
+          { provide: MfaService, useValue: mfaService },
+          { provide: ActivatedRoute, useValue: createFakeActivatedRoute() }
+        ]
+      }).compileComponents();
+      const localFixture = TestBed.createComponent(MfaVerifyComponent);
+      localFixture.detectChanges();
+      await localFixture.whenStable();
+
+      localFixture.componentInstance.recoveryCodeControl.setValue('bogus');
+      await localFixture.componentInstance.recoverWithCode();
+
+      expect(localFixture.componentInstance.recoveryError).toBe('That recovery code is invalid or has already been used.');
+      expect(signOutSpy).not.toHaveBeenCalled();
+    });
+  });
 });

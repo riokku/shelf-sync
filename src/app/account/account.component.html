@@ -176,6 +176,20 @@
               </ng-container>
             }
           </button>
+
+          <div class="recovery-codes-row">
+            <p class="section-hint">
+              @if (recoveryCodeCount === null) {
+                Recovery codes let you back in if you lose your authenticator app.
+              } @else {
+                <span class="mono">{{ recoveryCodeCount }}</span> recovery code{{ recoveryCodeCount === 1 ? '' : 's' }} remaining.
+              }
+            </p>
+            <button mat-stroked-button type="button" [disabled]="isRegeneratingRecoveryCodes" (click)="regenerateRecoveryCodes()">
+              <mat-icon>autorenew</mat-icon>
+              Regenerate recovery codes
+            </button>
+          </div>
         } @else {
           <p class="mfa-status">
             <mat-icon>gpp_maybe</mat-icon>
