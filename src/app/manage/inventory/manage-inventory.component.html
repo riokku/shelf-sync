@@ -56,7 +56,7 @@
 
     @if (viewMode === 'create') {
       @if (isAtItemLimit) {
-        <p class="plan-limit-notice">
+        <p class="plan-limit-notice" role="status">
           <mat-icon>lock_clock</mat-icon>
           <span>
             Your organization has reached its plan's inventory item limit

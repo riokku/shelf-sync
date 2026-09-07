@@ -483,8 +483,12 @@ flag (an org could exceed its own tier's caps regardless of whether it could act
 in a follow-up pass, in the same two-layer shape this schema always uses for a client-checkable-but-
 server-enforced boundary (`is_locked`, the per-item 10-photo cap, etc.): `ManageInventoryComponent`'s
 create form and `ManageTeamComponent`'s pending-join-requests section each show a `.plan-limit-notice`
-banner (same shape `ModalTableComponent`'s own `.retired-notice` established, just warning-toned) and
-disable their own Create/Approve button once the org's own already-loaded count
+banner (same shape `ModalTableComponent`'s own `.retired-notice` established, just warning-toned,
+plus `role="status"` — added in a same-day accessibility-pass follow-up, since unlike `.retired-notice`
+this banner can newly appear while a screen reader user is already mid-session on the page, e.g.
+another admin approves the org's last available seat in a different tab while this one's create form
+is still open, and a plain, role-less paragraph gives no signal that submission just became blocked)
+and disable their own Create/Approve button once the org's own already-loaded count
 (`allInventoryItems.length` / `teamMembers.length`, the exact same counts `ManageBillingComponent`
 already measures the org against) reaches its plan's limit — but the real enforcement is server-side,
 since neither of those client checks can see a concurrent write from another tab or a direct API call.
@@ -4741,6 +4745,26 @@ yet on a hard refresh of `/inventory`.
   slightly over a cap under real concurrency) and one accepted edge case (a photo rejected right at
   the storage cap leaves its already-uploaded file orphaned in the bucket) are both documented
   directly in the migration's own comments rather than engineered away — see that file.
+- `fix_storage_limit_trigger_cross_org_leak` — a same-day `/security-review` follow-up on the
+  migration above: `enforce_inventory_item_image_org_storage_limit()` has to be `security definer`
+  to read `storage.objects` at all, which meant it ran (and, for an `item_id` belonging to a
+  different org, computed and evaluated *that other org's* real photo-storage total) *before* the
+  pre-existing "Admins and managers can insert inventory item images" RLS policy's own `with check`
+  ever got a chance to reject the row for the real reason (its own org-mismatch check) — `before row`
+  triggers always fire ahead of `with check`. No actual unauthorized write was ever possible either
+  way (that policy still rejects the row regardless), but which specific error came back — a plan-
+  limit exception vs. an RLS violation — let an authenticated user of any org who already knew
+  another org's own item id (not obtainable anywhere in this app's normal navigation, though not the
+  cryptographically-unguessable case a never-seen random UUID is either) learn whether that other org
+  was at or near its own storage cap. `enforce_inventory_item_image_org_storage_limit()`
+  (`create or replace`, diffed against its only previous version) now bails out immediately — before
+  computing anything — whenever the resolved item doesn't belong to the caller's own org, deferring
+  entirely to the real RLS policy to reject the insert for the actual reason. The sibling
+  `inventory_items`-count trigger was never affected by this class of issue in the first place: it's
+  plain, not `security definer`, so its own equivalent query is already silently zeroed out by the
+  caller's own RLS for a foreign org's id — this is specifically a risk of being the one trigger that
+  bypasses RLS to see across organizations at all, worth remembering for any future `security
+  definer` trigger keyed off a client-suppliable foreign key rather than the caller's own identity.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power
