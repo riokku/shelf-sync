@@ -30,6 +30,12 @@
 # photos/logos are same-host today, but this is deliberately a hair looser
 # in case that ever isn't true, since a wrong image host is a broken photo,
 # not a security hole, unlike a wrong script-src.
+# media-src 'self' — the login/register/forgot-password/reset-password/
+# landing background video (assets/login-video.mp4) is a same-origin <video
+# src="...">; with no media-src declared this fell back to default-src
+# 'none' and was silently blocked in production (ng serve never enforces
+# this header, so it never reproduced locally — caught live post-deploy,
+# same class of gap as the CSP originally missing media entirely).
 #
 # Known gap: worker-src isn't declared (falls back to default-src 'none'),
 # which would block the barcode scanner's camera-decoding library if
@@ -41,4 +47,4 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=(), usb=()
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
-  Content-Security-Policy: default-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://ailqjqjrzhzspofoslpa.supabase.co wss://ailqjqjrzhzspofoslpa.supabase.co; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self'; connect-src 'self' https://ailqjqjrzhzspofoslpa.supabase.co wss://ailqjqjrzhzspofoslpa.supabase.co; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
