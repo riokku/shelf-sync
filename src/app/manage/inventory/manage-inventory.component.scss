@@ -3,10 +3,12 @@
 @use '../../shared/styles/skeleton';
 
 // .back-row itself (the layout) comes from the shared page-toolbar partial
-// above. Only rendered while an item's detail view is showing (see
-// selectedItemDetail's own doc comment) — sits right below the breadcrumbs,
-// above this page's own "Manage Inventory" page-header (which stays put
-// regardless of whether a detail view is open).
+// above. Always rendered — same "back to Manage" routerLink every other flat
+// manage/* sub-page has (see e.g. manage/suppliers), except while an item's
+// detail view is showing (see selectedItemDetail's own doc comment), when it
+// closes that detail view instead of navigating away. Sits right below the
+// breadcrumbs, above this page's own "Manage Inventory" page-header (which
+// stays put regardless of whether a detail view is open).
 
 .manage-inventory-wrapper{
   color: var(--mat-sys-on-surface);

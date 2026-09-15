@@ -11,6 +11,13 @@
           Back
         </button>
       </div>
+    } @else {
+      <div class="back-row">
+        <button mat-button type="button" routerLink="/manage">
+          <mat-icon>arrow_back</mat-icon>
+          Back
+        </button>
+      </div>
     }
 
     @if (!selectedItemDetail) {

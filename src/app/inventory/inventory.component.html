@@ -253,31 +253,46 @@
       } @else if (inventoryList.length === 0) {
         <div class="row">
           <div class="col-12">
-            <app-empty-state icon="inventory_2" message="No inventory items yet." [playful]="true" />
+            <app-empty-state icon="inventory_2" message="No inventory items yet." [playful]="true">
+              @if (authService.canManage()) {
+                <button mat-stroked-button type="button" routerLink="/manage/inventory" [queryParams]="{ tab: 'create' }">
+                  <mat-icon>add</mat-icon>
+                  Add item
+                </button>
+              }
+            </app-empty-state>
           </div>
         </div>
       } @else {
         <div class="row">
           <div class="col-12">
             <div class="inventory-header-wrapper">
+              <div class="inventory-header-actions">
+                @if (authService.canManage()) {
+                  <button mat-stroked-button color="primary" type="button" routerLink="/manage/inventory" [queryParams]="{ tab: 'create' }">
+                    <mat-icon>add</mat-icon>
+                    Add item
+                  </button>
+                }
+                <mat-button-toggle-group
+                    class="view-mode-toggle"
+                    [value]="viewMode"
+                    (change)="setViewMode($event.value)"
+                    aria-label="Inventory view"
+                  >
+                  <mat-button-toggle value="card" aria-label="Card view">
+                    <mat-icon>grid_view</mat-icon>
+                    Card
+                  </mat-button-toggle>
+                  <mat-button-toggle value="table" aria-label="Table view">
+                    <mat-icon>table_rows</mat-icon>
+                    Table
+                  </mat-button-toggle>
+                </mat-button-toggle-group>
+              </div>
               <p>
                 Displaying {{filteredInventoryList.length}} of {{inventoryList.length}} items
               </p>
-              <mat-button-toggle-group
-                  class="view-mode-toggle"
-                  [value]="viewMode"
-                  (change)="setViewMode($event.value)"
-                  aria-label="Inventory view"
-                >
-                <mat-button-toggle value="card" aria-label="Card view">
-                  <mat-icon>grid_view</mat-icon>
-                  Card
-                </mat-button-toggle>
-                <mat-button-toggle value="table" aria-label="Table view">
-                  <mat-icon>table_rows</mat-icon>
-                  Table
-                </mat-button-toggle>
-              </mat-button-toggle-group>
             </div>
           </div>
         </div>

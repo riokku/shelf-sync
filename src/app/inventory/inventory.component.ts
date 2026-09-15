@@ -106,7 +106,7 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
   private router = inject(Router);
   protected siteSettings = inject(SiteSettingsService);
   private destroyRef = inject(DestroyRef);
-  private authService = inject(AuthService);
+  protected authService = inject(AuthService);
   private inventoryFieldOptions = inject(InventoryFieldOptionsService);
   private notification = inject(NotificationService);
   private liveAnnouncer = inject(LiveAnnouncer);

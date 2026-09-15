@@ -209,21 +209,36 @@ app-saved-views-bar{
   width: 70%;
 }
 
+// Stacked, not side-by-side: the "Add item"/card-table-toggle row sits on
+// its own line, with the item count dropping to a second line below it —
+// distinct row concerns (actions vs. a status line about the list itself),
+// rather than the two competing for the same row's width.
 .inventory-header-wrapper{
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
 
   p{
     margin: 0;
   }
 }
 
+// "Add item" and the card/table toggle share one row — .inventory-header-
+// wrapper above stacks this alongside the item-count line as two rows
+// rather than one, since a bare space-between there would put all three
+// (button, toggle, count text) fighting over one row's width.
+.inventory-header-actions{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
 .view-mode-toggle{
   flex-shrink: 0;
-  margin-bottom: 1rem;
 
   mat-icon{
     margin-right: 0.25rem;
