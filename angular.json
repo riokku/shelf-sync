@@ -57,7 +57,28 @@
                   "replace": "src/environments/environment.ts",
                   "with": "src/environments/environment.prod.ts"
                 }
-              ]
+              ],
+              // Angular's default production optimization inlines a
+              // "critical CSS" subset directly into index.html and defers
+              // the rest of styles.css via a <link media="print"
+              // onload="this.media='all'"> swap. That inline onload
+              // handler is blocked outright by this site's own CSP
+              // (script-src has no 'unsafe-inline'/'unsafe-hashes' — see
+              // src/_headers), which per spec never covers inline event
+              // handlers regardless of hashes/nonces. With the handler
+              // blocked, styles.css never flips off media="print" and
+              // stays permanently inert — meaning almost the entire
+              // stylesheet (Bootstrap's .container/.grid rules included)
+              // silently never applied in production. Disabling it here
+              // makes styles.css load as one plain, synchronous
+              // <link rel="stylesheet"> instead, matching dev exactly —
+              // there's no meaningful "critical path" to optimize anyway
+              // in an SPA whose initial HTML is just <app-root></app-root>.
+              "optimization": {
+                "styles": {
+                  "inlineCritical": false
+                }
+              }
             },
             "development": {
               "buildOptimizer": false,
