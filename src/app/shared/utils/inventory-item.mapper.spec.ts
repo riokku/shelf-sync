@@ -6,7 +6,7 @@ describe('toInventoryItem', () => {
     const row = createTestInventoryItemRow({
       name: 'Cordless Drill',
       description: 'A drill',
-      category: 'Tools',
+      category: ['Tools'],
       quantity_total: 20,
       quantity_remaining: 12,
       status: 'retirement_pending',
@@ -19,7 +19,7 @@ describe('toInventoryItem', () => {
     expect(item.id).toBe(row.id);
     expect(item.name).toBe('Cordless Drill');
     expect(item.description).toBe('A drill');
-    expect(item.category).toBe('Tools');
+    expect(item.category).toEqual(['Tools']);
     expect(item.quantityTotal).toBe(20);
     expect(item.quantityRemaining).toBe(12);
     expect(item.status).toBe('retirement_pending');
@@ -39,7 +39,6 @@ describe('toInventoryItem', () => {
   it('turns nullable text columns into empty strings, not null, so templates can bind them directly', () => {
     const row = createTestInventoryItemRow({
       description: null,
-      category: null,
       physical_location: null,
       order_link: null
     });
@@ -47,9 +46,14 @@ describe('toInventoryItem', () => {
     const item = toInventoryItem(row, [], '');
 
     expect(item.description).toBe('');
-    expect(item.category).toBe('');
     expect(item.physicalLocation).toBe('');
     expect(item.orderLink).toBe('');
+  });
+
+  it('turns a null category column into an empty array, not null', () => {
+    const row = createTestInventoryItemRow({ category: null });
+
+    expect(toInventoryItem(row, [], '').category).toEqual([]);
   });
 
   it('resolves supplier_id straight across and defaults the supplier label param to an empty string', () => {

@@ -201,12 +201,21 @@ describe('buildImportInsertPayload', () => {
     expect(payload).toEqual(jasmine.objectContaining({
       name: 'Folding Chair',
       barcode: null,
-      category: 'Furniture',
+      category: ['Furniture'],
       quantity_total: 50,
       quantity_allocated: 0,
       quantity_remaining: 50,
       price_per_unit: 12.5
     }));
+  });
+
+  it('splits a semicolon-separated Category cell into several categories', () => {
+    const csv = 'Name,Quantity total,Category\nFolding Chair,50,Furniture; Outdoor';
+    const { rows } = parseAndValidateImportRows(csv, []);
+
+    const payload = buildImportInsertPayload(rows[0]);
+
+    expect(payload.category).toEqual(['Furniture', 'Outdoor']);
   });
 
   it('coerces blank optional text fields to null', () => {

@@ -378,18 +378,26 @@ export class ManageReportsComponent implements OnInit {
     this.lowStockCount = active.filter(isRowLowStock).length;
     this.outOfStockCount = active.filter(isRowOutOfStock).length;
 
-    this.valueByCategory = this.groupByValue(active, item => item.category || UNCATEGORIZED);
-    this.valueByLocation = this.groupByValue(active, item => item.physical_location || UNSPECIFIED_LOCATION);
+    this.valueByCategory = this.groupByValue(active, item => item.category && item.category.length > 0 ? item.category : [UNCATEGORIZED]);
+    this.valueByLocation = this.groupByValue(active, item => [item.physical_location || UNSPECIFIED_LOCATION]);
   }
 
-  private groupByValue(items: InventoryItemReportRow[], labelFor: (item: InventoryItemReportRow) => string): BreakdownRow[] {
+  /** labelsFor can return more than one label per item (an item can now
+   *  carry several categories at once) — each selected label gets full
+   *  credit for the item's whole value, the same "every selected reason
+   *  gets full credit" approach buildMovementAndLoss() below already uses
+   *  for a discard's own multi-value reason field, rather than splitting
+   *  the value between them. */
+  private groupByValue(items: InventoryItemReportRow[], labelsFor: (item: InventoryItemReportRow) => string[]): BreakdownRow[] {
     const rows = new Map<string, BreakdownRow>();
     for (const item of items) {
-      const label = labelFor(item);
-      const row = rows.get(label) ?? { label, primary: 0, itemCount: 0 };
-      row.primary += item.quantity_remaining * this.effectiveUnitPrice(item);
-      row.itemCount += 1;
-      rows.set(label, row);
+      const value = item.quantity_remaining * this.effectiveUnitPrice(item);
+      for (const label of labelsFor(item)) {
+        const row = rows.get(label) ?? { label, primary: 0, itemCount: 0 };
+        row.primary += value;
+        row.itemCount += 1;
+        rows.set(label, row);
+      }
     }
     return [...rows.values()].sort((a, b) => b.primary - a.primary);
   }
@@ -407,7 +415,7 @@ export class ManageReportsComponent implements OnInit {
     discards: DiscardReportRow[],
     range: DateRange
   ) {
-    const categoryByItemId = new Map(items.map(item => [item.id, item.category || UNCATEGORIZED]));
+    const categoriesByItemId = new Map(items.map(item => [item.id, item.category && item.category.length > 0 ? item.category : [UNCATEGORIZED]]));
     const discardsInRange = discards.filter(discard => this.isWithinRange(discard.discarded_at, range));
 
     this.discardEventCount = discardsInRange.length;
@@ -428,23 +436,27 @@ export class ManageReportsComponent implements OnInit {
         reasonRows.set(reason, reasonRow);
       }
 
-      const category = categoryByItemId.get(discard.item_id) ?? UNCATEGORIZED;
-      const categoryRow = categoryRows.get(category) ?? { label: category, primary: 0, itemCount: 0 };
-      categoryRow.primary += discard.quantity;
-      categoryRows.set(category, categoryRow);
+      const categories = categoriesByItemId.get(discard.item_id) ?? [UNCATEGORIZED];
+      for (const category of categories) {
+        const categoryRow = categoryRows.get(category) ?? { label: category, primary: 0, itemCount: 0 };
+        categoryRow.primary += discard.quantity;
+        categoryRows.set(category, categoryRow);
+      }
     }
     this.topDiscardReasons = [...reasonRows.values()].sort((a, b) => b.primary - a.primary).slice(0, 5);
     this.discardsByCategory = [...categoryRows.values()].sort((a, b) => b.primary - a.primary);
 
     const retirementRows = new Map<string, RetirementRateRow>();
     for (const item of items) {
-      const category = item.category || UNCATEGORIZED;
-      const row = retirementRows.get(category) ?? { category, retiredCount: 0, totalCount: 0, rate: 0 };
-      row.totalCount += 1;
-      if (item.status === 'retired') {
-        row.retiredCount += 1;
+      const categories = item.category && item.category.length > 0 ? item.category : [UNCATEGORIZED];
+      for (const category of categories) {
+        const row = retirementRows.get(category) ?? { category, retiredCount: 0, totalCount: 0, rate: 0 };
+        row.totalCount += 1;
+        if (item.status === 'retired') {
+          row.retiredCount += 1;
+        }
+        retirementRows.set(category, row);
       }
-      retirementRows.set(category, row);
     }
     this.retirementRateByCategory = [...retirementRows.values()]
       .map(row => ({ ...row, rate: row.totalCount === 0 ? 0 : row.retiredCount / row.totalCount }))

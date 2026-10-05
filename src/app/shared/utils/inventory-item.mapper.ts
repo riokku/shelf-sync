@@ -30,7 +30,7 @@ export function toInventoryItem(
     row.description ?? '',
     gallery[0] ?? '',
     gallery,
-    row.category ?? '',
+    row.category ?? [],
     row.physical_location ?? '',
     row.digital_location ?? '',
     row.applicable_year ?? '',

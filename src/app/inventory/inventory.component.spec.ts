@@ -46,11 +46,11 @@ describe('InventoryComponent', () => {
   describe('filteredInventoryList', () => {
     beforeEach(() => {
       component.inventoryList = [
-        createTestInventoryItem({ id: 'active-1', name: 'Cordless Drill', category: 'Tools', physicalLocation: 'Warehouse A', quantityRemaining: 20, lowQuantityThreshold: 5 }),
-        createTestInventoryItem({ id: 'low-stock-1', name: 'Safety Goggles', category: 'Safety', physicalLocation: 'Warehouse B', quantityRemaining: 2, lowQuantityThreshold: 5 }),
-        createTestInventoryItem({ id: 'out-of-stock-1', name: 'Bluetooth Speaker', category: 'Electronics', physicalLocation: 'Warehouse A', quantityRemaining: 0, lowQuantityThreshold: 5 }),
-        createTestInventoryItem({ id: 'pending-1', name: 'Filing Cabinet', category: 'Furniture', physicalLocation: 'Warehouse B', status: 'retirement_pending' }),
-        createTestInventoryItem({ id: 'retired-1', name: 'Old Printer', category: 'Electronics', physicalLocation: 'Warehouse A', status: 'retired' })
+        createTestInventoryItem({ id: 'active-1', name: 'Cordless Drill', category: ['Tools'], physicalLocation: 'Warehouse A', quantityRemaining: 20, lowQuantityThreshold: 5 }),
+        createTestInventoryItem({ id: 'low-stock-1', name: 'Safety Goggles', category: ['Safety'], physicalLocation: 'Warehouse B', quantityRemaining: 2, lowQuantityThreshold: 5 }),
+        createTestInventoryItem({ id: 'out-of-stock-1', name: 'Bluetooth Speaker', category: ['Electronics'], physicalLocation: 'Warehouse A', quantityRemaining: 0, lowQuantityThreshold: 5 }),
+        createTestInventoryItem({ id: 'pending-1', name: 'Filing Cabinet', category: ['Furniture'], physicalLocation: 'Warehouse B', status: 'retirement_pending' }),
+        createTestInventoryItem({ id: 'retired-1', name: 'Old Printer', category: ['Electronics'], physicalLocation: 'Warehouse A', status: 'retired' })
       ];
     });
 
@@ -162,10 +162,10 @@ describe('InventoryComponent', () => {
   describe('categoryFilterOptions / physicalLocationFilterOptions', () => {
     beforeEach(() => {
       component.inventoryList = [
-        createTestInventoryItem({ id: '1', category: 'Tools', physicalLocation: 'Warehouse B' }),
-        createTestInventoryItem({ id: '2', category: 'Electronics', physicalLocation: 'Warehouse A' }),
-        createTestInventoryItem({ id: '3', category: 'Tools', physicalLocation: 'Warehouse A' }),
-        createTestInventoryItem({ id: '4', category: '', physicalLocation: '' })
+        createTestInventoryItem({ id: '1', category: ['Tools'], physicalLocation: 'Warehouse B' }),
+        createTestInventoryItem({ id: '2', category: ['Electronics'], physicalLocation: 'Warehouse A' }),
+        createTestInventoryItem({ id: '3', category: ['Tools'], physicalLocation: 'Warehouse A' }),
+        createTestInventoryItem({ id: '4', category: [], physicalLocation: '' })
       ];
     });
 
@@ -181,8 +181,8 @@ describe('InventoryComponent', () => {
   describe('filteredCategoryFilterOptions / filteredPhysicalLocationFilterOptions', () => {
     beforeEach(() => {
       component.inventoryList = [
-        createTestInventoryItem({ id: '1', category: 'Tools', physicalLocation: 'Warehouse B' }),
-        createTestInventoryItem({ id: '2', category: 'Electronics', physicalLocation: 'Warehouse A' })
+        createTestInventoryItem({ id: '1', category: ['Tools'], physicalLocation: 'Warehouse B' }),
+        createTestInventoryItem({ id: '2', category: ['Electronics'], physicalLocation: 'Warehouse A' })
       ];
     });
 
@@ -237,9 +237,9 @@ describe('InventoryComponent', () => {
   describe('sortedInventoryList (table view)', () => {
     beforeEach(() => {
       component.inventoryList = [
-        createTestInventoryItem({ id: '1', name: 'Widget', category: 'Tools', quantityRemaining: 20 }),
-        createTestInventoryItem({ id: '2', name: 'Anvil', category: 'Hardware', quantityRemaining: 5 }),
-        createTestInventoryItem({ id: '3', name: 'Crate', category: 'Storage', quantityRemaining: 12 })
+        createTestInventoryItem({ id: '1', name: 'Widget', category: ['Tools'], quantityRemaining: 20 }),
+        createTestInventoryItem({ id: '2', name: 'Anvil', category: ['Hardware'], quantityRemaining: 5 }),
+        createTestInventoryItem({ id: '3', name: 'Crate', category: ['Storage'], quantityRemaining: 12 })
       ];
     });
 
@@ -784,8 +784,8 @@ describe('InventoryComponent applyBulkReassign()', () => {
     const { service, updateCalls } = createBulkReassignFakeSupabaseService();
     const component = await createComponent(service);
     component.inventoryList = [
-      createTestInventoryItem({ id: '1', category: 'Tools', physicalLocation: 'Warehouse A' }),
-      createTestInventoryItem({ id: '2', category: 'Safety', physicalLocation: 'Warehouse A' })
+      createTestInventoryItem({ id: '1', category: ['Tools'], physicalLocation: 'Warehouse A' }),
+      createTestInventoryItem({ id: '2', category: ['Safety'], physicalLocation: 'Warehouse A' })
     ];
     component.selectedItemIds = new Set(['1', '2']);
     // A successful bulk reassign offers an undo, not a plain success() toast
@@ -797,11 +797,11 @@ describe('InventoryComponent applyBulkReassign()', () => {
 
     // Item '2' is already in 'Safety' — bulk-setting category to 'Safety'
     // should update '1' only, not touch '2' at all.
-    await callApplyBulkReassign(component, { category: { value: 'Safety' }, physicalLocation: null });
+    await callApplyBulkReassign(component, { category: { value: ['Safety'] }, physicalLocation: null });
 
     expect(updateCalls.length).toBe(1);
     expect(updateCalls[0].id).toBe('1');
-    expect(updateCalls[0].values).toEqual({ category: 'Safety' });
+    expect(updateCalls[0].values).toEqual({ category: ['Safety'] });
     expect(notificationUndoSpy).toHaveBeenCalledWith('Updated 1 item', jasmine.any(Function));
     expect(component.selectedItemIds.size).toBe(0);
     expect(component.bulkActionError).toBeNull();
@@ -815,11 +815,11 @@ describe('InventoryComponent applyBulkReassign()', () => {
     // realtime subscription already patched to the post-bulk-write value by
     // the time undo can run) — so this list stands in for that patched
     // state, not the pre-reassign one.
-    component.inventoryList = [createTestInventoryItem({ id: '1', category: 'Safety', physicalLocation: 'Warehouse B' })];
+    component.inventoryList = [createTestInventoryItem({ id: '1', category: ['Safety'], physicalLocation: 'Warehouse B' })];
     const notificationSuccessSpy = spyOn((component as unknown as { notification: { success: (msg: string) => void } }).notification, 'success');
 
     await (component as unknown as { undoBulkReassign: (entries: unknown[]) => Promise<void> }).undoBulkReassign([
-      { id: '1', category: 'Tools', physicalLocation: 'Warehouse B' }
+      { id: '1', category: ['Tools'], physicalLocation: 'Warehouse B' }
     ]);
 
     expect(updateCalls.length).toBe(1);
@@ -827,14 +827,14 @@ describe('InventoryComponent applyBulkReassign()', () => {
     // 'Warehouse B'), so only category is sent in the revert write — same
     // "skip fields already at the target value" behavior the forward bulk
     // write itself has.
-    expect(updateCalls[0]).toEqual({ id: '1', values: { category: 'Tools' } });
+    expect(updateCalls[0]).toEqual({ id: '1', values: { category: ['Tools'] } });
     expect(notificationSuccessSpy).toHaveBeenCalledWith('Reverted 1 item');
   });
 
   it('updates both fields at once when both are checked', async () => {
     const { service, updateCalls } = createBulkReassignFakeSupabaseService();
     const component = await createComponent(service);
-    component.inventoryList = [createTestInventoryItem({ id: '1', category: 'Tools', physicalLocation: 'Warehouse A' })];
+    component.inventoryList = [createTestInventoryItem({ id: '1', category: ['Tools'], physicalLocation: 'Warehouse A' })];
     component.selectedItemIds = new Set(['1']);
     // A successful bulk write calls the real NotificationService, which
     // opens a real MatSnackBar/CDK Overlay — every other test in this file
@@ -848,17 +848,17 @@ describe('InventoryComponent applyBulkReassign()', () => {
       'successWithUndo'
     );
 
-    await callApplyBulkReassign(component, { category: { value: 'Safety' }, physicalLocation: { value: 'Warehouse B' } });
+    await callApplyBulkReassign(component, { category: { value: ['Safety'] }, physicalLocation: { value: 'Warehouse B' } });
 
-    expect(updateCalls[0].values).toEqual({ category: 'Safety', physical_location: 'Warehouse B' });
+    expect(updateCalls[0].values).toEqual({ category: ['Safety'], physical_location: 'Warehouse B' });
   });
 
   it('reports a partial failure without losing the successes', async () => {
     const { service, updateCalls } = createBulkReassignFakeSupabaseService(new Set(['2']));
     const component = await createComponent(service);
     component.inventoryList = [
-      createTestInventoryItem({ id: '1', category: 'Tools' }),
-      createTestInventoryItem({ id: '2', category: 'Tools' })
+      createTestInventoryItem({ id: '1', category: ['Tools'] }),
+      createTestInventoryItem({ id: '2', category: ['Tools'] })
     ];
     component.selectedItemIds = new Set(['1', '2']);
     const notificationUndoSpy = spyOn(
@@ -866,7 +866,7 @@ describe('InventoryComponent applyBulkReassign()', () => {
       'successWithUndo'
     );
 
-    await callApplyBulkReassign(component, { category: { value: 'Safety' }, physicalLocation: null });
+    await callApplyBulkReassign(component, { category: { value: ['Safety'] }, physicalLocation: null });
 
     expect(updateCalls.map(call => call.id).sort()).toEqual(['1', '2']);
     expect(notificationUndoSpy).toHaveBeenCalledWith('Updated 1 item', jasmine.any(Function));
@@ -876,11 +876,11 @@ describe('InventoryComponent applyBulkReassign()', () => {
   it('does nothing (no update, no toast) when every selected item already matches', async () => {
     const { service, updateCalls } = createBulkReassignFakeSupabaseService();
     const component = await createComponent(service);
-    component.inventoryList = [createTestInventoryItem({ id: '1', category: 'Safety' })];
+    component.inventoryList = [createTestInventoryItem({ id: '1', category: ['Safety'] })];
     component.selectedItemIds = new Set(['1']);
     const notificationSuccessSpy = spyOn((component as unknown as { notification: { success: (msg: string) => void } }).notification, 'success');
 
-    await callApplyBulkReassign(component, { category: { value: 'Safety' }, physicalLocation: null });
+    await callApplyBulkReassign(component, { category: { value: ['Safety'] }, physicalLocation: null });
 
     expect(updateCalls.length).toBe(0);
     expect(notificationSuccessSpy).not.toHaveBeenCalled();

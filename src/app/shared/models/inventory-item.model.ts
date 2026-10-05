@@ -49,7 +49,7 @@ export class InventoryItem {
   description: string;
   image: string;
   images: string[];
-  category: string;
+  category: string[];
   physicalLocation: string;
   digitalLocation: string;
   applicableYear: string;
@@ -89,7 +89,7 @@ export class InventoryItem {
     description: string,
     image: string,
     images: string[],
-    category: string,
+    category: string[],
     physicalLocation: string,
     digitalLocation: string,
     applicableYear: string,

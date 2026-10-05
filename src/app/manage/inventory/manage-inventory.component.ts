@@ -291,7 +291,7 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
   inventoryForm = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     barcode: new FormControl('', { nonNullable: true }),
-    category: new FormControl('', { nonNullable: true }),
+    category: new FormControl<string[]>([], { nonNullable: true }),
     description: new FormControl('', { nonNullable: true }),
     physicalLocation: new FormControl('', { nonNullable: true }),
     digitalLocation: new FormControl('', { nonNullable: true }),
@@ -927,7 +927,7 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
     const { data: inserted, error } = await this.supabase.from('inventory_items').insert({
       name: value.name,
       barcode: value.barcode || null,
-      category: value.category || null,
+      category: value.category.length > 0 ? value.category : null,
       description: value.description || null,
       physical_location: value.physicalLocation || null,
       digital_location: value.digitalLocation || null,

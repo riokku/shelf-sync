@@ -386,7 +386,7 @@
                       </div>
                       <mat-card-header>
                         <mat-card-title [title]="item.name">{{item.name}}</mat-card-title>
-                        <mat-card-subtitle [title]="item.category">{{item.category}}</mat-card-subtitle>
+                        <mat-card-subtitle [title]="item.category.join(', ')">{{item.category.join(', ')}}</mat-card-subtitle>
                       </mat-card-header>
                       <mat-card-content>
                         <p class="mb-0">
@@ -454,7 +454,7 @@
 
                   <ng-container matColumnDef="category">
                     <th mat-header-cell *matHeaderCellDef mat-sort-header>Category</th>
-                    <td mat-cell *matCellDef="let item">{{ item.category || '—' }}</td>
+                    <td mat-cell *matCellDef="let item">{{ item.category.length > 0 ? item.category.join(', ') : '—' }}</td>
                   </ng-container>
 
                   <ng-container matColumnDef="physicalLocation">

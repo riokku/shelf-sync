@@ -14,12 +14,15 @@ export interface BulkReassignModalData {
 }
 
 /** `null` on either field means "don't touch this field at all" — distinct
- *  from `{ value: '' }`, which means "clear it to empty" (the explicit
- *  "(None)" option in each dropdown below). Lets an admin bulk-set just one
+ *  from `{ value: '' }`/`{ value: [] }`, which means "clear it" (the
+ *  explicit "(None)" option on physical location, or simply selecting
+ *  nothing in category's own multi-select). Lets an admin bulk-set just one
  *  field without touching the other, and still bulk-*clear* a field if
- *  that's genuinely what they want. */
+ *  that's genuinely what they want. category replaces each selected item's
+ *  whole category list with the chosen set, same replace-not-merge
+ *  semantics physicalLocation already has. */
 export interface BulkReassignModalResult {
-  category: { value: string } | null;
+  category: { value: string[] } | null;
   physicalLocation: { value: string } | null;
 }
 
@@ -48,7 +51,7 @@ export class BulkReassignModalComponent {
   // value regardless of whether its checkbox is on.
   form = new FormGroup({
     updateCategory: new FormControl(false, { nonNullable: true }),
-    category: new FormControl('', { nonNullable: true }),
+    category: new FormControl<string[]>([], { nonNullable: true }),
     updatePhysicalLocation: new FormControl(false, { nonNullable: true }),
     physicalLocation: new FormControl('', { nonNullable: true })
   });

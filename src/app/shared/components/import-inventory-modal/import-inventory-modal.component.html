@@ -8,8 +8,9 @@
     <p class="import-instructions">
       Download the template, fill in one row per item in Excel or Google Sheets, then upload it back here as a
       CSV. Only <span class="semibold">Name</span> and <span class="semibold">Quantity total</span> are required
-      — leave any other column blank to skip it. Photos and container/box breakdowns aren't part of this import;
-      add those to an item afterward.
+      — leave any other column blank to skip it. An item can have more than one category — separate them with a
+      semicolon (e.g. "Furniture; Outdoor") in that column. Photos and container/box breakdowns aren't part of
+      this import; add those to an item afterward.
     </p>
 
     <div class="import-upload-actions">
@@ -54,7 +55,7 @@
             <tr [class.import-row-error]="row.errors.length > 0">
               <td class="mono">{{ row.rowNumber }}</td>
               <td>{{ row.name || '—' }}</td>
-              <td>{{ row.category || '—' }}</td>
+              <td>{{ row.category.length > 0 ? row.category.join(', ') : '—' }}</td>
               <td class="mono">{{ row.quantityTotal ?? '—' }}</td>
               <td class="mono">{{ row.pricePerUnit ?? '—' }}</td>
               <td>

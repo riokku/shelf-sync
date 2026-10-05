@@ -953,7 +953,7 @@ export type Database = {
           activity_log: string | null
           applicable_year: string | null
           barcode: string | null
-          category: string | null
+          category: string[] | null
           checked_out_to: string | null
           checkout_due_at: string | null
           checkout_overdue_notified_at: string | null
@@ -992,7 +992,7 @@ export type Database = {
           activity_log?: string | null
           applicable_year?: string | null
           barcode?: string | null
-          category?: string | null
+          category?: string[] | null
           checked_out_to?: string | null
           checkout_due_at?: string | null
           checkout_overdue_notified_at?: string | null
@@ -1031,7 +1031,7 @@ export type Database = {
           activity_log?: string | null
           applicable_year?: string | null
           barcode?: string | null
-          category?: string | null
+          category?: string[] | null
           checked_out_to?: string | null
           checkout_due_at?: string | null
           checkout_overdue_notified_at?: string | null

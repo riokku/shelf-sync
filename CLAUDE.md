@@ -3684,6 +3684,24 @@ Appearance card is a `mat-button-toggle-group` of two separate, statically-icone
 always shows a sun glyph, Dark always shows a moon glyph), not one icon flipping identity, so a morph
 doesn't apply there the same way.
 
+An inventory item can now carry more than one category at once (`inventory_items.category` moved
+from `text` to `text[]`, `convert_inventory_category_to_multi` — no cardinality check, category
+stays optional same as always) — every `mat-select` that picks it (the create form, `ModalTableComponent`'s
+edit flow, Inventory's own filter panel, and Bulk reassign's category field) is `multiple` now, and
+`InventoryItem.category`/`toInventoryItem()` carry it as a plain `string[]` throughout (`row.category
+?? []`, never null to a template). Inventory's own category filter matches an item with *any* of the
+selected categories (`item.category.some(...)`); Bulk reassign's category field *replaces* each
+selected item's whole category list (same replace-not-merge semantics physical location already has),
+with an empty selection meaning "clear it" rather than a separate "(None)" option, which a multi-select
+has no clean way to combine with real choices. CSV export/import represent a multi-value cell as a
+semicolon-separated list (`item.category.join('; ')` / split-and-trim on import) rather than a comma,
+since a comma is already CSV's own column delimiter. `manage/reports`' category breakdown
+(`valueByCategory`, `discardsByCategory`, `retirementRateByCategory`) credits an item's full
+value/quantity/count to *every* one of its categories rather than splitting it between them — the
+same "every selected value gets full credit" approach discard reasons' own multi-select already
+established, so a category's own number stays accurate for everything tagged with it even though
+category totals can now exceed the org's real total.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -4858,6 +4876,12 @@ yet on a hard refresh of `/inventory`.
   was untouched throughout, since that write was never part of the additive-`SELECT`-policy problem,
   and `platform_action_log`'s own policy was never affected either, having no org-scoped sibling
   policy to leak through in the first place.
+- `convert_inventory_category_to_multi` — `alter column category type text[] using case when
+  category is null then null else array[category] end`, backing the multi-category feature
+  described in the Project Overview section above. No RLS/grant changes needed — category has
+  never had its own check constraint or column-scoped grant, so a plain type change is enough; no
+  server-side function reads or writes this column's value, only its name (e.g. the plain column
+  grant list `add_inventory_item_retirement` already established), so nothing else needed updating.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power
