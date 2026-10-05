@@ -56,8 +56,15 @@ export class SupplierFormModalComponent {
   // SupplierService.create()/update() already refresh its own suppliers
   // signal on success, so ManageSuppliersComponent's list is current the
   // moment this modal closes — closing with a plain `true` is enough to
-  // tell the caller a save happened (e.g. to show a toast), not a copy of
-  // the record itself.
+  // tell that caller a save happened (e.g. to show a toast), not a copy of
+  // the record itself. A caller that opened this modal to inline-add a
+  // supplier from the item create/edit forms (see ManageInventoryComponent/
+  // ModalTableComponent's own "+ Add supplier" button) needs the new row's
+  // id instead, to auto-select it — rather than widening create()'s own
+  // string-error-only return shape, look the new row up by name (unique
+  // per org, and already reloaded into suppliers() by create() itself) and
+  // close with its id when there is one, falling back to `true` either way
+  // (editing, or the unlikely case the lookup somehow comes up empty).
   async save() {
     if (this.isSaving) {
       return;
@@ -82,7 +89,12 @@ export class SupplierFormModalComponent {
       return;
     }
 
-    this.dialogRef.close(true);
+    if (this.data.supplier) {
+      this.dialogRef.close(true);
+      return;
+    }
+    const created = this.supplierService.suppliers().find(supplier => supplier.name === value.name.trim());
+    this.dialogRef.close(created?.id ?? true);
   }
 
   cancel() {

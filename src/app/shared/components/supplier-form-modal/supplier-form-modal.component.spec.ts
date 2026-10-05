@@ -81,6 +81,39 @@ describe('SupplierFormModalComponent', () => {
     expect(component.error).toBeNull();
   });
 
+  it('closes with the newly created supplier\'s id when it resolves in the refreshed list', async () => {
+    const created: Supplier = {
+      id: 'supplier-new',
+      name: 'New Supplier Co.',
+      contactName: '',
+      email: '',
+      phone: '',
+      website: '',
+      notes: ''
+    };
+    supplierService = createFakeSupplierService([created]);
+    dialogRef = createFakeMatDialogRef() as unknown as MatDialogRef<SupplierFormModalComponent>;
+    await TestBed.configureTestingModule({
+      imports: [SupplierFormModalComponent],
+      providers: [
+        { provide: SupplierService, useValue: supplierService },
+        { provide: MatDialogRef, useValue: dialogRef },
+        { provide: MAT_DIALOG_DATA, useValue: {} }
+      ]
+    }).compileComponents();
+    fixture = TestBed.createComponent(SupplierFormModalComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    spyOn(supplierService, 'create').and.resolveTo(null);
+    const closeSpy = spyOn(dialogRef, 'close');
+
+    component.form.controls.name.setValue('New Supplier Co.');
+    await component.save();
+
+    expect(closeSpy).toHaveBeenCalledWith('supplier-new');
+  });
+
   it('updates an existing supplier rather than creating one when editing', async () => {
     const supplier: Supplier = {
       id: 'supplier-1',

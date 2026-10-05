@@ -380,6 +380,41 @@ describe('SiteSettingsService', () => {
     });
   });
 
+  describe('updateAllowInlineFieldCreation()', () => {
+    it('refuses when signed out', async () => {
+      const { service, upsertSpy } = setup({}, { profile: null });
+
+      const error = await service.updateAllowInlineFieldCreation(true);
+
+      expect(error).toContain('signed in');
+      expect(upsertSpy).not.toHaveBeenCalled();
+    });
+
+    it('upserts the new value and updates the signal', async () => {
+      const profile = createFakeProfile({ organization_id: 'org-1' });
+      const { service, upsertSpy } = setup({}, { profile });
+
+      const error = await service.updateAllowInlineFieldCreation(true);
+
+      expect(error).toBeNull();
+      expect(service.allowInlineFieldCreation()).toBe(true);
+      expect(upsertSpy).toHaveBeenCalledWith(
+        jasmine.objectContaining({ organization_id: 'org-1', allow_inline_field_creation: true }),
+        { onConflict: 'organization_id' }
+      );
+    });
+
+    it('returns the error message and leaves the signal untouched on failure', async () => {
+      const profile = createFakeProfile();
+      const { service } = setup({ upsertError: { message: 'nope' } }, { profile });
+
+      const error = await service.updateAllowInlineFieldCreation(true);
+
+      expect(error).toBe('nope');
+      expect(service.allowInlineFieldCreation()).toBe(false);
+    });
+  });
+
   describe('updateEmailNotifications()', () => {
     const settings = {
       taskAssigned: false,

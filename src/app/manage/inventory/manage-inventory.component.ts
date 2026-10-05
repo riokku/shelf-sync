@@ -31,6 +31,9 @@ import { BulkActionToolbarComponent } from '../../shared/components/bulk-action-
 import { HelpTooltipComponent } from '../../shared/components/help-tooltip/help-tooltip.component';
 import { ImportInventoryModalComponent } from '../../shared/components/import-inventory-modal/import-inventory-modal.component';
 import { BulkAddContainersModalComponent, BulkAddContainersModalResult } from '../../shared/components/bulk-add-containers-modal/bulk-add-containers-modal.component';
+import { AddFieldOptionModalComponent } from '../../shared/components/add-field-option-modal/add-field-option-modal.component';
+import { SupplierFormModalComponent } from '../../shared/components/supplier-form-modal/supplier-form-modal.component';
+import { ItemCreatedModalComponent } from '../../shared/components/item-created-modal/item-created-modal.component';
 import { Database } from '../../shared/models/database.types';
 import { ActivityLogEntry, InventoryItem, MAX_INVENTORY_ITEM_IMAGES } from '../../shared/models/inventory-item.model';
 import { toIsoDateString } from '../../shared/utils/date';
@@ -886,6 +889,62 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
     });
   }
 
+  /** Only rendered while siteSettings.allowInlineFieldCreation() is on (see
+   *  that signal's own doc comment) — opens the same small dialog
+   *  ModalTableComponent's own edit flow uses, then appends the newly added
+   *  value onto the category multi-select rather than replacing whatever
+   *  was already picked. */
+  addNewCategory() {
+    const dialogRef = this.dialog.open(AddFieldOptionModalComponent, {
+      data: { field: 'category', label: 'category' },
+      width: 'clamp(20rem, 40vw, 28rem)',
+      maxWidth: '90vw'
+    });
+
+    dialogRef.afterClosed().subscribe((value: string | undefined) => {
+      if (!value) {
+        return;
+      }
+      const current = this.inventoryForm.controls.category.value;
+      if (!current.includes(value)) {
+        this.inventoryForm.controls.category.setValue([...current, value]);
+      }
+    });
+  }
+
+  addNewPhysicalLocation() {
+    const dialogRef = this.dialog.open(AddFieldOptionModalComponent, {
+      data: { field: 'physical_location', label: 'physical location' },
+      width: 'clamp(20rem, 40vw, 28rem)',
+      maxWidth: '90vw'
+    });
+
+    dialogRef.afterClosed().subscribe((value: string | undefined) => {
+      if (value) {
+        this.inventoryForm.controls.physicalLocation.setValue(value);
+      }
+    });
+  }
+
+  /** SupplierFormModalComponent is the normal "add supplier" popup
+   *  (manage/suppliers' own add button opens the same component) — reused
+   *  here rather than a second, cut-down form. It closes with the newly
+   *  created supplier's id on success (see its own doc comment), which is
+   *  selected into the form directly. */
+  addNewSupplier() {
+    const dialogRef = this.dialog.open(SupplierFormModalComponent, {
+      data: {},
+      width: 'clamp(26rem, 45vw, 32rem)',
+      maxWidth: '90vw'
+    });
+
+    dialogRef.afterClosed().subscribe((result: string | boolean | undefined) => {
+      if (typeof result === 'string') {
+        this.inventoryForm.controls.supplierId.setValue(result);
+      }
+    });
+  }
+
   onImagesSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     const files = Array.from(input.files ?? []);
@@ -1015,11 +1074,28 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
     }
 
     this.isSavingItem = false;
-    this.notification.success('Item created');
     this.inventoryFormDirective.resetForm();
     this.trackingMode = 'single';
     this.newContainers = [];
     this.clearSelectedImages();
     await this.loadInventoryItems();
+
+    // Replaces the old plain success toast — a toast gives no way to act
+    // on "what next," while the two things someone's actually likely to
+    // want right after creating an item (make another, or go see it in the
+    // full list) are exactly this dialog's two buttons. The form above is
+    // already reset regardless of which one is chosen, so "Add another
+    // item" just means staying put on an already-blank form.
+    const dialogRef = this.dialog.open(ItemCreatedModalComponent, {
+      data: { itemName: inserted.name },
+      width: 'clamp(22rem, 40vw, 28rem)',
+      maxWidth: '90vw'
+    });
+
+    dialogRef.afterClosed().subscribe((choice: 'view' | undefined) => {
+      if (choice === 'view') {
+        this.router.navigate(['/inventory']);
+      }
+    });
   }
 }

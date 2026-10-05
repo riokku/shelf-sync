@@ -144,7 +144,7 @@ export function createFakeSiteSettingsService(overrides: Partial<{
   requireRetirementApproval: boolean;
   requireMfaForAll: boolean;
   bulkEditFeatureEnabled: boolean;
-  restrictPriceSupplierEdits: boolean;
+  allowInlineFieldCreation: boolean;
   notifyTaskAssigned: boolean;
   notifyTaskTransfer: boolean;
   notifyRetirementRequest: boolean;
@@ -159,7 +159,7 @@ export function createFakeSiteSettingsService(overrides: Partial<{
     requireRetirementApproval: signal(overrides.requireRetirementApproval ?? true).asReadonly(),
     requireMfaForAll: signal(overrides.requireMfaForAll ?? false).asReadonly(),
     bulkEditFeatureEnabled: signal(overrides.bulkEditFeatureEnabled ?? true).asReadonly(),
-    restrictPriceSupplierEdits: signal(overrides.restrictPriceSupplierEdits ?? false).asReadonly(),
+    allowInlineFieldCreation: signal(overrides.allowInlineFieldCreation ?? false).asReadonly(),
     notifyTaskAssigned: signal(overrides.notifyTaskAssigned ?? true).asReadonly(),
     notifyTaskTransfer: signal(overrides.notifyTaskTransfer ?? true).asReadonly(),
     notifyRetirementRequest: signal(overrides.notifyRetirementRequest ?? true).asReadonly(),
@@ -175,7 +175,7 @@ export function createFakeSiteSettingsService(overrides: Partial<{
     updateRequireRetirementApproval: async () => null,
     updateRequireMfaForAll: async () => null,
     updateBulkEditFeatureEnabled: async () => null,
-    updateRestrictPriceSupplierEdits: async () => null,
+    updateAllowInlineFieldCreation: async () => null,
     updateEmailNotifications: async () => null,
     loadLogoUrlForOrganization: async () => null,
   };

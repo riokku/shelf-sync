@@ -1492,6 +1492,7 @@ export type Database = {
       }
       site_settings: {
         Row: {
+          allow_inline_field_creation: boolean
           bulk_edit_enabled: boolean
           id: string
           inventory_form_fields: string[]
@@ -1505,12 +1506,12 @@ export type Database = {
           organization_id: string
           require_mfa_for_all: boolean
           require_retirement_approval: boolean
-          restrict_price_supplier_edits: boolean
           theme: string
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          allow_inline_field_creation?: boolean
           bulk_edit_enabled?: boolean
           id?: string
           inventory_form_fields?: string[]
@@ -1524,12 +1525,12 @@ export type Database = {
           organization_id: string
           require_mfa_for_all?: boolean
           require_retirement_approval?: boolean
-          restrict_price_supplier_edits?: boolean
           theme?: string
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
+          allow_inline_field_creation?: boolean
           bulk_edit_enabled?: boolean
           id?: string
           inventory_form_fields?: string[]
@@ -1543,7 +1544,6 @@ export type Database = {
           organization_id?: string
           require_mfa_for_all?: boolean
           require_retirement_approval?: boolean
-          restrict_price_supplier_edits?: boolean
           theme?: string
           updated_at?: string
           updated_by?: string | null
