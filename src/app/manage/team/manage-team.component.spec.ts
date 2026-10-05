@@ -648,7 +648,7 @@ describe('ManageTeamComponent bulk membership actions', () => {
       (component as unknown as { billingService: BillingService }).billingService = createFakeBillingService({
         tier: 'free', status: 'active', currentPeriodEnd: null, cancelAtPeriodEnd: false
       });
-      component.teamMembers = Array.from({ length: 3 }, (_, i) => ({ profile: createFakeProfile({ id: `member-${i}` }), tasks: [] }));
+      component.teamMembers = Array.from({ length: 8 }, (_, i) => ({ profile: createFakeProfile({ id: `member-${i}` }), tasks: [] }));
       component.pendingMembers = [createFakeProfile({ id: '1' }), createFakeProfile({ id: '2' })];
       component.selectedPendingMemberIds = new Set(['1', '2']);
 
@@ -660,13 +660,13 @@ describe('ManageTeamComponent bulk membership actions', () => {
   });
 
   describe('approveMember() plan member limit', () => {
-    it('is blocked once the org is already at its plan\'s team member limit (Free: 3), without calling the RPC', async () => {
+    it('is blocked once the org is already at its plan\'s team member limit (Free: 8), without calling the RPC', async () => {
       const { service, rpcCalls } = createBulkMembershipFakeSupabaseService();
       const component = await createComponent(service);
       (component as unknown as { billingService: BillingService }).billingService = createFakeBillingService({
         tier: 'free', status: 'active', currentPeriodEnd: null, cancelAtPeriodEnd: false
       });
-      component.teamMembers = Array.from({ length: 3 }, (_, i) => ({ profile: createFakeProfile({ id: `member-${i}` }), tasks: [] }));
+      component.teamMembers = Array.from({ length: 8 }, (_, i) => ({ profile: createFakeProfile({ id: `member-${i}` }), tasks: [] }));
 
       await component.approveMember(createFakeProfile({ id: 'pending-1' }));
 
