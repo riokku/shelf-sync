@@ -1,0 +1,62 @@
+<h2 mat-dialog-title>Set up two-factor authentication</h2>
+<mat-dialog-content>
+  @if (isLoading) {
+    <div class="loading-row">
+      <mat-spinner diameter="32"></mat-spinner>
+      <p>Starting setup…</p>
+    </div>
+  } @else if (!enrollment) {
+    <p class="error-message" role="alert">{{ errorMessage }}</p>
+  } @else {
+    <p class="setup-instructions">
+      Scan this code with an authenticator app (Google Authenticator, Authy, 1Password, etc.), then
+      enter the 6-digit code it shows you.
+    </p>
+
+    @if (qrDataUrl) {
+      <div class="qr-row">
+        <img [src]="qrDataUrl" alt="Two-factor authentication QR code" class="qr-code" />
+      </div>
+    }
+
+    <p class="manual-entry-label">Can't scan it? Enter this code manually instead:</p>
+    <p class="manual-secret mono">{{ enrollment.secret }}</p>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>6-digit code</mat-label>
+      <mat-icon matPrefix>pin</mat-icon>
+      <input
+        matInput
+        inputmode="numeric"
+        autocomplete="one-time-code"
+        maxlength="6"
+        [formControl]="codeControl"
+        (keydown.enter)="confirm()"
+      />
+      @if (codeControl.hasError('required') && codeControl.touched) {
+        <mat-error>Enter the 6-digit code from your authenticator app.</mat-error>
+      } @else if (codeControl.hasError('pattern') && codeControl.touched) {
+        <mat-error>That doesn't look like a 6-digit code.</mat-error>
+      }
+    </mat-form-field>
+
+    @if (errorMessage) {
+      <p class="error-message" role="alert">{{ errorMessage }}</p>
+    }
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="cancel()">Cancel</button>
+  @if (enrollment) {
+    <button mat-flat-button color="primary" type="button" (click)="confirm()" [disabled]="isSubmitting">
+      @if (isSubmitting) {
+        <mat-spinner diameter="20"></mat-spinner>
+      } @else {
+        <ng-container>
+          <mat-icon>verified_user</mat-icon>
+          Verify &amp; enable
+        </ng-container>
+      }
+    </button>
+  }
+</mat-dialog-actions>

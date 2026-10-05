@@ -109,6 +109,16 @@ const routes: Routes = [
     title: 'ShelfSync | Pending approval'
   },
   {
+    path: 'mfa-verify',
+    loadComponent: () => import('./mfa-verify/mfa-verify.component').then(m => m.MfaVerifyComponent),
+    // Same reasoning as pending-approval just above — plain authGuard, not
+    // approvedGuard, since approvedGuard is what redirects *to* this route
+    // in the first place (see its own doc comment) and would just bounce it
+    // back to itself.
+    canActivate: [authGuard],
+    title: 'ShelfSync | Verify it\'s you'
+  },
+  {
     path: 'inventory',
     loadComponent: () => import('./inventory/inventory.component').then(m => m.InventoryComponent),
     canActivate: [approvedGuard],

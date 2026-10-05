@@ -1,0 +1,86 @@
+.saved-views-bar{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.saved-views-label{
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.saved-view-chip{
+  display: inline-flex;
+  align-items: stretch;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: var(--mat-sys-surface-container-high);
+  border: 1px solid var(--mat-sys-outline-variant);
+
+  &.is-active{
+    background: var(--mat-sys-primary-container);
+    border-color: transparent;
+
+    .saved-view-chip-apply{
+      color: var(--mat-sys-on-primary-container);
+    }
+  }
+}
+
+.saved-view-chip-apply{
+  border: none;
+  background: none;
+  padding: 0.3rem 0.25rem 0.3rem 0.75rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--mat-sys-on-surface);
+  cursor: pointer;
+
+  &:hover{
+    text-decoration: underline;
+  }
+
+  &:focus-visible{
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: -2px;
+  }
+}
+
+.saved-view-chip-remove{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  padding: 0 0.5rem;
+  cursor: pointer;
+  color: var(--mat-sys-on-surface-variant);
+
+  mat-icon{
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+
+  &:hover{
+    color: var(--app-error-text);
+  }
+
+  &:focus-visible{
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: -2px;
+  }
+}
+
+.saved-view-name-form{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.saved-view-name-field{
+  width: 22rem;
+}

@@ -110,28 +110,28 @@
             <div class="page-hero-pulse-chip studio-hero-pulse-chip studio-hero-pulse-chip-cyan">
               <mat-icon>apartment</mat-icon>
               <span>
-                <span class="page-hero-pulse-value mono">{{ loadError ? '—' : totalOrgCount }}</span>
+                <span class="page-hero-pulse-value mono" [appCountUp]="loadError ? null : totalOrgCount"></span>
                 <span class="page-hero-pulse-label">Organizations</span>
               </span>
             </div>
             <div class="page-hero-pulse-chip studio-hero-pulse-chip studio-hero-pulse-chip-green">
               <mat-icon>trending_up</mat-icon>
               <span>
-                <span class="page-hero-pulse-value mono">{{ loadError ? '—' : newOrgCount }}</span>
+                <span class="page-hero-pulse-value mono" [appCountUp]="loadError ? null : newOrgCount"></span>
                 <span class="page-hero-pulse-label">New this week</span>
               </span>
             </div>
             <div class="page-hero-pulse-chip studio-hero-pulse-chip studio-hero-pulse-chip-amber">
               <mat-icon>feedback</mat-icon>
               <span>
-                <span class="page-hero-pulse-value mono">{{ loadError ? '—' : newFeedbackCount }}</span>
+                <span class="page-hero-pulse-value mono" [appCountUp]="loadError ? null : newFeedbackCount"></span>
                 <span class="page-hero-pulse-label">Open feedback</span>
               </span>
             </div>
             <div class="page-hero-pulse-chip studio-hero-pulse-chip studio-hero-pulse-chip-red">
               <mat-icon>bug_report</mat-icon>
               <span>
-                <span class="page-hero-pulse-value mono">{{ loadError ? '—' : recentErrorCount }}</span>
+                <span class="page-hero-pulse-value mono" [appCountUp]="loadError ? null : recentErrorCount"></span>
                 <span class="page-hero-pulse-label">Errors (24h)</span>
               </span>
             </div>

@@ -11,12 +11,17 @@ describe('StudioComponent', () => {
   let fixture: ComponentFixture<StudioComponent>;
 
   async function createComponent(count: number) {
+    // loadPendingBadge() now reads platform_list_feedback()'s own returned
+    // row array's .length (see add_platform_cross_org_read_rpcs' own doc
+    // comment for why this moved off a `head: true, count: 'exact'` style
+    // query) — the fake needs `count` real (if empty) rows, not just a
+    // separate `count` field the new code never reads.
     await TestBed.configureTestingModule({
       imports: [StudioComponent],
       providers: [
         provideRouter([]),
         { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ is_platform_admin: true })) },
-        { provide: SupabaseService, useValue: createFakeSupabaseService({ data: [], count, error: null }) }
+        { provide: SupabaseService, useValue: createFakeSupabaseService({ data: Array(count).fill({}), count, error: null }) }
       ]
     })
     .compileComponents();
@@ -54,7 +59,12 @@ function createFakeSupabaseServiceWithReleaseNotes(postedDates: string[]): Supab
       from: (table: string) =>
         table === 'release_notes'
           ? createFakeQueryBuilder({ data: postedDates.map(posted_at => ({ posted_at })), error: null })
-          : createFakeQueryBuilder({ data: [], count: 0, error: null })
+          : createFakeQueryBuilder({ data: [], count: 0, error: null }),
+      // loadStats()/loadPendingBadge() read profiles/feedback/client_error_log
+      // via an RPC now (see add_platform_cross_org_read_rpcs' own doc
+      // comment) — this fake only cares about release_notes, so every RPC
+      // just succeeds emptily.
+      rpc: jasmine.createSpy('rpc').and.resolveTo({ data: [], error: null })
     }
   };
   return fake as unknown as SupabaseService;
@@ -90,10 +100,12 @@ describe('StudioComponent unseenReleaseNotesCount', () => {
   });
 });
 
-/** Table-aware — unlike the shared createFakeSupabaseService() above (one
- *  canned count reused everywhere), the dashboard stats need
- *  organizations/profiles/client_error_log told apart from feedback and
- *  from each other. */
+/** Table/RPC-aware — unlike the shared createFakeSupabaseService() above
+ *  (one canned result reused everywhere), the dashboard stats need
+ *  organizations told apart from feedback/profiles/client_error_log (the
+ *  latter three read via platform_list_feedback()/platform_list_profiles()/
+ *  platform_list_client_errors() now — see add_platform_cross_org_read_rpcs'
+ *  own doc comment — rather than a plain `.from(table).select()`). */
 function createFakeSupabaseServiceForStats(counts: {
   feedback: number;
   organizations: number;
@@ -115,9 +127,6 @@ function createFakeSupabaseServiceForStats(counts: {
   const fake = {
     client: {
       from: (table: string) => {
-        if (table === 'feedback') {
-          return builderFor(counts.feedback);
-        }
         if (table === 'organizations') {
           // totalOrgCount (deleted_at is null), newOrgCount (created_at
           // within the last week), and orgSignupTrend's own
@@ -128,17 +137,20 @@ function createFakeSupabaseServiceForStats(counts: {
           // stat in this app's specs uses.
           return builderFor(counts.organizations, counts.orgCreatedAtRows ?? []);
         }
-        if (table === 'profiles') {
-          // Only ever hit for userSignupTrend's own created_at-only query
-          // now — StudioComponent no longer queries an approved-member
-          // count, so the count half of this pair goes unread.
-          return builderFor(0, counts.profileCreatedAtRows ?? []);
-        }
-        if (table === 'client_error_log') {
-          return builderFor(counts.errorRows.length, counts.errorRows);
-        }
         return builderFor(0);
-      }
+      },
+      rpc: jasmine.createSpy('rpc').and.callFake((fn: string) => {
+        if (fn === 'platform_list_feedback') {
+          return Promise.resolve({ data: Array(counts.feedback).fill({}), error: null });
+        }
+        if (fn === 'platform_list_client_errors') {
+          return Promise.resolve({ data: counts.errorRows, error: null });
+        }
+        // platform_list_profiles() — only ever hit for userSignupTrend's
+        // own created_at rows now; StudioComponent no longer queries an
+        // approved-member count.
+        return Promise.resolve({ data: counts.profileCreatedAtRows ?? [], error: null });
+      })
     }
   };
   return fake as unknown as SupabaseService;
@@ -240,7 +252,12 @@ function createFakeSupabaseServiceFailingOrgsOnce(): SupabaseService {
             : builder({ data: [], count: 12, error: null });
         }
         return builder({ data: [], count: 0, error: null });
-      }
+      },
+      // feedback/profiles/client_error_log all read via an RPC now (see
+      // add_platform_cross_org_read_rpcs' own doc comment) — this fake only
+      // cares about the organizations query failing, so every RPC just
+      // succeeds emptily, same as the from() fallback above.
+      rpc: jasmine.createSpy('rpc').and.resolveTo({ data: [], error: null })
     }
   };
   return fake as unknown as SupabaseService;

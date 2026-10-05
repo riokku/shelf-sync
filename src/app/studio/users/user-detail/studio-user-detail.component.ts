@@ -231,7 +231,12 @@ export class StudioUserDetailComponent implements OnInit {
     this.loadError = null;
     this.notFound = false;
 
-    const { data: profile, error } = await this.supabase.from('profiles').select('*').eq('id', id).maybeSingle();
+    // platform_list_profiles() — see add_platform_cross_org_read_rpcs' own
+    // doc comment for why every cross-org profiles read on this page goes
+    // through a SECURITY DEFINER RPC now rather than a plain
+    // `.from('profiles').select()` relying on a blanket permissive policy.
+    const { data: profileRows, error } = await this.supabase.rpc('platform_list_profiles', { p_ids: [id] });
+    const profile = profileRows?.[0] ?? null;
 
     if (error) {
       this.loadError = error.message;
@@ -253,12 +258,8 @@ export class StudioUserDetailComponent implements OnInit {
     this.organization = organization;
 
     if (profile.account_locked_by) {
-      const { data: locker } = await this.supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', profile.account_locked_by)
-        .maybeSingle();
-      this.lockedByName = locker ? profileDisplayName(locker) : null;
+      const { data: lockers } = await this.supabase.rpc('platform_list_profiles', { p_ids: [profile.account_locked_by] });
+      this.lockedByName = lockers?.[0] ? profileDisplayName(lockers[0]) : null;
     } else {
       this.lockedByName = null;
     }
@@ -294,7 +295,7 @@ export class StudioUserDetailComponent implements OnInit {
       ].filter((personId): personId is string => !!personId))
     ];
     if (peopleIds.length > 0) {
-      const { data: people } = await this.supabase.from('profiles').select('*').in('id', peopleIds);
+      const { data: people } = await this.supabase.rpc('platform_list_profiles', { p_ids: peopleIds });
       this.peopleNamesById = new Map((people ?? []).map(person => [person.id, profileDisplayName(person)]));
     }
 

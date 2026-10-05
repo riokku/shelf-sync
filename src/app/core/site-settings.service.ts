@@ -32,6 +32,21 @@ export class SiteSettingsService {
   private readonly _requireRetirementApproval = signal(true);
   readonly requireRetirementApproval = this._requireRetirementApproval.asReadonly();
 
+  // Org-wide "require two-factor authentication" toggle (Settings >
+  // Workflow's "Security" card) — off by default, preserving every existing
+  // org's opt-in-only two-factor behavior. Loaded here alongside every other
+  // site_settings field for the same single-source-of-truth reasons, but
+  // this signal is NOT what approvedGuard/LoginComponent/AccountComponent
+  // actually check to decide whether *this* caller is being required to
+  // enroll — see MfaService.isRequiredOrgWide()'s own doc comment for why
+  // that has to go through a SECURITY DEFINER RPC instead of this plain,
+  // RLS-scoped read (an unenrolled caller in a requiring org may not even be
+  // able to read this row). This signal is still correct for the one place
+  // that does read it safely: an admin who's already past that gate,
+  // viewing/editing the setting itself on the Settings page.
+  private readonly _requireMfaForAll = signal(false);
+  readonly requireMfaForAll = this._requireMfaForAll.asReadonly();
+
   // Org-wide kill switch for the Inventory page's "Bulk edit" feature (see
   // Settings > Workflow), not to be confused with InventoryComponent's own
   // per-session bulkEditEnabled field (whether *this visit* currently has
@@ -78,6 +93,7 @@ export class SiteSettingsService {
       this._inventoryTableColumns.set(DEFAULT_INVENTORY_TABLE_COLUMNS);
       this._inventoryFormFields.set(DEFAULT_INVENTORY_FORM_FIELDS);
       this._requireRetirementApproval.set(true);
+      this._requireMfaForAll.set(false);
       this._bulkEditFeatureEnabled.set(true);
       this._restrictPriceSupplierEdits.set(false);
       this._notifyTaskAssigned.set(true);
@@ -103,6 +119,7 @@ export class SiteSettingsService {
       (data?.inventory_form_fields as InventoryFormFieldKey[] | undefined) ?? DEFAULT_INVENTORY_FORM_FIELDS
     );
     this._requireRetirementApproval.set(data?.require_retirement_approval ?? true);
+    this._requireMfaForAll.set(data?.require_mfa_for_all ?? false);
     this._bulkEditFeatureEnabled.set(data?.bulk_edit_enabled ?? true);
     this._restrictPriceSupplierEdits.set(data?.restrict_price_supplier_edits ?? false);
     this._notifyTaskAssigned.set(data?.notify_task_assigned ?? true);
@@ -226,6 +243,28 @@ export class SiteSettingsService {
     }
 
     this._requireRetirementApproval.set(required);
+    return null;
+  }
+
+  async updateRequireMfaForAll(required: boolean): Promise<string | null> {
+    const session = await this.authService.getSession();
+    const organizationId = this.authService.organizationId();
+    if (!session || !organizationId) {
+      return 'You must be signed in to update this setting.';
+    }
+
+    const { error } = await this.supabase
+      .from('site_settings')
+      .upsert(
+        { organization_id: organizationId, require_mfa_for_all: required, updated_by: session.user.id },
+        { onConflict: 'organization_id' }
+      );
+
+    if (error) {
+      return error.message;
+    }
+
+    this._requireMfaForAll.set(required);
     return null;
   }
 

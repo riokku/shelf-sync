@@ -1,0 +1,57 @@
+<h2 mat-dialog-title>Save your recovery codes</h2>
+<mat-dialog-content>
+  @if (isLoading) {
+    <div class="loading-row">
+      <mat-spinner diameter="32"></mat-spinner>
+      <p>Generating codes…</p>
+    </div>
+  } @else if (!codes) {
+    <p class="error-message" role="alert">{{ errorMessage }}</p>
+  } @else {
+    <p class="recovery-codes-instructions">
+      If you lose access to your authenticator app, use one of these codes to get back into your
+      account instead. Each code works <strong>once</strong>. Generating a new set of codes (from
+      your Account page) makes these ones stop working, and you won't be able to see them again
+      after you close this window — store them somewhere safe, like a password manager.
+    </p>
+
+    <ul class="recovery-codes-list">
+      @for (code of codes; track code) {
+        <li class="mono">{{ formatCode(code) }}</li>
+      }
+    </ul>
+
+    <div class="recovery-codes-actions">
+      <button mat-stroked-button type="button" (click)="copyAll()">
+        <mat-icon>{{ copied ? 'check' : 'content_copy' }}</mat-icon>
+        {{ copied ? 'Copied' : 'Copy all' }}
+      </button>
+      <button mat-stroked-button type="button" (click)="download()">
+        <mat-icon>download</mat-icon>
+        Download as text file
+      </button>
+    </div>
+
+    <mat-checkbox [(ngModel)]="confirmedSaved">I've saved these codes somewhere safe</mat-checkbox>
+
+    @if (errorMessage) {
+      <p class="error-message" role="alert">{{ errorMessage }}</p>
+    }
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  @if (codes) {
+    <button
+        mat-flat-button
+        color="primary"
+        type="button"
+        [disabled]="!confirmedSaved"
+        [matTooltip]="!confirmedSaved ? 'Confirm you\'ve saved these codes first' : ''"
+        (click)="close()"
+      >
+      Done
+    </button>
+  } @else {
+    <button mat-button type="button" (click)="cancel()">Close</button>
+  }
+</mat-dialog-actions>

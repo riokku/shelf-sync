@@ -260,18 +260,27 @@ export class StudioOrgDetailComponent implements OnInit {
     }
     this.organization = organization;
 
+    // platform_list_profiles()/platform_list_feedback()/platform_list_client_errors()
+    // — see add_platform_cross_org_read_rpcs' own doc comment for why every
+    // cross-org read of these three tables in Studio goes through a
+    // SECURITY DEFINER RPC now rather than a plain `.from(table).select()`
+    // relying on a blanket permissive policy. Neither platform_list_feedback()
+    // nor platform_list_profiles() takes a limit param (feedback's own
+    // 5-row cap is applied client-side below instead) — client_error_log's
+    // does, since StudioErrorLogComponent's own 200-row cap already made
+    // that one worth pushing down to the database.
     const [{ data: members }, { data: feedback }, { data: errors }, { data: actions }, { data: usage }, logoUrl] = await Promise.all([
-      this.supabase.from('profiles').select('*').eq('organization_id', id).order('full_name'),
-      this.supabase.from('feedback').select('*').eq('organization_id', id).order('created_at', { ascending: false }).limit(5),
-      this.supabase.from('client_error_log').select('*').eq('organization_id', id).order('created_at', { ascending: false }).limit(5),
+      this.supabase.rpc('platform_list_profiles', { p_organization_id: id }),
+      this.supabase.rpc('platform_list_feedback', { p_organization_id: id }),
+      this.supabase.rpc('platform_list_client_errors', { p_organization_id: id, p_limit: 5 }),
       this.supabase.from('platform_action_log').select('*').eq('target_type', 'organization').eq('target_id', id)
         .order('created_at', { ascending: false }).limit(5),
       this.supabase.rpc('platform_get_organization_usage', { p_organization_id: id }),
       this.siteSettings.loadLogoUrlForOrganization(id)
     ]);
 
-    this.members = members ?? [];
-    this.recentFeedback = feedback ?? [];
+    this.members = (members ?? []).sort((a, b) => (a.full_name ?? '').localeCompare(b.full_name ?? ''));
+    this.recentFeedback = (feedback ?? []).slice(0, 5);
     this.recentErrors = errors ?? [];
     this.recentActions = actions ?? [];
     // Filtered server-side to just this one org, so at most one row comes
@@ -307,17 +316,13 @@ export class StudioOrgDetailComponent implements OnInit {
     // whole-platform view.
     const actorIds = [...new Set((actions ?? []).map(action => action.actor_id).filter((id): id is string => !!id))];
     if (actorIds.length > 0) {
-      const { data: actors } = await this.supabase.from('profiles').select('*').in('id', actorIds);
+      const { data: actors } = await this.supabase.rpc('platform_list_profiles', { p_ids: actorIds });
       this.actionActorNamesById = new Map((actors ?? []).map(actor => [actor.id, profileDisplayName(actor)]));
     }
 
     if (organization.suspended_by) {
-      const { data: suspender } = await this.supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', organization.suspended_by)
-        .maybeSingle();
-      this.suspendedByName = suspender ? profileDisplayName(suspender) : null;
+      const { data: suspenders } = await this.supabase.rpc('platform_list_profiles', { p_ids: [organization.suspended_by] });
+      this.suspendedByName = suspenders?.[0] ? profileDisplayName(suspenders[0]) : null;
     }
 
     this.isLoading = false;

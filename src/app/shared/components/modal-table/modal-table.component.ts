@@ -11,6 +11,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDatepickerModule } from '@angular/material/datepicker';
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { InventoryItem, MAX_INVENTORY_ITEM_IMAGES, isCheckoutOverdue, isLowStock, isOutOfStock } from '../../models/inventory-item.model';
 import { InventoryItemContainer } from '../../models/inventory-item-container.model';
 import { ImageGalleryComponent } from '../image-gallery/image-gallery.component';
@@ -102,6 +103,7 @@ const FIELD_LABELS: Record<string, string> = {
         MatSelectModule,
         MatProgressSpinnerModule,
         MatDatepickerModule,
+        DragDropModule,
         ImageGalleryComponent,
         UserAvatarComponent,
         PageHeaderComponent
@@ -314,6 +316,41 @@ export class ModalTableComponent implements OnInit, OnDestroy {
   newImageFiles: File[] = [];
   newImagePreviews: string[] = [];
   imageLimitError: string | null = null;
+  /** The id order existingImages started this edit session in — startEdit()
+   *  seeds it, imagesReordered below diffs the *current* order against it.
+   *  Newly staged (not-yet-uploaded) photos are deliberately out of scope
+   *  for drag reordering — they always append after the existing ones (see
+   *  uploadInventoryItemImages()'s own startPosition param), so there's
+   *  nothing to snapshot for them. */
+  private originalImageOrder: string[] = [];
+
+  /** True once a drag has actually changed the *relative* order of the
+   *  photos that will still exist after saving — comparing both sides with
+   *  removedImageIds filtered out the same way, so removing a photo (which
+   *  shifts every later index) never reads as a reorder on its own. */
+  get imagesReordered(): boolean {
+    const currentSurvivingOrder = this.existingImages
+      .filter(image => !this.removedImageIds.has(image.id))
+      .map(image => image.id);
+    const originalSurvivingOrder = this.originalImageOrder.filter(id => !this.removedImageIds.has(id));
+    return currentSurvivingOrder.some((id, index) => id !== originalSurvivingOrder[index]);
+  }
+
+  /** Drag-and-drop photo reordering — CdkDrag/CdkDropList rather than a
+   *  hand-rolled mouse-only implementation (this app's usual "hand-roll it"
+   *  preference is about avoiding a *charting/calendar* dependency, not
+   *  reimplementing a core interaction primitive Angular CDK already ships
+   *  and this app already depends on) — reordering existingImages in place
+   *  is enough to drive both the template's own display order and
+   *  imagesReordered's diff above; the actual position values are only
+   *  computed and written on Save (see saveImageChanges()). CDK's own drag-
+   *  drop already supports keyboard reordering out of the box (focus a
+   *  handle, Space to pick up, arrow keys to move, Space to drop — with its
+   *  own live-region announcements), so this needs no extra keyboard/a11y
+   *  work on top. */
+  onExistingImageDrop(event: CdkDragDrop<InventoryItemImageRecord[]>) {
+    moveItemInArray(this.existingImages, event.previousIndex, event.currentIndex);
+  }
 
   get remainingImageSlots(): number {
     const activeExisting = this.existingImages.length - this.removedImageIds.size;
@@ -936,6 +973,7 @@ export class ModalTableComponent implements OnInit, OnDestroy {
       this.supplierService.load()
     ]);
     this.existingImages = existingImages;
+    this.originalImageOrder = existingImages.map(image => image.id);
     this.orgProfiles = profiles ?? [];
     this.isEditing = true;
     this.itemEditPresence.startEditing(this.data.id);
@@ -966,6 +1004,7 @@ export class ModalTableComponent implements OnInit, OnDestroy {
       this.editForm.dirty
       || this.newImageFiles.length > 0
       || this.removedImageIds.size > 0
+      || this.imagesReordered
       || this.containersDirty
     );
   }
@@ -1199,6 +1238,39 @@ export class ModalTableComponent implements OnInit, OnDestroy {
       summaries.push(`removed ${this.removedImageIds.size} photo(s)`);
     }
 
+    // Reassigns dense 0..n-1 positions to whichever existing photos are
+    // still around, in their current (possibly drag-reordered) array order
+    // — only the *values* actually written matter for later `.order
+    // ('position')` reads, not any particular numbering scheme, so this
+    // doesn't need to know or preserve whatever positions were there
+    // before. Runs before the upload below on purpose, though the order
+    // wouldn't actually matter either way: a new upload's own position
+    // (uploadInventoryItemImages()'s startPosition, computed from a plain
+    // count) always lands after every surviving existing photo regardless
+    // of what values this loop just wrote.
+    if (this.imagesReordered) {
+      const survivingImages = this.existingImages.filter(image => !this.removedImageIds.has(image.id));
+      let reorderedAny = false;
+      for (let i = 0; i < survivingImages.length; i++) {
+        if (survivingImages[i].position === i) {
+          continue;
+        }
+        const { error } = await this.supabase.from('inventory_item_images').update({ position: i }).eq('id', survivingImages[i].id);
+        if (error) {
+          return { summary: summaries.length > 0 ? summaries.join(', ') : null, error: `Failed to reorder photos: ${error.message}` };
+        }
+        reorderedAny = true;
+      }
+      // Only claimed if a write actually happened — e.g. a retry after a
+      // later step (upload) failed on a previous attempt would otherwise
+      // re-report "reordered photos" for an order that was already
+      // persisted and needs no further writes this time (every position
+      // already matches, so the loop above no-ops).
+      if (reorderedAny) {
+        summaries.push('reordered photos');
+      }
+    }
+
     if (this.newImageFiles.length > 0) {
       const remainingExistingCount = this.existingImages.length - this.removedImageIds.size;
       const uploadError = await uploadInventoryItemImages(this.supabase, this.data.id, this.newImageFiles, remainingExistingCount);
@@ -1210,6 +1282,7 @@ export class ModalTableComponent implements OnInit, OnDestroy {
 
     if (summaries.length > 0) {
       this.existingImages = await loadInventoryItemImageRecords(this.supabase, this.data.id);
+      this.originalImageOrder = this.existingImages.map(image => image.id);
       const urls = this.existingImages.map(record => record.url);
       this.data.images = urls;
       this.data.image = urls[0] ?? '';

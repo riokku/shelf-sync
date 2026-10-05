@@ -101,6 +101,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
   isSavingRequireRetirementApproval = false;
   requireRetirementApprovalError: string | null = null;
 
+  selectedRequireMfaForAll = this.siteSettings.requireMfaForAll();
+  isSavingRequireMfaForAll = false;
+  requireMfaForAllError: string | null = null;
+
   selectedBulkEditFeatureEnabled = this.siteSettings.bulkEditFeatureEnabled();
   isSavingBulkEditFeatureEnabled = false;
   bulkEditFeatureEnabledError: string | null = null;
@@ -152,6 +156,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   get requireRetirementApprovalChanged(): boolean {
     return this.selectedRequireRetirementApproval !== this.siteSettings.requireRetirementApproval();
+  }
+
+  get requireMfaForAllChanged(): boolean {
+    return this.selectedRequireMfaForAll !== this.siteSettings.requireMfaForAll();
   }
 
   get bulkEditFeatureEnabledChanged(): boolean {
@@ -267,6 +275,28 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
     if (error) {
       this.requireRetirementApprovalError = error;
+      return;
+    }
+    this.notification.success('Saved for everyone');
+  }
+
+  toggleRequireMfaForAll(required: boolean) {
+    this.selectedRequireMfaForAll = required;
+  }
+
+  async saveRequireMfaForAll() {
+    if (this.isSavingRequireMfaForAll) {
+      return;
+    }
+
+    this.isSavingRequireMfaForAll = true;
+    this.requireMfaForAllError = null;
+
+    const error = await this.siteSettings.updateRequireMfaForAll(this.selectedRequireMfaForAll);
+    this.isSavingRequireMfaForAll = false;
+
+    if (error) {
+      this.requireMfaForAllError = error;
       return;
     }
     this.notification.success('Saved for everyone');

@@ -342,6 +342,58 @@ describe('SettingsComponent', () => {
     });
   });
 
+  describe('workflow (require two-factor for everyone)', () => {
+    it('initializes selectedRequireMfaForAll from the persisted setting (off by default)', () => {
+      expect(component.selectedRequireMfaForAll).toBe(false);
+    });
+
+    it('toggleRequireMfaForAll() updates the local selection', () => {
+      component.toggleRequireMfaForAll(true);
+
+      expect(component.selectedRequireMfaForAll).toBe(true);
+    });
+
+    describe('requireMfaForAllChanged', () => {
+      it('is false when the selection matches the persisted setting', () => {
+        expect(component.requireMfaForAllChanged).toBe(false);
+      });
+
+      it('is true once toggled', () => {
+        component.toggleRequireMfaForAll(true);
+        expect(component.requireMfaForAllChanged).toBe(true);
+      });
+    });
+
+    it('saveRequireMfaForAll() persists the selection and shows a success toast', async () => {
+      const updateSpy = spyOn(siteSettings, 'updateRequireMfaForAll').and.returnValue(Promise.resolve(null));
+      component.selectedRequireMfaForAll = true;
+
+      await component.saveRequireMfaForAll();
+
+      expect(updateSpy).toHaveBeenCalledWith(true);
+      expect(notificationSuccessSpy).toHaveBeenCalledWith('Saved for everyone');
+      expect(component.requireMfaForAllError).toBeNull();
+    });
+
+    it('saveRequireMfaForAll() surfaces the error and shows no toast on failure', async () => {
+      spyOn(siteSettings, 'updateRequireMfaForAll').and.returnValue(Promise.resolve('nope'));
+
+      await component.saveRequireMfaForAll();
+
+      expect(component.requireMfaForAllError).toBe('nope');
+      expect(notificationSuccessSpy).not.toHaveBeenCalled();
+    });
+
+    it('saveRequireMfaForAll() is a no-op while already saving', async () => {
+      const updateSpy = spyOn(siteSettings, 'updateRequireMfaForAll').and.returnValue(Promise.resolve(null));
+      component.isSavingRequireMfaForAll = true;
+
+      await component.saveRequireMfaForAll();
+
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe('workflow (bulk edit feature)', () => {
     it('initializes selectedBulkEditFeatureEnabled from the persisted setting', () => {
       expect(component.selectedBulkEditFeatureEnabled).toBe(true);

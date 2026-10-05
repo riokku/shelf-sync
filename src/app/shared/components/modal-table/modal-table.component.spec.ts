@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatTooltip } from '@angular/material/tooltip';
+import { CdkDragDrop } from '@angular/cdk/drag-drop';
 import { By } from '@angular/platform-browser';
 
 import { ModalTableComponent } from './modal-table.component';
@@ -9,6 +10,7 @@ import { AuthService } from '../../../core/auth.service';
 import { SiteSettingsService } from '../../../core/site-settings.service';
 import { SupabaseService } from '../../../core/supabase.service';
 import { ImpersonationService } from '../../../core/impersonation.service';
+import { InventoryItemImageRecord } from '../../utils/inventory-item-images';
 import {
   createFakeAuthService,
   createFakeImpersonationService,
@@ -48,12 +50,12 @@ describe('ModalTableComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  // Barcode/QR isn't fully set up to function yet — see
-  // BARCODE_FEATURE_ENABLED's own doc comment — so the QR label button, the
-  // barcode display row, and (once editing) the barcode field/scan button
-  // all stay hidden regardless of whether the item actually has a barcode.
-  describe('barcode UI (BARCODE_FEATURE_ENABLED is currently false)', () => {
-    it('hides the QR label button and the barcode display row even when the item has a barcode', async () => {
+  // Barcode/QR is live — see BARCODE_FEATURE_ENABLED's own doc comment — so
+  // the QR label button, the barcode display row, and (once editing) the
+  // barcode field/scan button all render whenever the item actually has a
+  // barcode (or, for the QR label button, regardless — it works either way).
+  describe('barcode UI (BARCODE_FEATURE_ENABLED is on)', () => {
+    it('shows the QR label button and the barcode display row when the item has a barcode', async () => {
       TestBed.resetTestingModule();
       await TestBed.configureTestingModule({
         imports: [ModalTableComponent],
@@ -70,18 +72,17 @@ describe('ModalTableComponent', () => {
       const barcodeFixture = TestBed.createComponent(ModalTableComponent);
       barcodeFixture.detectChanges();
 
-      expect(barcodeFixture.componentInstance.barcodeFeatureEnabled).toBeFalse();
-      expect(barcodeFixture.nativeElement.textContent).not.toContain('barcode_reader');
-      expect(barcodeFixture.nativeElement.textContent).not.toContain('qr_code_2');
-      expect(barcodeFixture.nativeElement.textContent).not.toContain('UPC-12345');
+      expect(barcodeFixture.componentInstance.barcodeFeatureEnabled).toBeTrue();
+      expect(barcodeFixture.nativeElement.textContent).toContain('qr_code_2');
+      expect(barcodeFixture.nativeElement.textContent).toContain('UPC-12345');
     });
 
-    it('hides the barcode field and scan button in edit mode', async () => {
+    it('shows the barcode field and scan button in edit mode', async () => {
       await component.startEdit();
       fixture.detectChanges();
 
-      expect(fixture.nativeElement.textContent).not.toContain('qr_code_scanner');
-      expect(fixture.nativeElement.querySelector('.barcode-edit-row')).toBeNull();
+      expect(fixture.nativeElement.textContent).toContain('qr_code_scanner');
+      expect(fixture.nativeElement.querySelector('.barcode-edit-row')).not.toBeNull();
     });
   });
 
@@ -712,6 +713,181 @@ describe('ModalTableComponent', () => {
       expect(discardComponent.data.quantityTotal).toBe(20);
       expect(discardComponent.discardError).toBeNull();
       expect(notificationSuccessSpy).toHaveBeenCalledWith('Discard undone');
+    });
+  });
+
+  describe('existing photo drag-and-drop reordering', () => {
+    function createImageRow(id: string, position: number) {
+      return { id, item_id: 'item-1', storage_path: `path-${id}`, position };
+    }
+
+    /** A dedicated fake, not the shared single-result createFakeSupabaseService()
+     *  — reordering needs loadInventoryItemImageRecords() to actually return
+     *  rows (so there's something to reorder) *and* supabase.storage.from()
+     *  .getPublicUrl(), which the default fake has no concept of at all (see
+     *  createFakeQueryBuilder's own doc comment inviting exactly this: a spec
+     *  that needs a table-aware fake builds its own narrower one on top).
+     *  updateCalls records every inventory_item_images .update() so a test
+     *  can assert on the position values saveImageChanges() actually wrote. */
+    function createImagesFakeSupabaseService(
+      imageRows: ReturnType<typeof createImageRow>[],
+      updateCalls: { id: string; position: number }[]
+    ): SupabaseService {
+      const client = {
+        from: (table: string) => {
+          if (table === 'inventory_item_images') {
+            return {
+              select: () => ({ eq: () => ({ order: () => Promise.resolve({ data: imageRows, error: null }) }) }),
+              update: (values: { position: number }) => ({
+                eq: (_column: string, id: string) => {
+                  updateCalls.push({ id, position: values.position });
+                  return Promise.resolve({ error: null });
+                }
+              })
+            };
+          }
+          return createFakeQueryBuilder({ data: [], error: null });
+        },
+        storage: {
+          from: () => ({
+            getPublicUrl: (path: string) => ({ data: { publicUrl: `https://example.com/${path}` } })
+          })
+        },
+        rpc: () => createFakeQueryBuilder({ data: [], error: null }),
+        // A full inert channel, not just enough for subscribeToTableChanges()
+        // — createFakeAuthService(createFakeProfile()) below (needed so
+        // saveEdit()'s own session check passes) also makes
+        // ItemEditPresenceService's constructor effect actually subscribe
+        // (see that service's own isAuthenticated()/organizationId() check),
+        // so startEdit()/ngOnDestroy() genuinely call .track()/.untrack() on
+        // whatever this returns — mirrors fakes.ts's own (unexported)
+        // createFakeRealtimeChannel() shape.
+        channel: () => {
+          const inertChannel = {
+            on: () => inertChannel,
+            subscribe: () => inertChannel,
+            track: async () => ({ status: 'ok' }),
+            untrack: async () => ({ status: 'ok' }),
+            presenceState: () => ({})
+          };
+          return inertChannel;
+        },
+        removeChannel: async () => ({ status: 'ok' })
+      };
+      return { client } as unknown as SupabaseService;
+    }
+
+    async function setup(imageRows: ReturnType<typeof createImageRow>[], updateCalls: { id: string; position: number }[] = []) {
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [ModalTableComponent],
+        providers: [
+          provideNativeDateAdapter(),
+          { provide: AuthService, useValue: createFakeAuthService(createFakeProfile()) },
+          { provide: SupabaseService, useValue: createImagesFakeSupabaseService(imageRows, updateCalls) },
+          { provide: ImpersonationService, useValue: createFakeImpersonationService() },
+          { provide: MatDialogRef, useValue: createFakeMatDialogRef() },
+          { provide: MAT_DIALOG_DATA, useValue: createTestInventoryItem({ id: 'item-1' }) }
+        ]
+      }).compileComponents();
+
+      const localFixture = TestBed.createComponent(ModalTableComponent);
+      localFixture.detectChanges();
+      return localFixture.componentInstance;
+    }
+
+    function dropEvent(previousIndex: number, currentIndex: number): CdkDragDrop<InventoryItemImageRecord[]> {
+      return { previousIndex, currentIndex } as CdkDragDrop<InventoryItemImageRecord[]>;
+    }
+
+    it('onExistingImageDrop() reorders existingImages in place', async () => {
+      const component = await setup([createImageRow('a', 0), createImageRow('b', 1), createImageRow('c', 2)]);
+      await component.startEdit();
+
+      component.onExistingImageDrop(dropEvent(0, 2));
+
+      expect(component.existingImages.map(image => image.id)).toEqual(['b', 'c', 'a']);
+    });
+
+    it('imagesReordered is false right after startEdit(), true once the order actually changes', async () => {
+      const component = await setup([createImageRow('a', 0), createImageRow('b', 1)]);
+      await component.startEdit();
+      expect(component.imagesReordered).toBeFalse();
+
+      component.onExistingImageDrop(dropEvent(0, 1));
+
+      expect(component.imagesReordered).toBeTrue();
+    });
+
+    it('imagesReordered ignores the index shift from marking a photo for removal — that is not a drag', async () => {
+      const component = await setup([createImageRow('a', 0), createImageRow('b', 1), createImageRow('c', 2)]);
+      await component.startEdit();
+
+      component.toggleRemoveExistingImage(component.existingImages[0]); // removes 'a'
+
+      expect(component.imagesReordered).toBeFalse();
+    });
+
+    it('hasUnsavedChanges() reflects a pending reorder', async () => {
+      const component = await setup([createImageRow('a', 0), createImageRow('b', 1)]);
+      await component.startEdit();
+      expect(component.hasUnsavedChanges()).toBeFalse();
+
+      component.onExistingImageDrop(dropEvent(0, 1));
+
+      expect(component.hasUnsavedChanges()).toBeTrue();
+    });
+
+    it('saveEdit() writes new position values for whichever photos actually moved', async () => {
+      const updateCalls: { id: string; position: number }[] = [];
+      const component = await setup(
+        [createImageRow('a', 0), createImageRow('b', 1), createImageRow('c', 2)],
+        updateCalls
+      );
+      await component.startEdit();
+      component.onExistingImageDrop(dropEvent(0, 2)); // [a,b,c] -> [b,c,a]
+
+      await component.saveEdit();
+
+      expect(updateCalls).toEqual(jasmine.arrayContaining([
+        { id: 'b', position: 0 },
+        { id: 'c', position: 1 },
+        { id: 'a', position: 2 }
+      ]));
+      expect(updateCalls.length).toBe(3);
+    });
+
+    it('saveEdit() writes nothing photo-position-related when the order was never touched', async () => {
+      const updateCalls: { id: string; position: number }[] = [];
+      const component = await setup(
+        [createImageRow('a', 0), createImageRow('b', 1)],
+        updateCalls
+      );
+      await component.startEdit();
+
+      await component.saveEdit();
+
+      expect(updateCalls).toEqual([]);
+    });
+
+    it('skips writing a position for a photo whose index did not actually change', async () => {
+      // Swapping the last two of three leaves the first photo's own index
+      // (and therefore its already-correct position) untouched.
+      const updateCalls: { id: string; position: number }[] = [];
+      const component = await setup(
+        [createImageRow('a', 0), createImageRow('b', 1), createImageRow('c', 2)],
+        updateCalls
+      );
+      await component.startEdit();
+      component.onExistingImageDrop(dropEvent(1, 2)); // [a,b,c] -> [a,c,b]
+
+      await component.saveEdit();
+
+      expect(updateCalls.find(call => call.id === 'a')).toBeUndefined();
+      expect(updateCalls).toEqual(jasmine.arrayContaining([
+        { id: 'c', position: 1 },
+        { id: 'b', position: 2 }
+      ]));
     });
   });
 });

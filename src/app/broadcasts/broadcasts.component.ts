@@ -4,6 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { SupabaseService } from '../core/supabase.service';
 import { AuthService, Profile } from '../core/auth.service';
@@ -18,6 +19,7 @@ import { Broadcast } from '../shared/models/broadcast.model';
 import { deleteBroadcast, loadBroadcasts } from '../shared/utils/broadcasts';
 import { subscribeToTableChanges } from '../shared/utils/realtime';
 import { FlashTracker } from '../shared/utils/flash-tracker';
+import { flashAndAnnounceChanges } from '../shared/utils/realtime-announce';
 import { flashAndScrollToHighlighted } from '../shared/utils/highlight-row';
 import { debounce } from '../shared/utils/debounce';
 
@@ -53,6 +55,7 @@ export class BroadcastsComponent implements OnInit {
   private dialog = inject(MatDialog);
   private destroyRef = inject(DestroyRef);
   private route = inject(ActivatedRoute);
+  private liveAnnouncer = inject(LiveAnnouncer);
 
   isLoading = true;
   /** Repeat-count for the loading-state skeleton cards — see
@@ -128,9 +131,13 @@ export class BroadcastsComponent implements OnInit {
 
   private async reloadAndFlashChangedBroadcasts() {
     await this.loadBroadcastsList();
-    for (const id of this.pendingFlashIds) {
-      this.flashTracker.flash(id);
-    }
+    flashAndAnnounceChanges(
+      this.pendingFlashIds,
+      this.flashTracker,
+      this.liveAnnouncer,
+      id => this.broadcasts.find(broadcast => broadcast.id === id)?.title ?? null,
+      title => `${title} updated`
+    );
     this.pendingFlashIds.clear();
   }
 

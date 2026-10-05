@@ -4,7 +4,8 @@ import { ActivatedRoute, provideRouter } from '@angular/router';
 import { ManageTeamComponent } from './manage-team.component';
 import { AuthService, Profile } from '../../core/auth.service';
 import { SupabaseService } from '../../core/supabase.service';
-import { createFakeActivatedRoute, createFakeAuthService, createFakeProfile, createFakeSupabaseService } from '../../testing/fakes';
+import { BillingService } from '../../core/billing.service';
+import { createFakeActivatedRoute, createFakeAuthService, createFakeBillingService, createFakeProfile, createFakeSupabaseService } from '../../testing/fakes';
 
 describe('ManageTeamComponent', () => {
   let component: ManageTeamComponent;
@@ -363,7 +364,13 @@ function createRealtimeCapturingSupabaseService() {
     const b: Record<string, unknown> = {
       then: (resolve: (value: unknown) => void) => resolve({ data: [], error: null }),
     };
-    for (const method of ['select', 'eq', 'order', 'delete', 'single']) {
+    // maybeSingle is here for BillingService.load()'s own subscriptions
+    // lookup (ngOnInit's Promise.all now includes it alongside
+    // loadTeamTasks()/loadInviteLink()) — resolves via the generic `then`
+    // below to { data: [], error: null }, same as every other table this
+    // fake answers, which BillingService.load() treats as "no row yet",
+    // i.e. Free tier.
+    for (const method of ['select', 'eq', 'order', 'delete', 'single', 'maybeSingle']) {
       b[method] = () => {
         if (table === 'tasks' && method === 'select') {
           tasksSelectCount++;
@@ -633,6 +640,51 @@ describe('ManageTeamComponent bulk membership actions', () => {
       await component.applyBulkApprove();
 
       expect(rpcCalls.length).toBe(0);
+    });
+
+    it('is blocked once the org is already at its plan\'s team member limit, without calling the RPC', async () => {
+      const { service, rpcCalls } = createBulkMembershipFakeSupabaseService();
+      const component = await createComponent(service);
+      (component as unknown as { billingService: BillingService }).billingService = createFakeBillingService({
+        tier: 'free', status: 'active', currentPeriodEnd: null, cancelAtPeriodEnd: false
+      });
+      component.teamMembers = Array.from({ length: 3 }, (_, i) => ({ profile: createFakeProfile({ id: `member-${i}` }), tasks: [] }));
+      component.pendingMembers = [createFakeProfile({ id: '1' }), createFakeProfile({ id: '2' })];
+      component.selectedPendingMemberIds = new Set(['1', '2']);
+
+      await component.applyBulkApprove();
+
+      expect(rpcCalls.length).toBe(0);
+      expect(component.membershipError).toContain('team member limit');
+    });
+  });
+
+  describe('approveMember() plan member limit', () => {
+    it('is blocked once the org is already at its plan\'s team member limit (Free: 3), without calling the RPC', async () => {
+      const { service, rpcCalls } = createBulkMembershipFakeSupabaseService();
+      const component = await createComponent(service);
+      (component as unknown as { billingService: BillingService }).billingService = createFakeBillingService({
+        tier: 'free', status: 'active', currentPeriodEnd: null, cancelAtPeriodEnd: false
+      });
+      component.teamMembers = Array.from({ length: 3 }, (_, i) => ({ profile: createFakeProfile({ id: `member-${i}` }), tasks: [] }));
+
+      await component.approveMember(createFakeProfile({ id: 'pending-1' }));
+
+      expect(rpcCalls.length).toBe(0);
+      expect(component.membershipError).toContain('team member limit');
+    });
+
+    it('does not block approval below the limit', async () => {
+      const { service, rpcCalls } = createBulkMembershipFakeSupabaseService();
+      const component = await createComponent(service);
+      (component as unknown as { billingService: BillingService }).billingService = createFakeBillingService({
+        tier: 'free', status: 'active', currentPeriodEnd: null, cancelAtPeriodEnd: false
+      });
+      component.teamMembers = Array.from({ length: 2 }, (_, i) => ({ profile: createFakeProfile({ id: `member-${i}` }), tasks: [] }));
+
+      await component.approveMember(createFakeProfile({ id: 'pending-1' }));
+
+      expect(rpcCalls.length).toBe(1);
     });
   });
 

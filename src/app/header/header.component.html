@@ -219,8 +219,8 @@
       </a>
     }
     <mat-divider></mat-divider>
-    <button mat-button type="button" (click)="themeMode.toggle()">
-      <mat-icon aria-hidden="true">{{ themeMode.mode() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
+    <button mat-button type="button" class="theme-toggle-button" (click)="themeMode.toggle()">
+      <app-theme-mode-icon [mode]="themeMode.mode()" />
       {{ themeMode.mode() === 'dark' ? 'Light mode' : 'Dark mode' }}
     </button>
     <a mat-button routerLink="/help" routerLinkActive="active">

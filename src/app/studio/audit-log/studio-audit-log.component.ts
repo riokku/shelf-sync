@@ -63,9 +63,13 @@ export class StudioAuditLogComponent implements OnInit {
   private async loadActionLog() {
     this.isLoading = true;
 
+    // platform_list_profiles() — see add_platform_cross_org_read_rpcs' own
+    // doc comment for why every cross-org profiles read in Studio goes
+    // through a SECURITY DEFINER RPC now rather than a plain
+    // `.from('profiles').select()` relying on a blanket permissive policy.
     const [{ data: rows, error }, { data: profiles }] = await Promise.all([
       this.supabase.from('platform_action_log').select('*').order('created_at', { ascending: false }).limit(200),
-      this.supabase.from('profiles').select('*')
+      this.supabase.rpc('platform_list_profiles')
     ]);
 
     if (error) {

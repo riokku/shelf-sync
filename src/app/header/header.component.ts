@@ -18,6 +18,7 @@ import { PartyModeService } from '../core/party-mode.service';
 import { NotificationService } from '../core/notification.service';
 import { EmptyStateComponent } from '../shared/components/empty-state/empty-state.component';
 import { UserAvatarComponent } from '../shared/components/user-avatar/user-avatar.component';
+import { ThemeModeIconComponent } from '../shared/components/theme-mode-icon/theme-mode-icon.component';
 import { notificationIcon, UserNotification } from '../shared/models/notification.model';
 import { QUICK_MENU_OPTIONS } from '../shared/models/quick-menu';
 import { CommandPaletteResult } from '../shared/models/command-palette';
@@ -28,7 +29,7 @@ import { isProfileOnline } from '../shared/utils/presence';
     selector: 'app-header',
     imports: [
       A11yModule, DatePipe, FormsModule, MatBadgeModule, MatButtonModule, MatDividerModule, MatIconModule, MatTooltipModule,
-      RouterModule, EmptyStateComponent, UserAvatarComponent
+      RouterModule, EmptyStateComponent, UserAvatarComponent, ThemeModeIconComponent
     ],
     templateUrl: './header.component.html',
     styleUrl: './header.component.scss'

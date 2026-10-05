@@ -12,8 +12,10 @@
 // app carries. --app-success-text stays fixed regardless of light/dark
 // (this page is pinned dark — see .login-page's own color-scheme comment
 // above), the same fixed-token reasoning every other hardcoded color on
-// this page already follows.
-.impersonation-ended-message{
+// this page already follows. Shared by both "why am I back at login"
+// explanations this page shows (impersonationEnded, mfaRecovered) — same
+// shape either way, so one class covers both rather than two identical rules.
+.login-notice-message{
   color: var(--app-success-text);
   margin: 0 0 1rem;
 }

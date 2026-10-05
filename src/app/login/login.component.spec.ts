@@ -3,7 +3,8 @@ import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 
 import { LoginComponent } from './login.component';
 import { AuthService } from '../core/auth.service';
-import { createFakeActivatedRoute, createFakeAuthService, installFakeTurnstile } from '../testing/fakes';
+import { MfaService } from '../core/mfa.service';
+import { createFakeActivatedRoute, createFakeAuthService, createFakeMfaService, installFakeTurnstile } from '../testing/fakes';
 
 describe('LoginComponent', () => {
   let component: LoginComponent;
@@ -16,7 +17,8 @@ describe('LoginComponent', () => {
       imports: [LoginComponent],
       providers: [
         provideRouter([]),
-        { provide: AuthService, useValue: createFakeAuthService() }
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: MfaService, useValue: createFakeMfaService() }
       ]
     })
     .compileComponents();
@@ -85,6 +87,7 @@ describe('LoginComponent post-login redirect', () => {
       providers: [
         provideRouter([]),
         { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: MfaService, useValue: createFakeMfaService() },
         { provide: ActivatedRoute, useValue: createFakeActivatedRoute(returnUrl ? { returnUrl } : {}) }
       ]
     }).compileComponents();
@@ -117,12 +120,100 @@ describe('LoginComponent post-login redirect', () => {
   });
 });
 
+/** approvedGuard would catch this on the very next navigation regardless
+ *  (see its own doc comment) — this covers attemptLogin()'s own shortcut so
+ *  a two-factor account doesn't briefly flash /home (or a deep-linked
+ *  returnUrl) before being bounced back out to /mfa-verify. */
+describe('LoginComponent MFA redirect', () => {
+  afterEach(() => {
+    delete window.turnstile;
+  });
+
+  async function attemptLoginWithMfaPending(returnUrl: string | null): Promise<jasmine.Spy> {
+    installFakeTurnstile();
+
+    await TestBed.configureTestingModule({
+      imports: [LoginComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: MfaService, useValue: createFakeMfaService({ isVerificationPending: true }) },
+        { provide: ActivatedRoute, useValue: createFakeActivatedRoute(returnUrl ? { returnUrl } : {}) }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(LoginComponent);
+    const component = fixture.componentInstance;
+    const router = TestBed.inject(Router);
+    const navigateSpy = spyOn(router, 'navigate');
+
+    component.form.setValue({ email: 'test@example.com', password: 'password123' });
+    component.captchaToken = 'a-real-token';
+    await component.attemptLogin();
+
+    return navigateSpy;
+  }
+
+  it('goes to /mfa-verify instead of /home when this session still owes a challenge', async () => {
+    const navigateSpy = await attemptLoginWithMfaPending(null);
+    expect(navigateSpy).toHaveBeenCalledWith(['/mfa-verify'], {});
+  });
+
+  it('carries a returnUrl through to /mfa-verify so it can finish the trip afterward', async () => {
+    const navigateSpy = await attemptLoginWithMfaPending('/inventory?item=abc-123');
+    expect(navigateSpy).toHaveBeenCalledWith(['/mfa-verify'], { queryParams: { returnUrl: '/inventory?item=abc-123' } });
+  });
+});
+
+/** Same "avoid a visible flash before approvedGuard would bounce it back out
+ *  anyway" reasoning as the /mfa-verify block above, for the sibling case:
+ *  an org that requires two-factor for everyone, hit by an account that's
+ *  never enrolled at all — there's no factor yet to send to /mfa-verify
+ *  against, so this goes to /account instead (see approvedGuard's own doc
+ *  comment on the identical redirect). */
+describe('LoginComponent org-wide "require two-factor" redirect', () => {
+  afterEach(() => {
+    delete window.turnstile;
+  });
+
+  async function attemptLoginWhenMfaRequiredButUnenrolled(): Promise<jasmine.Spy> {
+    installFakeTurnstile();
+
+    await TestBed.configureTestingModule({
+      imports: [LoginComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: MfaService, useValue: createFakeMfaService({ isRequiredOrgWide: true, isEnrolled: false }) },
+        { provide: ActivatedRoute, useValue: createFakeActivatedRoute() }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(LoginComponent);
+    const component = fixture.componentInstance;
+    const router = TestBed.inject(Router);
+    const navigateByUrlSpy = spyOn(router, 'navigateByUrl');
+
+    component.form.setValue({ email: 'test@example.com', password: 'password123' });
+    component.captchaToken = 'a-real-token';
+    await component.attemptLogin();
+
+    return navigateByUrlSpy;
+  }
+
+  it('goes to /account instead of /home when the org requires two-factor and nothing is enrolled', async () => {
+    const navigateByUrlSpy = await attemptLoginWhenMfaRequiredButUnenrolled();
+    expect(navigateByUrlSpy).toHaveBeenCalledWith('/account');
+  });
+});
+
 /** ImpersonationService.stop() lands here with ?impersonationEnded=1 (see
  *  that service's own doc comment for why signing back in is manual rather
- *  than a cached-session one-click return) — this covers the small info
- *  message that explains why, without needing ImpersonationService itself
- *  in the picture at all. */
-describe('LoginComponent impersonation-ended message', () => {
+ *  than a cached-session one-click return), and MfaVerifyComponent.recoverWithCode()
+ *  lands here with ?mfaRecovered=1 (see that method's own doc comment) —
+ *  this covers the small info messages that explain why, without needing
+ *  either service/component itself in the picture at all. */
+describe('LoginComponent login-notice messages', () => {
   afterEach(() => {
     delete window.turnstile;
   });
@@ -135,6 +226,7 @@ describe('LoginComponent impersonation-ended message', () => {
       providers: [
         provideRouter([]),
         { provide: AuthService, useValue: createFakeAuthService() },
+        { provide: MfaService, useValue: createFakeMfaService() },
         { provide: ActivatedRoute, useValue: createFakeActivatedRoute(queryParams) }
       ]
     }).compileComponents();
@@ -148,14 +240,23 @@ describe('LoginComponent impersonation-ended message', () => {
     const fixture = await createComponent({ impersonationEnded: '1' });
 
     expect(fixture.componentInstance.impersonationEnded).toBeTrue();
-    expect(fixture.nativeElement.querySelector('.impersonation-ended-message')?.textContent)
+    expect(fixture.nativeElement.querySelector('.login-notice-message')?.textContent)
       .toContain('Impersonation ended');
+  });
+
+  it('shows the message when landing with ?mfaRecovered=1', async () => {
+    const fixture = await createComponent({ mfaRecovered: '1' });
+
+    expect(fixture.componentInstance.mfaRecovered).toBeTrue();
+    expect(fixture.nativeElement.querySelector('.login-notice-message')?.textContent)
+      .toContain('Two-factor authentication was removed');
   });
 
   it('stays hidden on an ordinary visit', async () => {
     const fixture = await createComponent({});
 
     expect(fixture.componentInstance.impersonationEnded).toBeFalse();
-    expect(fixture.nativeElement.querySelector('.impersonation-ended-message')).toBeNull();
+    expect(fixture.componentInstance.mfaRecovered).toBeFalse();
+    expect(fixture.nativeElement.querySelector('.login-notice-message')).toBeNull();
   });
 });

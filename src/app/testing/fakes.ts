@@ -3,14 +3,18 @@ import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { of } from 'rxjs';
 import { AuthService, Profile } from '../core/auth.service';
 import { InventoryFieldName, InventoryFieldOptionsService } from '../core/inventory-field-options.service';
+import { MfaService } from '../core/mfa.service';
 import { SiteSettingsService } from '../core/site-settings.service';
 import { SupabaseService } from '../core/supabase.service';
 import { SupplierService } from '../core/supplier.service';
 import { ReservationKitService } from '../core/reservation-kit.service';
 import { ImpersonationService } from '../core/impersonation.service';
+import { BillingService } from '../core/billing.service';
 import { InventoryItem, InventoryItemStatus } from '../shared/models/inventory-item.model';
 import { Supplier } from '../shared/models/supplier.model';
 import { ReservationKit } from '../shared/models/reservation-kit.model';
+import { OrgSubscription } from '../shared/models/subscription.model';
+import { pricingTierByKey } from '../shared/models/pricing-tier';
 import { DEFAULT_INVENTORY_TABLE_COLUMNS, InventoryTableColumnKey } from '../shared/models/inventory-table-column';
 import { DEFAULT_INVENTORY_FORM_FIELDS, InventoryFormFieldKey } from '../shared/models/inventory-form-field';
 import { Database } from '../shared/models/database.types';
@@ -86,6 +90,47 @@ export function createFakeAuthService(
   return fake as unknown as AuthService;
 }
 
+/** MfaService's real constructor is harmless on its own (just grabs the
+ *  Supabase client, same as any other core service), but any of its methods
+ *  actually calling `supabase.auth.mfa.*` against the real client is real
+ *  network activity — same reasoning createFakeAuthService above gives for
+ *  itself. `isVerificationPending`/`isEnrolled`/`isRequiredOrgWide` default
+ *  to the common "no two-factor involved at all" case so a spec that
+ *  doesn't care about MFA can provide this without having to think about
+ *  it. */
+export function createFakeMfaService(overrides: {
+  isVerificationPending?: boolean;
+  isEnrolled?: boolean;
+  isRequiredOrgWide?: boolean;
+  factorIdToVerify?: string | null;
+  verifiedFactorId?: string | null;
+  unenrollError?: string | null;
+  recoveryCodes?: string[] | null;
+  generateRecoveryCodesError?: string | null;
+  recoveryCodeCount?: number;
+  redeemRecoveryCodeError?: string | null;
+} = {}): MfaService {
+  const fake = {
+    isEnrolled: async () => overrides.isEnrolled ?? false,
+    getVerifiedTotpFactor: async () =>
+      overrides.verifiedFactorId ? { id: overrides.verifiedFactorId, factor_type: 'totp', status: 'verified' } : null,
+    isVerificationPending: async () => overrides.isVerificationPending ?? false,
+    isRequiredOrgWide: async () => overrides.isRequiredOrgWide ?? false,
+    getFactorIdToVerify: async () => overrides.factorIdToVerify ?? null,
+    enrollTotp: async () => ({ enrollment: null, error: null }),
+    confirmEnrollment: async () => null,
+    verifyLogin: async () => null,
+    unenroll: async () => overrides.unenrollError ?? null,
+    generateRecoveryCodes: async () => ({
+      codes: overrides.recoveryCodes ?? ['aaaaaaaaaaaaaaaa', 'bbbbbbbbbbbbbbbb'],
+      error: overrides.generateRecoveryCodesError ?? null
+    }),
+    getRecoveryCodeCount: async () => overrides.recoveryCodeCount ?? 10,
+    redeemRecoveryCode: async () => overrides.redeemRecoveryCodeError ?? null,
+  };
+  return fake as unknown as MfaService;
+}
+
 /** SiteSettingsService.load() (and its underlying real AuthService, which
  *  the real service also depends on) query Supabase — same reasoning as
  *  createFakeAuthService above, so any component that just reads a signal
@@ -97,6 +142,7 @@ export function createFakeSiteSettingsService(overrides: Partial<{
   inventoryTableColumns: InventoryTableColumnKey[];
   inventoryFormFields: InventoryFormFieldKey[];
   requireRetirementApproval: boolean;
+  requireMfaForAll: boolean;
   bulkEditFeatureEnabled: boolean;
   restrictPriceSupplierEdits: boolean;
   notifyTaskAssigned: boolean;
@@ -111,6 +157,7 @@ export function createFakeSiteSettingsService(overrides: Partial<{
     inventoryTableColumns: signal(overrides.inventoryTableColumns ?? DEFAULT_INVENTORY_TABLE_COLUMNS).asReadonly(),
     inventoryFormFields: signal(overrides.inventoryFormFields ?? DEFAULT_INVENTORY_FORM_FIELDS).asReadonly(),
     requireRetirementApproval: signal(overrides.requireRetirementApproval ?? true).asReadonly(),
+    requireMfaForAll: signal(overrides.requireMfaForAll ?? false).asReadonly(),
     bulkEditFeatureEnabled: signal(overrides.bulkEditFeatureEnabled ?? true).asReadonly(),
     restrictPriceSupplierEdits: signal(overrides.restrictPriceSupplierEdits ?? false).asReadonly(),
     notifyTaskAssigned: signal(overrides.notifyTaskAssigned ?? true).asReadonly(),
@@ -126,6 +173,7 @@ export function createFakeSiteSettingsService(overrides: Partial<{
     updateInventoryTableColumns: async () => null,
     updateInventoryFormFields: async () => null,
     updateRequireRetirementApproval: async () => null,
+    updateRequireMfaForAll: async () => null,
     updateBulkEditFeatureEnabled: async () => null,
     updateRestrictPriceSupplierEdits: async () => null,
     updateEmailNotifications: async () => null,
@@ -204,6 +252,26 @@ export function createFakeImpersonationService(state: {
     stop: async () => {},
   };
   return fake as unknown as ImpersonationService;
+}
+
+/** Mirrors createFakeSupplierService's shape above — a signal-backed
+ *  subscription (null = implicit Free, matching BillingService's own
+ *  convention) plus a loadError signal and no-op startCheckout()/
+ *  openBillingPortal(), for any component that injects BillingService
+ *  (ManageBillingComponent, PricingComponent). */
+export function createFakeBillingService(
+  subscription: OrgSubscription | null = null,
+  loadError: string | null = null
+): BillingService {
+  const fake = {
+    subscription: signal(subscription).asReadonly(),
+    currentTier: computed(() => pricingTierByKey(subscription?.tier ?? 'free')),
+    loadError: signal(loadError).asReadonly(),
+    load: async () => {},
+    startCheckout: async () => ({ error: null, redirected: true }),
+    openBillingPortal: async () => null,
+  };
+  return fake as unknown as BillingService;
 }
 
 export function createFakeActivatedRoute(queryParams: Record<string, string> = {}, pathParams: Record<string, string> = {}): ActivatedRoute {

@@ -11,7 +11,13 @@
       </a>
       <h1>Welcome back!</h1>
       @if (impersonationEnded) {
-        <p class="impersonation-ended-message">Impersonation ended — sign back in to continue as yourself.</p>
+        <p class="login-notice-message">Impersonation ended — sign back in to continue as yourself.</p>
+      }
+      @if (mfaRecovered) {
+        <p class="login-notice-message">
+          Two-factor authentication was removed from your account. Sign back in, then set it up
+          again from your Account page.
+        </p>
       }
       <form [formGroup]="form" (ngSubmit)="attemptLogin()">
         <div class="login-fields">

@@ -85,12 +85,17 @@ export class StudioErrorLogComponent implements OnInit {
   private async loadErrorLog() {
     this.isLoading = true;
 
+    // platform_list_client_errors()/platform_list_profiles() — see
+    // add_platform_cross_org_read_rpcs' own doc comment for why every
+    // cross-org read of these tables in Studio goes through a SECURITY
+    // DEFINER RPC now rather than a plain `.from(table).select()` relying
+    // on a blanket permissive policy. Same "most recent first, capped at
+    // 200" reasoning ManageErrorLogComponent's own load already has — a
+    // diagnostic feed, not exhaustive audit history, now enforced by the
+    // RPC's own p_limit rather than a client-side `.limit()`.
     const [{ data: rows }, { data: profiles }, { data: orgs }] = await Promise.all([
-      // Same "most recent first, capped at 200" reasoning
-      // ManageErrorLogComponent's own load already has — a diagnostic feed,
-      // not exhaustive audit history.
-      this.supabase.from('client_error_log').select('*').order('created_at', { ascending: false }).limit(200),
-      this.supabase.from('profiles').select('*'),
+      this.supabase.rpc('platform_list_client_errors', { p_limit: 200 }),
+      this.supabase.rpc('platform_list_profiles'),
       this.supabase.from('organizations').select('id, name')
     ]);
 

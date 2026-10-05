@@ -47,13 +47,17 @@ function createFakeSupabaseServiceForOrganizations(data: {
 }): SupabaseService {
   const fake = {
     client: {
-      from: (table: string) => {
-        if (table === 'profiles') {
-          return createFakeQueryBuilder({ data: data.profiles ?? [], error: null });
+      from: () => createFakeQueryBuilder({ data: data.organizations ?? [], error: data.loadError ?? null }),
+      // platform_list_profiles() replaced this component's own direct
+      // `.from('profiles')` read — see add_platform_cross_org_read_rpcs'
+      // own doc comment — so the fake rpc() has to discriminate by function
+      // name now that this component calls two different RPCs.
+      rpc: jasmine.createSpy('rpc').and.callFake((fn: string) => {
+        if (fn === 'platform_list_profiles') {
+          return Promise.resolve({ data: data.profiles ?? [], error: null });
         }
-        return createFakeQueryBuilder({ data: data.organizations ?? [], error: data.loadError ?? null });
-      },
-      rpc: jasmine.createSpy('rpc').and.resolveTo({ data: data.usage ?? [], error: null })
+        return Promise.resolve({ data: data.usage ?? [], error: null });
+      })
     }
   };
   return fake as unknown as SupabaseService;

@@ -88,6 +88,7 @@ describe('SiteSettingsService', () => {
       expect(service.inventoryTableColumns()).toEqual(DEFAULT_INVENTORY_TABLE_COLUMNS);
       expect(service.inventoryFormFields()).toEqual(DEFAULT_INVENTORY_FORM_FIELDS);
       expect(service.requireRetirementApproval()).toBe(true);
+      expect(service.requireMfaForAll()).toBe(false);
       expect(service.bulkEditFeatureEnabled()).toBe(true);
       expect(service.notifyTaskAssigned()).toBe(true);
       expect(service.notifyTaskTransfer()).toBe(true);
@@ -108,6 +109,7 @@ describe('SiteSettingsService', () => {
       expect(service.inventoryTableColumns()).toEqual(DEFAULT_INVENTORY_TABLE_COLUMNS);
       expect(service.inventoryFormFields()).toEqual(DEFAULT_INVENTORY_FORM_FIELDS);
       expect(service.requireRetirementApproval()).toBe(true);
+      expect(service.requireMfaForAll()).toBe(false);
       expect(service.bulkEditFeatureEnabled()).toBe(true);
     });
 
@@ -120,6 +122,7 @@ describe('SiteSettingsService', () => {
           inventory_table_columns: ['category', 'status'],
           inventory_form_fields: ['category', 'photos'],
           require_retirement_approval: false,
+          require_mfa_for_all: true,
           bulk_edit_enabled: false,
           notify_task_assigned: false,
           notify_task_transfer: false,
@@ -136,6 +139,7 @@ describe('SiteSettingsService', () => {
       expect(service.inventoryTableColumns()).toEqual(['category', 'status'] as never);
       expect(service.inventoryFormFields()).toEqual(['category', 'photos'] as never);
       expect(service.requireRetirementApproval()).toBe(false);
+      expect(service.requireMfaForAll()).toBe(true);
       expect(service.bulkEditFeatureEnabled()).toBe(false);
       expect(service.notifyTaskAssigned()).toBe(false);
       expect(service.notifyTaskTransfer()).toBe(false);
@@ -303,6 +307,41 @@ describe('SiteSettingsService', () => {
 
       expect(error).toBe('nope');
       expect(service.requireRetirementApproval()).toBe(true);
+    });
+  });
+
+  describe('updateRequireMfaForAll()', () => {
+    it('refuses when signed out', async () => {
+      const { service, upsertSpy } = setup({}, { profile: null });
+
+      const error = await service.updateRequireMfaForAll(true);
+
+      expect(error).toContain('signed in');
+      expect(upsertSpy).not.toHaveBeenCalled();
+    });
+
+    it('upserts the new value and updates the signal', async () => {
+      const profile = createFakeProfile({ organization_id: 'org-1' });
+      const { service, upsertSpy } = setup({}, { profile });
+
+      const error = await service.updateRequireMfaForAll(true);
+
+      expect(error).toBeNull();
+      expect(service.requireMfaForAll()).toBe(true);
+      expect(upsertSpy).toHaveBeenCalledWith(
+        jasmine.objectContaining({ organization_id: 'org-1', require_mfa_for_all: true }),
+        { onConflict: 'organization_id' }
+      );
+    });
+
+    it('returns the error message and leaves the signal untouched on failure', async () => {
+      const profile = createFakeProfile();
+      const { service } = setup({ upsertError: { message: 'nope' } }, { profile });
+
+      const error = await service.updateRequireMfaForAll(true);
+
+      expect(error).toBe('nope');
+      expect(service.requireMfaForAll()).toBe(false);
     });
   });
 

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Only the routes that are actually public and worth indexing — see
+     robots.txt's own comment for why everything else in app-routing.module.ts
+     is disallowed rather than listed here. lastmod is left off deliberately:
+     these are hand-maintained, static marketing/auth pages with no real
+     "last modified" timestamp to report, and a stale/guessed date is worse
+     than none. Keep this in sync by hand if a new public route is ever added
+     to app-routing.module.ts's unguarded allowlist. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://shelf-sync.chrisistinson.workers.dev/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://shelf-sync.chrisistinson.workers.dev/pricing</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://shelf-sync.chrisistinson.workers.dev/register</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://shelf-sync.chrisistinson.workers.dev/login</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://shelf-sync.chrisistinson.workers.dev/privacy</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  <url>
+    <loc>https://shelf-sync.chrisistinson.workers.dev/terms</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.2</priority>
+  </url>
+</urlset>

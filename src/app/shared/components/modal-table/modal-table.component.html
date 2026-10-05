@@ -185,20 +185,35 @@
                 <p class="error-message" role="alert">{{ imageLimitError }}</p>
               }
               @if (existingImages.length > 0 || newImagePreviews.length > 0) {
+                @if (existingImages.length > 1) {
+                  <p class="drag-reorder-hint">Drag photos to reorder them.</p>
+                }
                 <div class="image-preview-row">
-                  @for (image of existingImages; track image.id) {
-                    <div class="image-preview-thumb" [class.marked-for-removal]="removedImageIds.has(image.id)">
-                      <img [src]="image.url" alt="Existing item photo" />
-                      <button
-                          mat-icon-button
-                          type="button"
-                          (click)="toggleRemoveExistingImage(image)"
-                          [attr.aria-label]="removedImageIds.has(image.id) ? 'Keep photo' : 'Remove photo'"
-                        >
-                        <mat-icon>{{ removedImageIds.has(image.id) ? 'undo' : 'close' }}</mat-icon>
-                      </button>
-                    </div>
-                  }
+                  <div class="existing-images-drop-list" cdkDropList (cdkDropListDropped)="onExistingImageDrop($event)">
+                    @for (image of existingImages; track image.id) {
+                      <div class="image-preview-thumb" [class.marked-for-removal]="removedImageIds.has(image.id)" cdkDrag>
+                        <img [src]="image.url" alt="Existing item photo" />
+                        <button
+                            mat-icon-button
+                            type="button"
+                            cdkDragHandle
+                            class="drag-handle-button"
+                            aria-label="Drag to reorder"
+                          >
+                          <mat-icon>drag_indicator</mat-icon>
+                        </button>
+                        <button
+                            mat-icon-button
+                            type="button"
+                            class="remove-toggle-button"
+                            (click)="toggleRemoveExistingImage(image)"
+                            [attr.aria-label]="removedImageIds.has(image.id) ? 'Keep photo' : 'Remove photo'"
+                          >
+                          <mat-icon>{{ removedImageIds.has(image.id) ? 'undo' : 'close' }}</mat-icon>
+                        </button>
+                      </div>
+                    }
+                  </div>
                   @for (preview of newImagePreviews; track $index) {
                     <div class="image-preview-thumb">
                       <img [src]="preview" alt="New item photo preview" />

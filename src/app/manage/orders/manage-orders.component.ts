@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog } from '@angular/material/dialog';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { SupabaseService } from '../../core/supabase.service';
 import { SupplierService } from '../../core/supplier.service';
@@ -19,6 +20,7 @@ import { InventoryItemOrderWithItem, loadAllInventoryItemOrders } from '../../sh
 import { resolveSupplierName } from '../../shared/utils/supplier-label';
 import { subscribeToTableChanges } from '../../shared/utils/realtime';
 import { FlashTracker } from '../../shared/utils/flash-tracker';
+import { flashAndAnnounceChanges } from '../../shared/utils/realtime-announce';
 import { flashAndScrollToHighlighted } from '../../shared/utils/highlight-row';
 import { debounce } from '../../shared/utils/debounce';
 
@@ -60,6 +62,7 @@ export class ManageOrdersComponent implements OnInit {
   private dialog = inject(MatDialog);
   private destroyRef = inject(DestroyRef);
   private route = inject(ActivatedRoute);
+  private liveAnnouncer = inject(LiveAnnouncer);
 
   isLoading = true;
   isProcessingOrder = false;
@@ -167,9 +170,13 @@ export class ManageOrdersComponent implements OnInit {
 
   private async reloadAndFlashChangedOrders() {
     await this.loadOrders();
-    for (const id of this.pendingFlashIds) {
-      this.flashTracker.flash(id);
-    }
+    flashAndAnnounceChanges(
+      this.pendingFlashIds,
+      this.flashTracker,
+      this.liveAnnouncer,
+      id => this.orders.find(order => order.id === id)?.itemName ?? null,
+      itemName => `${itemName} order updated`
+    );
     this.pendingFlashIds.clear();
   }
 

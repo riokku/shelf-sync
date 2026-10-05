@@ -316,35 +316,207 @@ changes.
 
 `/pricing` (`PricingComponent`) is a public three-tier pricing page (Free/Basic/Pro, Basic marked
 "Most popular"), same unguarded/chrome-hidden/own-nav-and-footer treatment as landing — linked from
-both the landing page's nav and `FooterComponent`. **No billing is wired up yet** — every tier's
-call to action goes to the same real `/register` flow (a page footnote says so explicitly), since
-signing up today gives full access regardless of which card was clicked; Stripe integration is
-separate, later work. The three tiers' caps and feature splits are a first pass at what *should*
-differentiate them once enforcement exists, chosen around what actually drives Supabase hosting
-cost for this app: item photos are by far the biggest lever (both storage *and* the repeated
-bandwidth/egress cost of browsing them, since Supabase bills egress separately from storage),
-team size is a moderate, predictable lever (Auth bills by monthly active users), and inventory/task
-row counts are minor unless an org reaches tens of thousands of items. Core inventory/task
-functionality is deliberately available on every tier rather than paywalled — differentiation is
-by *scale* (item/team/photo-storage caps) and *admin polish* (custom branding, data export, error
-log access — all Pro-only), not gating the product's basic value proposition this early on. See
-`PricingComponent`'s own doc comment for the full per-tier breakdown. The three tiers themselves
-live in `shared/models/pricing-tier.ts` (`PRICING_TIERS`, each with a `limits` object —
+both the landing page's nav and `FooterComponent`. The three tiers' caps and feature splits are a
+first pass at what *should* differentiate them once real usage-cap enforcement exists (still not
+built — see below), chosen around what actually drives Supabase hosting cost for this app: item
+photos are by far the biggest lever (both storage *and* the repeated bandwidth/egress cost of
+browsing them, since Supabase bills egress separately from storage), team size is a moderate,
+predictable lever (Auth bills by monthly active users), and inventory/task row counts are minor
+unless an org reaches tens of thousands of items. Core inventory/task functionality is deliberately
+available on every tier rather than paywalled — differentiation is by *scale* (item/team/photo-
+storage caps) and *admin polish* (custom branding, data export, error log access — all Pro-only),
+not gating the product's basic value proposition this early on. See `PricingComponent`'s own doc
+comment for the full per-tier breakdown. The three tiers themselves live in
+`shared/models/pricing-tier.ts` (`PRICING_TIERS`, each with a `limits` object —
 `maxTeamMembers`/`maxInventoryItems`/`storageLimitMb`, `null` meaning unlimited) rather than being
 inlined in `PricingComponent`, so the numbers a prospective customer sees on `/pricing` and the caps
 `manage/billing` measures an existing org against can't drift apart.
 
-`manage/billing` (`ManageBillingComponent`) is an admin-only (`adminGuard` — billing is financial
-information, same audience as Danger Zone, not the broader admin-or-manager audience the rest of
-Manage's sub-pages use) preview of what this page will show once Stripe billing exists. Every org is
-hardcoded onto the Free tier (`pricingTierByKey('free')`) since there's no `subscriptions` table
-yet; a banner at the top says the page isn't connected to real billing. Account creation date, team
-member count, inventory item count, and photo storage usage are all real, queried numbers — storage
-usage comes from `get_inventory_photo_storage_usage()`, an admin-only `SECURITY DEFINER` RPC that
-sums `storage.objects` sizes for the org's inventory photos (joined via `inventory_item_images` ->
-`inventory_items` for org scoping, not by parsing storage paths), since `storage.objects` (Supabase
-Storage's own backing table) isn't exposed to PostgREST directly. Only the billing-cycle date is
-still a plausible-looking placeholder, pending real Stripe billing.
+Each tier's own call-to-action button now does something real, resolved per viewer/tier by
+`PricingComponent.ctaFor()` rather than templated inline logic — see that method's own doc comment
+for the full decision table. Signed out, every tier still routes to `/register` exactly as before
+Stripe existed (checkout-during-signup is deliberately out of scope — an anonymous visitor needs an
+org to attach a subscription to first). Signed in as the org's admin, the current tier shows a
+disabled "Current plan" label, a non-current Basic/Pro card shows a real button that starts Stripe
+Checkout, and the Free card (when the org is actually on a paid tier) routes to `manage/billing`
+instead of calling Stripe — "downgrading" to Free is a cancellation, handled entirely by the Stripe
+Customer Portal, never a Checkout call. Signed in as anyone else (staff/manager), every non-current
+tier shows a disabled "Contact your admin" — mirrors `adminGuard`'s own "billing is admin-only"
+boundary (`manage/billing` uses `adminGuard`, not the broader admin-or-manager `canManage()` most of
+Manage's other sub-pages use), enforced for real by `create-checkout-session` itself (see below), not
+just this button being hidden.
+
+`manage/billing` (`ManageBillingComponent`, `adminGuard` — billing is financial information, same
+audience as Danger Zone) shows an org's real Stripe subscription state via `BillingService` — no
+more permanent "not connected yet" preview banner or hardcoded Free tier. Account creation date,
+team member count, inventory item count, and photo storage usage are still real, independently
+queried numbers exactly as before (storage usage from `get_inventory_photo_storage_usage()`, an
+admin-only `SECURITY DEFINER` RPC summing `storage.objects` sizes via `inventory_item_images` ->
+`inventory_items`, since `storage.objects` isn't exposed to PostgREST directly) — only the plan/
+billing-date/payment-method section changed. "Upgrade to Pro" is offered whenever the org isn't
+already on Pro — on Free *and* on Basic alike, not just from Free — deliberately the single most
+visually prominent action on the card (`.upgrade-pro-button`: a hand-styled primary/tertiary gradient
+button with a soft glow, a diagonal shine sweep every few seconds, `auto_awesome` icon, and its own
+`:hover`/`:focus-visible`/`prefers-reduced-motion` handling, since Material's own button theming API
+only covers a solid `--mat-button-filled-container-color`, not a gradient — Pro is the plan worth
+nudging every non-Pro org toward). "Upgrade to Basic" only shows from Free. Once on any paid tier, a
+"Manage billing" button opens the Stripe Customer Portal for cancellation/payment-method updates — no
+custom cancel/payment-method UI was built anywhere in this app, per Stripe's own guidance that the
+Portal should own that — sitting next to a "View plans" link back to `/pricing` (kept out of the plan
+summary header specifically so the two read as a pair, and visible on every tier including Free, where
+Manage billing itself doesn't render yet). A `past_due` subscription shows a payment-failed warning; a
+`cancelAtPeriodEnd` subscription notes when it reverts to Free. `BillingService` (`core/billing.service.ts`)
+is the shared root-provided service both pages
+read from — a signal-backed `subscription`/`currentTier` pair (`currentTier` derived via
+`pricingTierByKey(subscription()?.tier ?? 'free')`, the same "missing row means the default"
+convention `SiteSettingsService`'s own signals already use) plus `startCheckout(tier)`/
+`openBillingPortal()`, which call an Edge Function rather than writing any table directly — mirrors
+`ImpersonationService.start()`'s own `functions.invoke()` + `extractFunctionErrorMessage()` shape,
+since neither this service nor any client code has a write grant on `subscriptions` at all (see that
+table's own migration note below). `startCheckout()` returns a `{ error, redirected }` pair rather
+than just an error string, because it has two genuinely different outcomes (see
+`create-checkout-session`'s own paragraph below for why): `redirected: true` means the browser is
+mid-navigation to a real Stripe Checkout page (`window.location.href = data.url`) and the caller
+should leave its own pending/spinner state alone; `redirected: false` means an existing paid
+subscription's price changed in place with no redirect at all — `startCheckout()` itself reloads
+`subscription()`/`currentTier()` before resolving, so the caller just clears its pending state and
+shows its own "done" toast (`NotificationService.success()`, same as every other brief confirmation
+in this app) since there's no page navigation to otherwise signal it.
+
+Real Stripe subscription state lives in a new `subscriptions` table — one row per org (missing row =
+implicit Free, same convention as above), `tier`/`status` columns, Stripe customer/subscription/price
+ids, `current_period_end`, `cancel_at_period_end`. Any approved org member can read their own org's
+row (tier isn't sensitive the way payment details are); there is **no insert/update/delete grant for
+`authenticated`/`anon` at all** — every write happens through three new Edge Functions'
+`service_role` clients, the only thing that can ever move an org between tiers. Backed by official
+Stripe integration guidance (fetched live via `npx skills add https://docs.stripe.com` into
+`.agents/skills/stripe-*` — Checkout Sessions in `mode: 'subscription'` + the Billing APIs, which
+auto-generate Invoices per cycle with no separate Invoicing integration needed; the Customer Portal
+for every self-service plan change; a webhook handler for the subscription lifecycle described as
+never optional; one Stripe Product per tier, never multiple tiers' prices on one Product; a
+restricted API key rather than a full secret key; never passing `payment_method_types`, letting
+Stripe's own dynamic payment methods apply).
+
+`supabase/functions/create-checkout-session` and `create-billing-portal-session` are browser-invoked
+(`supabase.functions.invoke()`), mirroring `impersonate-user`'s own shape exactly: real CORS
+handling, a module-level `service_role` client alongside a per-request caller-identifying client (the
+caller's own forwarded `Authorization` header against the anon key, used only for `.auth.getUser()`),
+a flat `{ error: string }` JSON body on every non-2xx response. Both re-check the caller is an admin
+of their own org server-side (mirroring `adminGuard`'s own check) rather than trusting the client.
+`create-checkout-session` finds-or-creates the org's Stripe Customer by reading (never writing)
+`subscriptions.stripe_customer_id` — passing `customer_email` instead the first time and letting
+Checkout create the Customer itself, since every actual table write for this feature stays inside the
+webhook — then creates the session with both `client_reference_id` *and*
+`subscription_data.metadata` set to the organization id (session-level metadata is only ever visible
+on `checkout.session.*` events; a later Portal-driven upgrade or plain renewal has no idea which
+Checkout Session originally created it, so the Subscription object's own metadata is what lets the
+webhook re-correlate those events back to an org). `create-billing-portal-session` needs an existing
+`stripe_customer_id` (400 — "choose a plan first" — if none yet) and just mints a portal session URL.
+Stripe Price ids for Basic/Pro are a hardcoded constant map inside `create-checkout-session` (same
+convention as `send-notification-email`'s own `FROM_ADDRESS`/`APP_URL`) — two tiers, never read by
+Angular, not worth a table — duplicated into the webhook function as a defensive fallback for tier
+resolution when a subscription's own metadata is somehow missing.
+
+The Checkout-Session path above only ever applies when the org has no currently-billing subscription
+(Free, or a past cancellation) — a real gap caught before it could double-bill anyone: an org already
+on Basic clicking "Upgrade to Pro" would, if this just reused the same Checkout flow, get a brand-new,
+*second* Subscription object on the same Stripe Customer rather than changing the existing one, since
+Checkout Sessions only ever create new subscriptions. `create-checkout-session` instead checks the
+org's `subscriptions` row first — if `stripe_subscription_id` is set and `status` is
+`active`/`trialing`/`past_due` (a real, currently-billing subscription, not `canceled` or similar), it
+calls `stripe.subscriptions.update()` directly instead, swapping the subscription's existing item onto
+the new tier's Price with proration (`proration_behavior: 'create_prorations'`, Stripe's own default,
+made explicit) and returns `{ updated: true }` — no Checkout URL, since there's nothing to redirect
+to, the change is immediate. That `update()` call is itself what triggers a real
+`customer.subscription.updated` webhook event, so the actual `subscriptions` row write still goes
+through `stripe-webhook` exactly the same as every other path; this function only ever *performs* the
+plan change, never writes the row itself. A request for the tier the org is already on is rejected
+outright (400) rather than calling Stripe over nothing.
+
+Shipped with a real bug caught on the very first live checkout attempt, not from a test: Stripe's
+"Managed Payments" feature (Stripe acting as merchant of record, handling tax globally) is on by
+default for this account and requires every Product to carry a `tax_code` — the first attempt failed
+with "the product tax code is missing" before ever reaching this app's own code. Diagnosed by
+reproducing the exact same `checkout.sessions.create()` call directly against Stripe's raw API (`curl`
+itself turned out to segfault on this machine specifically when Stripe returns a 4xx from `api.stripe.com`
+regardless of auth method — Node's `fetch` was the working substitute) rather than by trial-and-error
+against this app's own code. Fixed by passing `managed_payments: { enabled: false }` on the session
+(cast through `as Stripe.Checkout.SessionCreateParams`, since this is new enough that the installed
+`stripe` npm package's own TS types may not yet know the field) rather than assigning tax codes to
+Basic/Pro — real tax handling is already its own deliberately-deferred item below, and this is the
+same category of thing. Revisit both together before any real, non-test charge.
+
+`supabase/functions/stripe-webhook` is the *only* place any `subscriptions` row is ever written,
+called directly by Stripe rather than the browser (mirrors `send-notification-email`'s shape instead
+— a single `service_role` client, no CORS) and authenticated by Stripe's own webhook signature
+(`stripe.webhooks.constructEventAsync()` — the async variant, since Deno's crypto has no sync
+verifier — against the raw request body, the `Stripe-Signature` header, and `STRIPE_WEBHOOK_SECRET`)
+rather than this app's own `x-webhook-secret` shared-secret scheme, which is specific to the
+Postgres-trigger-originated calls that function otherwise handles; `[functions.stripe-webhook]` in
+`config.toml` sets `verify_jwt = false` for the identical "Stripe's caller has no Supabase JWT
+either" reason that block already exists for `send-notification-email`. Handles exactly the six
+events Stripe's own guidance calls mandatory: `checkout.session.completed`/
+`checkout.session.async_payment_succeeded` (gated on `payment_status === 'paid'` for the former) each
+re-`retrieve()` the real Subscription (a Checkout Session itself carries no status/period-end) and
+upsert the row (`onConflict: 'organization_id'`); `customer.subscription.updated` (Portal-driven
+upgrade/downgrade, plain renewals) reads the org id from the Subscription object's own metadata (it
+has no `client_reference_id` — only a Checkout Session ever does) and does the same upsert;
+`customer.subscription.deleted` flips the row to `tier: 'free'`, `status: 'canceled'` while keeping
+the Stripe ids for a future resubscribe; `invoice.paid` re-syncs the row on every renewal;
+`invoice.payment_failed` sets `status: 'past_due'` with no forced downgrade — Stripe's own dunning
+retries own the grace period, the Portal is where the customer actually fixes their payment method.
+Response codes deliberately depart from `send-notification-email`'s "always 200, best-effort"
+philosophy: a signature failure is a genuine `400`, and a database write failure inside a handler is
+a logged `500` — an inaccurate subscription row is worth Stripe's own automatic retry, unlike a
+missed notification email.
+
+Deliberately out of scope for this first pass: annual billing or multiple prices per product; Stripe
+Tax (their own guidance's own mandatory reminder: before any real, non-test charge, revisit
+`automatic_tax` plus an active Stripe Tax registration — without one Stripe silently collects zero
+tax); any invoice/payment-history UI or table (`invoice.paid`/`invoice.payment_failed` only ever
+refresh `subscriptions.status`/`current_period_end`, nothing is persisted per-invoice); trials; and a
+`_shared/` Edge Function directory (the small `STRIPE_PRICE_IDS`/`APP_URL` config stays duplicated
+per-function, matching every existing Edge Function in this app).
+
+Real usage-cap enforcement against `PRICING_TIERS.limits` — the one gap the paragraph above used to
+flag (an org could exceed its own tier's caps regardless of whether it could actually pay) — closed
+in a follow-up pass, in the same two-layer shape this schema always uses for a client-checkable-but-
+server-enforced boundary (`is_locked`, the per-item 10-photo cap, etc.): `ManageInventoryComponent`'s
+create form and `ManageTeamComponent`'s pending-join-requests section each show a `.plan-limit-notice`
+banner (same shape `ModalTableComponent`'s own `.retired-notice` established, just warning-toned,
+plus `role="status"` — added in a same-day accessibility-pass follow-up, since unlike `.retired-notice`
+this banner can newly appear while a screen reader user is already mid-session on the page, e.g.
+another admin approves the org's last available seat in a different tab while this one's create form
+is still open, and a plain, role-less paragraph gives no signal that submission just became blocked)
+and disable their own Create/Approve button once the org's own already-loaded count
+(`allInventoryItems.length` / `teamMembers.length`, the exact same counts `ManageBillingComponent`
+already measures the org against) reaches its plan's limit — but the real enforcement is server-side,
+since neither of those client checks can see a concurrent write from another tab or a direct API call.
+Three new triggers/RPCs (`add_pricing_tier_usage_limits` migration, see below) are the actual
+backstop: `inventory_items`/`inventory_item_images` inserts and `admin_approve_member()` all raise a
+plain exception once their org would exceed its plan's item/photo-storage/team-member cap, which
+surfaces to the user for free through each of those write paths' own pre-existing `error.message`
+handling — no new client-side error-surfacing plumbing needed for the "it actually got rejected" case,
+only the proactive banner/disabled-button pair above it. Team-member enforcement lives at
+`admin_approve_member()` specifically, not at signup/join-request time — a pending join request
+doesn't count against an org's own seat usage (`ManageBillingComponent`'s own `teamMemberCount` query
+already only counts `membership_status = 'approved'`), so the queue can still grow freely; only
+actually admitting someone is what the cap blocks. Photo storage enforcement reuses
+`get_inventory_photo_storage_usage()`'s own org-scoped `storage.objects` join, evaluated inside a
+`before insert` trigger on `inventory_item_images` at the moment each new photo's own row would be
+inserted (the file itself is already uploaded to Storage by then — see
+`uploadInventoryItemImages()` — so the trigger can see and sum its size directly). None of the three
+caps' numbers live in the database — `pricing_tier_limits()` hardcodes the same figures
+`PRICING_TIERS` itself defines, deliberately duplicated rather than shared, the same
+duplicate-a-small-constant-map-across-layers tradeoff `stripe-webhook`'s own `STRIPE_PRICE_IDS` copy
+already accepts elsewhere in this app — if the tiers' own numbers ever change, this function needs
+updating by hand to match. A few edge cases are deliberately left as accepted, documented tradeoffs
+rather than engineered away: a bulk CSV import or a bulk member-approval can each land slightly over
+a cap under real concurrency (several rows/approvals reading the same "current count" before any of
+them commit — no RPC in this schema accepts an array of ids, so this is the same tolerance every
+other bulk action here already has for a partial-failure outcome); and a photo upload rejected right
+at the storage cap leaves that one file orphaned in the `inventory-images` bucket (uploaded before
+the row insert that would have referenced it was rejected) rather than being cleaned up automatically.
 
 The Inventory page has a card/table view toggle (`InventoryComponent.viewMode`, a
 `mat-button-toggle-group` above the item list) — card view is the original gallery layout; table
@@ -437,19 +609,23 @@ non-match prefills the new item's barcode field. `ModalTableComponent`'s edit fl
 existing item's barcode the same way. The shared `QrLabelModalComponent` (QR rendered client-side
 via the `qrcode` package) generates a printable/downloadable label encoding an item's id for
 assets with no manufacturer barcode — scanning that label later resolves straight back to the item.
-**Currently hidden from the UI** via `shared/utils/barcode.ts`'s `BARCODE_FEATURE_ENABLED` (`false`)
-— the feature isn't fully set up to function yet, so every entry point checks this flag and renders
-nothing while it's off: `ManageInventoryComponent`'s create-form field/scan button,
-`ModalTableComponent`'s QR label button/barcode display row/edit field/scan button, and the
-"Barcode" checkbox in both of Settings > Data's grouped-field sections (excluded from
-`INVENTORY_FORM_FIELD_GROUPS`/`INVENTORY_TABLE_COLUMN_GROUPS` while the flag is false, so an admin
-can't toggle on a field that would render as nothing anyway). Deliberately a UI-only kill switch,
-not a removal — the column, migration, models, and both modal components stay fully in place so
-this can be re-enabled later by flipping the one flag back to `true`; nothing else should need to
-change. Checked directly in each rendering site rather than folded into `fieldEnabled()`/
+Live in the UI via `shared/utils/barcode.ts`'s `BARCODE_FEATURE_ENABLED` (`true`) — every entry
+point checks this flag and renders normally while it's on: `ManageInventoryComponent`'s create-form
+field/scan button, `ModalTableComponent`'s QR label button/barcode display row/edit field/scan
+button, and the "Barcode" checkbox in both of Settings > Data's grouped-field sections (included in
+`INVENTORY_FORM_FIELD_GROUPS`/`INVENTORY_TABLE_COLUMN_GROUPS` while the flag is true). This started
+as a temporary kill switch (the feature wasn't fully set up to function yet at the time) and was
+flipped on once `BarcodeScannerModalComponent`/`QrLabelModalComponent` were verified to be fully
+wired — real `@zxing/browser`/`qrcode` implementations, no stubs, `_headers`' own
+`Permissions-Policy: camera=(self)` already anticipating the camera grant — so turning it on really
+was the one-line change its own doc comment had always promised. Kept as a real constant rather than
+deleted now that it's on, purely as a fast kill switch: flipping it back to `false` hides every one
+of those entry points again instantly, with the underlying code (this file, both modal components,
+the `inventory_items.barcode` column/migration, the `InventoryItem` field itself) left fully in
+place either way. Checked directly in each rendering site rather than folded into `fieldEnabled()`/
 `tableColumns`, since an org whose stored `site_settings.inventory_form_fields`/
-`inventory_table_columns` already included `'barcode'` (the default before this flag existed) still
-needs it hidden regardless of what's stored.
+`inventory_table_columns` predates this flag's introduction needs the exact same behavior regardless
+of what's stored.
 
 Retirement requests can either always need a second approver (today's original behavior) or
 retire immediately, an admin's choice via a per-org `site_settings.require_retirement_approval`
@@ -2463,15 +2639,34 @@ already have one — roughly twenty call sites across `AppComponent`'s header, H
 Broadcasts, and most of `manage/*`/`shared/components/*`. A handful of components
 (`ManageOrdersComponent`/`ManageActivityComponent`/`ManageErrorLogComponent`/`ManageReportsComponent`)
 didn't inject `AuthService` at all before this and needed it added. Deliberately *not* fixed at the
-RLS layer (e.g. dropping the blanket policies in favor of routing Studio's own cross-org reads through
-dedicated `SECURITY DEFINER` RPCs the way `platform_get_organization_usage()` already does) — that's
-the more architecturally correct long-term fix, but a materially bigger, more security-sensitive
-change touching several already-working Studio pages, considered and deliberately deferred in favor of
-the narrower, lower-risk fix at each affected call site. A few `.from('profiles')` call sites were
-deliberately left alone: single-row lookups already scoped by `.eq('id', ...)` (a person editing their
-own profile, `AuthService`'s own session-derived profile fetch), profile `DELETE`s already scoped by
-id (safe regardless, per the write-side finding above), and every Studio page's own intentionally
-cross-org reads.
+RLS layer at the time (e.g. dropping the blanket policies in favor of routing Studio's own cross-org
+reads through dedicated `SECURITY DEFINER` RPCs the way `platform_get_organization_usage()` already
+does) — that was judged the more architecturally correct long-term fix, but a materially bigger, more
+security-sensitive change touching several already-working Studio pages, so it was deferred in favor of
+the narrower, lower-risk fix at each affected call site first. A few `.from('profiles')` call sites were
+deliberately left alone at the time: single-row lookups already scoped by `.eq('id', ...)` (a person
+editing their own profile, `AuthService`'s own session-derived profile fetch) and profile `DELETE`s
+already scoped by id (safe regardless, per the write-side finding above).
+
+The deferred half landed in a follow-up `/security-review` pass: `add_platform_cross_org_read_rpcs`
+adds `platform_list_profiles(p_ids, p_organization_id)`/`platform_list_feedback(p_organization_id,
+p_status)`/`platform_list_client_errors(p_organization_id, p_since, p_limit)` — three `SECURITY
+DEFINER` RPCs, each gated by `is_platform_admin()` with the same `raise exception`-not-a-silent-empty-
+result style `platform_get_organization_usage()` already established, covering every shape Studio's own
+call sites actually needed (a full-table read, one row by id, several rows by an id list, one org's
+rows, a status filter, a since-timestamp, an optional row cap). Every Studio page that used to read
+`profiles`/`feedback`/`client_error_log` directly (`StudioComponent`, `StudioUsersComponent`,
+`StudioOrganizationsComponent`, `StudioOrgDetailComponent`, `StudioUserDetailComponent`,
+`StudioAuditLogComponent`, `StudioErrorLogComponent`, `StudioFeedbackComponent`) now calls the matching
+RPC instead — `feedback`'s own review-status `UPDATE` was left untouched, since that write path was
+never part of the additive-SELECT-policy problem to begin with (no other permissive `UPDATE` policy
+exists on that table for the platform-admin one to collide with). A second, immediately-following
+migration (`remove_blanket_platform_admin_select_policies`) then drops the three original "Platform
+admins can view all X" permissive `SELECT` policies entirely — deliberately split into two migrations
+rather than one, so the new RPCs exist and the rebuilt frontend has a real chance to deploy and start
+using them before the old (leaky, but until that moment still relied-on) policies disappear from under
+it. `platform_action_log`'s own policy was untouched throughout — it never had a sibling org-scoped
+policy to leak through in the first place, so it was never part of this issue.
 
 A global command palette — Ctrl+K on Windows/Linux, Cmd+K on Mac — lets any authenticated user jump
 straight to a page or search across inventory items, tasks, reservations, audits, and broadcasts (every
@@ -3110,6 +3305,385 @@ accepted here the same way this schema accepts a few other low-sensitivity trade
 the only thing exposed to someone who guessed another org's id is who's editing what there, nothing
 about the item's own data.
 
+A round of accessibility fixes found via a targeted pass rather than a live report. `manage/reservations`'
+calendar view (`ReservationCalendarComponent`) had `role="grid"`/`role="gridcell"` markup already in
+place, but every day cell was its own native `<button>` with no `tabindex` management at all — basic
+Enter/Space activation already worked for free from being a real `<button>`, but tabbing *through* a
+month took up to 42 presses, and arrow keys (what a screen reader's own grid navigation mode expects
+given the `role="grid"` markup already there) did nothing. Fixed with the standard WAI-ARIA APG
+roving-tabindex pattern: exactly one cell (`focusedIso`) carries `tabindex="0"` at a time, everything
+else is `-1`; Arrow keys move it a day/week, Home/End jump to the start/end of the focused day's own
+week. `selectDay()` (called by both a click and native button activation) keeps the roving stop in
+sync with whatever was just actually chosen, so the very next Tab press doesn't skip past the grid
+entirely. Arrowing past the currently-rendered 6-week window shifts the displayed month first (same
+as clicking Previous/Next), deferring the actual `.focus()` call via `setTimeout` until that new
+month's grid has actually rendered. Each cell also gained a proper `aria-label` (`dayAriaLabel()` —
+full date plus Today/Selected/reservation-count flags, since the visible content alone — a bare day
+number plus whatever chips happen to be showing — doesn't say which month/year a screen reader user
+is on) and `aria-selected`, and the month `<h3>` gained `aria-live="polite"` so a screen reader user
+hears the month change on Previous/Next even if they're not focused on it.
+
+Separately, Angular's router never moves focus on navigation the way a full page load naturally would
+— a screen reader or keyboard-only user navigating via the drawer/command palette/quick menu got no
+signal a navigation even happened. `AppComponent`'s constructor now subscribes to `router.events`
+directly (a plain `.subscribe()`, no RxJS operators, matching this app's usual convention) and, on
+every `NavigationEnd` whose *path* actually changed (comparing `path.split('?')[0]`, the same
+convention `showChrome()` itself already uses — so a same-page query-only navigation, a Settings tab
+switch or an `?item=`/`?task=` deep link, never re-triggers this), moves focus to the new page's own
+heading via `focusPageHeading()`. That method looks for a real `<h1>` first, falling back to
+`PageHeaderComponent`'s own `role="heading"`/`aria-level="1"` override (see that component's own
+`headingLevel` doc comment for why some pages' "h1" isn't a literal `<h1>` tag) — scoped to
+`#main-content` so it can never land on the header/footer's own chrome — and gives it a `tabindex="-1"`
+if it doesn't already have one (left in place afterward, same "harmless to leave set" convention this
+app's other one-off focus targets already use). Deferred one tick via `setTimeout`, since
+`NavigationEnd` fires once the route itself resolves but the routed component's own template hasn't
+necessarily painted its heading into the DOM yet at that exact moment.
+
+Inventory and Manage Tasks' "All tasks" tab both get a **Saved views** row — a chip per named
+filter/search/sort combo, click to re-apply, a small trailing × to delete — via a new shared,
+page-agnostic `SavedViewsBarComponent` (`shared/components/saved-views-bar`). The component has no
+idea what a "view" actually contains for either page (Inventory's is search/status/stock-level/
+category/physical-location/sort/card-vs-table; Manage Tasks' is search/assignee/status/due-before) —
+`TFilters` is a generic, opaque, JSON-serializable object the host constructs (`captureCurrentView()`/
+`captureTaskFilters()`) and reads back (`applySavedView()`/`applyTaskSavedView()`), the same "dumb,
+host owns the actual meaning" shape `BulkActionToolbarComponent` already established for its own
+page-agnostic "N selected" chrome — except this one is self-contained (unlike that toolbar), owning
+its own `localStorage` read/write via `shared/utils/saved-views.ts`'s `loadSavedViews()`/
+`addSavedView()`/`removeSavedView()`, same reasoning `PageIntroComponent` already gives for owning its
+own dismissal storage rather than making every host duplicate it. Keyed
+`shelf-sync:saved-views:<userId>:<pageKey>` — per user (not org-wide) and browser-local only, not
+synced across devices, the same documented tradeoff `PageIntroComponent`'s own dismissal state and
+`HomeComponent`'s Getting-Started dismissal already accept, for the same reason: cheap, no schema
+change, and the worst case (a different device just doesn't have this saved view yet) is mild. A
+saved view whose stored filters deep-equal (`JSON.stringify` comparison) the host's current filter
+state renders with a highlighted chip (`isActive()`), so it's visible when the page is currently
+showing exactly one of them. Saving rejects a case-insensitive duplicate name rather than silently
+creating a second entry with the same label, the same "likely accidental duplicate" reasoning
+`isDuplicateItemName()` already established for inventory item names elsewhere in this app.
+Manage Tasks' own `taskFilterDueBefore` is a `Date` on the component but stored/round-tripped through
+this as a plain `'YYYY-MM-DD'` string (`toIsoDateString()`/`parseIsoDate()`) — a `Date` survives
+`JSON.stringify()` fine but never comes back as one from `JSON.parse()`, which would have broken
+re-applying a saved view onto that field's own `matDatepicker` binding, which expects a real `Date`.
+"Save current view" itself only ever makes sense once something's actually been searched/filtered —
+saving the untouched default would just be a named view that looks exactly like having no view
+applied at all — so `SavedViewsBarComponent` takes a third required input, `hasActiveFilters`, that
+disables the button (with a `matTooltip` explaining why) and no-ops `startNaming()` even if called
+directly. Rather than this component trying to work out "is TFilters at its default" generically
+(which it has no way to do for an opaque, page-defined shape), both hosts just pass their own
+already-existing `hasActiveFilters`/`hasActiveTaskFilters` getters — each page already had one, since
+both already drive that same page's own "Clear filters" button visibility.
+
+`AppComponent`'s own route-change focus move (see its own paragraph above) tags the heading it
+focuses with a `.route-focus-heading` class, and a new global `styles.scss` rule suppresses the
+browser's default focus outline on it — a `tabindex="-1"` element (what every such heading either
+already is or gets set to) can never be reached by a sighted keyboard user actually pressing
+Tab/Shift+Tab, so a focus ring appearing there on every navigation was purely a distracting side
+effect of the programmatic `.focus()` call, never a meaningful "here's where your Tab press landed"
+cue. Screen reader users are unaffected either way, since the focus move itself — not any visual
+styling — is what they rely on. Same "must be global, not component-scoped" reasoning
+`router-outlet + *`'s own fade-in rule already established for itself, for the identical structural
+reason: the heading belongs to whichever routed component just mounted, never `AppComponent`.
+
+Every realtime "someone else just changed this" update in the app now also gets spoken aloud to
+screen reader users, alongside the purely-visual `.realtime-flash` pulse `FlashTracker` already
+drives — a gap the `.realtime-flash` mechanism itself never closed, since a CSS animation is
+invisible to anyone not watching the screen. `shared/utils/realtime-announce.ts`'s
+`flashAndAnnounceChanges()` is the one shared entry point every realtime-flashing page now calls
+instead of looping `flashTracker.flash(id)` directly — it still flashes every id exactly as before,
+but for each one that resolves to a real label (a `labelFor` callback the caller supplies) it also
+calls Angular CDK's own `LiveAnnouncer` (already a transitive dependency via Angular Material/CDK,
+not a new one — this app's usual "hand-roll it" preference is about avoiding a *charting/calendar*
+dependency, not reimplementing an accessibility primitive CDK already ships) with a caller-formatted
+message (a `describe` callback). Wired into all nine realtime-flash consumers:
+`InventoryComponent`/`ManageInventoryComponent` call it inline at their own single-row-patch site
+(passing a one-element array rather than a whole pending set); `TasksComponent`/
+`ManageTasksComponent`/`ManageTeamComponent`/`ManageOrdersComponent`/`ManageReservationsComponent`/
+`BroadcastsComponent` call it from their own `reloadAndFlashChangedX()`, resolving each id's label
+by looking it up in whatever list that reload just refreshed (a task's title, an order/reservation's
+`itemName`, a broadcast's title); `ManageAuditsComponent`'s own `pendingFlashIds` mixes two different
+id spaces (an audit's own id, or — via the audit-schedules channel — a *schedule's* own id, which
+never appears in `audits` at all), so its `auditOrScheduleLabel()` checks both lists rather than
+just one. `ManageSuppliersComponent`'s own `FlashTracker` usage is deliberately untouched — it backs
+`?highlight=<id>` (the command palette's deep-link landing treatment), not a realtime update, a
+different semantic ("you just navigated here" vs. "something changed while you were watching") this
+feature doesn't apply to.
+
+Both a reservation's date range and a task's own due date can now be downloaded as a `.ics` file and
+added to a real calendar app (Google/Outlook/Apple) — this app's own dates otherwise only ever lived
+inside ShelfSync itself. `shared/utils/calendar-export.ts`'s `buildIcsFile()`/`downloadIcsFile()` are
+a hand-rolled, single-VEVENT iCalendar builder (same "no new runtime dependency" convention
+`DonutChartComponent`/`TrendChartComponent`/`ReservationCalendarComponent`/etc. already established
+for their own hand-rolled pieces — RFC 5545 is simple enough for the one-event-per-file shape this
+needs) plus the same plain `<a download>`-via-`Blob` technique `inventory-export.ts`'s own
+`downloadCsv()` already uses. Every event this builds is all-day (`DTSTART`/`DTEND` with
+`VALUE=DATE`, no time-of-day) since both of this app's own date fields already are — the one
+genuinely fiddly part of iCalendar files (timezone handling) simply doesn't arise. `DTEND` is
+computed as one day past the caller's own *inclusive* end date, since iCalendar's own all-day
+`DTEND` is exclusive; a reservation's own start/end map straight onto this, a task's due date passes
+only a `startDate` and gets a same-day-plus-one `DTEND` for free. `ManageReservationsComponent` gets
+an "Add to calendar" icon button next to the date range on both the single-reservation
+`#reservationCard` template and the multi-item `#reservationGroupCard` one (`downloadReservationIcs()`/
+`downloadReservationGroupIcs()`, the latter listing every item in the group in its own description
+rather than one file per line item, since a group already shares one date range) — available
+regardless of a reservation's status, even a cancelled/returned one's historical dates are harmless
+to export. `TaskDetailModalComponent` gets the same button beside its own due-date `<dd>`
+(`downloadDueDateIcs()`), pulled out of the overdue pill's own flex row into a sibling `<span>`
+(`.due-date-cell`) so the button doesn't end up rendered directly on the pill's solid
+`--app-danger-bg` fill, which would fight it for contrast.
+
+An inventory item's photos can now be reordered by dragging them, not just added/removed — the
+gallery only ever supported add/remove before this despite `inventory_item_images.position` already
+existing to support display order. Uses Angular CDK's own `DragDropModule`/`CdkDrag`/`CdkDropList`
+rather than a hand-rolled mouse-only implementation (again, not a new dependency — the same
+"CDK-shipped interaction primitive, not a charting/calendar library" reasoning `LiveAnnouncer` above
+already draws) on `ModalTableComponent`'s existing-images preview row specifically — a newly staged
+(not-yet-uploaded) photo stays out of scope for dragging and always appends after the existing ones
+(matching `uploadInventoryItemImages()`'s own `startPosition` param), so there's nothing to merge two
+different "kinds" of photo into one drag list for. `onExistingImageDrop()` reorders `existingImages`
+in place via CDK's `moveItemInArray()`; `imagesReordered` (folded into `hasUnsavedChanges()` and
+`startEdit()`'s own `originalImageOrder` snapshot) diffs the *current* order against the order the
+edit session started in, filtering `removedImageIds` out of both sides first so marking a photo for
+removal — which shifts every later index — never reads as a reorder on its own. `saveImageChanges()`
+writes new position values (a plain `0..n-1` per whatever's left in the current array order, dense
+values with no particular meaning beyond sort order — only the *relative* order any later
+`.order('position')` read cares about) for whichever surviving photos actually moved, skipping a
+photo whose index didn't change; this happens before the upload step, though the ordering between
+them is actually immaterial — a new upload's own position (computed from a plain remaining-count) is
+always numerically after every surviving existing photo regardless of what values the reorder step
+just wrote. A drag handle icon (`cdkDragHandle`) confines the actual drag gesture to its own small
+button rather than the whole thumbnail, so clicking the image or the remove button never accidentally
+starts a drag; CDK's own drag-drop already supports keyboard reordering out of the box (focus the
+handle, Space to pick up, arrow keys to move, Space to drop, with its own live-region announcements)
+with no extra work needed on top, a nice side benefit of reaching for CDK here rather than a
+mouse-only custom implementation. The actual `.cdk-drag-preview`/`.cdk-drag-placeholder` visual
+polish (a lifted shadow while dragging, a dashed empty slot left behind) lives in the global
+`styles.scss`, not `ModalTableComponent`'s own stylesheet — same "must be global" reasoning as
+`.route-focus-heading` and `router-outlet + *` above, but for a different mechanism: CDK clones the
+dragged element into a `.cdk-drag-preview` appended near the very end of `<body>`, and even the
+in-place `.cdk-drag-placeholder` it leaves behind is created by CDK itself, so neither one ever
+carries `ModalTableComponent`'s own emulated-encapsulation attribute for a scoped selector to match.
+
+Any user can turn on optional two-factor authentication (TOTP) for their own account from the
+Account page's new "Two-factor authentication" card — self-service and opt-in, not an org-wide
+mandate (see below for the "make it mandatory" tradeoffs this deliberately leaves open). Backed
+entirely by Supabase Auth's own native MFA support (`supabase.auth.mfa.*` against `auth.mfa_factors`
+— a table this schema doesn't own or migrate) rather than a bespoke table/columns; TOTP specifically
+(not Supabase's phone or WebAuthn/passkey factor types) since it needs no SMS provider bill and every
+authenticator app already speaks it. `core/mfa.service.ts`'s `MfaService` (root-provided, same shape
+`SupplierService`/`ImpersonationService` already establish for a cohesive pulled-out concern) wraps
+the whole lifecycle: `enrollTotp()` (clears any stale `unverified` factor left over from an abandoned
+attempt first, then starts a fresh one), `confirmEnrollment()`/`unenroll()`, and `isVerificationPending()`
+(true when this specific *session* — not just the account — still owes a challenge: a verified factor
+exists but the JWT's own `aal` claim isn't `aal2` yet, the common case being a fresh sign-in).
+`disableTwoFactor()` on the Account page confirms first via `ConfirmDialogComponent` (`danger: false`
+— fully reversible, just worth a beat before weakening the account's own login security), mirroring
+the same "consequential but reversible" gate this schema already applies to org suspension.
+
+`enrollTotp()` deliberately hands the caller `data.totp.uri` (the raw `otpauth://` URI) rather than
+Supabase's own pre-rendered `qr_code` SVG string, and `TwoFactorSetupModalComponent` renders its own
+QR image from that URI via the `qrcode` package's `QRCode.toDataURL()` — the exact same library and
+technique `QrLabelModalComponent` already uses successfully elsewhere in this app for its own printable
+item labels, producing a plain `data:image/png;base64,...` string that needs no `DomSanitizer` bypass
+at all to bind to `<img src>`. This isn't the first thing that was tried: two earlier attempts at using
+Supabase's own `qr_code` SVG string directly as a `data:image/svg+xml,...` URL (first raw, then
+percent-encoded via `encodeURIComponent` to escape a literal `#` the SVG's own `fill="#000000"`
+attributes would otherwise have a URL parser misread as a fragment separator) both rendered nothing in
+a real browser, for a reason that was never conclusively identified — a `DomSanitizer.bypassSecurityTrustUrl`
+theory (versus `...TrustResourceUrl`, on the reasoning that `<img src>` is registered under
+`SecurityContext.URL` in Angular's own DOM security schema, not `RESOURCE_URL`) was tried and confirmed,
+via reading Angular's own sanitizer source directly, to be a dead end too — Angular explicitly permits a
+`ResourceUrl`-trusted value in a `URL` context as a documented compatibility carve-out, so that trust-type
+mismatch was never actually the bug. Rather than continue debugging an unfamiliar third-party string
+format blind, generating the QR ourselves via a library this codebase already trusts sidesteps the whole
+class of doubt — worth remembering if a future "why won't this image render" bug looks similar: verify
+the actual sanitizer/URL mechanics against Angular's own source before trusting a plausible-sounding
+theory, and prefer a codebase's own already-proven rendering path over a third party's undocumented
+string format when one's available.
+
+A new `/mfa-verify` route (`MfaVerifyComponent`, plain `authGuard` — same reasoning
+`/pending-approval` already gives for not guarding itself with the very check it exists to satisfy)
+is where a two-factor account actually enters its code post-login. `approvedGuard` is the real
+enforcement point on the client: it now checks `mfaService.isVerificationPending()` *before* even
+looking at membership status, redirecting to `/mfa-verify?returnUrl=...` first — proving it's really
+this person comes before telling them anything about their org access. `LoginComponent.attemptLogin()`
+mirrors the same check right after a successful sign-in purely for UX (skips a flash of `/home` before
+being bounced back out); `approvedGuard` would catch it regardless. Same chrome treatment as
+`/pending-approval` — not added to `AppComponent.showChrome()`'s hide-list, since this is a real
+already-authenticated session, not a pre-login page.
+
+None of this is enforced only client-side, though — a locked-out attacker with a stolen password and
+a raw API client (no browser, no guards) would sail straight past both of the checks above. The real
+enforcement is a small addition to the same two choke-point functions every other fail-closed check in
+this schema already funnels through (`add_mfa_enforcement` migration): `current_user_org_id()` now
+also requires `auth.jwt() ->> 'aal' = 'aal2'` for any account with a verified TOTP factor (falling
+through to its existing checks unchanged for an account that's never enrolled — this is genuinely
+opt-in, zero behavior change until someone turns it on for themselves), and `is_platform_admin()` gets
+the identical clause — a second, explicit gate rather than relying on `current_user_org_id()` alone,
+since Studio's own RPCs (including the impersonation Edge Function) are gated by `is_platform_admin()`
+directly with no dependency on the other function at all. Verified directly against the hosted
+project before writing the migration (a rolled-back `begin`/`rollback` transaction via
+`supabase db query -f`, not just reviewed for syntax) — both that reading `auth.mfa_factors` from a
+`security definer` function works the same way this schema's existing `storage.objects` reads already
+do (see `get_inventory_photo_storage_usage`), and that the two rewritten functions still resolve
+correctly with zero factors enrolled anywhere, per this repo's own "a function compiling isn't enough,
+run it for real" lesson.
+
+Two things worth calling out before this goes further than one admin's own account. First, a real,
+deliberately unsolved gap: Supabase's own TOTP factors have no backup/recovery-code mechanism, so
+losing the authenticator device with no other platform admin around means recovery is a manual
+`auth.mfa_factors` delete run directly against the hosted project — the same "real sensitive one-off,
+not app-mediated" category `is_platform_admin` itself already sits in, not anything self-service.
+Fine for a single-admin app today; worth a real answer (backup codes, or simply a second platform
+admin as a recovery path) before this is ever *required* rather than opt-in. Second, making it
+mandatory rather than opt-in had no single obvious lever yet at the time — the natural next steps,
+roughly in order of how much this app's own conventions already anticipated them, were: (a) an
+org-wide `site_settings.require_mfa_for_admins` (or `_for_all`) toggle in Settings > Workflow,
+mirroring every other per-org policy switch already there, checked at sign-in/`approvedGuard` time to
+route an unenrolled-but-required account to a "you must set up two-factor before continuing" version
+of the Account page's own card rather than `/home`; or (b) requiring it platform-wide just for
+`is_platform_admin` accounts specifically, which is arguably the single highest-value, lowest-effort
+version of this given what that flag alone already grants (Studio, impersonation) — (b) remains
+unbuilt, a natural extension of the same pieces already in place, but (a) has since shipped, as
+described next.
+
+An admin can now actually turn (a) on — `site_settings.require_mfa_for_all`
+(`add_site_settings_require_mfa_for_all` migration), a new "Security" card on Settings > Workflow
+alongside Retirement approval/Bulk edit/Price & supplier edits and Email notifications, same
+local-selection/save-button/error pattern every other toggle on that tab already uses. Off by
+default, so every existing org keeps two-factor purely opt-in per account until an admin turns this
+on; once on, it applies to *every* approved member regardless of role, not just admins/managers — the
+simpler, more literal reading of "org-wide" for a first pass, rather than a role-scoped variant.
+Enforcement is the identical choke point `add_mfa_enforcement` already established:
+`current_user_org_id()`'s existing "aal2, or no verified factor exists" escape hatch is narrowed to
+also require the org not to have opted into this, so an unenrolled account in a requiring org fails
+every org-scoped RLS check schema-wide, the same fail-closed shape `deleted_at`/`suspended_at`/
+`account_locked_at` already have there. Deliberately does *not* touch `is_platform_admin()` — that
+gate is for Studio's cross-org surface, which isn't scoped to any one org's `site_settings` row, so no
+per-org toggle should reach it either way.
+
+The one real wrinkle: `current_user_org_id()` is exactly what `site_settings`' own SELECT policy is
+scoped by, so if the new check read that table directly, an org turning this on would make its own
+`site_settings` row instantly unreadable to every member who hasn't enrolled yet — including the
+person trying to find out *why*, the moment the toggle flips. `current_org_requires_mfa()`, a second,
+narrower `SECURITY DEFINER` function added alongside, sidesteps this the same way
+`current_user_role()`/`is_platform_admin()` already bypass RLS for their own controlled lookups — it
+looks up the caller's own profile's org and `site_settings` row directly, independent of whether the
+enforcement it feeds into has already kicked in for that same caller. The client calls it as a plain
+RPC (`MfaService.isRequiredOrgWide()`) for the identical reason: a plain `site_settings.select()` on
+the client would hit the same chicken-and-egg RLS wall. `SiteSettingsService`'s own
+`requireMfaForAll` signal (loaded the normal way, alongside every other setting) is only safe for an
+admin who's already past the gate, editing the setting itself on the Settings page — it is
+deliberately *not* what any of the enforcement-adjacent checks below read.
+
+Three client-side call sites read `isRequiredOrgWide()` (always paired with `isEnrolled()`, and
+always short-circuited so the RPC only fires when actually needed): `approvedGuard` — right after its
+existing `isVerificationPending()`/`/mfa-verify` check, since "never enrolled at all" is a different
+case from "this session still owes a challenge against an already-verified factor" and has nowhere to
+challenge against — redirects to `/account` instead, with an explicit exemption for navigation to
+`/account` itself (otherwise the person could never reach the one page that lets them comply).
+`LoginComponent.attemptLogin()` mirrors the identical check purely for UX, same "avoid a visible flash
+of the wrong destination" reasoning its own `/mfa-verify` mirror already has — `approvedGuard` would
+catch it regardless on the very next navigation. And `AccountComponent` itself, which shows a
+prominent inline `error-message` banner on its two-factor card ("Your organization requires two-factor
+authentication...") whenever this account is unenrolled and required — computed live from the same
+RPC in `ngOnInit()` rather than a query param carried through the redirect, so it stays correct even
+on a direct refresh of `/account` (a query param wouldn't survive that).
+
+The "real, deliberately unsolved gap" `add_mfa_enforcement`'s own doc comment flagged above — no
+backup/recovery-code mechanism, recovery meaning a manual `auth.mfa_factors` delete run by hand — was
+closed in a follow-up pass. Recovery codes are this app's own addition on top of Supabase Auth's MFA,
+not something GoTrue provides: there's no "verify via backup code" API, and the `aal2` claim RLS gates
+on is only ever set by GoTrue's own real MFA verify flow, so a custom code can never forge it directly.
+Instead, redeeming a valid code removes the account's lost TOTP factor via the Auth Admin API
+(`auth.admin.mfa.deleteFactor()`, called from a new `mfa-recover` Edge Function — the only thing that
+can, since only a `service_role` client can act on another session's factors at all) — which is what
+actually lets `current_user_org_id()`/`current_org_requires_mfa()`'s existing "aal2, or no verified
+factor exists" escape hatch fall through again on the very next query, no session/JWT refresh needed
+(that check re-queries `auth.mfa_factors` live, not a cached claim). Deleting a *verified* factor is
+also Supabase's own documented trigger for signing the account out of every active session, including
+the one making the redeem request — `MfaService.redeemRecoveryCode()`'s one caller
+(`MfaVerifyComponent`'s new "Lost your device?" link, revealing a recovery-code field in place of the
+6-digit one) signs out for real and sends the user to `/login?mfaRecovered=1` afterward, the same
+"explain why you're suddenly back at login" shape `/login?impersonationEnded=1` already established
+(both now share one `.login-notice-message` style rather than a second identical rule, and the
+component's own getter is named to match).
+
+`generate_mfa_recovery_codes()` (a `SECURITY DEFINER` RPC) issues a fresh set of 10 codes — regenerating
+replaces the whole set, so a partially-used or leaked batch can be fully retired in one action — each 8
+random bytes (`pgcrypto`'s `gen_random_bytes()`, a real CSPRNG) hex-encoded and stored only as a SHA-256
+hash (`mfa_recovery_codes`, no `SELECT`/`INSERT`/`UPDATE`/`DELETE` grant for `authenticated` at all —
+every access goes through this RPC plus `get_mfa_recovery_code_count()`/`redeem_mfa_recovery_code()`
+below); a fast hash is a deliberate, accepted choice here specifically because these are server-
+generated 64-bit-entropy codes, not user-chosen low-entropy secrets, so the slow-hash rationale
+passwords need doesn't apply. `redeem_mfa_recovery_code(p_code)` strips anything that isn't a hex digit
+and lowercases before hashing, so a code typed back with or without its display dashes (or in any case)
+still matches, and marks a match used in one atomic `update ... where ... and used_at is null returning
+id` so two concurrent redemption attempts with the same code can't both succeed. No attempt-counter/
+lockout on redemption — same "rate limiting is out of scope" line this app's own security-review passes
+already draw elsewhere, and the code space makes online guessing impractical regardless. The one place
+a code is ever shown in plaintext is a new shared `RecoveryCodesModalComponent` (self-contained — it
+calls `generateRecoveryCodes()` itself in `ngOnInit()`) — opened with no data from two call sites:
+`AccountComponent.openTwoFactorSetup()`'s own `afterClosed()`, immediately after
+`TwoFactorSetupModalComponent`'s TOTP setup dialog closes successfully (reads as one continuous "set up
+two-factor, then save your recovery codes" flow without `TwoFactorSetupModalComponent` itself needing a
+second internal step), and a new "Regenerate recovery codes" button on the Account page's own two-factor
+card (confirmed first, `danger: false`, same "consequential but reversible" reasoning
+`disableTwoFactor()`'s own confirm already uses) that also shows "N codes remaining"
+(`get_mfa_recovery_code_count()`) so someone burning through their set has a visible nudge to
+regenerate before they're actually stuck with none left. Closing the modal is gated on an explicit
+"I've saved these codes somewhere safe" checkbox rather than a plain Close button — the same one-time-
+reveal friction GitHub/Google/AWS's own recovery-code UIs already use, worth it here specifically
+because there's no way back in to see the same codes again short of regenerating (which invalidates
+them).
+
+Two more small "fun design tweaks," same spirit as the confetti/loading-caption/party-mode pass
+above but smaller in scope. First, the plain `.stat-value`/`.page-hero-pulse-value` tiles on
+`manage/reports` and Studio's own hero now count up from their previous value rather than just
+popping in, via a new shared `CountUpDirective` (`shared/directives/count-up.directive.ts` — this
+app's first directive; every hand-rolled visual before this was a component). It writes straight to
+the host element's `textContent` via `ElementRef` rather than through an Angular binding, so it never
+touches anything change-detection-bound — the underlying component property each tile still reads
+from is completely unaffected, which is why none of the existing specs for either page needed to
+change. Deliberately `OnChanges`, not a plain `@Input() set value()`: a caller binds both
+`[appCountUp]="value"` and `[countUpFormat]="someFormatter"` on the same element, and Angular applies
+a directive's bound inputs in the *template's own attribute order*, not by property declaration order
+in the class — a `value` setter reading `this.countUpFormat` synchronously could fire before
+`countUpFormat` itself had been assigned that same change-detection pass, silently formatting with
+the *previous* function for one render (caught exactly that way, via this directive's own spec).
+`ngOnChanges` runs once per pass, after every `@Input()` on the directive has already been assigned
+regardless of binding order, which is what actually fixes it. The rAF loop runs via
+`NgZone.runOutsideAngular()` and never re-enters — same reasoning `LoadingCaptionComponent`/
+`PartyModeService` already establish for their own timers, doubly true here since an in-zone rAF
+would trigger a full app-wide change-detection pass on every animation frame for a value nothing
+else is bound to — and skips straight to the final value under `prefers-reduced-motion`, same as
+every other ambient animation in this app. `shared/utils/count-up-format.ts`'s `countUpNumber`/
+`countUpCurrency` are the two formatters actually used (matching `| number`/`| currency`'s own
+default precision exactly, so switching a tile onto the directive changes only how it *arrives* at
+its resting value, not the value's own formatting); the directive's own default `countUpFormat` is
+`countUpNumber`, so most tiles don't pass one at all. Deliberately scoped to tiles that render a
+single plain figure — `manage/billing`'s own usage stats ("3 of 10", "42.3 of 500 MB") and Reports'
+own "Completion rate"/"Avg. time to close" tiles are composite labels, not a bare number, and
+Reports' donut/ring charts are a different (SVG, not text-node) rendering mechanism entirely — left
+alone rather than reshaping either to fit.
+
+Second, `HeaderComponent`'s light/dark toggle button — previously an instant swap between two
+unrelated Material icon glyphs (`light_mode`/`dark_mode`) — now morphs a single icon between a sun
+and a crescent moon, via a new `ThemeModeIconComponent` (`shared/components/theme-mode-icon`). Same
+"no new runtime dependency" convention `DonutChartComponent`/`RingStatComponent`/`TrendChartComponent`
+already establish for their own hand-rolled SVG — the crescent is the classic two-circle mask trick:
+a second, invisible "cutout" circle slides over the icon's own body circle through an SVG `<mask>`,
+parked far away and shrunk in light mode (no overlap, so the body renders as a full disc = sun) and
+close/full-size in dark mode (overlaps enough to bite a crescent out of the body = moon), while eight
+rays fade and shrink toward the center at the same time — driven entirely by a `.is-dark` class swap
+plus CSS `transform`/`opacity` transitions (universally animatable, unlike animating raw `cx`/`r`
+attributes directly), gated behind `prefers-reduced-motion` the same way as everything else. Each
+instance gets its own generated mask id (a plain incrementing counter, not `Math.random()` — this
+only ever needs to be unique within one page load) so two instances on the same page can't collide,
+even though today there's only the one usage. Scoped to just this button — Account page's own
+Appearance card is a `mat-button-toggle-group` of two separate, statically-iconed buttons (Light
+always shows a sun glyph, Dark always shows a moon glyph), not one icon flipping identity, so a morph
+doesn't apply there the same way.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -3164,13 +3738,21 @@ about the item's own data.
   - `npm run supabase:gen:types` — regenerate `src/app/shared/models/database.types.ts` from the
     linked project's schema
   - `npx supabase functions deploy <name>` — deploy an Edge Function under `supabase/functions/`
-    (`send-notification-email` or `impersonate-user`, see Project Overview above for both) to the
-    linked project; no `npm run` wrapper for this yet since it's only been needed a couple of times
-    so far. `send-notification-email`'s function secrets (`RESEND_API_KEY`, `WEBHOOK_SECRET`) are set
-    via `npx supabase secrets set NAME=value` — not committed anywhere, and not visible again
-    afterward (`supabase secrets list` shows a digest, not the value). `impersonate-user` needs no
-    secrets of its own — it only ever uses the `SUPABASE_URL`/`SUPABASE_ANON_KEY`/
+    (`send-notification-email`, `impersonate-user`, `mfa-recover`, `create-checkout-session`,
+    `create-billing-portal-session`, or `stripe-webhook` — see Project Overview above for all six)
+    to the linked project; no `npm run` wrapper for this yet since it's only been needed a handful of
+    times so far. `send-notification-email`'s function secrets (`RESEND_API_KEY`, `WEBHOOK_SECRET`)
+    are set via `npx supabase secrets set NAME=value` — not committed anywhere, and not visible again
+    afterward (`supabase secrets list` shows a digest, not the value). `impersonate-user`/`mfa-recover`
+    need no secrets of their own — each only ever uses the `SUPABASE_URL`/`SUPABASE_ANON_KEY`/
     `SUPABASE_SERVICE_ROLE_KEY` every Edge Function already gets injected automatically.
+    `create-checkout-session`/`create-billing-portal-session`/`stripe-webhook` all need
+    `STRIPE_SECRET_KEY` (a **restricted** API key — Checkout Sessions/Customers/Billing-portal
+    sessions: Write, Subscriptions: Read — never a full secret key); `stripe-webhook` additionally
+    needs `STRIPE_WEBHOOK_SECRET`, obtained only after that function is deployed and a webhook
+    endpoint registered against its real URL in the Stripe Dashboard (the same
+    deploy-then-register-then-set-the-secret sequencing `send-notification-email`'s own
+    `WEBHOOK_SECRET` history already established). Neither is ever committed.
 - Supabase, local Docker workflow (optional, only if Docker Desktop is available):
   - `npm run supabase:start` / `npm run supabase:stop` — start/stop local Postgres, Studio, Auth
   - `npm run supabase:reset` — reapply all migrations + `supabase/seed.sql` from scratch locally
@@ -3198,6 +3780,29 @@ a way classic Pages never did, so `not_found_handling` is the only SPA-fallback 
 here; don't reintroduce a `_redirects` file. `environment.prod.ts`'s Supabase URL/anon key stay
 build-time constants (see Architecture below) — no host-side environment variable injection
 needed for the current single-production-project setup.
+
+`src/_headers` sets response headers on every route (Workers static-assets honors the same
+`_headers`-at-the-root convention classic Pages does — this is a different mechanism than
+`_redirects`, plain header injection rather than a redirect rule, so it wasn't affected by that
+product's own redirect-loop rejection above): `X-Content-Type-Options`/`X-Frame-Options`/
+`Referrer-Policy`/`Permissions-Policy`/`Strict-Transport-Security`, plus a real
+`Content-Security-Policy` — see that file's own comment for the exact host allowlist (Supabase's
+project host, Cloudflare Turnstile, Google Fonts) and why `style-src` alone still needs
+`'unsafe-inline'` (Angular's per-component `ViewEncapsulation` styles and Material/CDK's own
+overlay styles are both injected as runtime `<style>` tags, and a nonce-based CSP needs
+per-request server templating this pure-static deploy doesn't have). Getting `script-src` down to
+`'self'` plus just Turnstile's own host (no `'unsafe-inline'`/hash-pinning needed there) meant
+moving `index.html`'s two inline `<head>` scripts (pre-boot theme + `scrollRestoration`) out to a
+real external file, `assets/theme-init.js` — a plain `<script src="...">` with no `async`/`defer`
+still blocks parsing and runs immediately in document order, so this changes nothing about when it
+actually runs. `src/robots.txt`/`src/sitemap.xml` cover the handful of routes that are actually
+public (`/`, `/pricing`, `/login`, `/register`, `/privacy`, `/terms` — see
+`app-routing.module.ts`'s own unguarded allowlist) and disallow everything else, since an anonymous
+crawler hitting a guarded route just gets bounced to `/login` client-side once the JS boots anyway
+— this is a crawl-budget courtesy, not a security boundary (RLS already owns that). All three
+files are wired into `angular.json`'s `assets` array as bare root-level entries (same shorthand
+`src/favicon.ico` already used) rather than living under `src/assets/`, since `_headers`/
+`robots.txt`/`sitemap.xml` all have to land at the dist root to be read at all.
 
 ## Architecture
 
@@ -3258,6 +3863,7 @@ core/
   auth.service.ts        # session signal (isAuthenticated), signIn/signUp/signOut/getSession
   site-settings.service.ts # theme/logo signals; load() on app start, updateTheme()/uploadLogo()/removeLogo()
   supplier.service.ts     # SupplierService — org's supplier directory; load()/create()/update()/remove()
+  billing.service.ts     # BillingService — org's real Stripe subscription state; load(), startCheckout()/openBillingPortal() (call an Edge Function, redirect to the returned url)
   reservation-kit.service.ts # ReservationKitService — org's saved reservation-kit directory; load(itemNamesById)/create()/update()/remove()
   notification-center.service.ts # NotificationCenterService — HeaderComponent's bell dropdown; notifications signal + unreadCount, markAsRead()/markAllAsRead()
   command-palette.service.ts # CommandPaletteService — HeaderComponent's Ctrl/Cmd+K global search; lazily loads/caches searchable data, results(query) is a pure local filter
@@ -3273,7 +3879,7 @@ core/
 header/, footer/                                           # standalone layout components; header has the logout button
 login/                                                      # standalone login screen, real Supabase auth
 register/                                                   # standalone signup screen, real Supabase auth
-pricing/                                                    # standalone public pricing page, no billing wired up yet (see Project Overview above)
+pricing/                                                    # standalone public pricing page, real Stripe checkout for a signed-in admin (see Project Overview above)
 privacy/, terms/                                            # standalone legal pages, no session required (see Project Overview above)
 home/                                                        # post-login landing hub: cards linking to the pages below
 inventory/                                                  # standalone inventory page: filters, item table, opens modal
@@ -3286,7 +3892,7 @@ manage/                                                     # card hub (ManageCo
   release-notes/                                            # admin/manager only: "What's new" list, see Project Overview above
   error-log/                                                # admin/manager only: client_error_log viewer, see Supabase Schema section
   reports/                                                  # admin/manager only: inventory value/stock health, stock movement/loss, task throughput
-  billing/                                                  # admin only: pre-Stripe preview of the org's plan/usage, see Project Overview above
+  billing/                                                  # admin only: real Stripe subscription state + upgrade/manage-billing actions, see Project Overview above
   danger-zone/                                              # admin only: org data export + soft-delete (organizations.deleted_at)
   settings/                                                # admin-only: theme picker + logo upload (site_settings) — see Project Overview above
 account/                                                    # profile info, avatar picker, light/dark mode toggle, quick-menu picker
@@ -3320,6 +3926,8 @@ shared/
   components/impersonate-user-modal/ # mandatory-reason dialog backing StudioUserDetailComponent's "Impersonate" button
   components/impersonation-banner/ # persistent, unmissable "you are impersonating someone" bar, rendered from AppComponent alongside the header
   components/loading-caption/ # rotating witty caption shown next to Inventory/Tasks' skeleton loading placeholders
+  components/theme-mode-icon/ # hand-rolled SVG sun/moon-morph icon (no library) — backs HeaderComponent's light/dark toggle button
+  directives/count-up.directive.ts # CountUpDirective — animates a stat tile counting up to its value rather than popping in; backs manage/reports and Studio's own hero
   models/inventory-item.model.ts   # InventoryItem class (constructor-based, no defaults)
   models/supplier.model.ts   # Supplier — a directory entry inventory_items.supplier_id can point at
   models/inventory-item-order.model.ts # InventoryItemOrder — one restock order against an item's linked supplier
@@ -3330,6 +3938,7 @@ shared/
   models/theme-preset.ts     # THEME_PRESETS — key must match a [data-theme] block in styles.scss
   models/inventory-table-column.ts # optional Inventory table-view columns admin can show/hide (Settings > Data)
   models/pricing-tier.ts     # PRICING_TIERS — shared by PricingComponent (/pricing) and ManageBillingComponent
+  models/subscription.model.ts # OrgSubscription — an org's real Stripe subscription state, backs BillingService
   models/notification.model.ts # UserNotification / NotificationKind / notificationIcon() — backs HeaderComponent's bell dropdown
   models/release-note.model.ts # ReleaseNote / ReleaseNoteSeverity / RELEASE_NOTE_SEVERITY_LABELS — backs manage/release-notes and studio/release-notes
   models/help-faq.ts         # HELP_FAQ_SECTIONS — question/answer/links data backing the searchable Help page
@@ -3338,6 +3947,7 @@ shared/
   models/broadcast.model.ts  # Broadcast / BroadcastReferencedMember / BroadcastReferencedItem — backs /broadcasts
   models/command-palette.ts  # CommandPaletteResult / COMMAND_PALETTE_DESTINATIONS — backs HeaderComponent's Ctrl/Cmd+K search
   models/database.types.ts   # generated via `npm run supabase:gen:types` — regenerate, don't hand-edit
+  utils/count-up-format.ts   # countUpNumber()/countUpCurrency() — CountUpDirective's own formatters, matching | number/| currency's default precision
   utils/inventory-item.mapper.ts   # toInventoryItem(row, images, checkedOutToLabel, activityLog?, ..., supplierLabel?) — DB row -> InventoryItem
   utils/inventory-item-name.ts     # isDuplicateItemName() — shared by the CSV importer and the manual "Create item" form's own duplicate-name check
   utils/inventory-item-images.ts   # loadInventoryImagesByItemId() / uploadInventoryItemImages() / deleteInventoryItemImage()
@@ -4142,6 +4752,112 @@ yet on a hard refresh of `/inventory`.
   `platform_lock_user_account` only ever refused *self*-locking, unlike `impersonate-user`'s own
   explicit "cannot target another platform admin" guard — it now carries the identical guard, so
   locking a peer platform admin is refused the same way impersonating one already was.
+- `add_mfa_enforcement` — optional, self-enrolled two-factor authentication (TOTP), enforced by
+  folding an "aal2, or no verified factor exists" clause into both `current_user_org_id()` and
+  `is_platform_admin()` (diffed against each one's own latest version at the time). Opt-in per
+  account, zero behavior change for anyone who's never enrolled — see the Project Overview section
+  above for the full feature, the client-side pieces (`MfaService`, `/mfa-verify`,
+  `TwoFactorSetupModalComponent`), and the real `QRCode.toDataURL()`-vs-Supabase's-own-`qr_code`-string
+  debugging story in `MfaService.enrollTotp()`'s own doc comment.
+- `add_site_settings_require_mfa_for_all` — the org-wide "require two-factor for everyone" toggle
+  `add_mfa_enforcement`'s own doc comment had flagged as a natural next step (see the Project
+  Overview section above for the full feature and its own "site_settings is gated by the very
+  function this toggle changes" chicken-and-egg reasoning). Adds
+  `site_settings.require_mfa_for_all` (default `false`) and a new `current_org_requires_mfa()`
+  `SECURITY DEFINER` function — a narrower, RLS-bypassing lookup the client also calls directly as
+  an RPC (`MfaService.isRequiredOrgWide()`), separate from reading `site_settings` the normal way,
+  specifically so an org that turns this on doesn't simultaneously make its own settings row
+  unreadable to the very members it needs to explain the requirement to. Diffs `current_user_org_id()`
+  against `add_mfa_enforcement`'s version (the latest at the time) to narrow its existing escape
+  hatch; deliberately leaves `is_platform_admin()` untouched, since Studio's cross-org surface isn't
+  scoped to any one org's `site_settings` row.
+- `add_subscriptions` — real Stripe subscription billing (see the Project Overview section above for
+  the full feature). Adds `subscriptions` (one row per org — `unique (organization_id)`, same
+  upsert-friendly shape `site_settings` already uses — `tier`/`status` checked columns, Stripe
+  customer/subscription/price ids, `current_period_end`, `cancel_at_period_end`). SELECT is any
+  approved org member (`organization_id = current_user_org_id()`, plain `grant select`); **no
+  insert/update/delete grant for `authenticated`/`anon` at all** — every write comes from the new
+  `stripe-webhook` Edge Function's `service_role` client, the same "service-role-only insert" shape
+  `add_notifications`/`add_notification_email_log` already establish, just extended to updates too
+  here since a subscription's row is mutated repeatedly over its lifetime rather than only ever
+  inserted once. No seed row anywhere (not even `handle_new_user()`) — a missing row is treated by
+  the app as the implicit Free tier, purely additive to signup. `status`'s check constraint values
+  (`active`/`trialing`/`past_due`/`canceled`/`incomplete`/`incomplete_expired`/`unpaid`/`paused`)
+  mirror Stripe's own `Subscription.status` enum verbatim so the webhook can pass it straight
+  through with no translation table of its own.
+- `add_pricing_tier_usage_limits` — real usage-cap enforcement against `PRICING_TIERS.limits` (see
+  the Project Overview section above for the full feature and its own client-side counterpart).
+  Adds `pricing_tier_limits(p_tier text)` (a plain `language sql immutable` function returning
+  `max_items`/`max_members`/`storage_limit_mb` for a tier — hardcoded, deliberately duplicating
+  `PRICING_TIERS`' own numbers rather than sharing them, the same tradeoff `stripe-webhook`'s own
+  `STRIPE_PRICE_IDS` copy already accepts) and `get_organization_tier(p_org_id)` (mirrors
+  `BillingService.currentTier`'s own "missing row = free" fallback exactly). Three enforcement
+  points, none of them `security definer` except where touching `storage.objects` requires it (same
+  reasoning `get_inventory_photo_storage_usage()` already established): a new `before insert`
+  trigger on `inventory_items` (`enforce_inventory_item_org_limit`, same shape
+  `enforce_inventory_item_image_limit` already established for the per-item 10-photo cap, just
+  counting an org's own item rows instead); a new `before insert` trigger on
+  `inventory_item_images` (`enforce_inventory_item_image_org_storage_limit`, `security definer` —
+  sums `storage.objects` the same way `get_inventory_photo_storage_usage()` already does, plus the
+  new object's own just-uploaded size, since `uploadInventoryItemImages()` uploads to Storage before
+  inserting this row); and a `create or replace` on `admin_approve_member()` (diffed against its
+  `add_activity_log` version, the latest at the time) rejecting an approval that would push an org's
+  approved-member count past its plan's cap — checked here rather than at signup/join-request time,
+  since a pending request doesn't count against `ManageBillingComponent`'s own approved-only
+  `teamMemberCount` query either. Each of these three raises a plain exception with no new client-side
+  error handling needed — it surfaces through whichever write path's own pre-existing
+  `error.message` plumbing already existed (the create-item form, the photo upload flow, the
+  approve-member action). Known, accepted races (a bulk CSV import or bulk member-approval landing
+  slightly over a cap under real concurrency) and one accepted edge case (a photo rejected right at
+  the storage cap leaves its already-uploaded file orphaned in the bucket) are both documented
+  directly in the migration's own comments rather than engineered away — see that file.
+- `fix_storage_limit_trigger_cross_org_leak` — a same-day `/security-review` follow-up on the
+  migration above: `enforce_inventory_item_image_org_storage_limit()` has to be `security definer`
+  to read `storage.objects` at all, which meant it ran (and, for an `item_id` belonging to a
+  different org, computed and evaluated *that other org's* real photo-storage total) *before* the
+  pre-existing "Admins and managers can insert inventory item images" RLS policy's own `with check`
+  ever got a chance to reject the row for the real reason (its own org-mismatch check) — `before row`
+  triggers always fire ahead of `with check`. No actual unauthorized write was ever possible either
+  way (that policy still rejects the row regardless), but which specific error came back — a plan-
+  limit exception vs. an RLS violation — let an authenticated user of any org who already knew
+  another org's own item id (not obtainable anywhere in this app's normal navigation, though not the
+  cryptographically-unguessable case a never-seen random UUID is either) learn whether that other org
+  was at or near its own storage cap. `enforce_inventory_item_image_org_storage_limit()`
+  (`create or replace`, diffed against its only previous version) now bails out immediately — before
+  computing anything — whenever the resolved item doesn't belong to the caller's own org, deferring
+  entirely to the real RLS policy to reject the insert for the actual reason. The sibling
+  `inventory_items`-count trigger was never affected by this class of issue in the first place: it's
+  plain, not `security definer`, so its own equivalent query is already silently zeroed out by the
+  caller's own RLS for a foreign org's id — this is specifically a risk of being the one trigger that
+  bypasses RLS to see across organizations at all, worth remembering for any future `security
+  definer` trigger keyed off a client-suppliable foreign key rather than the caller's own identity.
+- `add_mfa_recovery_codes` — closes the "known gap, deliberately not solved" `add_mfa_enforcement`'s
+  own doc comment flagged (see the Project Overview section above for the full feature). Adds
+  `mfa_recovery_codes` (`user_id` references `auth.users`, `code_hash`, `used_at`) with no grant for
+  `authenticated`/`anon` at all, and three `SECURITY DEFINER` RPCs:
+  `generate_mfa_recovery_codes()` (replaces the whole set, returns the 10 plaintext codes exactly
+  once), `get_mfa_recovery_code_count()` (unused-count only), and `redeem_mfa_recovery_code(p_code)`
+  (normalizes, hashes via `pgcrypto`'s `digest(..., 'sha256')` — confirmed live in the `extensions`
+  schema before writing this, per this repo's own "run it for real" rule — and atomically marks a
+  match used). The actual account-recovery step (removing the lost TOTP factor via
+  `auth.admin.mfa.deleteFactor()`) can only happen in a `service_role`-backed Edge Function, not a
+  plain RPC — see the new `mfa-recover` function's own doc comment, called via `callerClient` (the
+  user's own forwarded JWT) so `redeem_mfa_recovery_code()`'s `auth.uid()` resolves to the real
+  caller, then `serviceClient` for the Admin API call once that RPC confirms a genuine match.
+- `add_platform_cross_org_read_rpcs` / `remove_blanket_platform_admin_select_policies` — the
+  deferred half of the cross-org leak `add_platform_admin` first introduced and
+  `fix_org_isolation_bugs`-era patches partially mitigated (see the Project Overview section above
+  for the full story and why it's split across two migrations rather than one). The first adds
+  `platform_list_profiles(p_ids, p_organization_id)` / `platform_list_feedback(p_organization_id,
+  p_status)` / `platform_list_client_errors(p_organization_id, p_since, p_limit)` — three `SECURITY
+  DEFINER` RPCs, `is_platform_admin()`-gated with the same `raise exception` style
+  `platform_get_organization_usage()` already established, covering every shape Studio's own call
+  sites needed. The second, pushed only once every Studio page had actually switched to calling
+  them, drops the three original "Platform admins can view all X" permissive `SELECT` policies on
+  `profiles`/`feedback`/`client_error_log` entirely — `feedback`'s own review-status `UPDATE` policy
+  was untouched throughout, since that write was never part of the additive-`SELECT`-policy problem,
+  and `platform_action_log`'s own policy was never affected either, having no org-scoped sibling
+  policy to leak through in the first place.
 
 `supabase/seed.sql` is local-dev demo data for ShelfSync's first real use case, an event planning/
 rental company — 21 inventory items (chairs, tables, linens, lighting/AV, tents, bar/power

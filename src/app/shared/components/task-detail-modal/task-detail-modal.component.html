@@ -64,11 +64,22 @@
           }
           @if (task.due_date) {
             <dt>Due date</dt>
-            <dd [class.overdue]="isOverdue">
-              @if (isOverdue) {
-                <mat-icon>error</mat-icon>
-              }
-              {{ task.due_date | date: 'M/d/yy' }}
+            <dd class="due-date-cell">
+              <span [class.overdue]="isOverdue">
+                @if (isOverdue) {
+                  <mat-icon>error</mat-icon>
+                }
+                {{ task.due_date | date: 'M/d/yy' }}
+              </span>
+              <button
+                  mat-icon-button
+                  type="button"
+                  class="add-to-calendar-button"
+                  (click)="downloadDueDateIcs()"
+                  aria-label="Add this due date to your calendar"
+                >
+                <mat-icon>event</mat-icon>
+              </button>
             </dd>
           }
           <dt>Created</dt>

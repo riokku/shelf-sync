@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 
 import { ReservationCalendarComponent, CalendarDay } from './reservation-calendar.component';
 import { InventoryItemReservationWithItem } from '../../utils/inventory-item-reservations';
@@ -132,6 +132,129 @@ describe('ReservationCalendarComponent', () => {
       expect(component.monthLabel).toBe(originalLabel);
       expect(component.selectedIso).toBe(getTodayIsoDate());
       expect(emitted).toEqual([getTodayIsoDate()]);
+    });
+
+    it('resets the roving focus to the 1st of the newly-shown month', () => {
+      const today = new Date();
+      component.nextMonth();
+      expect(component.focusedIso).toBe(toIsoDateString(new Date(today.getFullYear(), today.getMonth() + 1, 1))!);
+    });
+  });
+
+  describe('keyboard navigation (roving tabindex, WAI-ARIA grid pattern)', () => {
+    function keyEvent(key: string): KeyboardEvent {
+      return { key, preventDefault: jasmine.createSpy('preventDefault') } as unknown as KeyboardEvent;
+    }
+
+    it('defaults focusedIso to today, the same as selectedIso', () => {
+      expect(component.focusedIso).toBe(getTodayIsoDate());
+    });
+
+    it('selectDay() also moves the roving tab stop to the selected day', () => {
+      const iso = isoDateDaysFromToday(3);
+      component.selectDay(iso);
+      expect(component.focusedIso).toBe(iso);
+    });
+
+    it('ArrowRight/ArrowLeft move focusedIso by one day and suppress the default scroll', () => {
+      const startIso = getTodayIsoDate();
+
+      const rightEvent = keyEvent('ArrowRight');
+      component.onDayKeydown(rightEvent, startIso);
+      expect(component.focusedIso).toBe(isoDateDaysFromToday(1));
+      expect(rightEvent.preventDefault).toHaveBeenCalled();
+
+      const leftEvent = keyEvent('ArrowLeft');
+      component.onDayKeydown(leftEvent, component.focusedIso);
+      expect(component.focusedIso).toBe(startIso);
+    });
+
+    it('ArrowDown/ArrowUp move focusedIso by one week', () => {
+      const startIso = getTodayIsoDate();
+
+      component.onDayKeydown(keyEvent('ArrowDown'), startIso);
+      expect(component.focusedIso).toBe(isoDateDaysFromToday(7));
+
+      component.onDayKeydown(keyEvent('ArrowUp'), component.focusedIso);
+      expect(component.focusedIso).toBe(startIso);
+    });
+
+    it('Home/End jump to the start/end of the focused day\'s own week', () => {
+      // A fixed, known Wednesday (2026-09-09) rather than "today" — Home/End's
+      // own math only depends on day-of-week, not which date is current.
+      component.onDayKeydown(keyEvent('Home'), '2026-09-09');
+      expect(component.focusedIso).toBe('2026-09-06'); // Sunday
+
+      component.onDayKeydown(keyEvent('End'), '2026-09-09');
+      expect(component.focusedIso).toBe('2026-09-12'); // Saturday
+    });
+
+    it('leaves focusedIso untouched for a key it doesn\'t handle', () => {
+      const startIso = getTodayIsoDate();
+      const event = keyEvent('a');
+
+      component.onDayKeydown(event, startIso);
+
+      expect(component.focusedIso).toBe(startIso);
+      expect(event.preventDefault).not.toHaveBeenCalled();
+    });
+
+    it('jumps the displayed month when arrowing past the current 6-week window, then focuses the target cell', fakeAsync(() => {
+      fixture.detectChanges();
+      const originalLabel = component.monthLabel;
+
+      // The grid's very last visible cell — stepping one more week forward
+      // is guaranteed to land outside the currently-rendered 42 days.
+      const lastVisibleIso = component.weeks.flat()[41].iso;
+      component.onDayKeydown(keyEvent('ArrowDown'), lastVisibleIso);
+      // Re-render with the new month's grid *before* the deferred focus
+      // call's timer fires — in the real app this ordering comes for free
+      // (NgZone runs a CD pass once the synchronous keydown handler's own
+      // call stack unwinds, ahead of any macrotask like the setTimeout),
+      // but a component test's manual detectChanges() doesn't replay that
+      // zone-stabilization timing on its own.
+      fixture.detectChanges();
+      tick();
+
+      expect(component.monthLabel).not.toBe(originalLabel);
+      expect(component.weeks.flat().some(day => day.iso === component.focusedIso)).toBe(true);
+
+      const focusedElement = fixture.nativeElement.querySelector(`[data-iso="${component.focusedIso}"]`);
+      expect(document.activeElement).toBe(focusedElement);
+    }));
+
+    it('moves real DOM focus synchronously when the target cell is already in the rendered grid', () => {
+      fixture.detectChanges();
+      const startIso = getTodayIsoDate();
+
+      component.onDayKeydown(keyEvent('ArrowRight'), startIso);
+
+      const focusedElement = fixture.nativeElement.querySelector(`[data-iso="${component.focusedIso}"]`);
+      expect(document.activeElement).toBe(focusedElement);
+    });
+  });
+
+  describe('dayAriaLabel()', () => {
+    it('names the date, and flags today/selected/reservation count when applicable', () => {
+      component.reservations = [createTestReservation()];
+      const day = todaysDay();
+
+      const label = component.dayAriaLabel(day);
+
+      expect(label).toContain('Today');
+      expect(label).toContain('Selected');
+      expect(label).toContain('1 reservation');
+    });
+
+    it('omits the optional flags for an ordinary, unselected day with nothing booked', () => {
+      const futureIso = isoDateDaysFromToday(10);
+      const day = component.weeks.flat().find(d => d.iso === futureIso)!;
+
+      const label = component.dayAriaLabel(day);
+
+      expect(label).not.toContain('Today');
+      expect(label).not.toContain('Selected');
+      expect(label).not.toContain('reservation');
     });
   });
 });

@@ -1,0 +1,47 @@
+// Same mat-dialog-title top-padding fix TwoFactorSetupModalComponent's own
+// stylesheet already establishes (Material's own default is only 6px).
+[mat-dialog-title]{
+  padding-top: 1.5rem;
+}
+
+.loading-row{
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0;
+}
+
+.recovery-codes-instructions{
+  color: var(--mat-sys-on-surface-variant);
+  margin-top: 0;
+}
+
+// Same boxed, letter-spaced treatment TwoFactorSetupModalComponent's own
+// .manual-secret uses for its one-time-reveal secret, laid out as a grid so
+// 10 codes read as a scannable block rather than one long wrapped line.
+.recovery-codes-list{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.5rem;
+  padding: 0.75rem;
+  margin: 0 0 1rem;
+  list-style: none;
+  background: var(--mat-sys-surface-container-high);
+  border-radius: 0.375rem;
+
+  li{
+    letter-spacing: 0.03em;
+    user-select: all;
+  }
+}
+
+.recovery-codes-actions{
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.error-message{
+  color: var(--app-error-text);
+  margin: -0.5rem 0 1rem;
+}

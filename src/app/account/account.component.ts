@@ -12,12 +12,16 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { AuthService, Profile } from '../core/auth.service';
+import { MfaService } from '../core/mfa.service';
 import { NotificationService } from '../core/notification.service';
 import { SupabaseService } from '../core/supabase.service';
 import { ThemeModeService } from '../core/theme-mode.service';
 import { BreadcrumbsComponent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 import { ChangePasswordModalComponent } from '../shared/components/change-password-modal/change-password-modal.component';
+import { ConfirmDialogComponent } from '../shared/components/confirm-dialog/confirm-dialog.component';
 import { HelpTooltipComponent } from '../shared/components/help-tooltip/help-tooltip.component';
+import { RecoveryCodesModalComponent } from '../shared/components/recovery-codes-modal/recovery-codes-modal.component';
+import { TwoFactorSetupModalComponent } from '../shared/components/two-factor-setup-modal/two-factor-setup-modal.component';
 import { UserAvatarComponent } from '../shared/components/user-avatar/user-avatar.component';
 import { AVATAR_PRESETS } from '../shared/models/avatar-preset';
 import { MAX_QUICK_MENU_ITEMS, QUICK_MENU_OPTIONS } from '../shared/models/quick-menu';
@@ -45,6 +49,7 @@ import { MAX_QUICK_MENU_ITEMS, QUICK_MENU_OPTIONS } from '../shared/models/quick
 })
 export class AccountComponent implements OnInit {
   protected authService = inject(AuthService);
+  private mfaService = inject(MfaService);
   private supabase = inject(SupabaseService).client;
   private notification = inject(NotificationService);
   private dialog = inject(MatDialog);
@@ -109,6 +114,33 @@ export class AccountComponent implements OnInit {
   isSavingQuickMenu = false;
   quickMenuError: string | null = null;
 
+  /** Independent of isLoading/profile — MfaService talks to the Auth API
+   *  directly, not the profiles table, so there's no reason to block the
+   *  rest of the page's own load on it. */
+  isLoadingMfaStatus = true;
+  isMfaEnabled = false;
+  isTogglingMfa = false;
+  mfaError: string | null = null;
+
+  /** True when this org has Settings > Workflow's "Require two-factor
+   *  authentication" toggle on and this account hasn't enrolled yet — drives
+   *  a banner on the two-factor card explaining why approvedGuard/
+   *  LoginComponent sent them here instead of wherever they were headed
+   *  (see both of those own doc comments). Computed live from
+   *  MfaService.isRequiredOrgWide() rather than a query param carried
+   *  through the redirect, so it stays correct even on a direct refresh of
+   *  this page (a query param wouldn't survive that). */
+  mfaRequiredByOrg = false;
+
+  /** How many of the account's own recovery codes are still unused —
+   *  null while isMfaEnabled is false or this hasn't loaded yet, since
+   *  "0 remaining" and "not applicable" read very differently in the
+   *  template. Loaded alongside isMfaEnabled/mfaRequiredByOrg above, and
+   *  refreshed after openTwoFactorSetup()'s own follow-up
+   *  RecoveryCodesModalComponent closes and after regenerateRecoveryCodes(). */
+  recoveryCodeCount: number | null = null;
+  isRegeneratingRecoveryCodes = false;
+
   async ngOnInit() {
     this.profile = await this.authService.getProfile();
 
@@ -125,6 +157,16 @@ export class AccountComponent implements OnInit {
     }
 
     this.isLoading = false;
+
+    [this.isMfaEnabled, this.mfaRequiredByOrg] = await Promise.all([
+      this.mfaService.isEnrolled(),
+      this.mfaService.isRequiredOrgWide()
+    ]);
+    this.isLoadingMfaStatus = false;
+
+    if (this.isMfaEnabled) {
+      this.recoveryCodeCount = await this.mfaService.getRecoveryCodeCount();
+    }
   }
 
   /** Order-independent comparison against the persisted values, same shape
@@ -281,6 +323,127 @@ export class AccountComponent implements OnInit {
       if (changed) {
         this.notification.success('Password updated');
       }
+    });
+  }
+
+  /** TwoFactorSetupModalComponent is self-contained — it does the actual
+   *  enroll()/challengeAndVerify() calls itself (see its own doc comment) —
+   *  so this just opens it and updates the status line on a truthy close,
+   *  same shape openChangePassword() just above already establishes for a
+   *  self-contained modal. A successful close is immediately followed by
+   *  RecoveryCodesModalComponent — reads as one continuous "set up two-
+   *  factor" flow (finish the TOTP step, then save your recovery codes)
+   *  without needing TwoFactorSetupModalComponent itself to grow a second
+   *  internal step for it. */
+  openTwoFactorSetup() {
+    const dialogRef = this.dialog.open(TwoFactorSetupModalComponent, {
+      width: 'clamp(24rem, 40vw, 28rem)',
+      maxWidth: '90vw'
+    });
+
+    dialogRef.afterClosed().subscribe((enabled: boolean | undefined) => {
+      if (!enabled) {
+        return;
+      }
+      this.isMfaEnabled = true;
+      this.notification.success('Two-factor authentication is on');
+      this.showRecoveryCodes().subscribe(async () => {
+        this.recoveryCodeCount = await this.mfaService.getRecoveryCodeCount();
+      });
+    });
+  }
+
+  /** Opens RecoveryCodesModalComponent (self-contained — it generates the
+   *  codes itself) and hands back its own afterClosed() observable so each
+   *  caller can layer its own follow-up on top, same shape openTwoFactorSetup()
+   *  itself already establishes one level up. disableClose since this is a
+   *  one-time reveal with no way to recover the same codes afterward —
+   *  dismissing via the backdrop/Escape shouldn't be able to skip past that. */
+  private showRecoveryCodes() {
+    return this.dialog.open(RecoveryCodesModalComponent, {
+      width: 'clamp(24rem, 40vw, 32rem)',
+      maxWidth: '90vw',
+      disableClose: true
+    }).afterClosed();
+  }
+
+  /** Regenerating replaces the whole set — confirmed first (danger: false,
+   *  same "consequential but reversible" reasoning disableTwoFactor()'s own
+   *  confirm already uses) since it makes any still-unused codes from the
+   *  old set stop working immediately. */
+  regenerateRecoveryCodes() {
+    if (this.isRegeneratingRecoveryCodes) {
+      return;
+    }
+    this.isRegeneratingRecoveryCodes = true;
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Regenerate recovery codes?',
+        message: 'Your existing recovery codes will stop working immediately, replaced by a new set.',
+        confirmLabel: 'Regenerate'
+      },
+      width: 'clamp(75%, 25rem, 60%)'
+    });
+
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (!confirmed) {
+        this.isRegeneratingRecoveryCodes = false;
+        return;
+      }
+      this.showRecoveryCodes().subscribe(async () => {
+        this.recoveryCodeCount = await this.mfaService.getRecoveryCodeCount();
+        this.isRegeneratingRecoveryCodes = false;
+      });
+    });
+  }
+
+  /** Confirmed first (danger: false — unlike deleting something, turning
+   *  this off is fully reversible, just worth a beat before weakening the
+   *  account's own login security) via ConfirmDialogComponent, mirroring
+   *  every other consequential-but-reversible action in this app. */
+  disableTwoFactor() {
+    if (this.isTogglingMfa) {
+      return;
+    }
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Turn off two-factor authentication?',
+        message: 'You can turn it back on anytime from this page.',
+        confirmLabel: 'Turn off'
+      },
+      width: 'clamp(75%, 25rem, 60%)'
+    });
+
+    dialogRef.afterClosed().subscribe(async confirmed => {
+      if (!confirmed) {
+        return;
+      }
+
+      this.isTogglingMfa = true;
+      this.mfaError = null;
+
+      const factor = await this.mfaService.getVerifiedTotpFactor();
+      if (!factor) {
+        // Already off somehow (another tab, a previous attempt that
+        // actually succeeded despite an error surfacing) — just reflect
+        // that rather than erroring over nothing left to do.
+        this.isTogglingMfa = false;
+        this.isMfaEnabled = false;
+        return;
+      }
+
+      const error = await this.mfaService.unenroll(factor.id);
+      this.isTogglingMfa = false;
+
+      if (error) {
+        this.mfaError = error;
+        return;
+      }
+
+      this.isMfaEnabled = false;
+      this.notification.success('Two-factor authentication turned off');
     });
   }
 

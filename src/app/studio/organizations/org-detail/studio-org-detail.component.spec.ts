@@ -112,6 +112,13 @@ function createFakeSupabaseServiceForOrgDetail(data: {
   actionActors?: Profile[];
   rpc?: jasmine.Spy;
 }): SupabaseService {
+  // members/feedback/errors, plus the suspender/actor-name follow-up
+  // lookups, all moved from `.from(table)` onto
+  // platform_list_profiles()/platform_list_feedback()/platform_list_client_errors()
+  // — see add_platform_cross_org_read_rpcs' own doc comment — so the fake
+  // rpc() below discriminates by function name (and, for the two
+  // profiles-lookup shapes, by whether an id list or an organization_id was
+  // passed) rather than from() by table name.
   let profilesCallCount = 0;
   const fake = {
     client: {
@@ -119,30 +126,31 @@ function createFakeSupabaseServiceForOrgDetail(data: {
         if (table === 'organizations') {
           return createFakeQueryBuilder({ data: data.organization ?? null, error: data.organizationError ?? null });
         }
-        if (table === 'profiles') {
+        return createFakeQueryBuilder({ data: data.platformActions ?? [], error: null });
+      },
+      rpc: data.rpc ?? jasmine.createSpy('rpc').and.callFake((fn: string) => {
+        if (fn === 'platform_list_profiles') {
           profilesCallCount += 1;
           if (profilesCallCount === 1) {
-            return createFakeQueryBuilder({ data: data.members ?? [], error: null });
+            return Promise.resolve({ data: data.members ?? [], error: null });
           }
           // Second (and any later) profiles call is either the single
-          // suspender lookup (.maybeSingle()) or the actor-name lookup
-          // (.in(), an array) — a given test scenario only ever exercises
-          // one of the two, so returning whichever was actually configured
-          // for this test is enough.
+          // suspender lookup or the actor-name lookup (both by id list) —
+          // a given test scenario only ever exercises one of the two, so
+          // returning whichever was actually configured is enough.
           if (data.actionActors) {
-            return createFakeQueryBuilder({ data: data.actionActors, error: null });
+            return Promise.resolve({ data: data.actionActors, error: null });
           }
-          return createFakeQueryBuilder({ data: data.suspender ?? null, error: null });
+          return Promise.resolve({ data: data.suspender ? [data.suspender] : [], error: null });
         }
-        if (table === 'feedback') {
-          return createFakeQueryBuilder({ data: data.feedback ?? [], error: null });
+        if (fn === 'platform_list_feedback') {
+          return Promise.resolve({ data: data.feedback ?? [], error: null });
         }
-        if (table === 'platform_action_log') {
-          return createFakeQueryBuilder({ data: data.platformActions ?? [], error: null });
+        if (fn === 'platform_list_client_errors') {
+          return Promise.resolve({ data: data.errors ?? [], error: null });
         }
-        return createFakeQueryBuilder({ data: data.errors ?? [], error: null });
-      },
-      rpc: data.rpc ?? jasmine.createSpy('rpc').and.resolveTo({ error: null })
+        return Promise.resolve({ error: null });
+      })
     }
   };
   return fake as unknown as SupabaseService;

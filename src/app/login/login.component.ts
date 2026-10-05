@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AuthService } from '../core/auth.service';
+import { MfaService } from '../core/mfa.service';
 import { BrandLogoComponent } from '../shared/components/brand-logo/brand-logo.component';
 import { TurnstileWidgetComponent } from '../shared/components/turnstile-widget/turnstile-widget.component';
 
@@ -28,6 +29,7 @@ import { TurnstileWidgetComponent } from '../shared/components/turnstile-widget/
 })
 export class LoginComponent {
   private authService = inject(AuthService);
+  private mfaService = inject(MfaService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
 
@@ -80,7 +82,26 @@ export class LoginComponent {
       return;
     }
 
-    this.router.navigateByUrl(this.safeReturnUrl() ?? '/home');
+    // approvedGuard would catch this on the very next navigation regardless
+    // (see its own doc comment) — checking here too just avoids a visible
+    // flash of whichever destination this would otherwise land on before
+    // being bounced back out.
+    const returnUrl = this.safeReturnUrl();
+    if (await this.mfaService.isVerificationPending()) {
+      this.router.navigate(['/mfa-verify'], returnUrl ? { queryParams: { returnUrl } } : {});
+      return;
+    }
+
+    // Same shortcut, for the "this org requires two-factor and this account
+    // has never enrolled at all" case approvedGuard also redirects to
+    // /account for (see that guard's own doc comment) — there's no factor
+    // yet to send this to /mfa-verify against.
+    if (await this.mfaService.isRequiredOrgWide() && !(await this.mfaService.isEnrolled())) {
+      this.router.navigateByUrl('/account');
+      return;
+    }
+
+    this.router.navigateByUrl(returnUrl ?? '/home');
   }
 
   /** Only follow returnUrl if it's a same-app relative path — it comes from
@@ -100,5 +121,15 @@ export class LoginComponent {
    *  than leaving them to wonder. */
   get impersonationEnded(): boolean {
     return this.route.snapshot.queryParamMap.get('impersonationEnded') === '1';
+  }
+
+  /** MfaVerifyComponent.recoverWithCode() lands here after a successful
+   *  recovery-code redemption — that removes the account's TOTP factor and
+   *  signs it out everywhere (see that method's own doc comment), so this
+   *  explains why they're suddenly back at login and nudges them to set
+   *  two-factor up again, same "explain the surprise sign-out" shape
+   *  impersonationEnded just above already establishes. */
+  get mfaRecovered(): boolean {
+    return this.route.snapshot.queryParamMap.get('mfaRecovered') === '1';
   }
 }

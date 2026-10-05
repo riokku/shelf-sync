@@ -15,6 +15,8 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { DonutChartComponent } from '../../shared/components/donut-chart/donut-chart.component';
 import { RingStatComponent } from '../../shared/components/ring-stat/ring-stat.component';
+import { CountUpDirective } from '../../shared/directives/count-up.directive';
+import { countUpCurrency } from '../../shared/utils/count-up-format';
 import { Database } from '../../shared/models/database.types';
 import { isRowLowStock, isRowOutOfStock } from '../../shared/utils/inventory-stock';
 import { loadAllInventoryItemDiscards } from '../../shared/utils/inventory-item-discards';
@@ -110,7 +112,7 @@ interface AssigneeWorkloadRow {
   imports: [
     CurrencyPipe, DecimalPipe, ReactiveFormsModule, RouterLink, MatButtonModule, MatButtonToggleModule,
     MatDatepickerModule, MatFormFieldModule, MatIconModule, MatInputModule, BreadcrumbsComponent,
-    PageHeaderComponent, EmptyStateComponent, DonutChartComponent, RingStatComponent
+    PageHeaderComponent, EmptyStateComponent, DonutChartComponent, RingStatComponent, CountUpDirective
   ],
   templateUrl: './manage-reports.component.html',
   styleUrl: './manage-reports.component.scss',
@@ -510,6 +512,10 @@ export class ManageReportsComponent implements OnInit {
 
   readonly taskStatuses = TASK_STATUSES;
   readonly taskStatusLabels = TASK_STATUS_LABELS;
+
+  /** Bound as [countUpFormat] on the one currency stat tile (Total value) — every other stat
+   *  tile's own count-up just uses the directive's plain-number default. */
+  readonly countUpCurrency = countUpCurrency;
 
   /** Width of one status segment within an assignee's stacked bar, scaled
    *  against the *page-wide* busiest assignee's own total (not against

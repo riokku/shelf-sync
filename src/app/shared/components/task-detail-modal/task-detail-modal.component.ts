@@ -19,6 +19,7 @@ import { resolveProfileName } from '../../utils/profile-label';
 import { loadInventoryImagesByItemId } from '../../utils/inventory-item-images';
 import { loadInventoryActivityByItemId } from '../../utils/inventory-item-activity';
 import { getTodayIsoDate } from '../../utils/date';
+import { buildIcsFile, downloadIcsFile } from '../../utils/calendar-export';
 import { confirmLeaveWithoutSaving } from '../../utils/confirm-leave';
 import { ModalTableComponent } from '../modal-table/modal-table.component';
 import { PageHeaderComponent } from '../page-header/page-header.component';
@@ -349,6 +350,21 @@ export class TaskDetailModalComponent implements OnInit {
     await navigator.clipboard.writeText(url);
     this.linkCopied = true;
     setTimeout(() => (this.linkCopied = false), 2000);
+  }
+
+  /** "Add to calendar" for the task's own due date — a downloadable .ics
+   *  single-day event, so a due date this app tracks can actually land on
+   *  a real calendar app (Google/Outlook/Apple) rather than only ever
+   *  living inside ShelfSync. Only ever rendered when task.due_date is
+   *  actually set (see the template's own @if), so this doesn't need its
+   *  own null guard beyond the type system's. */
+  downloadDueDateIcs() {
+    downloadIcsFile(`task-${this.task.id}-due-date.ics`, buildIcsFile({
+      id: this.task.id,
+      title: `Due: ${this.task.title}`,
+      description: this.task.description ?? undefined,
+      startDate: this.task.due_date!
+    }));
   }
 
   /** related_item_name is plain text (not a foreign key), so the linked item

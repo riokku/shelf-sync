@@ -162,6 +162,25 @@
   margin-bottom: 0.25rem;
 }
 
+// A small, inline affordance next to the date range it acts on — sized
+// down from Material's default 40px touch target the same way the bulk-edit
+// "Select all" checkbox elsewhere in this app already shrinks its own
+// (see CLAUDE.md's own note on --mat-checkbox-touch-target-display), so it
+// reads as a quiet detail beside the dates rather than a full-size action.
+.add-to-calendar-button{
+  --mat-icon-button-touch-target-display: none;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0.25rem;
+  vertical-align: middle;
+
+  mat-icon{
+    font-size: 1.125rem;
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+}
+
 .reservation-meta{
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.8125rem;

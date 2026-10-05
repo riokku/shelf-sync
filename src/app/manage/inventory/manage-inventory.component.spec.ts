@@ -8,7 +8,8 @@ import { AuthService } from '../../core/auth.service';
 import { SupabaseService } from '../../core/supabase.service';
 import { SiteSettingsService } from '../../core/site-settings.service';
 import { NotificationService } from '../../core/notification.service';
-import { createFakeActivatedRoute, createFakeAuthService, createFakeProfile, createFakeSiteSettingsService, createFakeSupabaseService, createTestInventoryItemRow } from '../../testing/fakes';
+import { BillingService } from '../../core/billing.service';
+import { createFakeActivatedRoute, createFakeAuthService, createFakeBillingService, createFakeProfile, createFakeSiteSettingsService, createFakeSupabaseService, createTestInventoryItemRow } from '../../testing/fakes';
 
 describe('ManageInventoryComponent', () => {
   let component: ManageInventoryComponent;
@@ -170,6 +171,41 @@ describe('ManageInventoryComponent', () => {
       await component.submitInventoryItem();
 
       expect(component.itemError).not.toBe('An item with this name already exists');
+    });
+  });
+
+  describe('submitInventoryItem() plan item limit', () => {
+    function setTier(tier: 'free' | 'basic' | 'pro') {
+      (component as unknown as { billingService: BillingService }).billingService = createFakeBillingService({
+        tier, status: 'active', currentPeriodEnd: null, cancelAtPeriodEnd: false
+      });
+    }
+
+    it('blocks creating an item once the org is at its Free-plan item limit (100), without attempting an insert', async () => {
+      setTier('free');
+      component.allInventoryItems = Array.from({ length: 100 }, (_, i) => createTestInventoryItemRow({ id: `item-${i}` }));
+      const notificationSuccessSpy = spyOn((component as unknown as { notification: NotificationService }).notification, 'success');
+      component.inventoryForm.controls.name.setValue('One More Chair');
+      component.inventoryForm.controls.quantityTotal.setValue(10);
+
+      await component.submitInventoryItem();
+
+      expect(component.isAtItemLimit).toBeTrue();
+      expect(component.itemError).toContain('inventory item limit');
+      expect(component.isSavingItem).toBeFalse();
+      expect(notificationSuccessSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not block creation below the limit', () => {
+      setTier('free');
+      component.allInventoryItems = Array.from({ length: 99 }, (_, i) => createTestInventoryItemRow({ id: `item-${i}` }));
+      expect(component.isAtItemLimit).toBeFalse();
+    });
+
+    it('never reports at-limit on an unlimited (Pro) plan, regardless of item count', () => {
+      setTier('pro');
+      component.allInventoryItems = Array.from({ length: 5000 }, (_, i) => createTestInventoryItemRow({ id: `item-${i}` }));
+      expect(component.isAtItemLimit).toBeFalse();
     });
   });
 
@@ -335,23 +371,27 @@ describe('ManageInventoryComponent', () => {
   });
 
   describe('fieldEnabled()', () => {
-    it('is true for every field by default (no site_settings row yet)', () => {
-      // Not 'barcode' — DEFAULT_INVENTORY_FORM_FIELDS itself excludes it
-      // while BARCODE_FEATURE_ENABLED is false (see that flag's own doc
-      // comment), so this "every field" default no longer includes it.
+    it('is true for every field by default, including barcode (no site_settings row yet)', () => {
+      // DEFAULT_INVENTORY_FORM_FIELDS now includes 'barcode' too, since
+      // BARCODE_FEATURE_ENABLED is on (see that flag's own doc comment) —
+      // an org that's never visited Settings > Data sees the full form.
+      expect(component.fieldEnabled('barcode')).toBe(true);
       expect(component.fieldEnabled('description')).toBe(true);
       expect(component.fieldEnabled('photos')).toBe(true);
       expect(component.fieldEnabled('pricePerContainer')).toBe(true);
     });
 
-    // The create form's barcode field/scan button never renders while
-    // BARCODE_FEATURE_ENABLED is false, regardless of fieldEnabled('barcode')
-    // — see that flag's own doc comment for why this needs its own gate
-    // rather than trusting the org's stored inventory_form_fields setting.
-    it('never shows the barcode field on the create form, even though fieldEnabled(\'category\') is still true', () => {
-      expect(component.barcodeFeatureEnabled).toBeFalse();
-      expect(fixture.nativeElement.textContent).not.toContain('barcode_reader');
-      expect(fixture.nativeElement.textContent).not.toContain('Scan or type');
+    // The create form's barcode field/scan button renders whenever both
+    // BARCODE_FEATURE_ENABLED is on and fieldEnabled('barcode') is true —
+    // see that flag's own doc comment. The field's own "Scan or type"
+    // placeholder is a DOM attribute, not rendered text, so it's checked on
+    // the input element directly rather than via textContent.
+    it('shows the barcode field and scan button on the create form by default', () => {
+      expect(component.barcodeFeatureEnabled).toBeTrue();
+      expect(fixture.nativeElement.textContent).toContain('barcode_reader');
+      expect(fixture.nativeElement.textContent).toContain('qr_code_scanner');
+      const barcodeInput = fixture.nativeElement.querySelector('input[formcontrolname="barcode"]') as HTMLInputElement | null;
+      expect(barcodeInput?.placeholder).toBe('Scan or type');
     });
 
     it('reflects an admin-narrowed inventory_form_fields setting', async () => {

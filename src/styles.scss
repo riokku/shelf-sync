@@ -527,3 +527,51 @@ router-outlet + *{
     animation: none;
   }
 }
+
+// AppComponent's focusPageHeading() moves keyboard/screen-reader focus to
+// the new page's own <h1> (or PageHeaderComponent's role="heading" override)
+// on every real navigation, tagging it with this class as it does — see that
+// method's own doc comment. Global for the identical reason router-outlet's
+// own rule above is: the heading belongs to whichever routed component just
+// mounted, not AppComponent, so a scoped rule here would carry the wrong
+// component's encapsulation attribute and never match. Suppressing the
+// outline is deliberate, not a stray reset: a `tabindex="-1"` element (what
+// every such heading either already is or gets set to) can never be reached
+// by a sighted keyboard user actually pressing Tab/Shift+Tab, so a focus
+// ring appearing there is purely a side effect of the programmatic .focus()
+// call — never a real "here's where your Tab press landed" cue the way a
+// ring around an actually-tabbed-to control is. Screen reader users are
+// unaffected either way, since the focus move itself (not its visual
+// styling) is what they rely on.
+.route-focus-heading:focus{
+  outline: none;
+}
+
+// ModalTableComponent's drag-and-drop photo reordering (existing-images
+// gallery, edit mode) — same "must be global, not component-scoped" reason
+// as router-outlet + * above, but for a different mechanism: Angular CDK's
+// drag-drop clones the element being dragged into a `.cdk-drag-preview`
+// appended near the very end of <body> (outside any component's own view
+// entirely, not just a different component's), and even the in-place
+// `.cdk-drag-placeholder` it leaves behind is created by CDK itself rather
+// than rendered from ModalTableComponent's own template — so neither one
+// ever carries that component's emulated-encapsulation attribute for a
+// scoped selector to match against. `.image-preview-thumb`/
+// `.existing-images-drop-list` below (the elements that *do* stay in
+// ModalTableComponent's own tree) still match a plain global selector too,
+// same as router-outlet's routed content does above — an unscoped selector
+// matches everywhere regardless of which component's attribute a
+// particular element also happens to carry.
+.cdk-drag-preview{
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.3);
+  border-radius: 0.5rem;
+}
+
+.cdk-drag-placeholder{
+  opacity: 0.3;
+  border: 2px dashed var(--mat-sys-outline);
+}
+
+.existing-images-drop-list.cdk-drop-list-dragging .image-preview-thumb:not(.cdk-drag-placeholder){
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}

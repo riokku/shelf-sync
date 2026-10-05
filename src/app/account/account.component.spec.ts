@@ -5,10 +5,14 @@ import { of } from 'rxjs';
 
 import { AccountComponent } from './account.component';
 import { AuthService, Profile } from '../core/auth.service';
+import { MfaService } from '../core/mfa.service';
 import { NotificationService } from '../core/notification.service';
 import { SupabaseService } from '../core/supabase.service';
 import { ChangePasswordModalComponent } from '../shared/components/change-password-modal/change-password-modal.component';
-import { createFakeAuthService, createFakeProfile } from '../testing/fakes';
+import { ConfirmDialogComponent } from '../shared/components/confirm-dialog/confirm-dialog.component';
+import { RecoveryCodesModalComponent } from '../shared/components/recovery-codes-modal/recovery-codes-modal.component';
+import { TwoFactorSetupModalComponent } from '../shared/components/two-factor-setup-modal/two-factor-setup-modal.component';
+import { createFakeAuthService, createFakeMfaService, createFakeProfile } from '../testing/fakes';
 import { MAX_QUICK_MENU_ITEMS } from '../shared/models/quick-menu';
 
 function createFakeDialogRef(result: unknown): MatDialogRef<unknown> {
@@ -24,7 +28,8 @@ describe('AccountComponent', () => {
       imports: [AccountComponent],
       providers: [
         provideRouter([]),
-        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile()) }
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile()) },
+        { provide: MfaService, useValue: createFakeMfaService() }
       ]
     })
     .compileComponents();
@@ -68,6 +73,7 @@ describe('AccountComponent quick menu', () => {
       providers: [
         provideRouter([]),
         { provide: AuthService, useValue: createFakeAuthService(profile) },
+        { provide: MfaService, useValue: createFakeMfaService() },
         { provide: SupabaseService, useValue: supabase }
       ]
     }).compileComponents();
@@ -183,6 +189,7 @@ describe('AccountComponent editing profile info', () => {
       providers: [
         provideRouter([]),
         { provide: AuthService, useValue: createFakeAuthService(profile) },
+        { provide: MfaService, useValue: createFakeMfaService() },
         { provide: SupabaseService, useValue: supabase }
       ]
     }).compileComponents();
@@ -311,6 +318,7 @@ describe('AccountComponent change password', () => {
       providers: [
         provideRouter([]),
         { provide: AuthService, useValue: createFakeAuthService(profile) },
+        { provide: MfaService, useValue: createFakeMfaService() },
         { provide: SupabaseService, useValue: supabase }
       ]
     }).compileComponents();
@@ -354,5 +362,196 @@ describe('AccountComponent change password', () => {
     component.openChangePassword();
 
     expect(notificationSuccessSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('AccountComponent two-factor authentication', () => {
+  async function setup(mfaService: MfaService): Promise<ComponentFixture<AccountComponent>> {
+    const profile = createFakeProfile();
+    const supabase = {
+      client: {
+        from: () => ({ select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }) })
+      }
+    } as unknown as SupabaseService;
+
+    await TestBed.configureTestingModule({
+      imports: [AccountComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: createFakeAuthService(profile) },
+        { provide: MfaService, useValue: mfaService },
+        { provide: SupabaseService, useValue: supabase }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(AccountComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    // whenStable() only waits for ngOnInit's own async work to finish — it
+    // doesn't itself re-render, so the DOM still reflects the pre-resolve
+    // state until this second pass.
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  it('reflects an already-enrolled account after loading', async () => {
+    const fixture = await setup(createFakeMfaService({ isEnrolled: true }));
+
+    expect(fixture.componentInstance.isMfaEnabled).toBeTrue();
+    expect(fixture.nativeElement.textContent).toContain('Two-factor authentication is on');
+  });
+
+  it('reflects an account with nothing enrolled', async () => {
+    const fixture = await setup(createFakeMfaService({ isEnrolled: false }));
+
+    expect(fixture.componentInstance.isMfaEnabled).toBeFalse();
+    expect(fixture.nativeElement.textContent).toContain('Two-factor authentication is off');
+  });
+
+  it('shows a "your organization requires this" banner when required org-wide and unenrolled', async () => {
+    const fixture = await setup(createFakeMfaService({ isRequiredOrgWide: true, isEnrolled: false }));
+
+    expect(fixture.componentInstance.mfaRequiredByOrg).toBeTrue();
+    expect(fixture.nativeElement.textContent).toContain('Your organization requires two-factor authentication');
+  });
+
+  it('does not show the banner when the org does not require two-factor', async () => {
+    const fixture = await setup(createFakeMfaService({ isRequiredOrgWide: false, isEnrolled: false }));
+
+    expect(fixture.nativeElement.textContent).not.toContain('Your organization requires two-factor authentication');
+  });
+
+  it('does not show the banner once already enrolled, even if the org requires it', async () => {
+    const fixture = await setup(createFakeMfaService({ isRequiredOrgWide: true, isEnrolled: true }));
+
+    expect(fixture.nativeElement.textContent).not.toContain('Your organization requires two-factor authentication');
+  });
+
+  it('openTwoFactorSetup() opens TwoFactorSetupModalComponent and flips the status on a truthy close', async () => {
+    const fixture = await setup(createFakeMfaService({ isEnrolled: false }));
+    const dialog = TestBed.inject(MatDialog);
+    const openSpy = spyOn(dialog, 'open').and.returnValue(createFakeDialogRef(true));
+    const notificationSuccessSpy = spyOn(
+      (fixture.componentInstance as unknown as { notification: NotificationService }).notification,
+      'success'
+    );
+
+    fixture.componentInstance.openTwoFactorSetup();
+
+    expect(openSpy).toHaveBeenCalledWith(TwoFactorSetupModalComponent, jasmine.anything());
+    expect(fixture.componentInstance.isMfaEnabled).toBeTrue();
+    expect(notificationSuccessSpy).toHaveBeenCalledWith('Two-factor authentication is on');
+  });
+
+  it('does not flip the status when the setup modal is cancelled', async () => {
+    const fixture = await setup(createFakeMfaService({ isEnrolled: false }));
+    const dialog = TestBed.inject(MatDialog);
+    spyOn(dialog, 'open').and.returnValue(createFakeDialogRef(false));
+
+    fixture.componentInstance.openTwoFactorSetup();
+
+    expect(fixture.componentInstance.isMfaEnabled).toBeFalse();
+  });
+
+  it('disableTwoFactor() confirms first, then unenrolls the verified factor on confirm', async () => {
+    const mfaService = createFakeMfaService({ isEnrolled: true, verifiedFactorId: 'factor-1' });
+    const unenrollSpy = spyOn(mfaService, 'unenroll').and.callThrough();
+    const fixture = await setup(mfaService);
+    const dialog = TestBed.inject(MatDialog);
+    const openSpy = spyOn(dialog, 'open').and.returnValue(createFakeDialogRef(true));
+    const notificationSuccessSpy = spyOn(
+      (fixture.componentInstance as unknown as { notification: NotificationService }).notification,
+      'success'
+    );
+
+    fixture.componentInstance.disableTwoFactor();
+    await fixture.whenStable();
+    // Two sequential awaits inside the confirm subscription (getVerifiedTotpFactor()
+    // then unenroll()) — a single whenStable() pass isn't reliably enough to
+    // drain both hops, so this waits again to be sure the second one has too.
+    await fixture.whenStable();
+
+    expect(openSpy).toHaveBeenCalledWith(ConfirmDialogComponent, jasmine.anything());
+    expect(unenrollSpy).toHaveBeenCalledWith('factor-1');
+    expect(fixture.componentInstance.isMfaEnabled).toBeFalse();
+    expect(notificationSuccessSpy).toHaveBeenCalledWith('Two-factor authentication turned off');
+  });
+
+  it('does not unenroll anything when the confirm dialog is dismissed', async () => {
+    const mfaService = createFakeMfaService({ isEnrolled: true, verifiedFactorId: 'factor-1' });
+    const unenrollSpy = spyOn(mfaService, 'unenroll').and.callThrough();
+    const fixture = await setup(mfaService);
+    const dialog = TestBed.inject(MatDialog);
+    spyOn(dialog, 'open').and.returnValue(createFakeDialogRef(false));
+
+    fixture.componentInstance.disableTwoFactor();
+    await fixture.whenStable();
+
+    expect(unenrollSpy).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.isMfaEnabled).toBeTrue();
+  });
+
+  it('surfaces an error inline rather than toasting when unenroll() fails', async () => {
+    const mfaService = createFakeMfaService({
+      isEnrolled: true,
+      verifiedFactorId: 'factor-1',
+      unenrollError: 'Something went wrong.'
+    });
+    const fixture = await setup(mfaService);
+    const dialog = TestBed.inject(MatDialog);
+    spyOn(dialog, 'open').and.returnValue(createFakeDialogRef(true));
+
+    fixture.componentInstance.disableTwoFactor();
+    await fixture.whenStable();
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance.mfaError).toBe('Something went wrong.');
+    expect(fixture.componentInstance.isMfaEnabled).toBeTrue();
+  });
+
+  it('loads and shows the remaining recovery-code count once enrolled', async () => {
+    const fixture = await setup(createFakeMfaService({ isEnrolled: true, recoveryCodeCount: 7 }));
+
+    expect(fixture.componentInstance.recoveryCodeCount).toBe(7);
+    expect(fixture.nativeElement.textContent).toContain('7');
+    expect(fixture.nativeElement.textContent).toContain('recovery codes remaining');
+  });
+
+  it('does not load a recovery-code count when unenrolled', async () => {
+    const fixture = await setup(createFakeMfaService({ isEnrolled: false }));
+
+    expect(fixture.componentInstance.recoveryCodeCount).toBeNull();
+  });
+
+  it('regenerateRecoveryCodes() confirms first, then opens RecoveryCodesModalComponent and refreshes the count', async () => {
+    const mfaService = createFakeMfaService({ isEnrolled: true, recoveryCodeCount: 10 });
+    const fixture = await setup(mfaService);
+    const dialog = TestBed.inject(MatDialog);
+    const openSpy = spyOn(dialog, 'open').and.callFake(
+      component => component === ConfirmDialogComponent ? createFakeDialogRef(true) : createFakeDialogRef(undefined)
+    );
+    // Refreshed once RecoveryCodesModalComponent closes.
+    const countSpy = spyOn(mfaService, 'getRecoveryCodeCount').and.resolveTo(10);
+
+    fixture.componentInstance.regenerateRecoveryCodes();
+    await fixture.whenStable();
+    await fixture.whenStable();
+
+    expect(openSpy).toHaveBeenCalledWith(ConfirmDialogComponent, jasmine.anything());
+    expect(openSpy).toHaveBeenCalledWith(RecoveryCodesModalComponent, jasmine.objectContaining({ disableClose: true }));
+    expect(countSpy).toHaveBeenCalled();
+    expect(fixture.componentInstance.isRegeneratingRecoveryCodes).toBeFalse();
+  });
+
+  it('does not open RecoveryCodesModalComponent when regeneration is not confirmed', async () => {
+    const fixture = await setup(createFakeMfaService({ isEnrolled: true }));
+    const dialog = TestBed.inject(MatDialog);
+    const openSpy = spyOn(dialog, 'open').and.returnValue(createFakeDialogRef(false));
+
+    fixture.componentInstance.regenerateRecoveryCodes();
+    await fixture.whenStable();
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(fixture.componentInstance.isRegeneratingRecoveryCodes).toBeFalse();
   });
 });

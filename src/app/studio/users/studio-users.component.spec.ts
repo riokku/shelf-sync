@@ -53,12 +53,11 @@ function createFakeSupabaseServiceForUsers(data: {
 }): SupabaseService {
   const fake = {
     client: {
-      from: (table: string) => {
-        if (table === 'organizations') {
-          return createFakeQueryBuilder({ data: data.organizations ?? [], error: null });
-        }
-        return createFakeQueryBuilder({ data: data.profiles ?? [], error: data.loadError ?? null });
-      }
+      from: () => createFakeQueryBuilder({ data: data.organizations ?? [], error: null }),
+      // platform_list_profiles() replaced this component's own direct
+      // `.from('profiles')` read — see add_platform_cross_org_read_rpcs'
+      // own doc comment.
+      rpc: jasmine.createSpy('rpc').and.resolveTo({ data: data.profiles ?? [], error: data.loadError ?? null })
     }
   };
   return fake as unknown as SupabaseService;

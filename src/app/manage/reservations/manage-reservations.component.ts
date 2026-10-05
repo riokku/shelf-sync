@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { SupabaseService } from '../../core/supabase.service';
 import { AuthService, Profile } from '../../core/auth.service';
@@ -28,9 +29,11 @@ import { ReservationKit } from '../../shared/models/reservation-kit.model';
 import { InventoryItemReservationWithItem, loadAllInventoryItemReservations } from '../../shared/utils/inventory-item-reservations';
 import { subscribeToTableChanges } from '../../shared/utils/realtime';
 import { FlashTracker } from '../../shared/utils/flash-tracker';
+import { flashAndAnnounceChanges } from '../../shared/utils/realtime-announce';
 import { flashAndScrollToHighlighted } from '../../shared/utils/highlight-row';
 import { debounce } from '../../shared/utils/debounce';
 import { getTodayIsoDate } from '../../shared/utils/date';
+import { buildIcsFile, downloadIcsFile } from '../../shared/utils/calendar-export';
 
 type ReservationStatusFilter = 'all' | 'reserved' | 'picked_up' | 'returned' | 'cancelled';
 type ReservationViewMode = 'list' | 'calendar';
@@ -101,6 +104,7 @@ export class ManageReservationsComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private liveAnnouncer = inject(LiveAnnouncer);
 
   isLoading = true;
   isProcessingReservation = false;
@@ -226,6 +230,50 @@ export class ManageReservationsComponent implements OnInit {
     return group.items.some(reservation => reservation.status === 'picked_up');
   }
 
+  /** "Add to calendar" for a single (non-grouped) reservation row — a
+   *  downloadable .ics covering its own date range, so the event/rental
+   *  dates this app tracks can actually land on a real calendar app
+   *  (Google/Outlook/Apple) instead of only ever living inside ShelfSync.
+   *  Available regardless of status (even a cancelled/returned booking's
+   *  historical dates are harmless to export) rather than only while
+   *  reserved/picked_up. */
+  downloadReservationIcs(reservation: InventoryItemReservationWithItem) {
+    const description = [
+      `${reservation.quantity} units of ${reservation.itemName}`,
+      reservation.reservedFor ? `Reserved for: ${reservation.reservedFor}` : null,
+      reservation.note ? `Note: ${reservation.note}` : null
+    ].filter((line): line is string => !!line).join('\n');
+
+    downloadIcsFile(`reservation-${reservation.id}.ics`, buildIcsFile({
+      id: reservation.id,
+      title: `${reservation.itemName} reservation`,
+      description,
+      startDate: reservation.startDate,
+      endDate: reservation.endDate
+    }));
+  }
+
+  /** Same as downloadReservationIcs() above, but for a multi-item group
+   *  (placed by hand or from a kit — see ReservationGroupView's own doc
+   *  comment) — one event for the whole booking, listing every item in its
+   *  own description rather than one file per line item, since every row
+   *  in a group already shares one date range. */
+  downloadReservationGroupIcs(group: ReservationGroupView) {
+    const [first] = group.items;
+    const description = [
+      ...group.items.map(reservation => `${reservation.quantity} units of ${reservation.itemName}`),
+      first.reservedFor ? `Reserved for: ${first.reservedFor}` : null
+    ].filter((line): line is string => !!line).join('\n');
+
+    downloadIcsFile(`reservation-group-${group.key}.ics`, buildIcsFile({
+      id: group.groupId ?? first.id,
+      title: `${group.items.length} items reserved for ${first.reservedFor}`,
+      description,
+      startDate: first.startDate,
+      endDate: first.endDate
+    }));
+  }
+
   get reservableItems(): ReservableItem[] {
     return this.allItems.map(item => ({
       id: item.id,
@@ -296,9 +344,13 @@ export class ManageReservationsComponent implements OnInit {
 
   private async reloadAndFlashChangedReservations() {
     await this.loadReservations();
-    for (const id of this.pendingFlashIds) {
-      this.flashTracker.flash(id);
-    }
+    flashAndAnnounceChanges(
+      this.pendingFlashIds,
+      this.flashTracker,
+      this.liveAnnouncer,
+      id => this.reservations.find(reservation => reservation.id === id)?.itemName ?? null,
+      itemName => `${itemName} reservation updated`
+    );
     this.pendingFlashIds.clear();
   }
 

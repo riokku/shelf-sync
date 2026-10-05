@@ -17,6 +17,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { InventoryItem, isCheckoutOverdue, isLowStock, isOutOfStock } from '../shared/models/inventory-item.model';
 import { ModalTableComponent } from '../shared/components/modal-table/modal-table.component';
@@ -26,6 +27,7 @@ import { BulkActionToolbarComponent } from '../shared/components/bulk-action-too
 import { PageIntroComponent } from '../shared/components/page-intro/page-intro.component';
 import { LoadingCaptionComponent } from '../shared/components/loading-caption/loading-caption.component';
 import { BulkReassignModalComponent, BulkReassignModalResult } from '../shared/components/bulk-reassign-modal/bulk-reassign-modal.component';
+import { SavedViewsBarComponent } from '../shared/components/saved-views-bar/saved-views-bar.component';
 import { HasUnsavedChanges } from '../core/guards/unsaved-changes.guard';
 import { confirmLeaveWithoutSaving } from '../shared/utils/confirm-leave';
 import { SupabaseService } from '../core/supabase.service';
@@ -42,11 +44,27 @@ import { loadInventoryActivityByItemId, logInventoryItemActivity } from '../shar
 import { logActivity } from '../shared/utils/activity-log';
 import { subscribeToTableChanges } from '../shared/utils/realtime';
 import { FlashTracker } from '../shared/utils/flash-tracker';
+import { flashAndAnnounceChanges } from '../shared/utils/realtime-announce';
 import { AuthService, Profile } from '../core/auth.service';
 import { ItemEditPresenceService } from '../core/item-edit-presence.service';
 
 type StockLevel = 'out_of_stock' | 'low_stock' | 'sufficient_stock';
 type StatusFilter = 'active' | 'include_retired' | 'retired_only';
+
+/** The whole reproducible "view" a saved view captures — every filter plus
+ *  sort/card-vs-table, so re-applying one puts the page back exactly how it
+ *  looked when it was saved, not just which items match. Plain and
+ *  JSON-serializable, per SavedViewsBarComponent's own TFilters contract. */
+interface InventorySavedView {
+  searchTerm: string;
+  statusFilter: StatusFilter;
+  selectedStockLevels: StockLevel[];
+  selectedCategories: string[];
+  selectedPhysicalLocations: string[];
+  viewMode: 'card' | 'table';
+  sortActive: string;
+  sortDirection: '' | 'asc' | 'desc';
+}
 
 @Component({
     selector: 'app-inventory',
@@ -74,6 +92,7 @@ type StatusFilter = 'active' | 'include_retired' | 'retired_only';
         BulkActionToolbarComponent,
         PageIntroComponent,
         LoadingCaptionComponent,
+        SavedViewsBarComponent,
         ModalTableComponent
     ],
     templateUrl: './inventory.component.html',
@@ -87,9 +106,10 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
   private router = inject(Router);
   protected siteSettings = inject(SiteSettingsService);
   private destroyRef = inject(DestroyRef);
-  private authService = inject(AuthService);
+  protected authService = inject(AuthService);
   private inventoryFieldOptions = inject(InventoryFieldOptionsService);
   private notification = inject(NotificationService);
+  private liveAnnouncer = inject(LiveAnnouncer);
   private supplierService = inject(SupplierService);
   /** Read directly from the template (editorFor(item.id)) to drive the
    *  "someone's already editing this" card/row border — see
@@ -456,6 +476,42 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
     this.clearSelection();
   }
 
+  /** Bound to SavedViewsBarComponent's own `currentFilters` input — a plain
+   *  getter-style method (not a cached field) re-evaluated on every
+   *  template pass, same as this page's other filtered-list getters, so
+   *  the bar's "is this saved view the one currently applied" highlight
+   *  always reflects whatever's actually selected right now. */
+  captureCurrentView(): InventorySavedView {
+    return {
+      searchTerm: this.searchTerm,
+      statusFilter: this.statusFilter,
+      selectedStockLevels: [...this.selectedStockLevels],
+      selectedCategories: [...this.selectedCategories],
+      selectedPhysicalLocations: [...this.selectedPhysicalLocations],
+      viewMode: this.viewMode,
+      sortActive: this.sortActive,
+      sortDirection: this.sortDirection,
+    };
+  }
+
+  /** The saved-view counterpart to clearFilters() above — same
+   *  pageIndex-reset/clearSelection() side effects every other
+   *  filter-changing method on this page already has, since re-applying a
+   *  saved view changes *which* items are in scope exactly the same way
+   *  picking those filters by hand would. */
+  applySavedView(view: InventorySavedView) {
+    this.searchTerm = view.searchTerm;
+    this.statusFilter = view.statusFilter;
+    this.selectedStockLevels = [...view.selectedStockLevels];
+    this.selectedCategories = [...view.selectedCategories];
+    this.selectedPhysicalLocations = [...view.selectedPhysicalLocations];
+    this.viewMode = view.viewMode;
+    this.sortActive = view.sortActive;
+    this.sortDirection = view.sortDirection;
+    this.pageIndex = 0;
+    this.clearSelection();
+  }
+
   setStatusFilter(value: StatusFilter) {
     this.statusFilter = value;
     this.pageIndex = 0;
@@ -495,11 +551,19 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
       if (!changedItemId) {
         return;
       }
-      // Flash only once the patched row is actually reflected — not on
-      // DELETE, since the row's about to disappear rather than update.
+      // Flash (and announce, for screen reader users — see
+      // flashAndAnnounceChanges()'s own doc comment) only once the patched
+      // row is actually reflected — not on DELETE, since the row's about to
+      // disappear rather than update.
       void this.refreshInventoryListItem(changedItemId).then(() => {
         if (payload.eventType !== 'DELETE') {
-          this.flashTracker.flash(changedItemId);
+          flashAndAnnounceChanges(
+            [changedItemId],
+            this.flashTracker,
+            this.liveAnnouncer,
+            id => this.inventoryList.find(item => item.id === id)?.name ?? null,
+            name => `${name} updated`
+          );
         }
       });
     });
@@ -518,7 +582,13 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
         return;
       }
       void this.refreshInventoryListItem(changedItemId).then(() => {
-        this.flashTracker.flash(changedItemId);
+        flashAndAnnounceChanges(
+          [changedItemId],
+          this.flashTracker,
+          this.liveAnnouncer,
+          id => this.inventoryList.find(item => item.id === id)?.name ?? null,
+          name => `${name} updated`
+        );
       });
     });
     this.destroyRef.onDestroy(() => {
