@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testin
 import { provideRouter } from '@angular/router';
 
 import { InventoryComponent } from './inventory.component';
+import { BreadcrumbParent } from '../shared/components/breadcrumbs/breadcrumbs.component';
 import { AuthService } from '../core/auth.service';
 import { SiteSettingsService } from '../core/site-settings.service';
 import { SupabaseService } from '../core/supabase.service';
@@ -41,6 +42,23 @@ describe('InventoryComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  describe('inventoryBreadcrumbParent', () => {
+    // Regression test: clicking "Inventory" in the breadcrumb while an
+    // item's detail view is open navigates to the same /inventory route
+    // Angular already has this component instance on, so the router
+    // doesn't re-run ngOnInit() and nothing else would ever notice ?item=
+    // dropped off the URL — onClick is what actually clears selectedItem,
+    // see BreadcrumbParent.onClick's own doc comment.
+    it('onClick clears the open item detail view', () => {
+      component.selectedItem = createTestInventoryItem({ id: 'item-1', name: 'Folding Chair' });
+      const parent = (component as unknown as { inventoryBreadcrumbParent: BreadcrumbParent }).inventoryBreadcrumbParent;
+
+      parent.onClick?.();
+
+      expect(component.selectedItem).toBeNull();
+    });
   });
 
   describe('filteredInventoryList', () => {

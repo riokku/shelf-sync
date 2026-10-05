@@ -139,8 +139,20 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
    *  doc comment for why this needs an override at all rather than just
    *  labelOverride alone (this is the same route, not a separate detail
    *  page, so "Inventory" itself has to become the parent link rather than
-   *  being replaced outright). */
-  protected readonly inventoryBreadcrumbParent: BreadcrumbParent = { label: 'Inventory', link: '/inventory' };
+   *  being replaced outright). Its own onClick (see BreadcrumbParent's own
+   *  doc comment for why a same-route parent link needs one at all) is
+   *  closeDetails() — the same method the dedicated Back button and
+   *  ModalTableComponent's own (back) output already call — rather than
+   *  relying on the routerLink's URL change alone, which Angular's router
+   *  reuses this same component instance for and so never re-triggers
+   *  ngOnInit()'s one-time ?item= read; without this, clicking "Inventory"
+   *  from here updated the URL but left selectedItem (and the detail view
+   *  it drives) showing. */
+  protected readonly inventoryBreadcrumbParent: BreadcrumbParent = {
+    label: 'Inventory',
+    link: '/inventory',
+    onClick: () => this.closeDetails()
+  };
   isLoading = true;
   /** Just a repeat-count for the loading-state skeleton grid's @for — the
    *  values themselves are never read, only the array length (6 fills a
