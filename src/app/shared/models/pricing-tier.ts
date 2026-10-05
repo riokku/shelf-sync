@@ -32,9 +32,9 @@ export const PRICING_TIERS: PricingTier[] = [
     priceNote: 'forever',
     ctaLabel: 'Get started free',
     highlighted: false,
-    limits: { maxTeamMembers: 3, maxInventoryItems: 100, storageLimitMb: 500 },
+    limits: { maxTeamMembers: 8, maxInventoryItems: 100, storageLimitMb: 500 },
     features: [
-      'Up to 3 team members',
+      'Up to 8 team members',
       'Up to 100 inventory items',
       '500MB of photo storage',
       'Task management & role-based access',
@@ -50,9 +50,9 @@ export const PRICING_TIERS: PricingTier[] = [
     priceNote: 'per month',
     ctaLabel: 'Choose Basic',
     highlighted: true,
-    limits: { maxTeamMembers: 10, maxInventoryItems: 1000, storageLimitMb: 5000 },
+    limits: { maxTeamMembers: 20, maxInventoryItems: 1000, storageLimitMb: 5000 },
     features: [
-      'Up to 10 team members',
+      'Up to 20 team members',
       'Up to 1,000 inventory items',
       '5GB of photo storage',
       'Everything in Free, plus:',
