@@ -3702,6 +3702,21 @@ same "every selected value gets full credit" approach discard reasons' own multi
 established, so a category's own number stays accurate for everything tagged with it even though
 category totals can now exceed the org's real total.
 
+Both container editors — `ModalTableComponent`'s own "Container breakdown" (edit mode) and
+`ManageInventoryComponent`'s create-form equivalent — get a "Bulk add" button alongside the
+existing "Add container" one, via a new shared `BulkAddContainersModalComponent`
+(`shared/components/bulk-add-containers-modal`). A plain "collect the data, caller does the
+write" dialog (same shape `BulkReassignModalComponent` already establishes, no Supabase access of
+its own) — it asks for a count and a location once and hands both back;
+`applyBulkAddContainers()`/`applyBulkAddNewContainers()` then push that many rows, each getting
+the item's own "Quantity per container" default (same default a single Add container click
+already uses) and the chosen location, individually editable afterward exactly like a box added
+one at a time. A freshly added box — whether from a single Add container click or the bulk
+dialog — now also defaults its own location to the list's own first box's location rather than
+blank (`defaultNewContainerLocation`), on the reasoning that most of an item's boxes typically sit
+in the same physical spot; the bulk dialog's own location field starts pre-filled with that same
+value too, both still freely editable before or after adding.
+
 ## Tech Stack
 
 - **Framework:** Angular 21 (see `package.json` for exact versions)
@@ -3920,6 +3935,7 @@ shared/
   components/modal-table/    # standalone Material dialog showing InventoryItem details
   components/bulk-action-toolbar/ # shared "N selected / select all / clear" chrome for every page with bulk actions
   components/bulk-reassign-modal/ # Inventory's bulk category/physical-location reassignment dialog
+  components/bulk-add-containers-modal/ # count+location dialog backing both container editors' own "Bulk add" button
   components/supplier-form-modal/ # add/edit dialog backing manage/suppliers' directory CRUD
   components/place-order-modal/ # self-contained item picker + quantity/note dialog backing manage/orders' "Place order"
   components/import-inventory-modal/ # self-contained template-download + upload/preview/validate + bulk-create dialog backing manage/inventory's "Import" button

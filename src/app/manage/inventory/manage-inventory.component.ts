@@ -30,6 +30,7 @@ import { EmptyStateComponent } from '../../shared/components/empty-state/empty-s
 import { BulkActionToolbarComponent } from '../../shared/components/bulk-action-toolbar/bulk-action-toolbar.component';
 import { HelpTooltipComponent } from '../../shared/components/help-tooltip/help-tooltip.component';
 import { ImportInventoryModalComponent } from '../../shared/components/import-inventory-modal/import-inventory-modal.component';
+import { BulkAddContainersModalComponent, BulkAddContainersModalResult } from '../../shared/components/bulk-add-containers-modal/bulk-add-containers-modal.component';
 import { Database } from '../../shared/models/database.types';
 import { ActivityLogEntry, InventoryItem, MAX_INVENTORY_ITEM_IMAGES } from '../../shared/models/inventory-item.model';
 import { toIsoDateString } from '../../shared/utils/date';
@@ -321,9 +322,43 @@ export class ManageInventoryComponent implements OnInit, HasUnsavedChanges {
     return sumContainerQuantity(this.newContainers);
   }
 
+  private get defaultNewContainerQuantity(): number {
+    return this.inventoryForm.controls.quantityPerContainer.value ?? 0;
+  }
+
+  /** A fresh box's location defaults to whatever the list's own first box
+   *  already has, not blank — same reasoning ModalTableComponent's own
+   *  addContainer() now follows. '' when there's no first box to copy from yet. */
+  private get defaultNewContainerLocation(): string {
+    return this.newContainers[0]?.location ?? '';
+  }
+
   addNewContainer(){
-    const defaultQuantity = this.inventoryForm.controls.quantityPerContainer.value ?? 0;
-    this.newContainers.push({ quantity: defaultQuantity, location: '' });
+    this.newContainers.push({ quantity: this.defaultNewContainerQuantity, location: this.defaultNewContainerLocation });
+  }
+
+  openBulkAddNewContainers(){
+    const dialogRef = this.dialog.open(BulkAddContainersModalComponent, {
+      data: {
+        locationOptions: this.inventoryFieldOptions.optionsFor('physical_location'),
+        defaultLocation: this.defaultNewContainerLocation
+      },
+      width: 'clamp(22rem, 40vw, 28rem)',
+      maxWidth: '90vw'
+    });
+
+    dialogRef.afterClosed().subscribe((result?: BulkAddContainersModalResult) => {
+      if (result) {
+        this.applyBulkAddNewContainers(result);
+      }
+    });
+  }
+
+  private applyBulkAddNewContainers(result: BulkAddContainersModalResult){
+    const quantity = this.defaultNewContainerQuantity;
+    for (let i = 0; i < result.count; i++) {
+      this.newContainers.push({ quantity, location: result.location });
+    }
   }
 
   removeNewContainer(index: number){

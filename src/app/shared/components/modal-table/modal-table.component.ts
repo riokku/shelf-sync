@@ -20,6 +20,7 @@ import { PageHeaderComponent } from '../page-header/page-header.component';
 import { CreateTaskModalComponent } from '../create-task-modal/create-task-modal.component';
 import { RequestRetirementModalComponent, RequestRetirementModalResult } from '../request-retirement-modal/request-retirement-modal.component';
 import { DiscardModalComponent, DiscardModalResult } from '../discard-modal/discard-modal.component';
+import { BulkAddContainersModalComponent, BulkAddContainersModalResult } from '../bulk-add-containers-modal/bulk-add-containers-modal.component';
 import { AuthService, Profile } from '../../../core/auth.service';
 import { ImpersonationService } from '../../../core/impersonation.service';
 import { ItemEditPresenceService, ItemEditor } from '../../../core/item-edit-presence.service';
@@ -288,9 +289,44 @@ export class ModalTableComponent implements OnInit, OnDestroy {
     return (this.editForm.controls.quantityAllocated.value ?? 0) + this.containerQuantitySum;
   }
 
+  private get defaultNewContainerQuantity(): number {
+    return this.editForm.controls.quantityPerContainer.value ?? 0;
+  }
+
+  /** A fresh box's location defaults to whatever the list's own first box
+   *  already has, not blank — most items split into containers all sit in
+   *  the same physical spot, so this saves re-picking it on every add; '' when
+   *  there's no first box to copy from yet. */
+  private get defaultNewContainerLocation(): string {
+    return this.editableContainers[0]?.location ?? '';
+  }
+
   addContainer(){
-    const defaultQuantity = this.editForm.controls.quantityPerContainer.value ?? 0;
-    this.editableContainers.push({ id: null, quantity: defaultQuantity, location: '' });
+    this.editableContainers.push({ id: null, quantity: this.defaultNewContainerQuantity, location: this.defaultNewContainerLocation });
+  }
+
+  openBulkAddContainers(){
+    const dialogRef = this.dialog.open(BulkAddContainersModalComponent, {
+      data: {
+        locationOptions: this.containerLocationOptions(this.defaultNewContainerLocation),
+        defaultLocation: this.defaultNewContainerLocation
+      },
+      width: 'clamp(22rem, 40vw, 28rem)',
+      maxWidth: '90vw'
+    });
+
+    dialogRef.afterClosed().subscribe((result?: BulkAddContainersModalResult) => {
+      if (result) {
+        this.applyBulkAddContainers(result);
+      }
+    });
+  }
+
+  private applyBulkAddContainers(result: BulkAddContainersModalResult){
+    const quantity = this.defaultNewContainerQuantity;
+    for (let i = 0; i < result.count; i++) {
+      this.editableContainers.push({ id: null, quantity, location: result.location });
+    }
   }
 
   removeContainer(index: number){
