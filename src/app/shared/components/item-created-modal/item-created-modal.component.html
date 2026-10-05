@@ -1,0 +1,11 @@
+<h2 mat-dialog-title>
+  <mat-icon class="item-created-icon">check_circle</mat-icon>
+  Item created
+</h2>
+<mat-dialog-content>
+  <p>"{{ data.itemName }}" has been added to your inventory.</p>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-stroked-button type="button" (click)="viewInventory()">View inventory</button>
+  <button mat-flat-button color="primary" type="button" (click)="addAnother()">Add another item</button>
+</mat-dialog-actions>

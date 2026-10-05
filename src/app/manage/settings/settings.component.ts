@@ -109,9 +109,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
   isSavingBulkEditFeatureEnabled = false;
   bulkEditFeatureEnabledError: string | null = null;
 
-  selectedRestrictPriceSupplierEdits = this.siteSettings.restrictPriceSupplierEdits();
-  isSavingRestrictPriceSupplierEdits = false;
-  restrictPriceSupplierEditsError: string | null = null;
+  selectedAllowInlineFieldCreation = this.siteSettings.allowInlineFieldCreation();
+  isSavingAllowInlineFieldCreation = false;
+  allowInlineFieldCreationError: string | null = null;
 
   // One group, one Save button — same reasoning SiteSettingsService's own
   // updateEmailNotifications() doc comment gives for bundling these five
@@ -166,8 +166,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
     return this.selectedBulkEditFeatureEnabled !== this.siteSettings.bulkEditFeatureEnabled();
   }
 
-  get restrictPriceSupplierEditsChanged(): boolean {
-    return this.selectedRestrictPriceSupplierEdits !== this.siteSettings.restrictPriceSupplierEdits();
+  get allowInlineFieldCreationChanged(): boolean {
+    return this.selectedAllowInlineFieldCreation !== this.siteSettings.allowInlineFieldCreation();
   }
 
   get emailNotificationsChanged(): boolean {
@@ -324,23 +324,23 @@ export class SettingsComponent implements OnInit, OnDestroy {
     this.notification.success('Saved for everyone');
   }
 
-  toggleRestrictPriceSupplierEdits(restricted: boolean) {
-    this.selectedRestrictPriceSupplierEdits = restricted;
+  toggleAllowInlineFieldCreation(allowed: boolean) {
+    this.selectedAllowInlineFieldCreation = allowed;
   }
 
-  async saveRestrictPriceSupplierEdits() {
-    if (this.isSavingRestrictPriceSupplierEdits) {
+  async saveAllowInlineFieldCreation() {
+    if (this.isSavingAllowInlineFieldCreation) {
       return;
     }
 
-    this.isSavingRestrictPriceSupplierEdits = true;
-    this.restrictPriceSupplierEditsError = null;
+    this.isSavingAllowInlineFieldCreation = true;
+    this.allowInlineFieldCreationError = null;
 
-    const error = await this.siteSettings.updateRestrictPriceSupplierEdits(this.selectedRestrictPriceSupplierEdits);
-    this.isSavingRestrictPriceSupplierEdits = false;
+    const error = await this.siteSettings.updateAllowInlineFieldCreation(this.selectedAllowInlineFieldCreation);
+    this.isSavingAllowInlineFieldCreation = false;
 
     if (error) {
-      this.restrictPriceSupplierEditsError = error;
+      this.allowInlineFieldCreationError = error;
       return;
     }
     this.notification.success('Saved for everyone');

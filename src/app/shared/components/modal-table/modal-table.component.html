@@ -283,6 +283,18 @@
                       <mat-option [value]="option">{{ option }}</mat-option>
                     }
                   </mat-select>
+                  @if (siteSettings.allowInlineFieldCreation()) {
+                    <button
+                        mat-icon-button
+                        matSuffix
+                        type="button"
+                        matTooltip="Add a new category"
+                        aria-label="Add a new category"
+                        (click)="addNewCategory()"
+                      >
+                      <mat-icon>add</mat-icon>
+                    </button>
+                  }
                 </mat-form-field>
                 <mat-form-field appearance="outline">
                   <mat-label>Applicable year</mat-label>
@@ -307,6 +319,18 @@
                       <mat-option [value]="option">{{ option }}</mat-option>
                     }
                   </mat-select>
+                  @if (siteSettings.allowInlineFieldCreation()) {
+                    <button
+                        mat-icon-button
+                        matSuffix
+                        type="button"
+                        matTooltip="Add a new physical location"
+                        aria-label="Add a new physical location"
+                        (click)="addNewPhysicalLocation()"
+                      >
+                      <mat-icon>add</mat-icon>
+                    </button>
+                  }
                 </mat-form-field>
                 <mat-form-field appearance="outline">
                   <mat-label>Digital location</mat-label>
@@ -542,8 +566,17 @@
                       <mat-option [value]="supplier.id">{{ supplier.name }}</mat-option>
                     }
                   </mat-select>
-                  @if (!canEditPriceSupplier) {
-                    <mat-hint>Manager/admin only</mat-hint>
+                  @if (siteSettings.allowInlineFieldCreation()) {
+                    <button
+                        mat-icon-button
+                        matSuffix
+                        type="button"
+                        matTooltip="Add a new supplier"
+                        aria-label="Add a new supplier"
+                        (click)="addNewSupplier()"
+                      >
+                      <mat-icon>add</mat-icon>
+                    </button>
                   }
                 </mat-form-field>
                 <mat-form-field appearance="outline">
@@ -590,17 +623,11 @@
                   <mat-label>Price per unit</mat-label>
                   <mat-icon matPrefix>attach_money</mat-icon>
                   <input matInput type="number" formControlName="pricePerUnit" />
-                  @if (!canEditPriceSupplier) {
-                    <mat-hint>Manager/admin only</mat-hint>
-                  }
                 </mat-form-field>
                 <mat-form-field appearance="outline">
                   <mat-label>Price per container</mat-label>
                   <mat-icon matPrefix>attach_money</mat-icon>
                   <input matInput type="number" formControlName="pricePerContainer" />
-                  @if (!canEditPriceSupplier) {
-                    <mat-hint>Manager/admin only</mat-hint>
-                  }
                 </mat-form-field>
               </div>
             } @else {

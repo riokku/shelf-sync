@@ -4,6 +4,7 @@ import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 import { provideNativeDateAdapter } from '@angular/material/core';
 
 import { ManageInventoryComponent } from './manage-inventory.component';
+import { ItemCreatedModalComponent } from '../../shared/components/item-created-modal/item-created-modal.component';
 import { AuthService } from '../../core/auth.service';
 import { SupabaseService } from '../../core/supabase.service';
 import { SiteSettingsService } from '../../core/site-settings.service';
@@ -146,6 +147,55 @@ describe('ManageInventoryComponent', () => {
       expect(openSpy).toHaveBeenCalledWith(jasmine.any(Function), jasmine.objectContaining({
         data: { existingItemNames: ['Folding Chair', 'Round Table'] }
       }));
+    });
+  });
+
+  describe('inline field creation', () => {
+    it('addNewCategory() appends the new value onto the category control without dropping what was already picked', () => {
+      component.inventoryForm.controls.category.setValue(['Furniture']);
+      const dialog = (component as unknown as { dialog: { open: (...args: unknown[]) => { afterClosed: () => { subscribe: (cb: (v: string | undefined) => void) => void } } } }).dialog;
+      spyOn(dialog, 'open').and.returnValue({ afterClosed: () => ({ subscribe: cb => cb('Lighting') }) });
+
+      component.addNewCategory();
+
+      expect(component.inventoryForm.controls.category.value).toEqual(['Furniture', 'Lighting']);
+    });
+
+    it('addNewCategory() does nothing when the dialog is dismissed with no value', () => {
+      component.inventoryForm.controls.category.setValue(['Furniture']);
+      const dialog = (component as unknown as { dialog: { open: (...args: unknown[]) => { afterClosed: () => { subscribe: (cb: (v: string | undefined) => void) => void } } } }).dialog;
+      spyOn(dialog, 'open').and.returnValue({ afterClosed: () => ({ subscribe: cb => cb(undefined) }) });
+
+      component.addNewCategory();
+
+      expect(component.inventoryForm.controls.category.value).toEqual(['Furniture']);
+    });
+
+    it('addNewPhysicalLocation() selects the new value', () => {
+      const dialog = (component as unknown as { dialog: { open: (...args: unknown[]) => { afterClosed: () => { subscribe: (cb: (v: string | undefined) => void) => void } } } }).dialog;
+      spyOn(dialog, 'open').and.returnValue({ afterClosed: () => ({ subscribe: cb => cb('Back Warehouse') }) });
+
+      component.addNewPhysicalLocation();
+
+      expect(component.inventoryForm.controls.physicalLocation.value).toBe('Back Warehouse');
+    });
+
+    it('addNewSupplier() selects the newly created supplier\'s id', () => {
+      const dialog = (component as unknown as { dialog: { open: (...args: unknown[]) => { afterClosed: () => { subscribe: (cb: (v: string | boolean | undefined) => void) => void } } } }).dialog;
+      spyOn(dialog, 'open').and.returnValue({ afterClosed: () => ({ subscribe: cb => cb('supplier-new') }) });
+
+      component.addNewSupplier();
+
+      expect(component.inventoryForm.controls.supplierId.value).toBe('supplier-new');
+    });
+
+    it('addNewSupplier() leaves the supplier control untouched when closed with no result', () => {
+      const dialog = (component as unknown as { dialog: { open: (...args: unknown[]) => { afterClosed: () => { subscribe: (cb: (v: string | boolean | undefined) => void) => void } } } }).dialog;
+      spyOn(dialog, 'open').and.returnValue({ afterClosed: () => ({ subscribe: cb => cb(undefined) }) });
+
+      component.addNewSupplier();
+
+      expect(component.inventoryForm.controls.supplierId.value).toBeNull();
     });
   });
 
@@ -600,11 +650,13 @@ describe('ManageInventoryComponent submitInventoryItem() success', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    // Success is surfaced as a toast rather than inline text under the
-    // form (see NotificationService) — spied here to confirm it still
-    // fires now that submitInventoryItem() routes the reset through
-    // resetForm().
-    const notificationSuccessSpy = spyOn((component as unknown as { notification: NotificationService }).notification, 'success');
+    // Success now opens a choice dialog (ItemCreatedModalComponent) rather
+    // than a plain toast — see that component's own doc comment — spied
+    // here the same way this spec file's other dialog.open() assertions
+    // already are, to confirm it still opens now that submitInventoryItem()
+    // routes the reset through resetForm().
+    const dialog = (component as unknown as { dialog: { open: (...args: unknown[]) => { afterClosed: () => { subscribe: () => void } } } }).dialog;
+    const openSpy = spyOn(dialog, 'open').and.returnValue({ afterClosed: () => ({ subscribe: () => {} }) });
 
     component.inventoryForm.controls.name.setValue('Folding Chair');
     component.inventoryForm.controls.quantityTotal.setValue(10);
@@ -617,7 +669,42 @@ describe('ManageInventoryComponent submitInventoryItem() success', () => {
     expect(component.inventoryForm.controls.name.touched).toBeFalse();
     expect(component.inventoryForm.controls.name.value).toBe('');
     expect(component.inventoryForm.controls.name.hasError('required')).toBeTrue();
-    expect(notificationSuccessSpy).toHaveBeenCalledWith('Item created');
+    expect(openSpy).toHaveBeenCalledWith(ItemCreatedModalComponent, jasmine.objectContaining({
+      data: { itemName: 'Folding Chair' }
+    }));
+  });
+
+  it('navigates to /inventory when the created-item dialog closes with \'view\'', async () => {
+    await TestBed.configureTestingModule({
+      imports: [ManageInventoryComponent],
+      providers: [
+        provideRouter([]),
+        provideNativeDateAdapter(),
+        { provide: AuthService, useValue: createFakeAuthService(createFakeProfile()) },
+        {
+          provide: SupabaseService,
+          useValue: createInsertAwareFakeSupabaseService({ data: { id: 'item-1', name: 'Folding Chair' }, error: null })
+        }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ManageInventoryComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const dialog = (component as unknown as { dialog: { open: (...args: unknown[]) => { afterClosed: () => { subscribe: (cb: (v: string | undefined) => void) => void } } } }).dialog;
+    spyOn(dialog, 'open').and.returnValue({ afterClosed: () => ({ subscribe: cb => cb('view') }) });
+    const router = TestBed.inject(Router);
+    const navigateSpy = spyOn(router, 'navigate');
+
+    component.inventoryForm.controls.name.setValue('Folding Chair');
+    component.inventoryForm.controls.quantityTotal.setValue(10);
+    fixture.detectChanges();
+
+    await component.submitInventoryItem();
+
+    expect(navigateSpy).toHaveBeenCalledWith(['/inventory']);
   });
 });
 

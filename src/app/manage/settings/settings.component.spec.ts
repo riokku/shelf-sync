@@ -446,53 +446,54 @@ describe('SettingsComponent', () => {
     });
   });
 
-  describe('workflow (restrict price/supplier edits)', () => {
-    it('initializes selectedRestrictPriceSupplierEdits from the persisted setting', () => {
-      expect(component.selectedRestrictPriceSupplierEdits).toBe(false);
+
+  describe('workflow (allow inline field creation)', () => {
+    it('initializes selectedAllowInlineFieldCreation from the persisted setting', () => {
+      expect(component.selectedAllowInlineFieldCreation).toBe(false);
     });
 
-    it('toggleRestrictPriceSupplierEdits() updates the local selection', () => {
-      component.toggleRestrictPriceSupplierEdits(true);
+    it('toggleAllowInlineFieldCreation() updates the local selection', () => {
+      component.toggleAllowInlineFieldCreation(true);
 
-      expect(component.selectedRestrictPriceSupplierEdits).toBe(true);
+      expect(component.selectedAllowInlineFieldCreation).toBe(true);
     });
 
-    describe('restrictPriceSupplierEditsChanged', () => {
+    describe('allowInlineFieldCreationChanged', () => {
       it('is false when the selection matches the persisted setting', () => {
-        expect(component.restrictPriceSupplierEditsChanged).toBe(false);
+        expect(component.allowInlineFieldCreationChanged).toBe(false);
       });
 
       it('is true once toggled', () => {
-        component.toggleRestrictPriceSupplierEdits(true);
-        expect(component.restrictPriceSupplierEditsChanged).toBe(true);
+        component.toggleAllowInlineFieldCreation(true);
+        expect(component.allowInlineFieldCreationChanged).toBe(true);
       });
     });
 
-    it('saveRestrictPriceSupplierEdits() persists the selection and shows a success toast', async () => {
-      const updateSpy = spyOn(siteSettings, 'updateRestrictPriceSupplierEdits').and.returnValue(Promise.resolve(null));
-      component.selectedRestrictPriceSupplierEdits = true;
+    it('saveAllowInlineFieldCreation() persists the selection and shows a success toast', async () => {
+      const updateSpy = spyOn(siteSettings, 'updateAllowInlineFieldCreation').and.returnValue(Promise.resolve(null));
+      component.selectedAllowInlineFieldCreation = true;
 
-      await component.saveRestrictPriceSupplierEdits();
+      await component.saveAllowInlineFieldCreation();
 
       expect(updateSpy).toHaveBeenCalledWith(true);
       expect(notificationSuccessSpy).toHaveBeenCalledWith('Saved for everyone');
-      expect(component.restrictPriceSupplierEditsError).toBeNull();
+      expect(component.allowInlineFieldCreationError).toBeNull();
     });
 
-    it('saveRestrictPriceSupplierEdits() surfaces the error and shows no toast on failure', async () => {
-      spyOn(siteSettings, 'updateRestrictPriceSupplierEdits').and.returnValue(Promise.resolve('nope'));
+    it('saveAllowInlineFieldCreation() surfaces the error and shows no toast on failure', async () => {
+      spyOn(siteSettings, 'updateAllowInlineFieldCreation').and.returnValue(Promise.resolve('nope'));
 
-      await component.saveRestrictPriceSupplierEdits();
+      await component.saveAllowInlineFieldCreation();
 
-      expect(component.restrictPriceSupplierEditsError).toBe('nope');
+      expect(component.allowInlineFieldCreationError).toBe('nope');
       expect(notificationSuccessSpy).not.toHaveBeenCalled();
     });
 
-    it('saveRestrictPriceSupplierEdits() is a no-op while already saving', async () => {
-      const updateSpy = spyOn(siteSettings, 'updateRestrictPriceSupplierEdits').and.returnValue(Promise.resolve(null));
-      component.isSavingRestrictPriceSupplierEdits = true;
+    it('saveAllowInlineFieldCreation() is a no-op while already saving', async () => {
+      const updateSpy = spyOn(siteSettings, 'updateAllowInlineFieldCreation').and.returnValue(Promise.resolve(null));
+      component.isSavingAllowInlineFieldCreation = true;
 
-      await component.saveRestrictPriceSupplierEdits();
+      await component.saveAllowInlineFieldCreation();
 
       expect(updateSpy).not.toHaveBeenCalled();
     });

@@ -86,6 +86,73 @@ describe('ModalTableComponent', () => {
     });
   });
 
+  describe('inline field creation', () => {
+    it('addNewCategory() appends the new value onto the category control without dropping what was already picked', async () => {
+      await component.startEdit();
+      component.editForm.controls.category.setValue(['Furniture']);
+      const dialog = (component as unknown as { dialog: { open: (...args: unknown[]) => { afterClosed: () => { subscribe: (cb: (v: string | undefined) => void) => void } } } }).dialog;
+      spyOn(dialog, 'open').and.returnValue({ afterClosed: () => ({ subscribe: cb => cb('Lighting') }) });
+
+      component.addNewCategory();
+
+      expect(component.editForm.controls.category.value).toEqual(['Furniture', 'Lighting']);
+    });
+
+    it('addNewPhysicalLocation() selects the new value', async () => {
+      await component.startEdit();
+      const dialog = (component as unknown as { dialog: { open: (...args: unknown[]) => { afterClosed: () => { subscribe: (cb: (v: string | undefined) => void) => void } } } }).dialog;
+      spyOn(dialog, 'open').and.returnValue({ afterClosed: () => ({ subscribe: cb => cb('Back Warehouse') }) });
+
+      component.addNewPhysicalLocation();
+
+      expect(component.editForm.controls.physicalLocation.value).toBe('Back Warehouse');
+    });
+
+    it('addNewSupplier() selects the newly created supplier\'s id', async () => {
+      await component.startEdit();
+      const dialog = (component as unknown as { dialog: { open: (...args: unknown[]) => { afterClosed: () => { subscribe: (cb: (v: string | boolean | undefined) => void) => void } } } }).dialog;
+      spyOn(dialog, 'open').and.returnValue({ afterClosed: () => ({ subscribe: cb => cb('supplier-new') }) });
+
+      component.addNewSupplier();
+
+      expect(component.editForm.controls.supplierId.value).toBe('supplier-new');
+    });
+
+    it('does not render the "+ Add new" buttons when the org has not turned this on', async () => {
+      await component.startEdit();
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('[aria-label="Add a new category"]')).toBeNull();
+      expect(fixture.nativeElement.querySelector('[aria-label="Add a new physical location"]')).toBeNull();
+      expect(fixture.nativeElement.querySelector('[aria-label="Add a new supplier"]')).toBeNull();
+    });
+
+    it('renders the "+ Add new" buttons once the org has turned this on', async () => {
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [ModalTableComponent],
+        providers: [
+          provideNativeDateAdapter(),
+          { provide: AuthService, useValue: createFakeAuthService() },
+          { provide: SupabaseService, useValue: createFakeSupabaseService() },
+          { provide: SiteSettingsService, useValue: createFakeSiteSettingsService({ allowInlineFieldCreation: true }) },
+          { provide: ImpersonationService, useValue: createFakeImpersonationService() },
+          { provide: MatDialogRef, useValue: createFakeMatDialogRef() },
+          { provide: MAT_DIALOG_DATA, useValue: createTestInventoryItem() }
+        ]
+      }).compileComponents();
+
+      const localFixture = TestBed.createComponent(ModalTableComponent);
+      const localComponent = localFixture.componentInstance;
+      await localComponent.startEdit();
+      localFixture.detectChanges();
+
+      expect(localFixture.nativeElement.querySelector('[aria-label="Add a new category"]')).not.toBeNull();
+      expect(localFixture.nativeElement.querySelector('[aria-label="Add a new physical location"]')).not.toBeNull();
+      expect(localFixture.nativeElement.querySelector('[aria-label="Add a new supplier"]')).not.toBeNull();
+    });
+  });
+
   it('loads no containers for an item that has none yet', () => {
     expect(component.existingContainers).toEqual([]);
     expect(component.quantityDerivedFromContainers).toBeFalse();
@@ -476,63 +543,6 @@ describe('ModalTableComponent', () => {
 
       expect(discardButton).not.toBeUndefined();
       expect(discardButton?.disabled).toBeTrue();
-    });
-  });
-
-  describe('canEditPriceSupplier / price-supplier edit restriction', () => {
-    async function setup(options: { restrictPriceSupplierEdits: boolean; role: 'admin' | 'manager' | 'staff' }) {
-      TestBed.resetTestingModule();
-      await TestBed.configureTestingModule({
-        imports: [ModalTableComponent],
-        providers: [
-          provideNativeDateAdapter(),
-          { provide: AuthService, useValue: createFakeAuthService(createFakeProfile({ role: options.role })) },
-          { provide: SupabaseService, useValue: createFakeSupabaseService() },
-          {
-            provide: SiteSettingsService,
-            useValue: createFakeSiteSettingsService({ restrictPriceSupplierEdits: options.restrictPriceSupplierEdits })
-          },
-          { provide: ImpersonationService, useValue: createFakeImpersonationService() },
-          { provide: MatDialogRef, useValue: createFakeMatDialogRef() },
-          { provide: MAT_DIALOG_DATA, useValue: createTestInventoryItem() }
-        ]
-      }).compileComponents();
-
-      const localFixture = TestBed.createComponent(ModalTableComponent);
-      localFixture.detectChanges();
-      return localFixture.componentInstance;
-    }
-
-    it('is true when the org has not restricted price/supplier edits, regardless of role', async () => {
-      expect((await setup({ restrictPriceSupplierEdits: false, role: 'staff' })).canEditPriceSupplier).toBeTrue();
-    });
-
-    it('is true for a manager even when the org has restricted price/supplier edits', async () => {
-      expect((await setup({ restrictPriceSupplierEdits: true, role: 'manager' })).canEditPriceSupplier).toBeTrue();
-    });
-
-    it('is false for staff when the org has restricted price/supplier edits', async () => {
-      expect((await setup({ restrictPriceSupplierEdits: true, role: 'staff' })).canEditPriceSupplier).toBeFalse();
-    });
-
-    it('startEdit() disables the supplier/price controls for a restricted staff member', async () => {
-      const component = await setup({ restrictPriceSupplierEdits: true, role: 'staff' });
-
-      await component.startEdit();
-
-      expect(component.editForm.get('supplierId')?.disabled).toBeTrue();
-      expect(component.editForm.get('pricePerUnit')?.disabled).toBeTrue();
-      expect(component.editForm.get('pricePerContainer')?.disabled).toBeTrue();
-    });
-
-    it('startEdit() leaves the supplier/price controls enabled for a manager even when restricted', async () => {
-      const component = await setup({ restrictPriceSupplierEdits: true, role: 'manager' });
-
-      await component.startEdit();
-
-      expect(component.editForm.get('supplierId')?.disabled).toBeFalse();
-      expect(component.editForm.get('pricePerUnit')?.disabled).toBeFalse();
-      expect(component.editForm.get('pricePerContainer')?.disabled).toBeFalse();
     });
   });
 

@@ -93,6 +93,18 @@
                     <mat-option [value]="option">{{ option }}</mat-option>
                   }
                 </mat-select>
+                @if (siteSettings.allowInlineFieldCreation()) {
+                  <button
+                      mat-icon-button
+                      matSuffix
+                      type="button"
+                      matTooltip="Add a new category"
+                      aria-label="Add a new category"
+                      (click)="addNewCategory()"
+                    >
+                    <mat-icon>add</mat-icon>
+                  </button>
+                }
               </mat-form-field>
             }
             @if (barcodeFeatureEnabled && fieldEnabled('barcode')) {
@@ -163,6 +175,18 @@
                       <mat-option [value]="option">{{ option }}</mat-option>
                     }
                   </mat-select>
+                  @if (siteSettings.allowInlineFieldCreation()) {
+                    <button
+                        mat-icon-button
+                        matSuffix
+                        type="button"
+                        matTooltip="Add a new physical location"
+                        aria-label="Add a new physical location"
+                        (click)="addNewPhysicalLocation()"
+                      >
+                      <mat-icon>add</mat-icon>
+                    </button>
+                  }
                 </mat-form-field>
               }
               @if (fieldEnabled('digitalLocation')) {
@@ -211,6 +235,18 @@
                         <mat-option [value]="supplier.id">{{ supplier.name }}</mat-option>
                       }
                     </mat-select>
+                    @if (siteSettings.allowInlineFieldCreation()) {
+                      <button
+                          mat-icon-button
+                          matSuffix
+                          type="button"
+                          matTooltip="Add a new supplier"
+                          aria-label="Add a new supplier"
+                          (click)="addNewSupplier()"
+                        >
+                        <mat-icon>add</mat-icon>
+                      </button>
+                    }
                   </mat-form-field>
                 }
                 @if (fieldEnabled('supplierLeadTime')) {

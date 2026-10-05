@@ -54,15 +54,18 @@ export class SiteSettingsService {
   private readonly _bulkEditFeatureEnabled = signal(true);
   readonly bulkEditFeatureEnabled = this._bulkEditFeatureEnabled.asReadonly();
 
-  // Off by default (preserves every existing org's current behavior: any
-  // signed-in user can edit any inventory field) — see Settings > Workflow's
-  // "Price & supplier edits" section. Enforced server-side by a trigger on
-  // inventory_items (add_restrict_price_supplier_edits migration), not by
-  // this flag alone — this signal only drives what the UI *offers*/warns
-  // about, the same "client is advisory, the database is the real gate"
-  // split every other role-sensitive toggle in this app already has.
-  private readonly _restrictPriceSupplierEdits = signal(false);
-  readonly restrictPriceSupplierEdits = this._restrictPriceSupplierEdits.asReadonly();
+  // Off by default (preserves every existing org's current behavior: only
+  // admins/managers can add a new category, physical location, or supplier
+  // — see Settings > Workflow's "Inline field creation" section). When on,
+  // any approved member can add one of these three directly from the
+  // inventory item create/edit forms, enforced for real by a pair of
+  // additional permissive RLS policies on inventory_field_options/suppliers
+  // (add_inline_field_creation migration) — this signal only drives
+  // whether the forms' "+ Add new" affordances render, the same
+  // "client is advisory, the database is the real gate" split this app's
+  // other role-sensitive toggles already have.
+  private readonly _allowInlineFieldCreation = signal(false);
+  readonly allowInlineFieldCreation = this._allowInlineFieldCreation.asReadonly();
 
   // Per-org kill switches for each of the five email notification kinds
   // (see Settings > Workflow's "Email notifications" section) — checked
@@ -95,7 +98,7 @@ export class SiteSettingsService {
       this._requireRetirementApproval.set(true);
       this._requireMfaForAll.set(false);
       this._bulkEditFeatureEnabled.set(true);
-      this._restrictPriceSupplierEdits.set(false);
+      this._allowInlineFieldCreation.set(false);
       this._notifyTaskAssigned.set(true);
       this._notifyTaskTransfer.set(true);
       this._notifyRetirementRequest.set(true);
@@ -121,7 +124,7 @@ export class SiteSettingsService {
     this._requireRetirementApproval.set(data?.require_retirement_approval ?? true);
     this._requireMfaForAll.set(data?.require_mfa_for_all ?? false);
     this._bulkEditFeatureEnabled.set(data?.bulk_edit_enabled ?? true);
-    this._restrictPriceSupplierEdits.set(data?.restrict_price_supplier_edits ?? false);
+    this._allowInlineFieldCreation.set(data?.allow_inline_field_creation ?? false);
     this._notifyTaskAssigned.set(data?.notify_task_assigned ?? true);
     this._notifyTaskTransfer.set(data?.notify_task_transfer ?? true);
     this._notifyRetirementRequest.set(data?.notify_retirement_request ?? true);
@@ -290,7 +293,7 @@ export class SiteSettingsService {
     return null;
   }
 
-  async updateRestrictPriceSupplierEdits(restricted: boolean): Promise<string | null> {
+  async updateAllowInlineFieldCreation(allowed: boolean): Promise<string | null> {
     const session = await this.authService.getSession();
     const organizationId = this.authService.organizationId();
     if (!session || !organizationId) {
@@ -300,7 +303,7 @@ export class SiteSettingsService {
     const { error } = await this.supabase
       .from('site_settings')
       .upsert(
-        { organization_id: organizationId, restrict_price_supplier_edits: restricted, updated_by: session.user.id },
+        { organization_id: organizationId, allow_inline_field_creation: allowed, updated_by: session.user.id },
         { onConflict: 'organization_id' }
       );
 
@@ -308,7 +311,7 @@ export class SiteSettingsService {
       return error.message;
     }
 
-    this._restrictPriceSupplierEdits.set(restricted);
+    this._allowInlineFieldCreation.set(allowed);
     return null;
   }
 

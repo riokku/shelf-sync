@@ -21,6 +21,8 @@ import { CreateTaskModalComponent } from '../create-task-modal/create-task-modal
 import { RequestRetirementModalComponent, RequestRetirementModalResult } from '../request-retirement-modal/request-retirement-modal.component';
 import { DiscardModalComponent, DiscardModalResult } from '../discard-modal/discard-modal.component';
 import { BulkAddContainersModalComponent, BulkAddContainersModalResult } from '../bulk-add-containers-modal/bulk-add-containers-modal.component';
+import { AddFieldOptionModalComponent } from '../add-field-option-modal/add-field-option-modal.component';
+import { SupplierFormModalComponent } from '../supplier-form-modal/supplier-form-modal.component';
 import { AuthService, Profile } from '../../../core/auth.service';
 import { ImpersonationService } from '../../../core/impersonation.service';
 import { ItemEditPresenceService, ItemEditor } from '../../../core/item-edit-presence.service';
@@ -510,6 +512,58 @@ export class ModalTableComponent implements OnInit, OnDestroy {
     });
   }
 
+  /** Only rendered while siteSettings.allowInlineFieldCreation() is on (see
+   *  that signal's own doc comment) — mirrors
+   *  ManageInventoryComponent.addNewCategory()'s identical shape. */
+  addNewCategory() {
+    const dialogRef = this.dialog.open(AddFieldOptionModalComponent, {
+      data: { field: 'category', label: 'category' },
+      width: 'clamp(20rem, 40vw, 28rem)',
+      maxWidth: '90vw'
+    });
+
+    dialogRef.afterClosed().subscribe((value: string | undefined) => {
+      if (!value) {
+        return;
+      }
+      const current = this.editForm.controls.category.value;
+      if (!current.includes(value)) {
+        this.editForm.controls.category.setValue([...current, value]);
+      }
+    });
+  }
+
+  addNewPhysicalLocation() {
+    const dialogRef = this.dialog.open(AddFieldOptionModalComponent, {
+      data: { field: 'physical_location', label: 'physical location' },
+      width: 'clamp(20rem, 40vw, 28rem)',
+      maxWidth: '90vw'
+    });
+
+    dialogRef.afterClosed().subscribe((value: string | undefined) => {
+      if (value) {
+        this.editForm.controls.physicalLocation.setValue(value);
+      }
+    });
+  }
+
+  /** SupplierFormModalComponent closes with the newly created supplier's id
+   *  on success (see its own doc comment) — mirrors
+   *  ManageInventoryComponent.addNewSupplier()'s identical shape. */
+  addNewSupplier() {
+    const dialogRef = this.dialog.open(SupplierFormModalComponent, {
+      data: {},
+      width: 'clamp(26rem, 45vw, 32rem)',
+      maxWidth: '90vw'
+    });
+
+    dialogRef.afterClosed().subscribe((result: string | boolean | undefined) => {
+      if (typeof result === 'string') {
+        this.editForm.controls.supplierId.setValue(result);
+      }
+    });
+  }
+
   /** Read-only regardless of edit mode — generating a label doesn't change
    *  the item, it's just a printable rendering of its id (see
    *  shared/utils/barcode.ts), so there's no reason to gate it on Edit. */
@@ -630,17 +684,6 @@ export class ModalTableComponent implements OnInit, OnDestroy {
    *  to." Also reused by openDiscard()'s own guard below. */
   get canDiscard(): boolean {
     return !this.data.isLocked || this.authService.canManage();
-  }
-
-  /** Mirrors the enforce_price_supplier_edit_restriction() trigger's own
-   *  check (Settings > Workflow's "Price & supplier edits" toggle) —
-   *  disabling these three controls client-side when this is false is a
-   *  UX nicety, not the actual enforcement, so there's no point showing an
-   *  editable field that would just bounce off a database exception. The
-   *  database is what actually protects these columns regardless of what
-   *  this getter returns. */
-  get canEditPriceSupplier(): boolean {
-    return !this.siteSettings.restrictPriceSupplierEdits() || this.authService.canManage();
   }
 
   openDiscard(){
@@ -995,18 +1038,6 @@ export class ModalTableComponent implements OnInit, OnDestroy {
       pricePerUnit: this.data.pricePerUnit,
       pricePerContainer: this.data.pricePerContainer
     });
-    // Disabled (not omitted) controls still round-trip their current value
-    // via getRawValue() at save time, so this can't accidentally null out
-    // an existing price/supplier for someone who isn't allowed to change
-    // it — the database trigger is the actual enforcement either way.
-    const priceSupplierControls = ['supplierId', 'pricePerUnit', 'pricePerContainer'] as const;
-    for (const key of priceSupplierControls) {
-      if (this.canEditPriceSupplier) {
-        this.editForm.get(key)?.enable();
-      } else {
-        this.editForm.get(key)?.disable();
-      }
-    }
     this.removedImageIds.clear();
     this.clearNewImages();
     this.editableContainers = this.existingContainers.map(container => ({ ...container }));
