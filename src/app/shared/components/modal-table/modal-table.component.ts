@@ -361,7 +361,7 @@ export class ModalTableComponent implements OnInit, OnDestroy {
    *  isn't (or is no longer) on the approved list — otherwise editing an item
    *  whose category/location predates the admin's list would blank it out. */
   get categoryOptions(): string[] {
-    return this.withCurrentValue(this.inventoryFieldOptions.optionsFor('category'), this.data.category);
+    return this.withCurrentValues(this.inventoryFieldOptions.optionsFor('category'), this.data.category);
   }
 
   get physicalLocationOptions(): string[] {
@@ -378,6 +378,15 @@ export class ModalTableComponent implements OnInit, OnDestroy {
 
   private withCurrentValue(approved: string[], current: string): string[] {
     return current && !approved.includes(current) ? [current, ...approved] : approved;
+  }
+
+  /** Multi-value counterpart to withCurrentValue() above, for category —
+   *  includes every one of the item's own current values that isn't (or is
+   *  no longer) on the approved list, same "don't silently blank out an
+   *  already-set value" reasoning. */
+  private withCurrentValues(approved: string[], current: string[]): string[] {
+    const extra = current.filter(value => value && !approved.includes(value));
+    return extra.length > 0 ? [...extra, ...approved] : approved;
   }
 
   /** Same "approved list plus the item's own current value" shape as
@@ -409,7 +418,7 @@ export class ModalTableComponent implements OnInit, OnDestroy {
   editForm = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     barcode: new FormControl('', { nonNullable: true }),
-    category: new FormControl('', { nonNullable: true }),
+    category: new FormControl<string[]>([], { nonNullable: true }),
     description: new FormControl('', { nonNullable: true }),
     physicalLocation: new FormControl('', { nonNullable: true }),
     digitalLocation: new FormControl('', { nonNullable: true }),
@@ -1112,7 +1121,7 @@ export class ModalTableComponent implements OnInit, OnDestroy {
     const { error } = await this.supabase.from('inventory_items').update({
       name: value.name,
       barcode: value.barcode || null,
-      category: value.category || null,
+      category: value.category.length > 0 ? value.category : null,
       description: value.description || null,
       physical_location: value.physicalLocation || null,
       digital_location: value.digitalLocation || null,
@@ -1360,11 +1369,20 @@ export class ModalTableComponent implements OnInit, OnDestroy {
     return { summary: summaries.length > 0 ? summaries.join(', ') : null, error: null };
   }
 
+  /** Sorted, comma-joined display form of a multi-value category list —
+   *  used by describeChanges() so "Category (— → Chairs, Linens)" reads
+   *  off a stable order regardless of the order categories were picked in,
+   *  and so the before/after diff compares content rather than array
+   *  identity (which would always differ). */
+  private formatCategoryList(categories: string[]): string {
+    return [...categories].sort((a, b) => a.localeCompare(b)).join(', ');
+  }
+
   private describeChanges(value: ReturnType<ModalTableComponent['editForm']['getRawValue']>): string[] {
     const before: Record<string, unknown> = {
       name: this.data.name,
       barcode: this.data.barcode,
-      category: this.data.category,
+      category: this.formatCategoryList(this.data.category),
       description: this.data.description,
       physicalLocation: this.data.physicalLocation,
       digitalLocation: this.data.digitalLocation,
@@ -1385,6 +1403,7 @@ export class ModalTableComponent implements OnInit, OnDestroy {
     };
     const after: Record<string, unknown> = {
       ...value,
+      category: this.formatCategoryList(value.category),
       expirationDate: toIsoDateString(value.expirationDate) ?? '',
       checkedOutTo: resolveProfileName(value.checkedOutTo, this.orgProfiles),
       checkoutDueAt: toIsoDateString(value.checkoutDueAt) ?? '',

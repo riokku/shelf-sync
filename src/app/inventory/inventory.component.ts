@@ -287,7 +287,7 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
     }
 
     if (this.selectedCategories.length > 0) {
-      list = list.filter(item => this.selectedCategories.includes(item.category));
+      list = list.filter(item => item.category.some(category => this.selectedCategories.includes(category)));
     }
 
     if (this.selectedPhysicalLocations.length > 0) {
@@ -337,6 +337,9 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
     }
     if (column === 'status') {
       return this.statusLabel(a).localeCompare(this.statusLabel(b));
+    }
+    if (column === 'category') {
+      return this.formatCategoryList(a.category).localeCompare(this.formatCategoryList(b.category));
     }
 
     const key = column as keyof InventoryItem;
@@ -410,7 +413,7 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
    *  approved dropdown list — so filtering still works for older items whose
    *  category/location predates that list (or was since removed from it). */
   get categoryFilterOptions(): string[] {
-    return this.distinctValues(this.inventoryList.map(item => item.category));
+    return this.distinctValues(this.inventoryList.flatMap(item => item.category));
   }
 
   get physicalLocationFilterOptions(): string[] {
@@ -419,6 +422,27 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
 
   private distinctValues(values: string[]): string[] {
     return [...new Set(values.filter(value => !!value))].sort();
+  }
+
+  /** Sorted, comma-joined display form of a category list — same shape
+   *  ModalTableComponent.formatCategoryList() uses, duplicated rather than
+   *  shared per this app's own small-presentational-helper convention. */
+  private formatCategoryList(categories: string[]): string {
+    const sorted = [...categories].sort((a, b) => a.localeCompare(b));
+    return sorted.length > 0 ? sorted.join(', ') : '—';
+  }
+
+  /** Order-insensitive equality for two category lists — a plain `!==`
+   *  always differs for two distinct arrays regardless of content, which
+   *  would make every bulk reassign look like a real change even when the
+   *  selected set already matches. */
+  private categoriesEqual(a: string[], b: string[]): boolean {
+    if (a.length !== b.length) {
+      return false;
+    }
+    const sortedA = [...a].sort();
+    const sortedB = [...b].sort();
+    return sortedA.every((value, index) => value === sortedB[index]);
   }
 
   /** A search-within-the-filter-panel box only earns its keep once there's
@@ -935,7 +959,7 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
     // per-item right before its own write, not up front, so an item that
     // turned out to have nothing to change (see the changes.length === 0
     // branch) is correctly left out of the revert set entirely.
-    const revertEntries: { id: string; category: string | null; physicalLocation: string | null }[] = [];
+    const revertEntries: { id: string; category: string[] | null; physicalLocation: string | null }[] = [];
 
     await Promise.all(ids.map(async id => {
       const item = this.inventoryList.find(candidate => candidate.id === id);
@@ -943,12 +967,12 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
         return;
       }
 
-      const updates: { category?: string | null; physical_location?: string | null } = {};
+      const updates: { category?: string[] | null; physical_location?: string | null } = {};
       const changes: string[] = [];
 
-      if (result.category && result.category.value !== item.category) {
-        updates.category = result.category.value || null;
-        changes.push(`Category (${item.category || '—'} → ${result.category.value || '—'})`);
+      if (result.category && !this.categoriesEqual(result.category.value, item.category)) {
+        updates.category = result.category.value.length > 0 ? result.category.value : null;
+        changes.push(`Category (${this.formatCategoryList(item.category)} → ${this.formatCategoryList(result.category.value)})`);
       }
       if (result.physicalLocation && result.physicalLocation.value !== item.physicalLocation) {
         updates.physical_location = result.physicalLocation.value || null;
@@ -1003,7 +1027,7 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
    *  already patched to the new value by the time this can run) rather
    *  than blindly writing the old value back, so a concurrent further edit
    *  to that same item in the meantime isn't silently clobbered. */
-  private async undoBulkReassign(entries: { id: string; category: string | null; physicalLocation: string | null }[]) {
+  private async undoBulkReassign(entries: { id: string; category: string[] | null; physicalLocation: string | null }[]) {
     const session = await this.authService.getSession();
     if (!session || entries.length === 0) {
       return;
@@ -1018,11 +1042,11 @@ export class InventoryComponent implements OnInit, HasUnsavedChanges{
         return;
       }
 
-      const updates: { category?: string | null; physical_location?: string | null } = {};
+      const updates: { category?: string[] | null; physical_location?: string | null } = {};
       const changes: string[] = [];
-      if (entry.category !== item.category) {
+      if (!this.categoriesEqual(entry.category ?? [], item.category)) {
         updates.category = entry.category;
-        changes.push(`Category (${item.category || '—'} → ${entry.category || '—'})`);
+        changes.push(`Category (${this.formatCategoryList(item.category)} → ${this.formatCategoryList(entry.category ?? [])})`);
       }
       if (entry.physicalLocation !== item.physicalLocation) {
         updates.physical_location = entry.physicalLocation;

@@ -48,7 +48,7 @@ export interface ParsedImportRow {
   rowNumber: number;
   name: string;
   description: string;
-  category: string;
+  category: string[];
   physicalLocation: string;
   digitalLocation: string;
   applicableYear: string;
@@ -76,6 +76,14 @@ export interface ParseImportResult {
 
 function cell(raw: Record<string, string>, header: string): string {
   return (raw[header] ?? '').trim();
+}
+
+/** Category's own cell holds a semicolon-separated list (mirrors
+ *  inventory-export.ts's own `item.category.join('; ')`) rather than a
+ *  single value — commas are reserved for CSV's own column delimiter, so a
+ *  category list can't safely use that same separator inside one cell. */
+function parseCategoryList(raw: string): string[] {
+  return raw.split(';').map(value => value.trim()).filter(value => value.length > 0);
 }
 
 function parseOptionalNumber(raw: string, fieldLabel: string, errors: string[]): number | null {
@@ -192,7 +200,7 @@ export function parseAndValidateImportRows(
       rowNumber: index + 2,
       name,
       description: cell(raw, 'Description'),
-      category: cell(raw, 'Category'),
+      category: parseCategoryList(cell(raw, 'Category')),
       physicalLocation: cell(raw, 'Physical location'),
       digitalLocation: cell(raw, 'Digital location'),
       applicableYear: cell(raw, 'Applicable year'),
@@ -224,7 +232,7 @@ export function buildImportInsertPayload(row: ParsedImportRow): InventoryItemIns
   return {
     name: row.name,
     barcode: null,
-    category: row.category || null,
+    category: row.category.length > 0 ? row.category : null,
     description: row.description || null,
     physical_location: row.physicalLocation || null,
     digital_location: row.digitalLocation || null,

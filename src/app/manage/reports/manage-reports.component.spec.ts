@@ -50,7 +50,7 @@ function createFakeSupabaseServiceForReports(data: {
 
 function item(overrides: Partial<{
   id: string;
-  category: string | null;
+  category: string[] | null;
   physical_location: string | null;
   quantity_remaining: number;
   low_quantity_threshold: number | null;
@@ -61,7 +61,7 @@ function item(overrides: Partial<{
 }> = {}) {
   return {
     id: 'item-1',
-    category: 'Furniture',
+    category: ['Furniture'],
     physical_location: 'Warehouse A',
     quantity_remaining: 10,
     low_quantity_threshold: 5,
@@ -184,8 +184,8 @@ describe('ManageReportsComponent', () => {
     it('groups value by category and by location, sorted descending, with a fallback label for unset fields', async () => {
       const component = await createComponent({
         items: [
-          item({ id: '1', category: 'Furniture', physical_location: 'Warehouse A', quantity_remaining: 1, price_per_unit: 10 }),
-          item({ id: '2', category: 'Furniture', physical_location: 'Warehouse A', quantity_remaining: 1, price_per_unit: 10 }),
+          item({ id: '1', category: ['Furniture'], physical_location: 'Warehouse A', quantity_remaining: 1, price_per_unit: 10 }),
+          item({ id: '2', category: ['Furniture'], physical_location: 'Warehouse A', quantity_remaining: 1, price_per_unit: 10 }),
           item({ id: '3', category: null, physical_location: null, quantity_remaining: 1, price_per_unit: 100 })
         ]
       });
@@ -243,8 +243,8 @@ describe('ManageReportsComponent', () => {
     it('groups discards by their item\'s category, correlated from the inventory_items query', async () => {
       const component = await createComponent({
         items: [
-          item({ id: 'chair-1', category: 'Furniture' }),
-          item({ id: 'tent-1', category: 'Tents' })
+          item({ id: 'chair-1', category: ['Furniture'] }),
+          item({ id: 'tent-1', category: ['Tents'] })
         ],
         discards: [
           { item_id: 'chair-1', quantity: 2, reason: ['Water damage'] },
@@ -263,10 +263,10 @@ describe('ManageReportsComponent', () => {
     it('computes retirement rate by category, excluding categories with no retirements', async () => {
       const component = await createComponent({
         items: [
-          item({ id: '1', category: 'Furniture', status: 'retired' }),
-          item({ id: '2', category: 'Furniture', status: 'active' }),
-          item({ id: '3', category: 'Furniture', status: 'active' }),
-          item({ id: '4', category: 'Tents', status: 'active' })
+          item({ id: '1', category: ['Furniture'], status: 'retired' }),
+          item({ id: '2', category: ['Furniture'], status: 'active' }),
+          item({ id: '3', category: ['Furniture'], status: 'active' }),
+          item({ id: '4', category: ['Tents'], status: 'active' })
         ]
       });
 
@@ -380,8 +380,8 @@ describe('ManageReportsComponent', () => {
     it('passes every category through unchanged when there are 5 or fewer', async () => {
       const component = await createComponent({
         items: [
-          item({ id: '1', category: 'Furniture', quantity_remaining: 1, price_per_unit: 10 }),
-          item({ id: '2', category: 'Tents', quantity_remaining: 1, price_per_unit: 5 })
+          item({ id: '1', category: ['Furniture'], quantity_remaining: 1, price_per_unit: 10 }),
+          item({ id: '2', category: ['Tents'], quantity_remaining: 1, price_per_unit: 5 })
         ]
       });
 
@@ -394,7 +394,7 @@ describe('ManageReportsComponent', () => {
     it('caps the chart at the top 5 categories plus one folded-in "Other" slice', async () => {
       const component = await createComponent({
         items: Array.from({ length: 7 }, (_, i) =>
-          item({ id: `item-${i}`, category: `Category ${i}`, quantity_remaining: 1, price_per_unit: 7 - i })
+          item({ id: `item-${i}`, category: [`Category ${i}`], quantity_remaining: 1, price_per_unit: 7 - i })
         )
       });
 
@@ -405,7 +405,7 @@ describe('ManageReportsComponent', () => {
     it('omits the "Other" slice entirely when there are exactly 5 categories', async () => {
       const component = await createComponent({
         items: Array.from({ length: 5 }, (_, i) =>
-          item({ id: `item-${i}`, category: `Category ${i}`, quantity_remaining: 1, price_per_unit: 1 })
+          item({ id: `item-${i}`, category: [`Category ${i}`], quantity_remaining: 1, price_per_unit: 1 })
         )
       });
 

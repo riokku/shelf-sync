@@ -61,21 +61,21 @@ describe('BulkReassignModalComponent', () => {
     it('closes with only the checked field(s), leaving the other null', () => {
       spyOn(dialogRef, 'close');
       component.form.controls.updateCategory.setValue(true);
-      component.form.controls.category.setValue('Tools');
+      component.form.controls.category.setValue(['Tools']);
 
       component.apply();
 
       expect(dialogRef.close).toHaveBeenCalledWith({
-        category: { value: 'Tools' },
+        category: { value: ['Tools'] },
         physicalLocation: null
       });
     });
 
-    it('closes with both fields when both are checked', () => {
+    it('closes with both fields when both are checked, category carrying more than one value', () => {
       spyOn(dialogRef, 'close');
       component.form.setValue({
         updateCategory: true,
-        category: 'Safety',
+        category: ['Safety', 'Tools'],
         updatePhysicalLocation: true,
         physicalLocation: 'Warehouse B'
       });
@@ -83,20 +83,20 @@ describe('BulkReassignModalComponent', () => {
       component.apply();
 
       expect(dialogRef.close).toHaveBeenCalledWith({
-        category: { value: 'Safety' },
+        category: { value: ['Safety', 'Tools'] },
         physicalLocation: { value: 'Warehouse B' }
       });
     });
 
-    it('closes with an explicit empty value when "(None)" is chosen for a checked field', () => {
+    it('closes with an empty array when every category is deselected on a checked field', () => {
       spyOn(dialogRef, 'close');
       component.form.controls.updateCategory.setValue(true);
-      component.form.controls.category.setValue('');
+      component.form.controls.category.setValue([]);
 
       component.apply();
 
       expect(dialogRef.close).toHaveBeenCalledWith({
-        category: { value: '' },
+        category: { value: [] },
         physicalLocation: null
       });
     });

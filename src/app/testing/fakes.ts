@@ -367,7 +367,7 @@ export function createTestInventoryItem(overrides: Partial<{
   id: string;
   name: string;
   barcode: string;
-  category: string;
+  category: string[];
   physicalLocation: string;
   supplierId: string | null;
   supplierName: string;
@@ -390,7 +390,7 @@ export function createTestInventoryItem(overrides: Partial<{
     'A test item',
     '',
     [],
-    overrides.category ?? 'Category',
+    overrides.category ?? ['Category'],
     overrides.physicalLocation ?? 'Warehouse A',
     '',
     '2024',
