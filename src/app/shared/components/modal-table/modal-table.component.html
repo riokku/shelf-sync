@@ -473,10 +473,16 @@
                   }
                 </ul>
               }
-              <button mat-stroked-button type="button" (click)="addContainer()">
-                <mat-icon>add</mat-icon>
-                Add container
-              </button>
+              <div class="container-add-actions">
+                <button mat-stroked-button type="button" (click)="addContainer()">
+                  <mat-icon>add</mat-icon>
+                  Add container
+                </button>
+                <button mat-stroked-button type="button" (click)="openBulkAddContainers()">
+                  <mat-icon>playlist_add</mat-icon>
+                  Bulk add
+                </button>
+              </div>
             } @else if (existingContainers.length === 0) {
               <p class="empty-hint container-empty-hint">Not tracked by individual container. Edit to add containers.</p>
             } @else {

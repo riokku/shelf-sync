@@ -431,6 +431,26 @@ describe('ManageInventoryComponent', () => {
       expect(component.newContainerQuantitySum).toBe(20);
     });
 
+    it('addNewContainer() defaults location to the list\'s own first box, not blank', () => {
+      component.newContainers = [{ quantity: 20, location: 'Shelf A' }];
+
+      component.addNewContainer();
+
+      expect(component.newContainers[1]).toEqual({ quantity: 0, location: 'Shelf A' });
+    });
+
+    it('applyBulkAddNewContainers() (openBulkAddNewContainers()\'s own dialog result handler) pushes one row per requested container', () => {
+      component.inventoryForm.controls.quantityPerContainer.setValue(12);
+
+      (component as unknown as { applyBulkAddNewContainers: (r: { count: number; location: string }) => void })
+        .applyBulkAddNewContainers({ count: 2, location: 'Shelf B' });
+
+      expect(component.newContainers).toEqual([
+        { quantity: 12, location: 'Shelf B' },
+        { quantity: 12, location: 'Shelf B' }
+      ]);
+    });
+
     it('removeNewContainer() drops the container at that index', () => {
       component.newContainers = [
         { quantity: 20, location: 'Shelf A' },

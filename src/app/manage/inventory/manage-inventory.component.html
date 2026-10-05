@@ -319,10 +319,16 @@
                   <span class="semibold">Quantity total:</span> {{ newContainerQuantitySum }}
                 </p>
               }
-              <button mat-stroked-button type="button" (click)="addNewContainer()">
-                <mat-icon>add</mat-icon>
-                Add container
-              </button>
+              <div class="container-add-actions">
+                <button mat-stroked-button type="button" (click)="addNewContainer()">
+                  <mat-icon>add</mat-icon>
+                  Add container
+                </button>
+                <button mat-stroked-button type="button" (click)="openBulkAddNewContainers()">
+                  <mat-icon>playlist_add</mat-icon>
+                  Bulk add
+                </button>
+              </div>
             </div>
           }
           @if (fieldEnabled('pricePerUnit') || fieldEnabled('pricePerContainer')) {

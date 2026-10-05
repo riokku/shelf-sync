@@ -100,6 +100,29 @@ describe('ModalTableComponent', () => {
     expect(component.containerQuantitySum).toBe(20);
   });
 
+  it('addContainer() defaults location to the list\'s own first box, not blank', () => {
+    component.editableContainers = [{ id: 'box-1', quantity: 10, location: 'Warehouse A' }];
+
+    component.addContainer();
+
+    expect(component.editableContainers[1]).toEqual({ id: null, quantity: 0, location: 'Warehouse A' });
+  });
+
+  describe('applyBulkAddContainers() (openBulkAddContainers()\'s own dialog result handler)', () => {
+    it('pushes one row per requested container, all at the given location', () => {
+      component.editForm.controls.quantityPerContainer.setValue(15);
+
+      (component as unknown as { applyBulkAddContainers: (r: { count: number; location: string }) => void })
+        .applyBulkAddContainers({ count: 3, location: 'Warehouse B' });
+
+      expect(component.editableContainers).toEqual([
+        { id: null, quantity: 15, location: 'Warehouse B' },
+        { id: null, quantity: 15, location: 'Warehouse B' },
+        { id: null, quantity: 15, location: 'Warehouse B' }
+      ]);
+    });
+  });
+
   it('removeContainer() tracks an existing container for deletion but drops a new, unsaved one silently', () => {
     component.editableContainers = [
       { id: 'box-1', quantity: 10, location: '' },

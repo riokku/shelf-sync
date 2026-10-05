@@ -260,6 +260,11 @@
   margin: 0 0 0.75rem;
 }
 
+.container-add-actions{
+  display: flex;
+  gap: 0.5rem;
+}
+
 // Supplies .task-row's layout now that its own grid (shaped for the
 // since-removed "All inventory" list's columns) is gone — a simple
 // checkbox-plus-flexible-content-plus-fixed-actions row instead. No

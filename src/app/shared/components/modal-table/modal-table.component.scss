@@ -763,6 +763,11 @@ mat-dialog-content.mat-mdc-dialog-content{
   padding: 0 0.75rem;
 }
 
+.container-add-actions{
+  display: flex;
+  gap: 0.5rem;
+}
+
 .container-row{
   display: flex;
   align-items: center;
