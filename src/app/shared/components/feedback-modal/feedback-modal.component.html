@@ -1,11 +1,11 @@
 <h2 mat-dialog-title>
   <mat-icon class="feedback-title-icon">feedback</mat-icon>
-  Send feedback
+  Submit feedback or support ticket
 </h2>
 <form [formGroup]="feedbackForm" (ngSubmit)="submit()">
   <mat-dialog-content>
     <p class="feedback-intro">
-      Found a bug, want a feature, or just have something to say? This goes straight to the ShelfSync team.
+      Need help, found a bug, want a feature, or just have something to say? This goes straight to the ShelfSync team. We will do our best to respond within one business day.
     </p>
 
     <mat-form-field appearance="outline" class="full-width">
@@ -40,7 +40,7 @@
       } @else {
         <ng-container>
           <mat-icon class="send-icon">send</mat-icon>
-          Send feedback
+         Submit
         </ng-container>
       }
     </button>

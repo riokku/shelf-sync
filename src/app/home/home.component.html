@@ -141,6 +141,20 @@
           <p>Cross-organization feedback, errors, and organizations.</p>
         </a>
       }
+      <!-- Same approvedGuard tier as Home itself, so no @if gate the way
+           Manage/Studio above each need one. Reuses .home-card-icon-c
+           (Account's own chip) rather than adding a seventh gradient —
+           -a/-b/-c/-d/-e/-f already cover every two-tone permutation of the
+           three container tokens, and sharing Account's pairs up the two
+           "about you, not the inventory workflow" destinations the same way
+           Studio already reuses Manage's own -d. -->
+      <a class="home-card" routerLink="/help">
+        <span class="home-card-icon home-card-icon-c">
+          <mat-icon>help_outline</mat-icon>
+        </span>
+        <h3>Help &amp; Support</h3>
+        <p>Answers to common questions, or submit a support ticket.</p>
+      </a>
     </div>
 
     <span class="home-kicker">For you</span>

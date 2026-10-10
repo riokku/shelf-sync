@@ -56,6 +56,7 @@ const FROM_ADDRESS = 'ShelfSync <onboarding@resend.dev>';
 const FEEDBACK_TO_ADDRESS = 'chris@studiorioconsulting.com';
 
 const FEEDBACK_TYPE_LABELS: Record<string, string> = {
+  support_ticket: 'Support ticket',
   bug: 'Bug report',
   feature_request: 'Feature request',
   general: 'General feedback',

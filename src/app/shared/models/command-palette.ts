@@ -57,7 +57,7 @@ export const COMMAND_PALETTE_DESTINATIONS: CommandPaletteDestination[] = [
   { label: 'Inventory Audits', icon: 'fact_check', routerLink: '/manage/audits' },
   { label: 'Broadcasts', icon: 'campaign', routerLink: '/broadcasts' },
   { label: 'Account', icon: 'account_circle', routerLink: '/account' },
-  { label: 'Help', icon: 'help_outline', routerLink: '/help' },
+  { label: 'Help & Support', icon: 'help_outline', routerLink: '/help' },
   { label: 'Manage', icon: 'admin_panel_settings', routerLink: '/manage', requiresManage: true },
   { label: 'Manage Inventory', icon: 'inventory_2', routerLink: '/manage/inventory', requiresManage: true },
   { label: 'Manage Tasks', icon: 'checklist', routerLink: '/manage/tasks', requiresManage: true },
